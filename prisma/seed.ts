@@ -246,10 +246,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     "ops:assign-trek-leads",
   ],
 
-  SUPER_ADMIN: [
-    // Super Admin gets ALL permissions
-    ...PERMISSIONS.map((p) => p.key),
-  ],
+  SUPER_ADMIN: PERMISSIONS.map((p) => p.key),
 };
 
 // ─── Default Categories ────────────────────────────────────
@@ -326,11 +323,11 @@ async function seed() {
   console.log("\n✅ Seed complete!");
 }
 
-seed()
-  .catch((e) => {
-    console.error("❌ Seed failed:", e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+try {
+  await seed();
+} catch (e) {
+  console.error("❌ Seed failed:", e);
+  process.exit(1);
+} finally {
+  await prisma.$disconnect();
+}

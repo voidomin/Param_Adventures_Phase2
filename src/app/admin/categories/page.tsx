@@ -102,7 +102,9 @@ export default function AdminCategoriesPage() {
     }
 
     if (
-      !window.confirm(`Are you sure you want to delete the category "${name}"?`)
+      !globalThis.confirm(
+        `Are you sure you want to delete the category "${name}"?`,
+      )
     ) {
       return;
     }
@@ -246,13 +248,13 @@ export default function AdminCategoriesPage() {
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="bg-slate-900 border border-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative">
-            <div className="p-6 border-b border-border flex justify-between items-center">
-              <h2 className="text-xl font-heading font-bold text-foreground">
+            <div className="p-6 border-b border-white/10 flex justify-between items-center">
+              <h2 className="text-xl font-heading font-bold text-white">
                 {editCategory ? "Edit Category" : "Add Category"}
               </h2>
               <button
                 onClick={() => setIsModalOpen(false)}
-                className="text-foreground/50 hover:text-foreground transition-colors p-1"
+                className="text-slate-400 hover:text-white transition-colors p-1"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -266,15 +268,19 @@ export default function AdminCategoriesPage() {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-2">
+                <label
+                  htmlFor="name"
+                  className="block text-sm font-medium text-slate-200 mb-2"
+                >
                   Category Name
                 </label>
                 <input
+                  id="name"
                   type="text"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-3 bg-black/50 border border-border rounded-xl text-foreground placeholder-foreground/30 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                  className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
                   placeholder="e.g. Backpacking, Workation..."
                 />
               </div>
@@ -282,14 +288,18 @@ export default function AdminCategoriesPage() {
               {editCategory && (
                 <div className="flex items-center gap-3 p-4 rounded-xl border border-white/5 bg-white/5">
                   <div className="flex-1">
-                    <label className="block text-sm font-medium text-foreground">
+                    <label
+                      htmlFor="isActive"
+                      className="block text-sm font-medium text-white"
+                    >
                       Status
                     </label>
-                    <p className="text-xs text-foreground/50 mt-1">
+                    <p className="text-xs text-slate-400 mt-1">
                       Inactive categories are hidden from the homepage.
                     </p>
                   </div>
                   <button
+                    id="isActive"
                     type="button"
                     onClick={() => setIsActive(!isActive)}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-slate-900 ${
@@ -309,7 +319,7 @@ export default function AdminCategoriesPage() {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-5 py-2.5 rounded-xl font-medium text-foreground/70 hover:bg-foreground/10 transition-colors"
+                  className="px-5 py-2.5 rounded-xl font-medium text-slate-300 hover:bg-white/10 transition-colors"
                 >
                   Cancel
                 </button>

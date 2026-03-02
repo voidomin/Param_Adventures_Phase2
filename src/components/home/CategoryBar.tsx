@@ -65,7 +65,7 @@ export default function CategoryBar() {
             className={`flex items-center gap-2 px-5 py-2.5 rounded-full whitespace-nowrap transition-all duration-300 ${
               activeCategory === "all"
                 ? "bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/20 scale-105"
-                : "bg-white/5 text-foreground/70 hover:bg-white/10 hover:text-foreground font-medium"
+                : "bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white font-medium"
             }`}
           >
             All Adventures
@@ -82,7 +82,7 @@ export default function CategoryBar() {
                 className={`flex items-center gap-2 px-5 py-2.5 rounded-full whitespace-nowrap transition-all duration-300 ${
                   isActive
                     ? "bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/20 scale-105"
-                    : "bg-white/5 text-foreground/70 hover:bg-white/10 hover:text-foreground font-medium"
+                    : "bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white font-medium"
                 }`}
               >
                 <Icon className={`w-4 h-4 ${isActive ? "" : "opacity-70"}`} />

@@ -56,10 +56,20 @@ export default function Navbar() {
               ))}
 
               {/* Auth Section */}
-              {isLoading ? (
+              {isLoading && (
                 <div className="w-20 h-9 bg-foreground/10 rounded-full animate-pulse" />
-              ) : user ? (
-                <div className="flex items-center gap-3">
+              )}
+
+              {!isLoading && user && (
+                <div className="flex items-center gap-4">
+                  {(user.role === "ADMIN" || user.role === "SUPER_ADMIN") && (
+                    <Link
+                      href="/admin/categories"
+                      className="text-sm font-bold text-primary hover:text-primary/80 transition-colors"
+                    >
+                      Admin Dashboard
+                    </Link>
+                  )}
                   <div className="flex items-center gap-2 px-3 py-1.5 bg-foreground/5 rounded-full">
                     <User className="w-4 h-4 text-primary" />
                     <span className="text-sm font-medium text-foreground/80">
@@ -74,7 +84,9 @@ export default function Navbar() {
                     <LogOut className="w-4 h-4" />
                   </button>
                 </div>
-              ) : (
+              )}
+
+              {!isLoading && !user && (
                 <Link
                   href="/login"
                   className="bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm font-bold hover:scale-105 transition-transform"
@@ -134,10 +146,22 @@ export default function Navbar() {
                       {user.name}
                     </p>
                     <p className="text-sm" style={{ color: "#64748b" }}>
-                      {user.role.replace(/_/g, " ")}
+                      {user.role.replaceAll("_", " ")}
                     </p>
                   </div>
                 </div>
+                {(user.role === "ADMIN" || user.role === "SUPER_ADMIN") && (
+                  <Link
+                    href="/admin/categories"
+                    onClick={() => setIsOpen(false)}
+                    className="w-full py-4 text-lg font-bold text-center block"
+                    style={{
+                      color: "#ff9933",
+                    }}
+                  >
+                    Go to Admin Dashboard
+                  </Link>
+                )}
                 <button
                   onClick={handleLogout}
                   className="w-full py-4 rounded-xl text-lg font-bold text-center block"
