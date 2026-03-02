@@ -6,19 +6,20 @@ This document defines the relational database schema (PostgreSQL + Prisma) for v
 
 ### User
 
-| Field         | Type      | Notes                     |
-| ------------- | --------- | ------------------------- |
-| `id`          | UUID (PK) | Auto-generated            |
-| `email`       | String    | Unique                    |
-| `password`    | String?   | Hashed with bcrypt        |
-| `name`        | String    |                           |
-| `phoneNumber` | String?   |                           |
-| `avatarUrl`   | String?   |                           |
-| `status`      | Enum      | ACTIVE, SUSPENDED, BANNED |
-| `googleId`    | String?   | For Google OAuth (future) |
-| `deletedAt`   | DateTime? | Soft delete               |
-| `createdAt`   | DateTime  | Auto                      |
-| `updatedAt`   | DateTime  | Auto                      |
+| Field         | Type      | Notes                         |
+| ------------- | --------- | ----------------------------- |
+| `id`          | UUID (PK) | Auto-generated                |
+| `email`       | String    | Unique                        |
+| `password`    | String?   | Hashed with bcrypt            |
+| `name`        | String    |                               |
+| `roleId`      | FK        | → Role.id (one role per user) |
+| `phoneNumber` | String?   |                               |
+| `avatarUrl`   | String?   |                               |
+| `status`      | Enum      | ACTIVE, SUSPENDED, BANNED     |
+| `googleId`    | String?   | For Google OAuth (future)     |
+| `deletedAt`   | DateTime? | Soft delete                   |
+| `createdAt`   | DateTime  | Auto                          |
+| `updatedAt`   | DateTime  | Auto                          |
 
 ### Role
 
@@ -38,14 +39,6 @@ This document defines the relational database schema (PostgreSQL + Prisma) for v
 | `description` | String?   |                                            |
 | `category`    | String?   | Grouping (trip, booking, media, etc.)      |
 
-### UserRole (Many-to-Many)
-
-| Field    | Type      | Notes            |
-| -------- | --------- | ---------------- |
-| `userId` | FK        | → User.id        |
-| `roleId` | FK        | → Role.id        |
-| PK       | Composite | (userId, roleId) |
-
 ### RolePermission (Many-to-Many)
 
 | Field          | Type      | Notes                  |
@@ -53,6 +46,8 @@ This document defines the relational database schema (PostgreSQL + Prisma) for v
 | `roleId`       | FK        | → Role.id              |
 | `permissionId` | FK        | → Permission.id        |
 | PK             | Composite | (roleId, permissionId) |
+
+> **Note:** One role per user (enforced via `User.roleId` FK). No `UserRole` join table needed.
 
 ## 2. Experience Management
 
