@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       data: {
         originalUrl,
         type,
-        uploadedById: auth.user!.userId,
+        uploadedById: auth.userId,
       },
     });
 
