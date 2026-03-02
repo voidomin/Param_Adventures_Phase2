@@ -40,8 +40,8 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       data.name = trimmedName;
       data.slug = trimmedName
         .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "");
+        .replaceAll(/[^a-z0-9]+/g, "-")
+        .replaceAll(/^-|-$/g, "");
 
       // Check slug conflict
       const conflict = await prisma.category.findFirst({

@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import MediaUploader from "@/components/admin/MediaUploader";
 import { Trash2, Copy, CheckCircle2, Image as ImageIcon } from "lucide-react";
-import Image from "next/image";
 
 interface MediaItem {
   id: string;
@@ -40,7 +39,7 @@ export default function MediaLibraryPage() {
   }, []);
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this media file?"))
+    if (!globalThis.confirm("Are you sure you want to delete this media file?"))
       return;
 
     try {
@@ -62,6 +61,86 @@ export default function MediaLibraryPage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  function renderGallery() {
+    if (isLoading) {
+      return (
+        <div className="flex justify-center py-20">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      );
+    }
+    if (media.length === 0) {
+      return (
+        <div className="bg-card border border-border rounded-xl p-12 text-center text-foreground/50">
+          <ImageIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
+          <p>Your media library is currently empty.</p>
+        </div>
+      );
+    }
+    return (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+        {media.map((item) => (
+          <div
+            key={item.id}
+            className="group bg-card border border-border rounded-xl overflow-hidden hover:border-foreground/30 transition-colors"
+          >
+            <div className="relative aspect-square bg-foreground/5">
+              {item.type === "IMAGE" ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={item.originalUrl}
+                  alt="Media upload"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="flex items-center justify-center h-full text-foreground/50">
+                  <span className="text-sm font-medium">Video File</span>
+                </div>
+              )}
+
+              {/* Overlay actions */}
+              <div className="absolute inset-0 bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-sm">
+                <button
+                  onClick={() => copyToClipboard(item.originalUrl, item.id)}
+                  className="p-2 bg-foreground/10 hover:bg-foreground/20 text-foreground rounded-lg transition-colors"
+                  title="Copy URL"
+                >
+                  {copiedId === item.id ? (
+                    <CheckCircle2 className="w-5 h-5 text-green-500" />
+                  ) : (
+                    <Copy className="w-5 h-5" />
+                  )}
+                </button>
+                <button
+                  onClick={() => handleDelete(item.id)}
+                  className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-colors"
+                  title="Delete"
+                >
+                  <Trash2 className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-3">
+              <p
+                className="text-xs text-foreground/60 truncate"
+                title={item.originalUrl}
+              >
+                {new URL(item.originalUrl).pathname.split("/").pop() || "image"}
+              </p>
+              <p className="text-[10px] items-center text-foreground/40 mt-1 flex justify-between">
+                <span>{new Date(item.createdAt).toLocaleDateString()}</span>
+                <span className="truncate ml-2 text-right">
+                  {item.uploadedBy.name}
+                </span>
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="mb-8">
@@ -79,78 +158,7 @@ export default function MediaLibraryPage() {
 
       <h2 className="text-xl font-bold text-foreground mb-6">Gallery</h2>
 
-      {isLoading ? (
-        <div className="flex justify-center py-20">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary"></div>
-        </div>
-      ) : media.length === 0 ? (
-        <div className="bg-card border border-border rounded-xl p-12 text-center text-foreground/50">
-          <ImageIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <p>Your media library is currently empty.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {media.map((item) => (
-            <div
-              key={item.id}
-              className="group bg-card border border-border rounded-xl overflow-hidden hover:border-foreground/30 transition-colors"
-            >
-              <div className="relative aspect-square bg-foreground/5">
-                {item.type === "IMAGE" ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={item.originalUrl}
-                    alt="Media upload"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="flex items-center justify-center h-full text-foreground/50">
-                    <span className="text-sm font-medium">Video File</span>
-                  </div>
-                )}
-
-                {/* Overlay actions */}
-                <div className="absolute inset-0 bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-sm">
-                  <button
-                    onClick={() => copyToClipboard(item.originalUrl, item.id)}
-                    className="p-2 bg-foreground/10 hover:bg-foreground/20 text-foreground rounded-lg transition-colors"
-                    title="Copy URL"
-                  >
-                    {copiedId === item.id ? (
-                      <CheckCircle2 className="w-5 h-5 text-green-500" />
-                    ) : (
-                      <Copy className="w-5 h-5" />
-                    )}
-                  </button>
-                  <button
-                    onClick={() => handleDelete(item.id)}
-                    className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-colors"
-                    title="Delete"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="p-3">
-                <p
-                  className="text-xs text-foreground/60 truncate"
-                  title={item.originalUrl}
-                >
-                  {new URL(item.originalUrl).pathname.split("/").pop() ||
-                    "image"}
-                </p>
-                <p className="text-[10px] items-center text-foreground/40 mt-1 flex justify-between">
-                  <span>{new Date(item.createdAt).toLocaleDateString()}</span>
-                  <span className="truncate ml-2 text-right">
-                    {item.uploadedBy.name}
-                  </span>
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+      {renderGallery()}
     </div>
   );
 }
