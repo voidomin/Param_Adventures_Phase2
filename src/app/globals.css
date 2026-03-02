@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+:root {
+  /* Obsidian & Saffron Light Palette */
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --primary: #ff9933;
+  --primary-foreground: #000000;
+  --accent: #2d2d2d;
+  --card: #ffffff;
+  --border: #e2e8f0;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-card: var(--card);
+  --color-border: var(--border);
+
+  --font-heading: var(--font-outfit);
+  --font-body: var(--font-inter);
+}
+
+.dark {
+  --background: #000000;
+  --foreground: #ffffff;
+  --primary: #ff9933;
+  --primary-foreground: #000000;
+  --accent: #2d2d2d;
+  --card: #121212;
+  --border: #2d2d2d;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-heading tracking-tight;
+  }
+
+  p {
+    @apply font-body leading-relaxed;
+  }
+}

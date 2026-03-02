@@ -1,0 +1,188 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  GUEST
+  REGISTERED_USER
+  MEDIA_UPLOADER
+  TREK_LEAD
+  TRIP_MANAGER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum ExperienceStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum SchedulingType {
+  FIXED
+  FLEXIBLE
+}
+
+enum Difficulty {
+  EASY
+  MODERATE
+  STRENUOUS
+}
+
+enum BookingStatus {
+  INITIATED
+  CONFIRMED
+  FAILED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum BlogStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String?
+  role          Role      @default(REGISTERED_USER)
+  isVerified    Boolean   @default(false)
+  profileImage  String?
+  firstName     String?
+  lastName      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  bookings      Booking[]
+  blogs         Blog[]
+  assignments   TripAssignment[]
+}
+
+model Category {
+  id          String               @id @default(uuid())
+  name        String
+  slug        String               @unique
+  isActive    Boolean              @default(true)
+  experiences ExperienceCategory[]
+}
+
+model Experience {
+  id              String               @id @default(uuid())
+  title           String
+  slug            String               @unique
+  description     String               @db.Text
+  itinerary       Json
+  basePrice       Decimal              @db.Decimal(10, 2)
+  schedulingType  SchedulingType
+  capacity        Int
+  status          ExperienceStatus     @default(DRAFT)
+  images          String[]
+  difficulty      Difficulty           @default(EASY)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  categories      ExperienceCategory[]
+  slots           Slot[]
+  bookings        Booking[]
+}
+
+model ExperienceCategory {
+  experienceId String
+  categoryId   String
+  experience   Experience @relation(fields: [experienceId], references: [id])
+  category     Category   @relation(fields: [categoryId], references: [id])
+
+  @@id([experienceId, categoryId])
+}
+
+model Slot {
+  id                String           @id @default(uuid())
+  experienceId      String
+  experience        Experience       @relation(fields: [experienceId], references: [id])
+  date              DateTime
+  capacity          Int
+  remainingCapacity Int
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  bookings          Booking[]
+  assignments       TripAssignment[]
+}
+
+model Booking {
+  id                String        @id @default(uuid())
+  userId            String
+  user              User          @relation(fields: [userId], references: [id])
+  experienceId      String
+  experience        Experience    @relation(fields: [experienceId], references: [id])
+  slotId            String?
+  slot              Slot?         @relation(fields: [slotId], references: [id])
+  participantCount  Int
+  totalPrice        Decimal       @db.Decimal(10, 2)
+  bookingStatus     BookingStatus @default(INITIATED)
+  paymentStatus     PaymentStatus @default(PENDING)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  payments          Payment[]
+}
+
+model Payment {
+  id                String   @id @default(uuid())
+  bookingId         String
+  booking           Booking  @relation(fields: [bookingId], references: [id])
+  razorpayPaymentId String   @unique
+  amount            Decimal  @db.Decimal(10, 2)
+  fullPayload       Json
+  createdAt         DateTime @default(now())
+}
+
+model TripAssignment {
+  id          String @id @default(uuid())
+  slotId      String
+  slot        Slot   @relation(fields: [slotId], references: [id])
+  trekLeadId  String
+  trekLead    User   @relation(fields: [trekLeadId], references: [id])
+
+  @@unique([slotId, trekLeadId])
+}
+
+model Blog {
+  id              String     @id @default(uuid())
+  authorId        String
+  author          User       @relation(fields: [authorId], references: [id])
+  experienceId    String?    // Optional: linked to experience
+  title           String
+  content         String     @db.Text
+  images          String[]
+  status          BlogStatus @default(DRAFT)
+  rejectionReason String?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorId     String?
+  action      String
+  targetType  String
+  targetId    String   @nullable
+  payload     Json?
+  timestamp   DateTime @default(now())
+}
