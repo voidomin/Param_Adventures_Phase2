@@ -1,0 +1,124 @@
+import { NextResponse } from "next/server";
+import { authorizeRequest } from "@/lib/api-auth";
+import { prisma } from "@/lib/db";
+import { ExperienceStatus, Difficulty } from "@prisma/client";
+
+// Generate a slug from a title string
+function generateSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "");
+}
+
+// GET /api/admin/experiences
+export async function GET(request: Request) {
+  const result = await authorizeRequest(request, "trip:browse");
+  if ("error" in result) return result.error;
+
+  try {
+    const experiences = await prisma.experience.findMany({
+      orderBy: { createdAt: "desc" },
+      include: {
+        categories: { include: { category: true } },
+        _count: { select: { slots: true, bookings: true } },
+      },
+    });
+
+    return NextResponse.json({ experiences });
+  } catch (err: any) {
+    console.error("Failed to fetch experiences:", err);
+    return NextResponse.json(
+      { error: "Failed to fetch experiences" },
+      { status: 500 },
+    );
+  }
+}
+
+// POST /api/admin/experiences
+export async function POST(request: Request) {
+  const result = await authorizeRequest(request, "trip:create");
+  if ("error" in result) return result.error;
+
+  try {
+    const body = await request.json();
+    const {
+      title,
+      description,
+      basePrice,
+      capacity,
+      durationDays,
+      location,
+      difficulty,
+      isFeatured,
+      images,
+      itinerary,
+      categoryIds,
+    } = body;
+
+    // Validate essential fields
+    if (
+      !title ||
+      !description ||
+      basePrice === undefined ||
+      capacity === undefined
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Missing required fields (title, description, basePrice, capacity)",
+        },
+        { status: 400 },
+      );
+    }
+
+    // Generate unique slug
+    let baseSlug = generateSlug(title);
+    let uniqueSlug = baseSlug;
+    let counter = 1;
+    while (
+      await prisma.experience.findUnique({ where: { slug: uniqueSlug } })
+    ) {
+      uniqueSlug = `${baseSlug}-${counter}`;
+      counter++;
+    }
+
+    const newExperience = await prisma.experience.create({
+      data: {
+        title,
+        slug: uniqueSlug,
+        description,
+        basePrice,
+        capacity,
+        durationDays: durationDays || 1,
+        location: location || "",
+        difficulty: difficulty || Difficulty.EASY,
+        status: ExperienceStatus.DRAFT, // Always default to DRAFT on creation
+        isFeatured: isFeatured || false,
+        images: images || [],
+        itinerary: itinerary || [],
+        categories: categoryIds
+          ? {
+              create: categoryIds.map((catId: string) => ({
+                category: { connect: { id: catId } },
+              })),
+            }
+          : undefined,
+      },
+      include: {
+        categories: { include: { category: true } },
+      },
+    });
+
+    return NextResponse.json(
+      { message: "Experience created successfully", experience: newExperience },
+      { status: 201 },
+    );
+  } catch (err: any) {
+    console.error("Failed to create experience:", err);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
+  }
+}

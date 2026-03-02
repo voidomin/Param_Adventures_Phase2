@@ -125,7 +125,7 @@ export default function AdminLayout({
                 {user.name}
               </p>
               <p className="text-xs text-foreground/50 truncate">
-                {user.role.replace(/_/g, " ")}
+                {user.role.replaceAll("_", " ")}
               </p>
             </div>
           </div>
