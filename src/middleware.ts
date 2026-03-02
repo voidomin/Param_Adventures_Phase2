@@ -73,7 +73,7 @@ export function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     // Match all routes except static files and Next.js internals
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    "/(api|trpc)(.*)",
+    String.raw`/((?!_next|[^?]*\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)`,
+    String.raw`/(api|trpc)(.*)`,
   ],
 };

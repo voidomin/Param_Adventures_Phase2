@@ -11,6 +11,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
+import MediaUploader from "./MediaUploader";
 
 interface Category {
   id: string;
@@ -319,37 +320,54 @@ export default function ExperienceForm({
             <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
               Media & Images
             </h2>
-            <p className="text-sm text-foreground/60">
-              For now, enter valid image URLs. (S3 uploads coming soon).
+            <p className="text-sm text-foreground/60 pb-2">
+              Upload images directly to your media library, or add external
+              URLs.
             </p>
-            {images.map((url, ix) => (
-              <div key={ix} className="flex gap-2">
-                <div className="flex-1 flex gap-2 items-center bg-background border border-border rounded-lg px-3 py-2">
-                  <ImageIcon className="w-4 h-4 text-foreground/50" />
-                  <input
-                    type="url"
-                    value={url}
-                    onChange={(e) => updateImageUrl(ix, e.target.value)}
-                    className="w-full bg-transparent text-sm text-foreground focus:outline-none"
-                    placeholder="https://example.com/image.jpg"
-                  />
-                </div>
+
+            <MediaUploader
+              onUploadSuccess={(urls) => {
+                if (urls && urls.length > 0) {
+                  setImages((prev) => [...prev, ...urls]);
+                }
+              }}
+            />
+
+            {images.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-border space-y-2">
+                <h3 className="text-sm font-medium text-foreground mb-3">
+                  Attached Media
+                </h3>
+                {images.map((url, ix) => (
+                  <div key={ix} className="flex gap-2">
+                    <div className="flex-1 flex gap-2 items-center bg-background border border-border rounded-lg px-3 py-2">
+                      <ImageIcon className="w-4 h-4 text-foreground/50" />
+                      <input
+                        type="url"
+                        value={url}
+                        onChange={(e) => updateImageUrl(ix, e.target.value)}
+                        className="w-full bg-transparent text-sm text-foreground focus:outline-none"
+                        placeholder="https://example.com/image.jpg"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeImageUrl(ix)}
+                      className="p-2 text-foreground/50 hover:text-red-500 transition-colors rounded-lg bg-background border border-border"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
                 <button
                   type="button"
-                  onClick={() => removeImageUrl(ix)}
-                  className="p-2 text-foreground/50 hover:text-red-500 transition-colors rounded-lg bg-background border border-border"
+                  onClick={addImageUrl}
+                  className="font-medium text-sm text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <Plus className="w-4 h-4" /> Add another image
                 </button>
               </div>
-            ))}
-            <button
-              type="button"
-              onClick={addImageUrl}
-              className="font-medium text-sm text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
-            >
-              <Plus className="w-4 h-4" /> Add another image
-            </button>
+            )}
           </div>
         </div>
 

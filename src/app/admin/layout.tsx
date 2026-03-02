@@ -11,6 +11,7 @@ import {
   Users,
   LogOut,
   Tags,
+  Image as ImageIcon,
 } from "lucide-react";
 
 export default function AdminLayout({
@@ -57,6 +58,12 @@ export default function AdminLayout({
       name: "Experiences",
       href: "/admin/experiences",
       icon: Compass,
+      permission: "trip:create",
+    },
+    {
+      name: "Media Library",
+      href: "/admin/media",
+      icon: ImageIcon,
       permission: "trip:create",
     },
     {
