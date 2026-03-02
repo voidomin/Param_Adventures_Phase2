@@ -1,5 +1,24 @@
 import Navbar from "@/components/layout/Navbar";
 import Hero from "@/components/layout/Hero";
+import {
+  Mountain,
+  Flame,
+  Building2,
+  Tent,
+  MapPin,
+  GraduationCap,
+  CalendarDays,
+} from "lucide-react";
+
+const categories = [
+  { name: "Trekking", icon: Mountain },
+  { name: "Spiritual", icon: Flame },
+  { name: "Corporate", icon: Building2 },
+  { name: "Camping", icon: Tent },
+  { name: "City Tours", icon: MapPin },
+  { name: "Educational", icon: GraduationCap },
+  { name: "Events", icon: CalendarDays },
+];
 
 export default function Home() {
   return (
@@ -7,7 +26,7 @@ export default function Home() {
       <Navbar />
       <Hero />
 
-      {/* Category Selection Placeholder */}
+      {/* Category Selection */}
       <section className="py-20 max-w-7xl mx-auto px-4">
         <div className="flex flex-col md:flex-row justify-between items-end mb-12">
           <div>
@@ -25,26 +44,18 @@ export default function Home() {
           </button>
         </div>
 
-        {/* Placeholder for Dynamic Categories */}
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-          {[
-            "Trekking",
-            "Spiritual",
-            "Corporate",
-            "Camping",
-            "City Tours",
-            "Educational",
-            "Events",
-          ].map((cat) => (
+          {categories.map((cat) => (
             <div
-              key={cat}
+              key={cat.name}
               className="group cursor-pointer bg-card border border-border p-6 rounded-2xl flex flex-col items-center justify-center text-center hover:border-primary transition-all hover:-translate-y-1"
             >
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-4 text-primary">
-                {/* Icons placeholder */}
-                <div className="w-6 h-6 border-2 border-current rounded-sm" />
+                <cat.icon className="w-6 h-6" />
               </div>
-              <span className="text-sm font-bold tracking-tight">{cat}</span>
+              <span className="text-sm font-bold tracking-tight">
+                {cat.name}
+              </span>
             </div>
           ))}
         </div>

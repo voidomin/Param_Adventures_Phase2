@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 
 export default function Hero() {
   return (
-    <section className="relative h-[90vh] w-full flex items-center justify-center overflow-hidden">
+    <section className="relative h-screen w-full flex items-center justify-center overflow-hidden pt-16">
       {/* Background with Overlay */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-black z-10" />
