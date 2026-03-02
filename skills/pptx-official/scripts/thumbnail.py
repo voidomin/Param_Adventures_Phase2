@@ -346,10 +346,9 @@ def create_grid(
 
     # Load font with size based on thumbnail width
     try:
-        # Use Pillow's default font with size
-        font = ImageFont.load_default(size=font_size)
-    except Exception:
-        # Fall back to basic default font if size parameter not supported
+        # Use Pillow's FreeType font with size; fall back to basic default
+        font = ImageFont.truetype("arial.ttf", font_size)
+    except (OSError, AttributeError):
         font = ImageFont.load_default()
 
     # Place thumbnails
@@ -380,51 +379,8 @@ def create_grid(
 
             # Apply placeholder outlines if enabled
             if placeholder_regions and (start_slide_num + i) in placeholder_regions:
-                # Convert to RGBA for transparency support
-                if img.mode != "RGBA":
-                    img = img.convert("RGBA")
-
-                # Get the regions for this slide
                 regions = placeholder_regions[start_slide_num + i]
-
-                # Calculate scale factors using actual slide dimensions
-                if slide_dimensions:
-                    slide_width_inches, slide_height_inches = slide_dimensions
-                else:
-                    # Fallback: estimate from image size at CONVERSION_DPI
-                    slide_width_inches = orig_w / CONVERSION_DPI
-                    slide_height_inches = orig_h / CONVERSION_DPI
-
-                x_scale = orig_w / slide_width_inches
-                y_scale = orig_h / slide_height_inches
-
-                # Create a highlight overlay
-                overlay = Image.new("RGBA", img.size, (255, 255, 255, 0))
-                overlay_draw = ImageDraw.Draw(overlay)
-
-                # Highlight each placeholder region
-                for region in regions:
-                    # Convert from inches to pixels in the original image
-                    px_left = int(region["left"] * x_scale)
-                    px_top = int(region["top"] * y_scale)
-                    px_width = int(region["width"] * x_scale)
-                    px_height = int(region["height"] * y_scale)
-
-                    # Draw highlight outline with red color and thick stroke
-                    # Using a bright red outline instead of fill
-                    stroke_width = max(
-                        5, min(orig_w, orig_h) // 150
-                    )  # Thicker proportional stroke width
-                    overlay_draw.rectangle(
-                        [(px_left, px_top), (px_left + px_width, px_top + px_height)],
-                        outline=(255, 0, 0, 255),  # Bright red, fully opaque
-                        width=stroke_width,
-                    )
-
-                # Composite the overlay onto the image using alpha blending
-                img = Image.alpha_composite(img, overlay)
-                # Convert back to RGB for JPEG saving
-                img = img.convert("RGB")
+                img = _apply_placeholder_outlines(img, regions, slide_dimensions)
 
             img.thumbnail((width, height), Image.Resampling.LANCZOS)
             w, h = img.size
@@ -444,6 +400,41 @@ def create_grid(
                 )
 
     return grid
+
+
+def _apply_placeholder_outlines(img, regions, slide_dimensions):
+    """Apply red outline overlays for placeholder regions onto a slide image."""
+    orig_w, orig_h = img.size
+
+    if img.mode != "RGBA":
+        img = img.convert("RGBA")
+
+    if slide_dimensions:
+        slide_width_inches, slide_height_inches = slide_dimensions
+    else:
+        slide_width_inches = orig_w / CONVERSION_DPI
+        slide_height_inches = orig_h / CONVERSION_DPI
+
+    x_scale = orig_w / slide_width_inches
+    y_scale = orig_h / slide_height_inches
+    stroke_width = max(5, min(orig_w, orig_h) // 150)
+
+    overlay = Image.new("RGBA", img.size, (255, 255, 255, 0))
+    overlay_draw = ImageDraw.Draw(overlay)
+
+    for region in regions:
+        px_left = int(region["left"] * x_scale)
+        px_top = int(region["top"] * y_scale)
+        px_width = int(region["width"] * x_scale)
+        px_height = int(region["height"] * y_scale)
+        overlay_draw.rectangle(
+            [(px_left, px_top), (px_left + px_width, px_top + px_height)],
+            outline=(255, 0, 0, 255),
+            width=stroke_width,
+        )
+
+    img = Image.alpha_composite(img, overlay)
+    return img.convert("RGB")
 
 
 if __name__ == "__main__":
