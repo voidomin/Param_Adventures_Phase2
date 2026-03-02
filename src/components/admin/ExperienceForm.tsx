@@ -19,15 +19,16 @@ interface Category {
 }
 
 interface ItineraryDay {
+  _id?: string;
   title: string;
   description: string;
 }
 
 export default function ExperienceForm({
   initialData = null,
-}: {
+}: Readonly<{
   initialData?: any;
-}) {
+}>) {
   const router = useRouter();
   const isEditing = !!initialData;
 
@@ -60,7 +61,12 @@ export default function ExperienceForm({
   // Arrays
   const [images, setImages] = useState<string[]>(initialData?.images || []);
   const [itinerary, setItinerary] = useState<ItineraryDay[]>(
-    initialData?.itinerary || [{ title: "", description: "" }],
+    (initialData?.itinerary || [{ title: "", description: "" }]).map(
+      (d: any) => ({
+        ...d,
+        _id: d._id || Math.random().toString(36).substring(2, 11),
+      }),
+    ),
   );
 
   useEffect(() => {
@@ -96,7 +102,14 @@ export default function ExperienceForm({
   };
 
   const addItineraryDay = () =>
-    setItinerary((prev) => [...prev, { title: "", description: "" }]);
+    setItinerary((prev) => [
+      ...prev,
+      {
+        _id: Math.random().toString(36).substring(2, 11),
+        title: "",
+        description: "",
+      },
+    ]);
   const removeItineraryDay = (index: number) =>
     setItinerary((prev) => prev.filter((_, i) => i !== index));
 
@@ -111,7 +124,7 @@ export default function ExperienceForm({
   const removeImageUrl = (index: number) =>
     setImages((prev) => prev.filter((_, i) => i !== index));
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError("");
@@ -270,7 +283,7 @@ export default function ExperienceForm({
             </h2>
             {itinerary.map((day, ix) => (
               <div
-                key={ix}
+                key={day._id || `itinerary-${ix}`}
                 className="bg-background border border-border rounded-xl p-4 flex gap-4"
               >
                 <div className="text-foreground/50 pt-2 cursor-grab">
@@ -339,7 +352,7 @@ export default function ExperienceForm({
                   Attached Media
                 </h3>
                 {images.map((url, ix) => (
-                  <div key={ix} className="flex gap-2">
+                  <div key={`${url}-${ix}`} className="flex gap-2">
                     <div className="flex-1 flex gap-2 items-center bg-background border border-border rounded-lg px-3 py-2">
                       <ImageIcon className="w-4 h-4 text-foreground/50" />
                       <input
@@ -418,30 +431,36 @@ export default function ExperienceForm({
               Publishing
             </h2>
 
-            {isEditing && (
-              <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-1">
-                  Status
-                </label>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
-                >
-                  <option value="DRAFT">Draft — Hidden</option>
-                  <option value="PUBLISHED">Published — Public</option>
-                  <option value="ARCHIVED">
-                    Archived — Hidden, not accepting bookings
-                  </option>
-                </select>
-              </div>
-            )}
+            <div>
+              <label
+                htmlFor="status"
+                className="block text-sm font-medium text-foreground/80 mb-1"
+              >
+                Status
+              </label>
+              <select
+                id="status"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
+              >
+                <option value="DRAFT">Draft — Hidden</option>
+                <option value="PUBLISHED">Published — Public</option>
+                <option value="ARCHIVED">
+                  Archived — Hidden, not accepting bookings
+                </option>
+              </select>
+            </div>
 
             <div>
-              <label className="block text-sm font-medium text-foreground/80 mb-1">
+              <label
+                htmlFor="difficulty"
+                className="block text-sm font-medium text-foreground/80 mb-1"
+              >
                 Difficulty
               </label>
               <select
+                id="difficulty"
                 value={difficulty}
                 onChange={(e) => setDifficulty(e.target.value)}
                 className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
@@ -453,14 +472,19 @@ export default function ExperienceForm({
               </select>
             </div>
 
-            <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-border hover:bg-foreground/5 transition-colors">
+            <label
+              htmlFor="featured"
+              className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-border hover:bg-foreground/5 transition-colors"
+              aria-labelledby="featured-label"
+            >
               <input
+                id="featured"
                 type="checkbox"
                 checked={isFeatured}
                 onChange={(e) => setIsFeatured(e.target.checked)}
                 className="w-5 h-5 rounded border-border text-primary focus:ring-primary focus:ring-offset-background bg-background"
               />
-              <div>
+              <div id="featured-label">
                 <span className="block text-sm font-medium text-foreground">
                   Featured Trip
                 </span>

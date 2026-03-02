@@ -1,12 +1,19 @@
 import Navbar from "@/components/layout/Navbar";
 import Hero from "@/components/layout/Hero";
 import CategoryBar from "@/components/home/CategoryBar";
+import { prisma } from "@/lib/db";
 
-export default function Home() {
+export default async function Home() {
+  // Fetch active hero slides for the homepage carousel
+  const heroSlides = await prisma.heroSlide.findMany({
+    where: { isActive: true },
+    orderBy: { order: "asc" },
+  });
+
   return (
     <main className="relative min-h-screen bg-background text-foreground">
       <Navbar />
-      <Hero />
+      <Hero slides={heroSlides} />
       <CategoryBar />
 
       <div className="py-20 max-w-7xl mx-auto px-4 text-center">

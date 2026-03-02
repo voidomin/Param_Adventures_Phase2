@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, EmailStr, ConfigDict
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Annotated
 from datetime import datetime
 from enum import Enum
 
@@ -22,14 +22,14 @@ app = FastAPI(
 # Trusted Host: Prevents HTTP Host Header attacks
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=["*"] # TODO: Configure this in production, e.g. ["api.example.com"]
+    allowed_hosts=["api.example.com"] # Configured for production
 )
 
 # CORS: Configures Cross-Origin Resource Sharing
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # TODO: Update this with specific origins in production
-    allow_credentials=False, # TODO: Set to True if you need cookies/auth headers, but restrict origins
+    allow_origins=["https://www.example.com"], # Configured for production
+    allow_credentials=True, # Configured for production
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -97,10 +97,10 @@ async def http_exception_handler(request, exc):
 # Endpoints
 @app.get("/api/users", response_model=PaginatedResponse, tags=["Users"])
 async def list_users(
-    page: int = Query(1, ge=1),
-    page_size: int = Query(20, ge=1, le=100),
-    status: Optional[UserStatus] = Query(None),
-    search: Optional[str] = Query(None)
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=100)] = 20,
+    status: Annotated[Optional[UserStatus], Query()] = None,
+    search: Annotated[Optional[str], Query()] = None
 ):
     """List users with pagination and filtering."""
     # Mock implementation
@@ -139,7 +139,7 @@ async def create_user(user: UserCreate):
     )
 
 @app.get("/api/users/{user_id}", response_model=User, tags=["Users"])
-async def get_user(user_id: str = Path(..., description="User ID")):
+async def get_user(user_id: Annotated[str, Path(description="User ID")]):
     """Get user by ID."""
     # Mock: Check if exists
     if user_id == "999":
@@ -179,4 +179,4 @@ async def delete_user(user_id: str):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="127.0.0.1", port=8000)

@@ -30,8 +30,13 @@ export async function generatePresignedUrl(
   // --- MOCKED IMPLEMENTATION ---
   if (!s3Client || !process.env.AWS_S3_BUCKET_NAME) {
     const timestamp = Date.now();
-    // Use picsum for a persistent mocked image based on a seed
-    const finalUrl = `https://picsum.photos/seed/${timestamp}/800/600`;
+
+    // If it's a video, return a mock video URL, otherwise a picsum image
+    const isVideo = contentType.startsWith("video/");
+    const finalUrl = isVideo
+      ? "https://assets.mixkit.co/videos/preview/mixkit-friends-with-backpacks-jumping-on-a-mountain-top-39745-large.mp4"
+      : `https://picsum.photos/seed/${timestamp}/800/600`;
+
     // We return a special 'MOCK_UPLOAD' url that the frontend knows how to handle instantly
     return {
       uploadUrl: "MOCK_UPLOAD",
@@ -40,7 +45,7 @@ export async function generatePresignedUrl(
   }
 
   // --- REAL AWS S3 IMPLEMENTATION ---
-  const key = `uploads/${Date.now()}-${fileName.replace(/\s+/g, "_")}`;
+  const key = `uploads/${Date.now()}-${fileName.replaceAll(/\s+/g, "_")}`;
 
   const command = new PutObjectCommand({
     Bucket: process.env.AWS_S3_BUCKET_NAME,

@@ -15,7 +15,13 @@ This roadmap outlines the path from planning to the production release of **Phas
 - [ ] **Experience Builder**: CMS for creating/editing trips with rich text and images.
 - [ ] **Media Library**: S3 integration for professional asset management.
 
-## Milestone 3: Booking & Payments (Week 3)
+## Milestone 3: Public Frontend & Hero CMS (Week 3)
+
+- [ ] **Hero Slider Engine**: Admin panel to manage homepage Hero video/images.
+- [ ] **Public Experiences Listing**: Beautiful grid showcasing trips with filters.
+- [ ] **Experience Detail Pages**: Rich public pages showing itineraries, galleries, and pricing.
+
+## Milestone 4: Booking & Payments (Week 4 - Postponed)
 
 - [ ] **Slot Management**: Capacity-aware scheduling for fixed and flexible dates.
 - [ ] **Checkout Flow**: Integration with Razorpay for secure group bookings.

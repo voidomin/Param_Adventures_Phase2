@@ -9,7 +9,8 @@ import {
   MapPin,
   Clock,
   Users,
-  ArrowRight,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
 
 interface Category {
@@ -63,20 +64,18 @@ export default function AdminExperiencesPage() {
   ) => {
     if (bookingsCount > 0) {
       if (
-        !window.confirm(
+        !globalThis.confirm(
           `Warning: "${title}" has ${bookingsCount} bookings. Deleting it will only archive/soft-delete it. Continue?`,
         )
       ) {
         return;
       }
-    } else {
-      if (
-        !window.confirm(
-          `Are you sure you want to permanently delete "${title}"?`,
-        )
-      ) {
-        return;
-      }
+    } else if (
+      !globalThis.confirm(
+        `Are you sure you want to permanently delete "${title}"?`,
+      )
+    ) {
+      return;
     }
 
     try {
@@ -88,6 +87,26 @@ export default function AdminExperiencesPage() {
       } else {
         const data = await res.json();
         alert(data.error || "Failed to delete");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("An error occurred");
+    }
+  };
+
+  const togglePublishStatus = async (id: string, currentStatus: string) => {
+    const newStatus = currentStatus === "PUBLISHED" ? "DRAFT" : "PUBLISHED";
+    try {
+      const res = await fetch(`/api/admin/experiences/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      if (res.ok) {
+        fetchExperiences();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to change status");
       }
     } catch (err) {
       console.error(err);
@@ -126,11 +145,12 @@ export default function AdminExperiencesPage() {
         </Link>
       </div>
 
-      {isLoading ? (
+      {isLoading && (
         <div className="flex justify-center py-20">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
         </div>
-      ) : experiences.length === 0 ? (
+      )}
+      {!isLoading && experiences.length === 0 && (
         <div className="bg-card border border-border rounded-2xl p-12 text-center text-foreground/60">
           <MapPin className="w-12 h-12 mx-auto mb-4 opacity-50 text-foreground/50" />
           <h3 className="text-lg font-bold text-foreground mb-2">
@@ -144,7 +164,8 @@ export default function AdminExperiencesPage() {
             Create your first trip
           </Link>
         </div>
-      ) : (
+      )}
+      {!isLoading && experiences.length > 0 && (
         <div className="grid gap-4">
           {experiences.map((exp) => (
             <div
@@ -216,9 +237,27 @@ export default function AdminExperiencesPage() {
                   </div>
                 </div>
 
+                {exp.status === "DRAFT" && (
+                  <button
+                    onClick={() => togglePublishStatus(exp.id, exp.status)}
+                    className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-green-500/10 text-green-600 hover:bg-green-500/20 rounded-lg transition-colors font-medium border border-green-500/20"
+                  >
+                    <CheckCircle className="w-4 h-4" /> Publish
+                  </button>
+                )}
+                {exp.status === "PUBLISHED" && (
+                  <button
+                    onClick={() => togglePublishStatus(exp.id, exp.status)}
+                    className="flex items-center justify-center gap-2 px-4 py-2 bg-orange-500/10 text-orange-600 hover:bg-orange-500/20 rounded-lg transition-colors font-medium border border-orange-500/20"
+                    title="Unpublish to Draft"
+                  >
+                    <XCircle className="w-4 h-4" /> Unpublish
+                  </button>
+                )}
+
                 <Link
                   href={`/admin/experiences/${exp.id}`}
-                  className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg transition-colors font-medium"
+                  className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg transition-colors font-medium border border-primary/20"
                 >
                   <Edit2 className="w-4 h-4" /> Edit
                 </Link>

@@ -12,6 +12,7 @@ import {
   LogOut,
   Tags,
   Image as ImageIcon,
+  MonitorPlay,
 } from "lucide-react";
 
 export default function AdminLayout({
@@ -64,6 +65,12 @@ export default function AdminLayout({
       name: "Media Library",
       href: "/admin/media",
       icon: ImageIcon,
+      permission: "trip:create",
+    },
+    {
+      name: "Hero Slider",
+      href: "/admin/hero",
+      icon: MonitorPlay,
       permission: "trip:create",
     },
     {
