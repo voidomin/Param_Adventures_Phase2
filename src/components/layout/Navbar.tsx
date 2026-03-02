@@ -62,20 +62,32 @@ export default function Navbar() {
 
               {!isLoading && user && (
                 <div className="flex items-center gap-4">
-                  {(user.role === "ADMIN" || user.role === "SUPER_ADMIN") && (
+                  {user.role === "ADMIN" || user.role === "SUPER_ADMIN" ? (
                     <Link
                       href="/admin/categories"
                       className="text-sm font-bold text-primary hover:text-primary/80 transition-colors"
                     >
                       Admin Dashboard
                     </Link>
+                  ) : (
+                    <Link
+                      href="/dashboard"
+                      className="text-sm font-bold text-foreground/70 hover:text-primary transition-colors"
+                    >
+                      My Dashboard
+                    </Link>
                   )}
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-foreground/5 rounded-full">
-                    <User className="w-4 h-4 text-primary" />
+                  <Link
+                    href="/dashboard"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-foreground/5 hover:bg-primary/10 rounded-full transition-colors"
+                  >
+                    <span className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-xs font-black text-primary-foreground">
+                      {user.name.slice(0, 1).toUpperCase()}
+                    </span>
                     <span className="text-sm font-medium text-foreground/80">
                       {user.name.split(" ")[0]}
                     </span>
-                  </div>
+                  </Link>
                   <button
                     onClick={handleLogout}
                     className="text-foreground/50 hover:text-red-500 transition-colors p-2"
@@ -150,16 +162,23 @@ export default function Navbar() {
                     </p>
                   </div>
                 </div>
-                {(user.role === "ADMIN" || user.role === "SUPER_ADMIN") && (
+                {user.role === "ADMIN" || user.role === "SUPER_ADMIN" ? (
                   <Link
                     href="/admin/categories"
                     onClick={() => setIsOpen(false)}
                     className="w-full py-4 text-lg font-bold text-center block"
-                    style={{
-                      color: "#ff9933",
-                    }}
+                    style={{ color: "#ff9933" }}
                   >
                     Go to Admin Dashboard
+                  </Link>
+                ) : (
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setIsOpen(false)}
+                    className="w-full py-4 text-lg font-bold text-center block"
+                    style={{ color: "#ff9933" }}
+                  >
+                    My Dashboard
                   </Link>
                 )}
                 <button
