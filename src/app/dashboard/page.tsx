@@ -233,6 +233,7 @@ export default function DashboardPage() {
         }
         const json = await res.json();
         setData(json);
+        setAvatarUrl(json.user.avatarUrl ?? null);
       } catch {
         setError("Something went wrong. Please try again.");
       } finally {
@@ -324,10 +325,6 @@ export default function DashboardPage() {
     month: "long",
     year: "numeric",
   });
-
-  useEffect(() => {
-    if (data?.user.avatarUrl) setAvatarUrl(data.user.avatarUrl);
-  }, [data]);
 
   return (
     <main className="min-h-screen bg-background pb-20">
