@@ -82,6 +82,14 @@ export async function POST(request: NextRequest) {
       { status: 201 },
     );
 
+    response.cookies.set("accessToken", accessToken, {
+      httpOnly: false, // Accessible by frontend for Authorization header
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 15 * 60, // 15 minutes
+    });
+
     response.cookies.set("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

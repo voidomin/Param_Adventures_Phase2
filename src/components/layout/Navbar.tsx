@@ -2,17 +2,24 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Menu, X, Compass, Map, BookOpen } from "lucide-react";
+import { Menu, X, Compass, Map, BookOpen, LogOut, User } from "lucide-react";
 import { useState } from "react";
+import { useAuth } from "@/lib/AuthContext";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
+  const { user, isLoading, logout } = useAuth();
 
   const navLinks = [
     { name: "Explore", href: "/experiences", icon: Compass },
     { name: "My Bookings", href: "/bookings", icon: Map },
     { name: "Stories", href: "/blogs", icon: BookOpen },
   ];
+
+  const handleLogout = async () => {
+    await logout();
+    setIsOpen(false);
+  };
 
   return (
     <>
@@ -47,12 +54,34 @@ export default function Navbar() {
                   {link.name}
                 </Link>
               ))}
-              <Link
-                href="/login"
-                className="bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm font-bold hover:scale-105 transition-transform"
-              >
-                Sign In
-              </Link>
+
+              {/* Auth Section */}
+              {isLoading ? (
+                <div className="w-20 h-9 bg-foreground/10 rounded-full animate-pulse" />
+              ) : user ? (
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 px-3 py-1.5 bg-foreground/5 rounded-full">
+                    <User className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-medium text-foreground/80">
+                      {user.name.split(" ")[0]}
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="text-foreground/50 hover:text-red-500 transition-colors p-2"
+                    title="Logout"
+                  >
+                    <LogOut className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <Link
+                  href="/login"
+                  className="bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm font-bold hover:scale-105 transition-transform"
+                >
+                  Sign In
+                </Link>
+              )}
             </div>
 
             {/* Mobile Menu Button */}
@@ -91,17 +120,48 @@ export default function Navbar() {
                 {link.name}
               </Link>
             ))}
-            <Link
-              href="/login"
-              onClick={() => setIsOpen(false)}
-              className="w-full py-4 rounded-xl text-lg font-bold text-center block"
-              style={{
-                backgroundColor: "#ff9933",
-                color: "#000000",
-              }}
-            >
-              Sign In to Book
-            </Link>
+
+            {/* Mobile Auth Section */}
+            {user ? (
+              <div className="space-y-4">
+                <div
+                  className="flex items-center gap-3 border-b pb-4"
+                  style={{ color: "#0f172a", borderColor: "#e2e8f0" }}
+                >
+                  <User className="w-6 h-6" style={{ color: "#ff9933" }} />
+                  <div>
+                    <p className="text-lg font-heading font-medium">
+                      {user.name}
+                    </p>
+                    <p className="text-sm" style={{ color: "#64748b" }}>
+                      {user.role.replace(/_/g, " ")}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="w-full py-4 rounded-xl text-lg font-bold text-center block"
+                  style={{
+                    backgroundColor: "#ef4444",
+                    color: "#ffffff",
+                  }}
+                >
+                  Sign Out
+                </button>
+              </div>
+            ) : (
+              <Link
+                href="/login"
+                onClick={() => setIsOpen(false)}
+                className="w-full py-4 rounded-xl text-lg font-bold text-center block"
+                style={{
+                  backgroundColor: "#ff9933",
+                  color: "#000000",
+                }}
+              >
+                Sign In to Book
+              </Link>
+            )}
           </div>
         </div>
       )}
