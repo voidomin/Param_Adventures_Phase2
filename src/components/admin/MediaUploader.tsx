@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { UploadCloud, Image as ImageIcon, Loader2 } from "lucide-react";
+import { UploadCloud, Loader2 } from "lucide-react";
 
 export default function MediaUploader({
   onUploadSuccess,
-}: {
+}: Readonly<{
   onUploadSuccess?: (urls?: string[]) => void;
-}) {
+}>) {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,72 +39,56 @@ export default function MediaUploader({
     }
   };
 
+  async function uploadSingleFile(file: File): Promise<string> {
+    if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+      throw new Error("Only images and videos are supported.");
+    }
+
+    const presignRes = await fetch("/api/admin/media/presign", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fileName: file.name, contentType: file.type }),
+    });
+    const presignData = await presignRes.json();
+    if (!presignRes.ok)
+      throw new Error(presignData.error || "Failed to presign");
+
+    const { uploadUrl, finalUrl } = presignData;
+
+    if (uploadUrl !== "MOCK_UPLOAD") {
+      const uploadRes = await fetch(uploadUrl, {
+        method: "PUT",
+        body: file,
+        headers: { "Content-Type": file.type },
+      });
+      if (!uploadRes.ok) throw new Error(`Failed to upload ${file.name} to S3`);
+    }
+
+    const dbRes = await fetch("/api/admin/media", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        originalUrl: finalUrl,
+        type: file.type.startsWith("video/") ? "VIDEO" : "IMAGE",
+      }),
+    });
+    if (!dbRes.ok) throw new Error("Failed to save to database");
+
+    return finalUrl;
+  }
+
   const handleFiles = async (files: File[]) => {
     setError(null);
     setIsUploading(true);
-
     try {
       const uploadedUrls: string[] = [];
-
       for (const file of files) {
-        if (
-          !file.type.startsWith("image/") &&
-          !file.type.startsWith("video/")
-        ) {
-          throw new Error("Only images and videos are supported.");
-        }
-
-        // 1. Get Presigned URL
-        const presignRes = await fetch("/api/admin/media/presign", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            fileName: file.name,
-            contentType: file.type,
-          }),
-        });
-
-        const presignData = await presignRes.json();
-        if (!presignRes.ok)
-          throw new Error(presignData.error || "Failed to presign");
-
-        const { uploadUrl, finalUrl } = presignData;
-
-        // 2. Upload to S3 (unless it's mocked)
-        if (uploadUrl !== "MOCK_UPLOAD") {
-          const uploadRes = await fetch(uploadUrl, {
-            method: "PUT",
-            body: file,
-            headers: {
-              "Content-Type": file.type,
-            },
-          });
-          if (!uploadRes.ok) {
-            throw new Error(`Failed to upload ${file.name} to S3`);
-          }
-        }
-
-        // 3. Register in Database
-        const dbRes = await fetch("/api/admin/media", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            originalUrl: finalUrl,
-            type: file.type.startsWith("video/") ? "VIDEO" : "IMAGE",
-          }),
-        });
-
-        if (!dbRes.ok) throw new Error("Failed to save to database");
-
-        uploadedUrls.push(finalUrl);
+        uploadedUrls.push(await uploadSingleFile(file));
       }
-
-      if (onUploadSuccess) {
-        onUploadSuccess(uploadedUrls);
-      }
-    } catch (err: any) {
+      if (onUploadSuccess) onUploadSuccess(uploadedUrls);
+    } catch (err: unknown) {
       console.error(err);
-      setError(err.message);
+      setError(err instanceof Error ? err.message : "Upload failed.");
     } finally {
       setIsUploading(false);
     }
@@ -113,15 +97,23 @@ export default function MediaUploader({
   return (
     <div className="w-full">
       <div
+        role="button"
+        tabIndex={0}
+        aria-label="Drop files here or click to upload"
         className={`relative border-2 border-dashed rounded-2xl p-10 text-center transition-colors ${
           isDragging
             ? "border-primary bg-primary/5"
             : "border-border hover:border-foreground/30 bg-background"
-        } ${isUploading ? "opacity-50 pointer-events-none" : ""}`}
+        } ${isUploading ? "opacity-50 pointer-events-none" : "cursor-pointer"}`}
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
         onDragOver={handleDrag}
         onDrop={handleDrop}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            document.getElementById("media-upload")?.click();
+          }
+        }}
       >
         <input
           type="file"

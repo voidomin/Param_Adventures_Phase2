@@ -6,6 +6,7 @@ import {
   useState,
   useEffect,
   useCallback,
+  useMemo,
   type ReactNode,
 } from "react";
 
@@ -36,13 +37,13 @@ const AuthContext = createContext<AuthContextType | null>(null);
 // ─── Helper: get cookie value ────────────────────────────
 
 function getCookie(name: string): string | undefined {
-  const match = document.cookie.match(new RegExp(`(^| )${name}=([^;]+)`));
+  const match = new RegExp(`(^| )${name}=([^;]+)`).exec(document.cookie);
   return match ? match[2] : undefined;
 }
 
 // ─── Provider ────────────────────────────────────────────
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -130,12 +131,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [user],
   );
 
+  const contextValue = useMemo(
+    () => ({ user, isLoading, login, register, logout, hasPermission }),
+    [user, isLoading, login, register, logout, hasPermission],
+  );
+
   return (
-    <AuthContext.Provider
-      value={{ user, isLoading, login, register, logout, hasPermission }}
-    >
-      {children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
   );
 }
 
