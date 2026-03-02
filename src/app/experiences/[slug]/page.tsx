@@ -179,10 +179,15 @@ export default async function ExperienceDetailPage({
                         <div className="md:ml-12 bg-card border border-border rounded-2xl p-6 relative group hover:border-primary/50 transition-colors">
                           <div className="absolute -left-11 md:-left-12 top-6 w-6 h-6 rounded-full border-4 border-background bg-primary z-10"></div>
                           <h3 className="text-xl font-bold mb-2 flex items-center gap-3">
-                            <span className="text-primary font-black opacity-50">
-                              Day {dayItem.day}
+                            <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary text-primary-foreground font-black text-sm flex-shrink-0">
+                              {index + 1}
                             </span>
-                            {dayItem.title}
+                            <span>
+                              <span className="text-primary/60 text-sm font-semibold uppercase tracking-widest block leading-none mb-0.5">
+                                Day {index + 1}
+                              </span>
+                              {dayItem.title}
+                            </span>
                           </h3>
                           <p className="text-foreground/70 leading-relaxed whitespace-pre-line">
                             {dayItem.description}

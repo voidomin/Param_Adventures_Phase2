@@ -28,6 +28,8 @@ export function middleware(request: NextRequest) {
     "/api/auth/login",
     "/api/auth/register",
     "/api/auth/logout",
+    "/api/categories",
+    "/api/experiences",
   ];
 
   // Check exact match or prefix match for public paths
