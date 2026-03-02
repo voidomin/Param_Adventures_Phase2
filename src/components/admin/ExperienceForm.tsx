@@ -64,7 +64,7 @@ export default function ExperienceForm({
     (initialData?.itinerary || [{ title: "", description: "" }]).map(
       (d: any) => ({
         ...d,
-        _id: d._id || Math.random().toString(36).substring(2, 11),
+        _id: d._id || crypto.randomUUID(),
       }),
     ),
   );
@@ -105,7 +105,7 @@ export default function ExperienceForm({
     setItinerary((prev) => [
       ...prev,
       {
-        _id: Math.random().toString(36).substring(2, 11),
+        _id: crypto.randomUUID(),
         title: "",
         description: "",
       },
