@@ -252,13 +252,35 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
   ],
 };
 
+// ─── Default Categories ────────────────────────────────────
+
+const CATEGORIES = [
+  { name: "Trekking", slug: "trekking" },
+  { name: "Camping", slug: "camping" },
+  { name: "Spiritual", slug: "spiritual" },
+  { name: "City Tours", slug: "city-tours" },
+  { name: "Corporate", slug: "corporate" },
+  { name: "Water Sports", slug: "water-sports" },
+];
+
 // ─── Seed Function ───────────────────────────────────────
 
 async function seed() {
   console.log("🌱 Seeding database...\n");
 
-  // 1. Upsert Roles
-  console.log("📌 Creating roles...");
+  // 1. Upsert Categories
+  console.log("📂 Creating categories...");
+  for (const cat of CATEGORIES) {
+    await prisma.category.upsert({
+      where: { slug: cat.slug },
+      update: { name: cat.name },
+      create: cat,
+    });
+    console.log(`   ✓ ${cat.name}`);
+  }
+
+  // 2. Upsert Roles
+  console.log("\n📌 Creating roles...");
   for (const role of ROLES) {
     await prisma.role.upsert({
       where: { name: role.name },
