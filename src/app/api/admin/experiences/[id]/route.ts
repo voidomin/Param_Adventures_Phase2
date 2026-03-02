@@ -6,8 +6,8 @@ import { prisma } from "@/lib/db";
 function generateSlug(title: string): string {
   return title
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)+/g, "");
+    .replaceAll(/[^a-z0-9]+/g, "-")
+    .replaceAll(/(^-|-$)+/g, "");
 }
 
 // GET /api/admin/experiences/[id]
@@ -122,13 +122,13 @@ export async function PUT(
           images,
           itinerary,
           categories:
-            categoryIds !== undefined
-              ? {
+            categoryIds === undefined
+              ? undefined
+              : {
                   create: categoryIds.map((catId: string) => ({
                     categoryId: catId,
                   })),
-                }
-              : undefined,
+                },
         },
         include: {
           categories: { include: { category: true } },

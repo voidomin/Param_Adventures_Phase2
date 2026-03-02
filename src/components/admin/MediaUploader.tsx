@@ -3,6 +3,44 @@
 import { useState, useCallback } from "react";
 import { UploadCloud, Loader2 } from "lucide-react";
 
+// Module-level helper — no component state needed
+async function uploadSingleFile(file: File): Promise<string> {
+  if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+    throw new Error("Only images and videos are supported.");
+  }
+
+  const presignRes = await fetch("/api/admin/media/presign", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fileName: file.name, contentType: file.type }),
+  });
+  const presignData = await presignRes.json();
+  if (!presignRes.ok) throw new Error(presignData.error || "Failed to presign");
+
+  const { uploadUrl, finalUrl } = presignData;
+
+  if (uploadUrl !== "MOCK_UPLOAD") {
+    const uploadRes = await fetch(uploadUrl, {
+      method: "PUT",
+      body: file,
+      headers: { "Content-Type": file.type },
+    });
+    if (!uploadRes.ok) throw new Error(`Failed to upload ${file.name} to S3`);
+  }
+
+  const dbRes = await fetch("/api/admin/media", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      originalUrl: finalUrl,
+      type: file.type.startsWith("video/") ? "VIDEO" : "IMAGE",
+    }),
+  });
+  if (!dbRes.ok) throw new Error("Failed to save to database");
+
+  return finalUrl;
+}
+
 export default function MediaUploader({
   onUploadSuccess,
 }: Readonly<{
@@ -39,44 +77,6 @@ export default function MediaUploader({
     }
   };
 
-  async function uploadSingleFile(file: File): Promise<string> {
-    if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
-      throw new Error("Only images and videos are supported.");
-    }
-
-    const presignRes = await fetch("/api/admin/media/presign", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fileName: file.name, contentType: file.type }),
-    });
-    const presignData = await presignRes.json();
-    if (!presignRes.ok)
-      throw new Error(presignData.error || "Failed to presign");
-
-    const { uploadUrl, finalUrl } = presignData;
-
-    if (uploadUrl !== "MOCK_UPLOAD") {
-      const uploadRes = await fetch(uploadUrl, {
-        method: "PUT",
-        body: file,
-        headers: { "Content-Type": file.type },
-      });
-      if (!uploadRes.ok) throw new Error(`Failed to upload ${file.name} to S3`);
-    }
-
-    const dbRes = await fetch("/api/admin/media", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        originalUrl: finalUrl,
-        type: file.type.startsWith("video/") ? "VIDEO" : "IMAGE",
-      }),
-    });
-    if (!dbRes.ok) throw new Error("Failed to save to database");
-
-    return finalUrl;
-  }
-
   const handleFiles = async (files: File[]) => {
     setError(null);
     setIsUploading(true);
@@ -96,11 +96,10 @@ export default function MediaUploader({
 
   return (
     <div className="w-full">
-      <div
-        role="button"
-        tabIndex={0}
-        aria-label="Drop files here or click to upload"
-        className={`relative border-2 border-dashed rounded-2xl p-10 text-center transition-colors ${
+      {/* Native label wraps a hidden file input — natively interactive, no ARIA needed */}
+      <label
+        htmlFor="media-upload"
+        className={`relative border-2 border-dashed rounded-2xl p-10 text-center transition-colors block ${
           isDragging
             ? "border-primary bg-primary/5"
             : "border-border hover:border-foreground/30 bg-background"
@@ -109,11 +108,6 @@ export default function MediaUploader({
         onDragLeave={handleDrag}
         onDragOver={handleDrag}
         onDrop={handleDrop}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            document.getElementById("media-upload")?.click();
-          }
-        }}
       >
         <input
           type="file"
@@ -131,16 +125,13 @@ export default function MediaUploader({
             <p className="text-foreground font-medium">Uploading media...</p>
           </div>
         ) : (
-          <label
-            htmlFor="media-upload"
-            className="flex flex-col items-center justify-center gap-4 cursor-pointer"
-          >
+          <div className="flex flex-col items-center justify-center gap-4">
             <div className="w-16 h-16 rounded-full bg-foreground/5 flex items-center justify-center text-foreground/50">
               <UploadCloud className="w-8 h-8" />
             </div>
             <div>
               <p className="text-foreground font-heading font-bold text-lg">
-                Drag & drop files here
+                Drag &amp; drop files here
               </p>
               <p className="text-sm text-foreground/60 mt-1">
                 or click to browse your computer
@@ -149,9 +140,9 @@ export default function MediaUploader({
             <div className="text-xs text-foreground/40 mt-2">
               Supports: JPG, PNG, WEBP, GIF, MP4 (Max 10MB)
             </div>
-          </label>
+          </div>
         )}
-      </div>
+      </label>
 
       {error && (
         <p className="text-red-500 text-sm mt-3 font-medium bg-red-500/10 p-3 rounded-lg border border-red-500/20">

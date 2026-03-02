@@ -60,8 +60,8 @@ export async function POST(request: NextRequest) {
     const slug = name
       .trim()
       .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
+      .replaceAll(/[^a-z0-9]+/g, "-")
+      .replaceAll(/^-|-$/g, "");
 
     // Check for duplicates
     const existing = await prisma.category.findUnique({ where: { slug } });
