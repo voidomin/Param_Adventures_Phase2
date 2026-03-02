@@ -12,19 +12,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    // Fetch images descending by creation date
-    const images = await prisma.image.findMany({
-      orderBy: { createdAt: "desc" },
-      include: {
-        uploadedBy: { select: { name: true, email: true } },
-      },
+    const slides = await prisma.heroSlide.findMany({
+      orderBy: { order: "asc" },
     });
 
-    return NextResponse.json({ images });
+    return NextResponse.json({ slides });
   } catch (error: any) {
-    console.error("Fetch media error:", error);
+    console.error("Fetch hero slides error:", error);
     return NextResponse.json(
-      { error: "Failed to fetch media library" },
+      { error: "Failed to fetch hero slides" },
       { status: 500 },
     );
   }
@@ -41,28 +37,37 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { originalUrl, type = "IMAGE" } = body;
+    const { title, subtitle, videoUrl, ctaLink, isActive } = body;
 
-    if (!originalUrl) {
+    if (!title || !videoUrl) {
       return NextResponse.json(
-        { error: "Missing originalUrl required field" },
+        { error: "Missing required fields" },
         { status: 400 },
       );
     }
 
-    const image = await prisma.image.create({
+    // Determine the next order index
+    const lastSlide = await prisma.heroSlide.findFirst({
+      orderBy: { order: "desc" },
+    });
+    const order = lastSlide ? lastSlide.order + 1 : 0;
+
+    const slide = await prisma.heroSlide.create({
       data: {
-        originalUrl,
-        type,
-        uploadedById: auth.userId,
+        title,
+        subtitle,
+        videoUrl,
+        ctaLink,
+        isActive: isActive ?? true,
+        order,
       },
     });
 
-    return NextResponse.json(image, { status: 201 });
+    return NextResponse.json(slide, { status: 201 });
   } catch (error: any) {
-    console.error("Save media error:", error);
+    console.error("Create hero slide error:", error);
     return NextResponse.json(
-      { error: "Failed to save media record" },
+      { error: "Failed to create hero slide" },
       { status: 500 },
     );
   }
