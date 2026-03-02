@@ -88,7 +88,7 @@ def normalize_to_100(values: List[float], default: float = 50) -> List[float]:
     range_val = max_val - min_val
 
     if range_val == 0:
-        return [50 if v is None else 50 for v in values]
+        return [50 for _ in values]
 
     result = []
     for v in values:
@@ -239,7 +239,7 @@ def score_websearch_items(items: List[schema.WebSearchItem]) -> List[schema.WebS
         Items with updated scores
     """
     if not items:
-        return items
+        return []
 
     for item in items:
         # Relevance subscore (model-provided, convert to 0-100)
