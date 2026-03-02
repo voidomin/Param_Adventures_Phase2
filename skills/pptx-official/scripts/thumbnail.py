@@ -374,8 +374,6 @@ def create_grid(
         y_thumbnail = y_base + label_padding + font_size + label_padding
 
         with Image.open(img_path) as img:
-            # Get original dimensions before thumbnail
-            orig_w, orig_h = img.size
 
             # Apply placeholder outlines if enabled
             if placeholder_regions and (start_slide_num + i) in placeholder_regions:
