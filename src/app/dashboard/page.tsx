@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "@/components/layout/Navbar";
@@ -18,6 +18,7 @@ import {
   CreditCard,
   IndianRupee,
   Loader2,
+  Camera,
 } from "lucide-react";
 
 interface DashboardData {
@@ -215,6 +216,9 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -238,6 +242,47 @@ export default function DashboardPage() {
 
     fetchDashboard();
   }, [router]);
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingAvatar(true);
+    try {
+      // 1. Get presigned URL
+      const presignRes = await fetch("/api/user/avatar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileName: file.name,
+          contentType: file.type,
+        }),
+      });
+      const { uploadUrl, finalUrl } = await presignRes.json();
+
+      // 2. Upload file (skip if mock)
+      if (uploadUrl !== "MOCK_UPLOAD") {
+        await fetch(uploadUrl, {
+          method: "PUT",
+          body: file,
+          headers: { "Content-Type": file.type },
+        });
+      }
+
+      // 3. Save URL to user record
+      await fetch("/api/user/avatar", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ avatarUrl: finalUrl }),
+      });
+
+      setAvatarUrl(finalUrl);
+    } catch (err) {
+      console.error("Avatar upload failed:", err);
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -268,6 +313,7 @@ export default function DashboardPage() {
   }
 
   const { user, upcomingBookings, pastBookings, stats } = data;
+  const currentAvatarUrl = avatarUrl ?? user.avatarUrl;
   const initials = user.name
     .split(" ")
     .map((n) => n[0])
@@ -279,6 +325,10 @@ export default function DashboardPage() {
     year: "numeric",
   });
 
+  useEffect(() => {
+    if (data?.user.avatarUrl) setAvatarUrl(data.user.avatarUrl);
+  }, [data]);
+
   return (
     <main className="min-h-screen bg-background pb-20">
       <Navbar />
@@ -289,16 +339,43 @@ export default function DashboardPage() {
         <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
         <div className="relative max-w-7xl mx-auto px-4 py-16">
           <div className="flex flex-col md:flex-row items-start md:items-center gap-8">
-            {/* Avatar */}
+            {/* Avatar with upload */}
             <div className="relative flex-shrink-0">
-              <div className="w-24 h-24 md:w-28 md:h-28 rounded-2xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-2xl shadow-primary/30">
-                <span className="text-3xl font-black text-primary-foreground">
-                  {initials}
-                </span>
+              <div className="w-24 h-24 md:w-28 md:h-28 rounded-2xl overflow-hidden shadow-2xl shadow-primary/30 bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
+                {currentAvatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={currentAvatarUrl}
+                    alt={user.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-3xl font-black text-primary-foreground">
+                    {initials}
+                  </span>
+                )}
               </div>
-              <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-green-500 rounded-full border-4 border-background flex items-center justify-center">
-                <CheckCircle className="w-4 h-4 text-white" />
-              </div>
+
+              {/* Camera Upload Button */}
+              <button
+                onClick={() => avatarInputRef.current?.click()}
+                disabled={isUploadingAvatar}
+                className="absolute -bottom-2 -right-2 w-9 h-9 bg-primary rounded-full border-4 border-background flex items-center justify-center hover:scale-110 transition-transform shadow-lg disabled:opacity-50"
+                title="Change profile picture"
+              >
+                {isUploadingAvatar ? (
+                  <Loader2 className="w-4 h-4 text-primary-foreground animate-spin" />
+                ) : (
+                  <Camera className="w-4 h-4 text-primary-foreground" />
+                )}
+              </button>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarUpload}
+              />
             </div>
 
             {/* User Info */}
