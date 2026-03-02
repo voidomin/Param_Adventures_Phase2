@@ -17,9 +17,9 @@ import {
 
 export default function AdminLayout({
   children,
-}: {
+}: Readonly<{
   children: React.ReactNode;
-}) {
+}>) {
   const { user, isLoading, hasPermission, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();

@@ -4,9 +4,9 @@ import { prisma } from "@/lib/db";
 
 export default async function EditExperiencePage({
   params,
-}: {
+}: Readonly<{
   params: Promise<{ id: string }>;
-}) {
+}>) {
   const { id } = await params;
 
   // We fetch data directly on the server component
