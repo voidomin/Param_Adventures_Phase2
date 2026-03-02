@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { authorizeRequest } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
 
@@ -12,7 +12,7 @@ function generateSlug(title: string): string {
 
 // GET /api/admin/experiences/[id]
 export async function GET(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const result = await authorizeRequest(request, "trip:browse");
@@ -47,7 +47,7 @@ export async function GET(
 
 // PUT /api/admin/experiences/[id]
 export async function PUT(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const result = await authorizeRequest(request, "trip:edit");
@@ -151,7 +151,7 @@ export async function PUT(
 
 // DELETE /api/admin/experiences/[id]
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const result = await authorizeRequest(request, "trip:edit"); // Assume edit perm implies soft delete
