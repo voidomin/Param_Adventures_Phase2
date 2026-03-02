@@ -1,13 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { UserButton, SignInButton, useUser } from "@clerk/nextjs";
 import { Menu, X, Compass, Map, BookOpen } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 export default function Navbar() {
-  const { isSignedIn } = useUser();
   const [isOpen, setIsOpen] = useState(false);
 
   const navLinks = [
@@ -42,20 +40,16 @@ export default function Navbar() {
                 {link.name}
               </Link>
             ))}
-            {isSignedIn ? (
-              <UserButton />
-            ) : (
-              <SignInButton mode="modal">
-                <button className="bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm font-bold hover:scale-105 transition-transform">
-                  Sign In
-                </button>
-              </SignInButton>
-            )}
+            <Link
+              href="/login"
+              className="bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm font-bold hover:scale-105 transition-transform"
+            >
+              Sign In
+            </Link>
           </div>
 
           {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center space-x-4">
-            {isSignedIn && <UserButton />}
             <button
               onClick={() => setIsOpen(!isOpen)}
               className="text-foreground"
@@ -89,13 +83,12 @@ export default function Navbar() {
               {link.name}
             </Link>
           ))}
-          {!isSignedIn && (
-            <SignInButton mode="modal">
-              <button className="w-full bg-primary text-primary-foreground py-4 rounded-xl text-lg font-bold">
-                Sign In to Book
-              </button>
-            </SignInButton>
-          )}
+          <Link
+            href="/login"
+            className="w-full bg-primary text-primary-foreground py-4 rounded-xl text-lg font-bold text-center block"
+          >
+            Sign In to Book
+          </Link>
         </div>
       </div>
     </nav>
