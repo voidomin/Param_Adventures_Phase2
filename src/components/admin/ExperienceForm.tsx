@@ -160,11 +160,11 @@ export default function ExperienceForm({
         <div className="flex items-center gap-4">
           <Link
             href="/admin/experiences"
-            className="p-2 hover:bg-white/10 rounded-full transition-colors text-slate-400 hover:text-white"
+            className="p-2 hover:bg-foreground/10 rounded-full transition-colors text-foreground/50 hover:text-foreground"
           >
             <ArrowLeft className="w-5 h-5" />
           </Link>
-          <h1 className="text-3xl font-heading font-bold text-white">
+          <h1 className="text-3xl font-heading font-bold text-foreground">
             {isEditing ? "Edit Trip" : "Create New Trip"}
           </h1>
         </div>
@@ -188,14 +188,14 @@ export default function ExperienceForm({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Main Content (Left Column) */}
         <div className="md:col-span-2 space-y-6">
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
-            <h2 className="text-xl font-bold text-white border-b border-white/10 pb-2">
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+            <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
               Basic Info
             </h2>
             <div>
               <label
                 htmlFor="title"
-                className="block text-sm font-medium text-slate-300 mb-1"
+                className="block text-sm font-medium text-foreground/80 mb-1"
               >
                 Title
               </label>
@@ -205,14 +205,14 @@ export default function ExperienceForm({
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-primary/50"
+                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
                 placeholder="e.g. Everest Base Camp Trek"
               />
             </div>
             <div>
               <label
                 htmlFor="desc"
-                className="block text-sm font-medium text-slate-300 mb-1"
+                className="block text-sm font-medium text-foreground/80 mb-1"
               >
                 Description
               </label>
@@ -222,7 +222,7 @@ export default function ExperienceForm({
                 rows={5}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-primary/50"
+                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
                 placeholder="Describe the experience..."
               />
             </div>
@@ -230,7 +230,7 @@ export default function ExperienceForm({
               <div>
                 <label
                   htmlFor="loc"
-                  className="block text-sm font-medium text-slate-300 mb-1"
+                  className="block text-sm font-medium text-foreground/80 mb-1"
                 >
                   Location
                 </label>
@@ -239,14 +239,14 @@ export default function ExperienceForm({
                   type="text"
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
-                  className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-primary/50"
+                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
                   placeholder="e.g. Nepal"
                 />
               </div>
               <div>
                 <label
                   htmlFor="dur"
-                  className="block text-sm font-medium text-slate-300 mb-1"
+                  className="block text-sm font-medium text-foreground/80 mb-1"
                 >
                   Duration (Days)
                 </label>
@@ -257,22 +257,22 @@ export default function ExperienceForm({
                   required
                   value={durationDays}
                   onChange={(e) => setDurationDays(e.target.value)}
-                  className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-primary/50"
+                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
                 />
               </div>
             </div>
           </div>
 
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
-            <h2 className="text-xl font-bold text-white border-b border-white/10 pb-2">
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+            <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
               Itinerary Builder
             </h2>
             {itinerary.map((day, ix) => (
               <div
                 key={ix}
-                className="bg-black/30 border border-white/5 rounded-xl p-4 flex gap-4"
+                className="bg-background border border-border rounded-xl p-4 flex gap-4"
               >
-                <div className="text-slate-500 pt-2 cursor-grab">
+                <div className="text-foreground/50 pt-2 cursor-grab">
                   <GripVertical className="w-5 h-5" />
                 </div>
                 <div className="flex-1 space-y-3">
@@ -282,7 +282,7 @@ export default function ExperienceForm({
                     onChange={(e) =>
                       handleItineraryChange(ix, "title", e.target.value)
                     }
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary/50"
+                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:border-primary/50"
                     placeholder={`Day ${ix + 1} Title (e.g. Arrival in Kathmandu)`}
                     required
                   />
@@ -292,7 +292,7 @@ export default function ExperienceForm({
                     onChange={(e) =>
                       handleItineraryChange(ix, "description", e.target.value)
                     }
-                    className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-primary/50"
+                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:border-primary/50"
                     placeholder="Day description..."
                     required
                   />
@@ -300,7 +300,7 @@ export default function ExperienceForm({
                 <button
                   type="button"
                   onClick={() => removeItineraryDay(ix)}
-                  className="text-slate-500 hover:text-red-500 transition-colors p-2 h-fit"
+                  className="text-foreground/50 hover:text-red-500 transition-colors p-2 h-fit"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -309,35 +309,35 @@ export default function ExperienceForm({
             <button
               type="button"
               onClick={addItineraryDay}
-              className="w-full py-3 border-2 border-dashed border-white/10 rounded-xl text-slate-400 hover:text-white hover:border-white/30 transition-colors flex items-center justify-center gap-2 font-medium"
+              className="w-full py-3 border-2 border-dashed border-border rounded-xl text-foreground/60 hover:text-foreground hover:border-foreground/30 transition-colors flex items-center justify-center gap-2 font-medium"
             >
               <Plus className="w-4 h-4" /> Add Day
             </button>
           </div>
 
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
-            <h2 className="text-xl font-bold text-white border-b border-white/10 pb-2">
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+            <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
               Media & Images
             </h2>
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-foreground/60">
               For now, enter valid image URLs. (S3 uploads coming soon).
             </p>
             {images.map((url, ix) => (
               <div key={ix} className="flex gap-2">
-                <div className="flex-1 flex gap-2 items-center bg-black/30 border border-white/10 rounded-lg px-3 py-2">
-                  <ImageIcon className="w-4 h-4 text-slate-500" />
+                <div className="flex-1 flex gap-2 items-center bg-background border border-border rounded-lg px-3 py-2">
+                  <ImageIcon className="w-4 h-4 text-foreground/50" />
                   <input
                     type="url"
                     value={url}
                     onChange={(e) => updateImageUrl(ix, e.target.value)}
-                    className="w-full bg-transparent text-sm text-white focus:outline-none"
+                    className="w-full bg-transparent text-sm text-foreground focus:outline-none"
                     placeholder="https://example.com/image.jpg"
                   />
                 </div>
                 <button
                   type="button"
                   onClick={() => removeImageUrl(ix)}
-                  className="p-2 text-slate-500 hover:text-red-500 transition-colors rounded-lg bg-black/30 border border-white/10"
+                  className="p-2 text-foreground/50 hover:text-red-500 transition-colors rounded-lg bg-background border border-border"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -355,14 +355,14 @@ export default function ExperienceForm({
 
         {/* Sidebar Settings (Right Column) */}
         <div className="space-y-6">
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
-            <h2 className="text-xl font-bold text-white border-b border-white/10 pb-2">
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+            <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
               Pricing & Logistics
             </h2>
             <div>
               <label
                 htmlFor="price"
-                className="block text-sm font-medium text-slate-300 mb-1"
+                className="block text-sm font-medium text-foreground/80 mb-1"
               >
                 Base Price (₹)
               </label>
@@ -373,13 +373,13 @@ export default function ExperienceForm({
                 required
                 value={basePrice}
                 onChange={(e) => setBasePrice(e.target.value)}
-                className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-primary/50 text-xl font-semibold"
+                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50 text-xl font-semibold"
               />
             </div>
             <div>
               <label
                 htmlFor="cap"
-                className="block text-sm font-medium text-slate-300 mb-1"
+                className="block text-sm font-medium text-foreground/80 mb-1"
               >
                 Total Capacity
               </label>
@@ -390,25 +390,25 @@ export default function ExperienceForm({
                 required
                 value={capacity}
                 onChange={(e) => setCapacity(e.target.value)}
-                className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-primary/50"
+                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
               />
             </div>
           </div>
 
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
-            <h2 className="text-xl font-bold text-white border-b border-white/10 pb-2">
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+            <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
               Publishing
             </h2>
 
             {isEditing && (
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">
+                <label className="block text-sm font-medium text-foreground/80 mb-1">
                   Status
                 </label>
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value)}
-                  className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-primary/50"
+                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
                 >
                   <option value="DRAFT">Draft — Hidden</option>
                   <option value="PUBLISHED">Published — Public</option>
@@ -420,13 +420,13 @@ export default function ExperienceForm({
             )}
 
             <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">
+              <label className="block text-sm font-medium text-foreground/80 mb-1">
                 Difficulty
               </label>
               <select
                 value={difficulty}
                 onChange={(e) => setDifficulty(e.target.value)}
-                className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-primary/50"
+                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
               >
                 <option value="EASY">Easy</option>
                 <option value="MODERATE">Moderate</option>
@@ -435,26 +435,26 @@ export default function ExperienceForm({
               </select>
             </div>
 
-            <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-white/5 hover:bg-white/5 transition-colors">
+            <label className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-border hover:bg-foreground/5 transition-colors">
               <input
                 type="checkbox"
                 checked={isFeatured}
                 onChange={(e) => setIsFeatured(e.target.checked)}
-                className="w-5 h-5 rounded border-white/20 text-primary focus:ring-primary focus:ring-offset-slate-900 bg-black/50"
+                className="w-5 h-5 rounded border-border text-primary focus:ring-primary focus:ring-offset-background bg-background"
               />
               <div>
-                <span className="block text-sm font-medium text-white">
+                <span className="block text-sm font-medium text-foreground">
                   Featured Trip
                 </span>
-                <span className="block text-xs text-slate-400">
+                <span className="block text-xs text-foreground/60">
                   Show strictly on the homepage banner
                 </span>
               </div>
             </label>
           </div>
 
-          <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
-            <h2 className="text-xl font-bold text-white border-b border-white/10 pb-2">
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+            <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
               Categories
             </h2>
             <div className="space-y-2 max-h-64 overflow-y-auto no-scrollbar">
@@ -467,15 +467,15 @@ export default function ExperienceForm({
                     type="checkbox"
                     checked={selectedCategories.includes(cat.id)}
                     onChange={() => toggleCategory(cat.id)}
-                    className="w-4 h-4 rounded border-white/20 text-primary focus:ring-primary focus:ring-offset-slate-900 bg-black/50"
+                    className="w-4 h-4 rounded border-border text-primary focus:ring-primary focus:ring-offset-background bg-background"
                   />
-                  <span className="text-sm text-slate-300 group-hover:text-white transition-colors">
+                  <span className="text-sm text-foreground/80 group-hover:text-foreground transition-colors">
                     {cat.name}
                   </span>
                 </label>
               ))}
               {categories.length === 0 && (
-                <span className="text-sm text-slate-500">
+                <span className="text-sm text-foreground/50">
                   No categories found.
                 </span>
               )}

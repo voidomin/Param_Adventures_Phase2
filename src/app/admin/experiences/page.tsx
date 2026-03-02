@@ -110,10 +110,10 @@ export default function AdminExperiencesPage() {
     <div>
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-heading font-bold text-white">
+          <h1 className="text-3xl font-heading font-bold text-foreground">
             Experiences
           </h1>
-          <p className="text-slate-400 mt-1">
+          <p className="text-foreground/60 mt-1">
             Build and manage your trips, events, and packages.
           </p>
         </div>
@@ -131,15 +131,15 @@ export default function AdminExperiencesPage() {
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
         </div>
       ) : experiences.length === 0 ? (
-        <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl p-12 text-center text-slate-400">
-          <MapPin className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <h3 className="text-lg font-bold text-white mb-2">
+        <div className="bg-card border border-border rounded-2xl p-12 text-center text-foreground/60">
+          <MapPin className="w-12 h-12 mx-auto mb-4 opacity-50 text-foreground/50" />
+          <h3 className="text-lg font-bold text-foreground mb-2">
             No Experiences Yet
           </h3>
           <p className="mb-6">Start building your first unforgettable trip.</p>
           <Link
             href="/admin/experiences/new"
-            className="inline-block bg-white/10 text-white px-6 py-2.5 rounded-full font-bold hover:bg-white/20 transition-colors"
+            className="inline-block bg-background border border-border text-foreground px-6 py-2.5 rounded-full font-bold hover:bg-foreground/5 transition-colors"
           >
             Create your first trip
           </Link>
@@ -149,11 +149,13 @@ export default function AdminExperiencesPage() {
           {experiences.map((exp) => (
             <div
               key={exp.id}
-              className="bg-white/5 border border-white/10 rounded-xl p-6 flex flex-col md:flex-row gap-6 items-start md:items-center hover:bg-white/10 transition-colors"
+              className="bg-card border border-border rounded-xl p-6 flex flex-col md:flex-row gap-6 items-start md:items-center hover:bg-foreground/5 transition-colors"
             >
               <div className="flex-1">
                 <div className="flex flex-wrap items-center gap-3 mb-2">
-                  <h3 className="text-xl font-bold text-white">{exp.title}</h3>
+                  <h3 className="text-xl font-bold text-foreground">
+                    {exp.title}
+                  </h3>
                   <span
                     className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getStatusColor(
                       exp.status,
@@ -161,12 +163,12 @@ export default function AdminExperiencesPage() {
                   >
                     {exp.status}
                   </span>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-white/10 text-slate-300">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-background border border-border text-foreground/80">
                     {exp.difficulty}
                   </span>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-slate-400">
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-foreground/60">
                   <div className="flex items-center gap-1.5">
                     <MapPin className="w-4 h-4" />
                     {exp.location || "No Location"}
@@ -189,7 +191,7 @@ export default function AdminExperiencesPage() {
                     {exp.categories.map((c) => (
                       <span
                         key={c.category.id}
-                        className="text-xs text-slate-500 bg-black/30 px-2 py-1 rounded"
+                        className="text-xs text-foreground/70 bg-background border border-border px-2 py-1 rounded"
                       >
                         {c.category.name}
                       </span>
@@ -198,14 +200,16 @@ export default function AdminExperiencesPage() {
                 )}
               </div>
 
-              <div className="flex items-center gap-2 w-full md:w-auto border-t border-white/10 md:border-none pt-4 md:pt-0">
-                <div className="text-right mr-4 hidden md:block text-sm text-slate-400">
+              <div className="flex items-center gap-2 w-full md:w-auto border-t border-border md:border-none pt-4 md:pt-0">
+                <div className="text-right mr-4 hidden md:block text-sm text-foreground/60">
                   <div>
-                    <strong className="text-white">{exp._count.slots}</strong>{" "}
+                    <strong className="text-foreground">
+                      {exp._count.slots}
+                    </strong>{" "}
                     Slots
                   </div>
                   <div>
-                    <strong className="text-white">
+                    <strong className="text-foreground">
                       {exp._count.bookings}
                     </strong>{" "}
                     Bookings
