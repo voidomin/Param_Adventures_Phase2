@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Menu, X, Compass, Map, BookOpen } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -20,11 +21,17 @@ export default function Navbar() {
         <div className="flex justify-between h-16 items-center">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2">
-            <span className="text-2xl font-heading font-bold text-primary italic">
-              PARAM
-            </span>
-            <span className="text-sm font-medium tracking-widest text-foreground/60 uppercase hidden sm:block">
-              Adventure
+            <Image
+              src="/param-logo.png"
+              alt="Param Adventures"
+              width={40}
+              height={40}
+              className="rounded-full"
+              priority
+            />
+            <span className="text-lg font-heading font-bold tracking-wide hidden sm:block">
+              <span className="text-primary">PARAM</span>{" "}
+              <span className="text-foreground/60">Adventures</span>
             </span>
           </Link>
 

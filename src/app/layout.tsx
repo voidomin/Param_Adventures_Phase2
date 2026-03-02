@@ -16,6 +16,10 @@ export const metadata: Metadata = {
   title: "Param Adventure | Curated Experiences",
   description:
     "Organized treks, spiritual journeys, and experiential events in India.",
+  icons: {
+    icon: "/param-logo.png",
+    apple: "/param-logo.png",
+  },
 };
 
 export default function RootLayout({

@@ -1,91 +1,174 @@
 # Data Schema - Param Adventure Phase 2
 
-This document defines the relational database schema required to support the PRD (v1.3) and Roles & Access (v2.1) specifications.
+This document defines the relational database schema (PostgreSQL + Prisma) for v1.
 
-## 1. Core Entities (ERD)
+## 1. Authentication & RBAC
 
-### User & Authentication
+### User
 
-- **`User`**: Core user record.
-  - `id` (UUID, PK)
-  - `email` (string, unique)
-  - `passwordHash` (string)
-  - `role` (Enum: GUEST, REGISTERED_USER, MEDIA_UPLOADER, TREK_LEAD, TRIP_MANAGER, ADMIN, SUPER_ADMIN)
-  - `isVerified` (boolean)
-  - `profileImage` (string, nullable)
-  - `createdAt`, `updatedAt`
+| Field         | Type      | Notes                     |
+| ------------- | --------- | ------------------------- |
+| `id`          | UUID (PK) | Auto-generated            |
+| `email`       | String    | Unique                    |
+| `password`    | String?   | Hashed with bcrypt        |
+| `name`        | String    |                           |
+| `phoneNumber` | String?   |                           |
+| `avatarUrl`   | String?   |                           |
+| `status`      | Enum      | ACTIVE, SUSPENDED, BANNED |
+| `googleId`    | String?   | For Google OAuth (future) |
+| `deletedAt`   | DateTime? | Soft delete               |
+| `createdAt`   | DateTime  | Auto                      |
+| `updatedAt`   | DateTime  | Auto                      |
 
-### Experience Management
+### Role
 
-- **`Category`**: Admin-managed event categories.
-  - `id` (UUID, PK)
-  - `name` (string)
-  - `slug` (string, unique)
-  - `isActive` (boolean)
-- **`Experience`**: The central "product".
-  - `id` (UUID, PK)
-  - `title` (string)
-  - `description` (Rich Text)
-  - `itinerary` (JSON/Rich Text)
-  - `basePrice` (Decimal)
-  - `schedulingType` (Enum: FIXED, FLEXIBLE)
-  - `capacity` (Integer) - Default if no slots specified
-  - `status` (Enum: DRAFT, PUBLISHED, ARCHIVED)
-  - `images` (String Array)
-  - `difficulty` (Enum: EASY, MODERATE, STRENUOUS)
-- **`ExperienceCategory`**: Many-to-Many join table.
-- **`Slot`**: Specific dates for FIXED experiences.
-  - `id` (UUID, PK)
-  - `experienceId` (FK)
-  - `date` (DateTime)
-  - `capacity` (Integer)
-  - `remainingCapacity` (Integer) - strictly enforced
+| Field         | Type      | Notes                                   |
+| ------------- | --------- | --------------------------------------- |
+| `id`          | UUID (PK) |                                         |
+| `name`        | String    | Unique (SUPER_ADMIN, ADMIN, USER, etc.) |
+| `description` | String?   |                                         |
+| `isSystem`    | Boolean   | Prevents accidental deletion            |
 
-### Booking & Payments
+### Permission
 
-- **`Booking`**: User booking record.
-  - `id` (UUID, PK)
-  - `userId` (FK)
-  - `experienceId` (FK)
-  - `slotId` (FK, nullable)
-  - `participantCount` (Integer)
-  - `totalPrice` (Decimal)
-  - `bookingStatus` (Enum: INITIATED, CONFIRMED, FAILED, CANCELLED)
-  - `paymentStatus` (Enum: PENDING, SUCCESS, FAILED)
-- **`Payment`**: Transaction history (razorpay driven).
-  - `id` (UUID, PK)
-  - `bookingId` (FK)
-  - `razorpayPaymentId` (string)
-  - `amount` (Decimal)
-  - `fullPayload` (JSON) - Immutable
+| Field         | Type      | Notes                                      |
+| ------------- | --------- | ------------------------------------------ |
+| `id`          | UUID (PK) |                                            |
+| `key`         | String    | Unique, e.g. `trip:create`, `media:upload` |
+| `description` | String?   |                                            |
+| `category`    | String?   | Grouping (trip, booking, media, etc.)      |
 
-### Operations & Blogs
+### UserRole (Many-to-Many)
 
-- **`TripAssignment`**: Trek Lead assignments.
-  - `id` (UUID, PK)
-  - `slotId` (FK)
-  - `trekLeadId` (FK)
-- **`Blog`**: Content from users/admins.
-  - `id` (UUID, PK)
-  - `authorId` (FK)
-  - `tripId` (FK) - Linked to a completed booking
-  - `title`, `content`, `images`
-  - `status` (Enum: DRAFT, SUBMITTED, APPROVED, REJECTED)
-  - `rejectionReason` (string, nullable)
+| Field    | Type      | Notes            |
+| -------- | --------- | ---------------- |
+| `userId` | FK        | → User.id        |
+| `roleId` | FK        | → Role.id        |
+| PK       | Composite | (userId, roleId) |
 
-### System Logs
+### RolePermission (Many-to-Many)
 
-- **`AuditLog`**: Immutable history.
-  - `id` (UUID, PK)
-  - `actorId` (FK, nullable for Guests)
-  - `action` (string)
-  - `targetType` (string)
-  - `targetId` (string)
-  - `payload` (JSON)
-  - `timestamp` (DateTime, default: now)
+| Field          | Type      | Notes                  |
+| -------------- | --------- | ---------------------- |
+| `roleId`       | FK        | → Role.id              |
+| `permissionId` | FK        | → Permission.id        |
+| PK             | Composite | (roleId, permissionId) |
 
-## 2. Integrity Rules
+## 2. Experience Management
 
-1. **Capacity Check**: A database trigger or transaction lock must verify `remainingCapacity` before creating a `Booking`.
-2. **Soft Deletes**: Use `deletedAt` for critical entities (Users, Experiences, Bookings).
-3. **Role Enforcement**: RBAC is enforced at the API level using the `User.role` field.
+### Category
+
+| Field      | Type      | Notes         |
+| ---------- | --------- | ------------- |
+| `id`       | UUID (PK) |               |
+| `name`     | String    |               |
+| `slug`     | String    | Unique        |
+| `isActive` | Boolean   | Default: true |
+
+### Experience (Trip)
+
+| Field          | Type      | Notes                          |
+| -------------- | --------- | ------------------------------ |
+| `id`           | UUID (PK) |                                |
+| `title`        | String    |                                |
+| `slug`         | String    | Unique, auto-generated         |
+| `description`  | String    |                                |
+| `itinerary`    | JSON      | Day-wise plan                  |
+| `price`        | Int       | In paise (₹)                   |
+| `durationDays` | Int       |                                |
+| `difficulty`   | Enum      | EASY, MODERATE, HARD, EXTREME  |
+| `location`     | String    |                                |
+| `capacity`     | Int       |                                |
+| `status`       | Enum      | DRAFT → PUBLISHED → ARCHIVED   |
+| `category`     | Enum      | TREK, CAMPING, SPIRITUAL, etc. |
+| `coverImageId` | FK?       | → Image.id                     |
+| `isFeatured`   | Boolean   | Homepage spotlight             |
+| `startDate`    | DateTime  |                                |
+| `endDate`      | DateTime  |                                |
+| `deletedAt`    | DateTime? | Soft delete                    |
+
+## 3. Booking & Payments
+
+### Booking
+
+| Field           | Type      | Notes                           |
+| --------------- | --------- | ------------------------------- |
+| `id`            | UUID (PK) |                                 |
+| `userId`        | FK        | → User.id                       |
+| `tripId`        | FK        | → Experience.id                 |
+| `status`        | Enum      | REQUESTED, CONFIRMED, CANCELLED |
+| `guests`        | Int       | Default: 1                      |
+| `totalPrice`    | Int       | Frozen at booking time          |
+| `paymentStatus` | Enum      | PENDING, PAID, FAILED           |
+| `startDate`     | DateTime  |                                 |
+
+### Payment
+
+| Field               | Type      | Notes                       |
+| ------------------- | --------- | --------------------------- |
+| `id`                | UUID (PK) |                             |
+| `bookingId`         | FK        | → Booking.id                |
+| `provider`          | Enum      | RAZORPAY (default)          |
+| `providerOrderId`   | String    | Razorpay order ID           |
+| `providerPaymentId` | String?   | Razorpay payment ID         |
+| `amount`            | Int       | In paise                    |
+| `currency`          | String    | Default: INR                |
+| `status`            | Enum      | CREATED, CAPTURED, FAILED   |
+| `method`            | Enum      | CARD, UPI, NETBANKING, etc. |
+
+## 4. Content & Media
+
+### Blog
+
+| Field          | Type      | Notes                            |
+| -------------- | --------- | -------------------------------- |
+| `id`           | UUID (PK) |                                  |
+| `title`        | String    |                                  |
+| `slug`         | String    | Unique                           |
+| `content`      | JSON      | Rich text editor output          |
+| `status`       | Enum      | DRAFT, PENDING_REVIEW, PUBLISHED |
+| `authorId`     | FK        | → User.id                        |
+| `coverImageId` | FK?       | → Image.id                       |
+| `tripId`       | FK?       | Optional link to experience      |
+
+### Image
+
+| Field          | Type      | Notes                 |
+| -------------- | --------- | --------------------- |
+| `id`           | UUID (PK) |                       |
+| `originalUrl`  | String    | Full-size (S3)        |
+| `mediumUrl`    | String    | Optimized for display |
+| `thumbUrl`     | String    | Thumbnail             |
+| `type`         | Enum      | IMAGE, VIDEO          |
+| `uploadedById` | FK        | → User.id             |
+
+### HeroSlide
+
+| Field      | Type      | Notes                |
+| ---------- | --------- | -------------------- |
+| `id`       | UUID (PK) |                      |
+| `title`    | String    |                      |
+| `subtitle` | String?   |                      |
+| `videoUrl` | String    | Background video URL |
+| `ctaLink`  | String?   | CTA button target    |
+| `order`    | Int       | Display sequence     |
+
+## 5. System
+
+### AuditLog
+
+| Field        | Type      | Notes                          |
+| ------------ | --------- | ------------------------------ |
+| `id`         | UUID (PK) |                                |
+| `actorId`    | FK?       | → User.id                      |
+| `action`     | Enum      | TRIP_CREATED, USER_LOGIN, etc. |
+| `targetType` | String    | e.g. "Trip", "Booking"         |
+| `targetId`   | String?   |                                |
+| `metadata`   | JSON?     | Extra context                  |
+
+## 6. Integrity Rules
+
+1. **Capacity Check**: Transaction lock verifies remaining capacity before creating a Booking.
+2. **Soft Deletes**: `deletedAt` on Users, Experiences, Blogs, Bookings.
+3. **RBAC Enforcement**: API middleware checks user permissions via the Role → Permission chain.
+4. **Price Freeze**: `totalPrice` is stored at booking time to handle future price changes.
