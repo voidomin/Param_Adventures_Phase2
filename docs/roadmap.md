@@ -1,40 +1,43 @@
-# Project Roadmap - Param Adventure v1
+# Project Roadmap - Param Adventure v2
 
 This roadmap outlines the path from planning to the production release of **Phase 2**.
 
-## Milestone 1: The Foundation (Week 1)
+## ✅ Milestone 1: The Foundation (Complete)
 
-- [ ] **Infrastructure Setup**: Initialize Next.js, Tailwind CSS, and Prisma.
-- [ ] **Theme Implementation**: Configure the "Gold & Obsidian" Design System (Dark/Light modes).
-- [ ] **Authentication**: Set up Clerk or NextAuth with Role-Based Access Control (RBAC) gates.
-- [ ] **Database Migration**: Deploy the initial PostgreSQL schema to RDS.
+- [x] **Infrastructure Setup**: Next.js, Tailwind CSS, and Prisma initialized.
+- [x] **Theme Implementation**: "Gold & Obsidian" Design System (Dark/Light modes).
+- [x] **Authentication**: Custom JWT + Role-Based Access Control (RBAC) — 7 roles, 25 permissions.
+- [x] **Database Migration**: Initial PostgreSQL schema deployed and seeded.
+- [x] **Category Engine**: Admin panel to manage dynamic trip categories.
 
-## Milestone 2: Core Management (Week 2)
+## ✅ Milestone 2: Core Management (Complete)
 
-- [ ] **Category Engine**: Admin panel to manage dynamic categories.
-- [ ] **Experience Builder**: CMS for creating/editing trips with rich text and images.
-- [ ] **Media Library**: S3 integration for professional asset management.
+- [x] **Experience Builder**: Full CMS for creating/editing trips with itinerary, media, pricing.
+- [x] **Media Library**: S3 integration with drag-and-drop uploader and admin gallery.
+- [x] **Experience Publishing**: Quick Publish/Unpublish toggle on the admin list page.
 
-## Milestone 3: Public Frontend & Hero CMS (Week 3)
+## ✅ Milestone 3: Public Frontend & Hero CMS (Complete)
 
-- [ ] **Hero Slider Engine**: Admin panel to manage homepage Hero video/images.
-- [ ] **Public Experiences Listing**: Beautiful grid showcasing trips with filters.
-- [ ] **Experience Detail Pages**: Rich public pages showing itineraries, galleries, and pricing.
+- [x] **Hero Slider Engine**: Admin panel to manage homepage Hero video/images with live preview.
+- [x] **Featured Experiences**: Homepage shows a grid of featured, published trips.
+- [x] **CategoryBar**: Infinite-scroll horizontal bar with left/right arrow navigation.
+- [x] **Public Experiences Listing**: Grid showcasing trips with ExperienceCard component.
+- [x] **Experience Detail Pages**: Rich pages showing itineraries (numbered Day 1/2/3), galleries, and pricing.
 
-## Milestone 4: Booking & Payments (Week 4 - Postponed)
+## 🔜 Milestone 4: Booking & Payments (Priority)
 
-- [ ] **Slot Management**: Capacity-aware scheduling for fixed and flexible dates.
-- [ ] **Checkout Flow**: Integration with Razorpay for secure group bookings.
-- [ ] **User Dashboard**: Booking history and profile management.
+- [ ] **Slot Management**: Capacity-aware scheduling — fixed date batches (e.g., "June 14–20, 2025") with seat limits.
+- [ ] **Checkout Flow**: Razorpay integration for secure group bookings with payment confirmation.
+- [ ] **User Dashboard**: Booking history, upcoming trips, and profile management for logged-in users.
 
-## Milestone 4: Operations & Content (Week 4)
+## 🔜 Milestone 4b: Operations & Content
 
-- [ ] **Operational Tools**: Trip Lead assignments and participant lists.
-- [ ] **Blog System**: User submission and admin moderation workflow.
-- [ ] **Notification Engine**: Automated Email (SES) and SMS triggers.
+- [ ] **Operational Tools**: Trip Lead assignments and participant manifest lists.
+- [ ] **Blog System**: SEO-friendly article CMS with admin moderation.
+- [ ] **Notification Engine**: Automated Email (SES) and SMS triggers on booking events.
 
-## Milestone 5: Polishing & Launch (Week 5)
+## 🔜 Milestone 5: Polishing & Launch
 
-- [ ] **SEO & Legal**: Finalize metadata, sitemaps, and legal pages (T&C, Privacy).
+- [ ] **SEO & Legal**: Finalize metadata, sitemaps, robots.txt, and legal pages (T&C, Privacy).
 - [ ] **Pre-Launch Audit**: Security checks, audit logging verification, and load testing.
 - [ ] **Production Deployment**: Final push to AWS and client handover.
