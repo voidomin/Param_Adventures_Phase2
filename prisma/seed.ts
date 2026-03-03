@@ -323,11 +323,9 @@ async function seed() {
   console.log("\n✅ Seed complete!");
 }
 
-try {
-  await seed();
-} catch (e) {
-  console.error("❌ Seed failed:", e);
-  process.exit(1);
-} finally {
-  await prisma.$disconnect();
-}
+seed()
+  .catch((e) => {
+    console.error("❌ Seed failed:", e);
+    process.exit(1);
+  })
+  .finally(() => prisma.$disconnect());

@@ -13,6 +13,7 @@ import {
   Tags,
   Image as ImageIcon,
   MonitorPlay,
+  PenLine,
 } from "lucide-react";
 
 export default function AdminLayout({
@@ -84,6 +85,12 @@ export default function AdminLayout({
       href: "/admin/users",
       icon: Users,
       permission: "user:view-all",
+    },
+    {
+      name: "Blog Moderation",
+      href: "/admin/blogs",
+      icon: PenLine,
+      permission: "blog:moderate",
     },
   ];
 

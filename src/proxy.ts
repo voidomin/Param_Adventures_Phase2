@@ -30,6 +30,8 @@ export function proxy(request: NextRequest) {
     "/api/auth/logout",
     "/api/categories",
     "/api/experiences",
+    "/api/blog",
+    "/blog",
   ];
 
   // Check exact match or prefix match for public paths

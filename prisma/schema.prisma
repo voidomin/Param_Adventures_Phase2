@@ -159,6 +159,7 @@ model Experience {
   categories     ExperienceCategory[]
   slots          Slot[]
   bookings       Booking[]
+  blogs          Blog[]
 }
 
 model ExperienceCategory {
@@ -242,6 +243,7 @@ model Blog {
   authorId        String
   author          User       @relation(fields: [authorId], references: [id])
   experienceId    String?    // Optional: linked to an experience
+  experience      Experience? @relation(fields: [experienceId], references: [id])
   coverImageId    String?
   coverImage      Image?     @relation(fields: [coverImageId], references: [id])
   status          BlogStatus @default(DRAFT)
@@ -253,7 +255,7 @@ model Blog {
 
 model Image {
   id           String    @id @default(uuid())
-  originalUrl  String    // Full-size S3 URL
+  originalUrl  String    // Full-size S3 / Cloudinary URL
   mediumUrl    String?   // Optimized for display
   thumbUrl     String?   // Thumbnail
   type         MediaType @default(IMAGE)
