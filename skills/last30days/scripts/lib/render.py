@@ -8,6 +8,12 @@ from . import schema
 
 OUTPUT_DIR = Path.home() / ".local" / "share" / "last30days" / "out"
 
+# ─── Section header constants ─────────────────────────────────────────────────
+SECTION_REDDIT = "### Reddit Threads"
+SECTION_X = "### X Posts"
+SECTION_WEB = "### Web Results"
+DATE_UNKNOWN = " (date unknown)"
+
 
 def ensure_output_dir():
     """Ensure output directory exists."""
@@ -34,32 +40,20 @@ def _assess_data_freshness(report: schema.Report) -> dict:
     }
 
 
-def render_compact(report: schema.Report, limit: int = 15, missing_keys: str = "none") -> str:
-    """Render compact output for Claude to synthesize.
+# ─── render_compact helpers ───────────────────────────────────────────────────
 
-    Args:
-        report: Report data
-        limit: Max items per source
-        missing_keys: 'both', 'reddit', 'x', or 'none'
-
-    Returns:
-        Compact markdown string
-    """
+def _render_compact_header(report: schema.Report, missing_keys: str, freshness: dict) -> List[str]:
+    """Build the header block for render_compact."""
     lines = []
-
-    # Header
     lines.append(f"## Research Results: {report.topic}")
     lines.append("")
 
-    # Assess data freshness and add honesty warning if needed
-    freshness = _assess_data_freshness(report)
     if freshness["is_sparse"]:
         lines.append("**⚠️ LIMITED RECENT DATA** - Few discussions from the last 30 days.")
         lines.append(f"Only {freshness['total_recent']} item(s) confirmed from {report.range_from} to {report.range_to}.")
         lines.append("Results below may include older/evergreen content. Be transparent with the user about this.")
         lines.append("")
 
-    # Web-only mode banner (when no API keys)
     if report.mode == "web-only":
         lines.append("**🌐 WEB SEARCH MODE** - Claude will search blogs, docs & news")
         lines.append("")
@@ -71,7 +65,6 @@ def render_compact(report: schema.Report, limit: int = 15, missing_keys: str = "
         lines.append("---")
         lines.append("")
 
-    # Cache indicator
     if report.from_cache:
         age_str = f"{report.cache_age_hours:.1f}h old" if report.cache_age_hours else "cached"
         lines.append(f"**⚡ CACHED RESULTS** ({age_str}) - use `--refresh` for fresh data")
@@ -85,7 +78,6 @@ def render_compact(report: schema.Report, limit: int = 15, missing_keys: str = "
         lines.append(f"**xAI Model:** {report.xai_model_used}")
     lines.append("")
 
-    # Coverage note for partial coverage
     if report.mode == "reddit-only" and missing_keys == "x":
         lines.append("*💡 Tip: Add XAI_API_KEY for X/Twitter data and better triangulation.*")
         lines.append("")
@@ -93,103 +85,225 @@ def render_compact(report: schema.Report, limit: int = 15, missing_keys: str = "
         lines.append("*💡 Tip: Add OPENAI_API_KEY for Reddit data and better triangulation.*")
         lines.append("")
 
-    # Reddit items
+    return lines
+
+
+def _build_reddit_eng_str(item: schema.RedditItem) -> str:
+    """Build compact engagement string for a Reddit item."""
+    if not item.engagement:
+        return ""
+    eng = item.engagement
+    parts = []
+    if eng.score is not None:
+        parts.append(f"{eng.score}pts")
+    if eng.num_comments is not None:
+        parts.append(f"{eng.num_comments}cmt")
+    return f" [{', '.join(parts)}]" if parts else ""
+
+
+def _build_x_eng_str(item: schema.XItem) -> str:
+    """Build compact engagement string for an X item."""
+    if not item.engagement:
+        return ""
+    eng = item.engagement
+    parts = []
+    if eng.likes is not None:
+        parts.append(f"{eng.likes}likes")
+    if eng.reposts is not None:
+        parts.append(f"{eng.reposts}rt")
+    return f" [{', '.join(parts)}]" if parts else ""
+
+
+def _date_conf_str(item) -> str:
+    """Build date + confidence suffix for compact rendering."""
+    date_str = f" ({item.date})" if item.date else DATE_UNKNOWN
+    conf_str = f" [date:{item.date_confidence}]" if item.date_confidence != "high" else ""
+    return date_str + conf_str
+
+
+def _render_compact_reddit(report: schema.Report, limit: int) -> List[str]:
+    """Build the Reddit section block for render_compact."""
+    lines = []
     if report.reddit_error:
-        lines.append("### Reddit Threads")
+        lines.append(SECTION_REDDIT)
         lines.append("")
         lines.append(f"**ERROR:** {report.reddit_error}")
         lines.append("")
-    elif report.mode in ("both", "reddit-only") and not report.reddit:
-        lines.append("### Reddit Threads")
+        return lines
+
+    if report.mode in ("both", "reddit-only") and not report.reddit:
+        lines.append(SECTION_REDDIT)
         lines.append("")
         lines.append("*No relevant Reddit threads found for this topic.*")
         lines.append("")
-    elif report.reddit:
-        lines.append("### Reddit Threads")
+        return lines
+
+    if not report.reddit:
+        return lines
+
+    lines.append(SECTION_REDDIT)
+    lines.append("")
+    for item in report.reddit[:limit]:
+        eng_str = _build_reddit_eng_str(item)
+        suffix = _date_conf_str(item)
+        lines.append(f"**{item.id}** (score:{item.score}) r/{item.subreddit}{suffix}{eng_str}")
+        lines.append(f"  {item.title}")
+        lines.append(f"  {item.url}")
+        lines.append(f"  *{item.why_relevant}*")
+        if item.comment_insights:
+            lines.append("  Insights:")
+            for insight in item.comment_insights[:3]:
+                lines.append(f"    - {insight}")
         lines.append("")
-        for item in report.reddit[:limit]:
-            eng_str = ""
-            if item.engagement:
-                eng = item.engagement
-                parts = []
-                if eng.score is not None:
-                    parts.append(f"{eng.score}pts")
-                if eng.num_comments is not None:
-                    parts.append(f"{eng.num_comments}cmt")
-                if parts:
-                    eng_str = f" [{', '.join(parts)}]"
+    return lines
 
-            date_str = f" ({item.date})" if item.date else " (date unknown)"
-            conf_str = f" [date:{item.date_confidence}]" if item.date_confidence != "high" else ""
 
-            lines.append(f"**{item.id}** (score:{item.score}) r/{item.subreddit}{date_str}{conf_str}{eng_str}")
-            lines.append(f"  {item.title}")
-            lines.append(f"  {item.url}")
-            lines.append(f"  *{item.why_relevant}*")
-
-            # Top comment insights
-            if item.comment_insights:
-                lines.append(f"  Insights:")
-                for insight in item.comment_insights[:3]:
-                    lines.append(f"    - {insight}")
-
-            lines.append("")
-
-    # X items
+def _render_compact_x(report: schema.Report, limit: int) -> List[str]:
+    """Build the X Posts section block for render_compact."""
+    lines = []
     if report.x_error:
-        lines.append("### X Posts")
+        lines.append(SECTION_X)
         lines.append("")
         lines.append(f"**ERROR:** {report.x_error}")
         lines.append("")
-    elif report.mode in ("both", "x-only", "all", "x-web") and not report.x:
-        lines.append("### X Posts")
+        return lines
+
+    if report.mode in ("both", "x-only", "all", "x-web") and not report.x:
+        lines.append(SECTION_X)
         lines.append("")
         lines.append("*No relevant X posts found for this topic.*")
         lines.append("")
-    elif report.x:
-        lines.append("### X Posts")
+        return lines
+
+    if not report.x:
+        return lines
+
+    lines.append(SECTION_X)
+    lines.append("")
+    for item in report.x[:limit]:
+        eng_str = _build_x_eng_str(item)
+        suffix = _date_conf_str(item)
+        lines.append(f"**{item.id}** (score:{item.score}) @{item.author_handle}{suffix}{eng_str}")
+        lines.append(f"  {item.text[:200]}...")
+        lines.append(f"  {item.url}")
+        lines.append(f"  *{item.why_relevant}*")
         lines.append("")
-        for item in report.x[:limit]:
-            eng_str = ""
-            if item.engagement:
-                eng = item.engagement
-                parts = []
-                if eng.likes is not None:
-                    parts.append(f"{eng.likes}likes")
-                if eng.reposts is not None:
-                    parts.append(f"{eng.reposts}rt")
-                if parts:
-                    eng_str = f" [{', '.join(parts)}]"
+    return lines
 
-            date_str = f" ({item.date})" if item.date else " (date unknown)"
-            conf_str = f" [date:{item.date_confidence}]" if item.date_confidence != "high" else ""
 
-            lines.append(f"**{item.id}** (score:{item.score}) @{item.author_handle}{date_str}{conf_str}{eng_str}")
-            lines.append(f"  {item.text[:200]}...")
-            lines.append(f"  {item.url}")
-            lines.append(f"  *{item.why_relevant}*")
-            lines.append("")
-
-    # Web items (if any - populated by Claude)
+def _render_compact_web(report: schema.Report, limit: int) -> List[str]:
+    """Build the Web Results section block for render_compact."""
+    lines = []
     if report.web_error:
-        lines.append("### Web Results")
+        lines.append(SECTION_WEB)
         lines.append("")
         lines.append(f"**ERROR:** {report.web_error}")
         lines.append("")
-    elif report.web:
-        lines.append("### Web Results")
+        return lines
+
+    if not report.web:
+        return lines
+
+    lines.append(SECTION_WEB)
+    lines.append("")
+    for item in report.web[:limit]:
+        suffix = _date_conf_str(item)
+        lines.append(f"**{item.id}** [WEB] (score:{item.score}) {item.source_domain}{suffix}")
+        lines.append(f"  {item.title}")
+        lines.append(f"  {item.url}")
+        lines.append(f"  {item.snippet[:150]}...")
+        lines.append(f"  *{item.why_relevant}*")
         lines.append("")
-        for item in report.web[:limit]:
-            date_str = f" ({item.date})" if item.date else " (date unknown)"
-            conf_str = f" [date:{item.date_confidence}]" if item.date_confidence != "high" else ""
+    return lines
 
-            lines.append(f"**{item.id}** [WEB] (score:{item.score}) {item.source_domain}{date_str}{conf_str}")
-            lines.append(f"  {item.title}")
-            lines.append(f"  {item.url}")
-            lines.append(f"  {item.snippet[:150]}...")
-            lines.append(f"  *{item.why_relevant}*")
+
+# ─── render_full_report helpers ───────────────────────────────────────────────
+
+def _render_full_reddit(report: schema.Report) -> List[str]:
+    """Build the Reddit section for render_full_report."""
+    if not report.reddit:
+        return []
+    lines = ["## Reddit Threads", ""]
+    for item in report.reddit:
+        lines.append(f"### {item.id}: {item.title}")
+        lines.append("")
+        lines.append(f"- **Subreddit:** r/{item.subreddit}")
+        lines.append(f"- **URL:** {item.url}")
+        lines.append(f"- **Date:** {item.date or 'Unknown'} (confidence: {item.date_confidence})")
+        lines.append(f"- **Score:** {item.score}/100")
+        lines.append(f"- **Relevance:** {item.why_relevant}")
+        if item.engagement:
+            eng = item.engagement
+            lines.append(f"- **Engagement:** {eng.score or '?'} points, {eng.num_comments or '?'} comments")
+        if item.comment_insights:
             lines.append("")
+            lines.append("**Key Insights from Comments:**")
+            for insight in item.comment_insights:
+                lines.append(f"- {insight}")
+        lines.append("")
+    return lines
 
+
+def _render_full_x(report: schema.Report) -> List[str]:
+    """Build the X Posts section for render_full_report."""
+    if not report.x:
+        return []
+    lines = ["## X Posts", ""]
+    for item in report.x:
+        lines.append(f"### {item.id}: @{item.author_handle}")
+        lines.append("")
+        lines.append(f"- **URL:** {item.url}")
+        lines.append(f"- **Date:** {item.date or 'Unknown'} (confidence: {item.date_confidence})")
+        lines.append(f"- **Score:** {item.score}/100")
+        lines.append(f"- **Relevance:** {item.why_relevant}")
+        if item.engagement:
+            eng = item.engagement
+            lines.append(f"- **Engagement:** {eng.likes or '?'} likes, {eng.reposts or '?'} reposts")
+        lines.append("")
+        lines.append(f"> {item.text}")
+        lines.append("")
+    return lines
+
+
+def _render_full_web(report: schema.Report) -> List[str]:
+    """Build the Web Results section for render_full_report."""
+    if not report.web:
+        return []
+    lines = ["## Web Results", ""]
+    for item in report.web:
+        lines.append(f"### {item.id}: {item.title}")
+        lines.append("")
+        lines.append(f"- **Source:** {item.source_domain}")
+        lines.append(f"- **URL:** {item.url}")
+        lines.append(f"- **Date:** {item.date or 'Unknown'} (confidence: {item.date_confidence})")
+        lines.append(f"- **Score:** {item.score}/100")
+        lines.append(f"- **Relevance:** {item.why_relevant}")
+        lines.append("")
+        lines.append(f"> {item.snippet}")
+        lines.append("")
+    return lines
+
+
+# ─── Public render functions ──────────────────────────────────────────────────
+
+def render_compact(report: schema.Report, limit: int = 15, missing_keys: str = "none") -> str:
+    """Render compact output for Claude to synthesize.
+
+    Args:
+        report: Report data
+        limit: Max items per source
+        missing_keys: 'both', 'reddit', 'x', or 'none'
+
+    Returns:
+        Compact markdown string
+    """
+    freshness = _assess_data_freshness(report)
+    lines = (
+        _render_compact_header(report, missing_keys, freshness)
+        + _render_compact_reddit(report, limit)
+        + _render_compact_x(report, limit)
+        + _render_compact_web(report, limit)
+    )
     return "\n".join(lines)
 
 
@@ -261,66 +375,9 @@ def render_full_report(report: schema.Report) -> str:
         lines.append(f"- **xAI:** {report.xai_model_used}")
     lines.append("")
 
-    # Reddit section
-    if report.reddit:
-        lines.append("## Reddit Threads")
-        lines.append("")
-        for item in report.reddit:
-            lines.append(f"### {item.id}: {item.title}")
-            lines.append("")
-            lines.append(f"- **Subreddit:** r/{item.subreddit}")
-            lines.append(f"- **URL:** {item.url}")
-            lines.append(f"- **Date:** {item.date or 'Unknown'} (confidence: {item.date_confidence})")
-            lines.append(f"- **Score:** {item.score}/100")
-            lines.append(f"- **Relevance:** {item.why_relevant}")
-
-            if item.engagement:
-                eng = item.engagement
-                lines.append(f"- **Engagement:** {eng.score or '?'} points, {eng.num_comments or '?'} comments")
-
-            if item.comment_insights:
-                lines.append("")
-                lines.append("**Key Insights from Comments:**")
-                for insight in item.comment_insights:
-                    lines.append(f"- {insight}")
-
-            lines.append("")
-
-    # X section
-    if report.x:
-        lines.append("## X Posts")
-        lines.append("")
-        for item in report.x:
-            lines.append(f"### {item.id}: @{item.author_handle}")
-            lines.append("")
-            lines.append(f"- **URL:** {item.url}")
-            lines.append(f"- **Date:** {item.date or 'Unknown'} (confidence: {item.date_confidence})")
-            lines.append(f"- **Score:** {item.score}/100")
-            lines.append(f"- **Relevance:** {item.why_relevant}")
-
-            if item.engagement:
-                eng = item.engagement
-                lines.append(f"- **Engagement:** {eng.likes or '?'} likes, {eng.reposts or '?'} reposts")
-
-            lines.append("")
-            lines.append(f"> {item.text}")
-            lines.append("")
-
-    # Web section
-    if report.web:
-        lines.append("## Web Results")
-        lines.append("")
-        for item in report.web:
-            lines.append(f"### {item.id}: {item.title}")
-            lines.append("")
-            lines.append(f"- **Source:** {item.source_domain}")
-            lines.append(f"- **URL:** {item.url}")
-            lines.append(f"- **Date:** {item.date or 'Unknown'} (confidence: {item.date_confidence})")
-            lines.append(f"- **Score:** {item.score}/100")
-            lines.append(f"- **Relevance:** {item.why_relevant}")
-            lines.append("")
-            lines.append(f"> {item.snippet}")
-            lines.append("")
+    lines.extend(_render_full_reddit(report))
+    lines.extend(_render_full_x(report))
+    lines.extend(_render_full_web(report))
 
     # Placeholders for Claude synthesis
     lines.append("## Best Practices")

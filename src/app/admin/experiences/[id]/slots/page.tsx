@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
   Plus,
@@ -30,9 +30,20 @@ interface SlotFormData {
 
 const emptyForm: SlotFormData = { date: "", capacity: 10 };
 
+function getSlotStatusClass(isPast: boolean, isFull: boolean): string {
+  if (isPast) return "bg-foreground/5 text-foreground/40";
+  if (isFull) return "bg-red-500/10 text-red-500";
+  return "bg-green-500/10 text-green-500";
+}
+
+function getSlotStatusLabel(isPast: boolean, isFull: boolean): string {
+  if (isPast) return "Past";
+  if (isFull) return "Full";
+  return "Available";
+}
+
 export default function SlotsManagementPage() {
   const params = useParams();
-  const router = useRouter();
   const experienceId = params.id as string;
 
   const [slots, setSlots] = useState<Slot[]>([]);
@@ -277,15 +288,9 @@ export default function SlotsManagementPage() {
                     </td>
                     <td className="px-6 py-4">
                       <span
-                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          isPast
-                            ? "bg-foreground/5 text-foreground/40"
-                            : isFull
-                              ? "bg-red-500/10 text-red-500"
-                              : "bg-green-500/10 text-green-500"
-                        }`}
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSlotStatusClass(isPast, isFull)}`}
                       >
-                        {isPast ? "Past" : isFull ? "Full" : "Available"}
+                        {getSlotStatusLabel(isPast, isFull)}
                       </span>
                     </td>
                     <td className="px-6 py-4">
@@ -343,10 +348,14 @@ export default function SlotsManagementPage() {
               )}
 
               <div>
-                <label className="block text-sm font-medium text-foreground/70 mb-1.5">
+                <label
+                  htmlFor="slot-date"
+                  className="block text-sm font-medium text-foreground/70 mb-1.5"
+                >
                   Slot Date
                 </label>
                 <input
+                  id="slot-date"
                   type="date"
                   required
                   min={new Date().toISOString().slice(0, 10)}
@@ -359,10 +368,14 @@ export default function SlotsManagementPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground/70 mb-1.5">
+                <label
+                  htmlFor="slot-capacity"
+                  className="block text-sm font-medium text-foreground/70 mb-1.5"
+                >
                   Seat Capacity
                 </label>
                 <input
+                  id="slot-capacity"
                   type="number"
                   required
                   min={1}

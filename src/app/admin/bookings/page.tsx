@@ -62,6 +62,15 @@ const STATUS_FILTERS: (BookingStatus | "ALL")[] = [
   "CANCELLED",
 ];
 
+// Module-level utility — no component state needed
+function formatDate(d: string) {
+  return new Date(d).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 export default function AdminBookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -92,14 +101,6 @@ export default function AdminBookingsPage() {
     );
   });
 
-  function formatDate(d: string) {
-    return new Date(d).toLocaleDateString("en-IN", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-  }
-
   const statusIcon = (s: BookingStatus) => {
     if (s === "CONFIRMED") return <CheckCircle2 className="w-3.5 h-3.5" />;
     if (s === "CANCELLED") return <XCircle className="w-3.5 h-3.5" />;
@@ -116,6 +117,112 @@ export default function AdminBookingsPage() {
   const requestedCount = bookings.filter(
     (b) => b.bookingStatus === "REQUESTED",
   ).length;
+
+  function renderTableContent() {
+    if (isLoading) {
+      return (
+        <div className="flex justify-center py-20">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary" />
+        </div>
+      );
+    }
+    if (filtered.length === 0) {
+      return (
+        <div className="bg-card border border-border rounded-2xl p-16 text-center">
+          <Users className="w-12 h-12 mx-auto mb-4 text-foreground/20" />
+          <p className="text-foreground/50">No bookings found.</p>
+        </div>
+      );
+    }
+    return (
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-border bg-foreground/[0.02]">
+                {[
+                  "Customer",
+                  "Experience",
+                  "Slot Date",
+                  "Pax",
+                  "Amount",
+                  "Status",
+                  "Payment",
+                  "Booked On",
+                ].map((h) => (
+                  <th
+                    key={h}
+                    className="text-left text-xs font-semibold text-foreground/50 uppercase tracking-wider px-5 py-4 whitespace-nowrap"
+                  >
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {filtered.map((b) => (
+                <tr
+                  key={b.id}
+                  className="hover:bg-foreground/[0.02] transition-colors"
+                >
+                  <td className="px-5 py-4">
+                    <p className="font-medium text-foreground text-sm">
+                      {b.user.name}
+                    </p>
+                    <p className="text-xs text-foreground/50">{b.user.email}</p>
+                    {b.user.phoneNumber && (
+                      <p className="text-xs text-foreground/40">
+                        {b.user.phoneNumber}
+                      </p>
+                    )}
+                  </td>
+                  <td className="px-5 py-4">
+                    <Link
+                      href={`/experiences/${b.experience.slug}`}
+                      className="text-sm font-medium text-primary hover:underline"
+                      target="_blank"
+                    >
+                      {b.experience.title}
+                    </Link>
+                  </td>
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-1.5 text-sm text-foreground/70 whitespace-nowrap">
+                      <CalendarDays className="w-3.5 h-3.5" />
+                      {b.slot ? formatDate(b.slot.date) : "—"}
+                    </div>
+                  </td>
+                  <td className="px-5 py-4 text-sm text-foreground/70">
+                    {b.participantCount}
+                  </td>
+                  <td className="px-5 py-4 text-sm font-semibold text-foreground">
+                    ₹{Number(b.totalPrice).toLocaleString("en-IN")}
+                  </td>
+                  <td className="px-5 py-4">
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${statusStyles[b.bookingStatus]}`}
+                    >
+                      {statusIcon(b.bookingStatus)}
+                      {b.bookingStatus}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4">
+                    <span
+                      className={`text-xs font-semibold ${paymentStyles[b.paymentStatus]}`}
+                    >
+                      {b.paymentStatus}
+                    </span>
+                  </td>
+                  <td className="px-5 py-4 text-xs text-foreground/50 whitespace-nowrap">
+                    {formatDate(b.createdAt)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -204,106 +311,7 @@ export default function AdminBookingsPage() {
         </div>
       </div>
 
-      {/* Table */}
-      {isLoading ? (
-        <div className="flex justify-center py-20">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary" />
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="bg-card border border-border rounded-2xl p-16 text-center">
-          <Users className="w-12 h-12 mx-auto mb-4 text-foreground/20" />
-          <p className="text-foreground/50">No bookings found.</p>
-        </div>
-      ) : (
-        <div className="bg-card border border-border rounded-2xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-border bg-foreground/[0.02]">
-                  {[
-                    "Customer",
-                    "Experience",
-                    "Slot Date",
-                    "Pax",
-                    "Amount",
-                    "Status",
-                    "Payment",
-                    "Booked On",
-                  ].map((h) => (
-                    <th
-                      key={h}
-                      className="text-left text-xs font-semibold text-foreground/50 uppercase tracking-wider px-5 py-4 whitespace-nowrap"
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {filtered.map((b) => (
-                  <tr
-                    key={b.id}
-                    className="hover:bg-foreground/[0.02] transition-colors"
-                  >
-                    <td className="px-5 py-4">
-                      <p className="font-medium text-foreground text-sm">
-                        {b.user.name}
-                      </p>
-                      <p className="text-xs text-foreground/50">
-                        {b.user.email}
-                      </p>
-                      {b.user.phoneNumber && (
-                        <p className="text-xs text-foreground/40">
-                          {b.user.phoneNumber}
-                        </p>
-                      )}
-                    </td>
-                    <td className="px-5 py-4">
-                      <Link
-                        href={`/experiences/${b.experience.slug}`}
-                        className="text-sm font-medium text-primary hover:underline"
-                        target="_blank"
-                      >
-                        {b.experience.title}
-                      </Link>
-                    </td>
-                    <td className="px-5 py-4">
-                      <div className="flex items-center gap-1.5 text-sm text-foreground/70 whitespace-nowrap">
-                        <CalendarDays className="w-3.5 h-3.5" />
-                        {b.slot ? formatDate(b.slot.date) : "—"}
-                      </div>
-                    </td>
-                    <td className="px-5 py-4 text-sm text-foreground/70">
-                      {b.participantCount}
-                    </td>
-                    <td className="px-5 py-4 text-sm font-semibold text-foreground">
-                      ₹{Number(b.totalPrice).toLocaleString("en-IN")}
-                    </td>
-                    <td className="px-5 py-4">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${statusStyles[b.bookingStatus]}`}
-                      >
-                        {statusIcon(b.bookingStatus)}
-                        {b.bookingStatus}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4">
-                      <span
-                        className={`text-xs font-semibold ${paymentStyles[b.paymentStatus]}`}
-                      >
-                        {b.paymentStatus}
-                      </span>
-                    </td>
-                    <td className="px-5 py-4 text-xs text-foreground/50 whitespace-nowrap">
-                      {formatDate(b.createdAt)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {renderTableContent()}
     </div>
   );
 }
