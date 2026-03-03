@@ -26,12 +26,12 @@ function ToolbarButton({
   active,
   title,
   children,
-}: {
+}: Readonly<{
   onClick: () => void;
   active?: boolean;
   title: string;
   children: React.ReactNode;
-}) {
+}>) {
   return (
     <button
       type="button"
