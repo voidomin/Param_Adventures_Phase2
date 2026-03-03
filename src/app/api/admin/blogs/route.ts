@@ -31,7 +31,6 @@ export async function GET(request: NextRequest) {
           select: { id: true, name: true, email: true, avatarUrl: true },
         },
         experience: { select: { id: true, title: true, slug: true } },
-        coverImage: { select: { originalUrl: true } },
       },
       orderBy: { updatedAt: "desc" },
       skip,

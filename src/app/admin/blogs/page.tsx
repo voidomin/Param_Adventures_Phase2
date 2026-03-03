@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Navbar from "@/components/layout/Navbar";
 import {
   CheckCircle,
   XCircle,
@@ -155,6 +154,28 @@ export default function AdminBlogsPage() {
     PENDING_REVIEW: blogs.filter((b) => b.status === "PENDING_REVIEW").length,
   };
 
+  const getStatusBadgeStyles = (status: string) => {
+    switch (status) {
+      case "PUBLISHED":
+        return "bg-green-500/10 text-green-500 border-green-500/20";
+      case "PENDING_REVIEW":
+        return "bg-yellow-500/10 text-yellow-500 border-yellow-500/20";
+      default:
+        return "bg-slate-500/10 text-slate-400 border-slate-500/20";
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "PUBLISHED":
+        return <CheckCircle className="w-3 h-3" />;
+      case "PENDING_REVIEW":
+        return <Clock className="w-3 h-3" />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-6xl mx-auto px-4 py-8">
@@ -181,9 +202,11 @@ export default function AdminBlogsPage() {
                     : "border-border text-foreground/60 hover:text-foreground hover:bg-foreground/5"
                 }`}
               >
-                {s === "PENDING_REVIEW"
-                  ? `Pending${counts.PENDING_REVIEW > 0 ? ` (${counts.PENDING_REVIEW})` : ""}`
-                  : s.replace("_", " ")}
+                {s === "PENDING_REVIEW" && counts.PENDING_REVIEW > 0
+                  ? `Pending (${counts.PENDING_REVIEW})`
+                  : s === "PENDING_REVIEW"
+                    ? "Pending"
+                    : s.replace("_", " ")}
               </button>
             ))}
           </div>
@@ -219,19 +242,9 @@ export default function AdminBlogsPage() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <span
-                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border ${
-                        blog.status === "PUBLISHED"
-                          ? "bg-green-500/10 text-green-500 border-green-500/20"
-                          : blog.status === "PENDING_REVIEW"
-                            ? "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
-                            : "bg-slate-500/10 text-slate-400 border-slate-500/20"
-                      }`}
+                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border ${getStatusBadgeStyles(blog.status)}`}
                     >
-                      {blog.status === "PUBLISHED" ? (
-                        <CheckCircle className="w-3 h-3" />
-                      ) : blog.status === "PENDING_REVIEW" ? (
-                        <Clock className="w-3 h-3" />
-                      ) : null}
+                      {getStatusIcon(blog.status)}
                       {blog.status.replace("_", " ")}
                     </span>
                     {blog.experience && (
