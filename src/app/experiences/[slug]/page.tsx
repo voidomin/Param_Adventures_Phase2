@@ -12,6 +12,7 @@ import {
   Activity,
   Image as ImageIcon,
 } from "lucide-react";
+import BookNowButton from "@/components/booking/BookNowButton";
 
 export const revalidate = 60;
 
@@ -272,12 +273,13 @@ export default async function ExperienceDetailPage({
               </li>
             </ul>
 
-            <button className="w-full py-4 rounded-xl bg-primary text-primary-foreground font-black text-lg hover:scale-[1.02] transition-transform shadow-xl shadow-primary/25">
-              Book Now (Coming Soon)
-            </button>
-            <p className="text-center text-xs text-foreground/50 mt-4 font-medium">
-              Secure payment powered by Razorpay in Milestone 4
-            </p>
+            <BookNowButton
+              experienceId={experience.id}
+              experienceTitle={experience.title}
+              experienceSlug={experience.slug}
+              basePrice={Number(experience.basePrice)}
+              maxCapacity={experience.capacity}
+            />
           </div>
         </div>
       </div>
