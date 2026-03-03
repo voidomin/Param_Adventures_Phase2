@@ -3,42 +3,25 @@
 import { useState, useCallback } from "react";
 import { UploadCloud, Loader2 } from "lucide-react";
 
-// Module-level helper — no component state needed
+// Module-level helper — uploads file via server-side Cloudinary route
 async function uploadSingleFile(file: File): Promise<string> {
   if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
     throw new Error("Only images and videos are supported.");
   }
 
-  const presignRes = await fetch("/api/admin/media/presign", {
+  const form = new FormData();
+  form.append("file", file);
+
+  const res = await fetch("/api/admin/media/upload", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ fileName: file.name, contentType: file.type }),
+    body: form,
+    // No Content-Type header — browser sets it with boundary automatically
   });
-  const presignData = await presignRes.json();
-  if (!presignRes.ok) throw new Error(presignData.error || "Failed to presign");
 
-  const { uploadUrl, finalUrl } = presignData;
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || `Failed to upload ${file.name}`);
 
-  if (uploadUrl !== "MOCK_UPLOAD") {
-    const uploadRes = await fetch(uploadUrl, {
-      method: "PUT",
-      body: file,
-      headers: { "Content-Type": file.type },
-    });
-    if (!uploadRes.ok) throw new Error(`Failed to upload ${file.name} to S3`);
-  }
-
-  const dbRes = await fetch("/api/admin/media", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      originalUrl: finalUrl,
-      type: file.type.startsWith("video/") ? "VIDEO" : "IMAGE",
-    }),
-  });
-  if (!dbRes.ok) throw new Error("Failed to save to database");
-
-  return finalUrl;
+  return data.url as string;
 }
 
 export default function MediaUploader({

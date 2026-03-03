@@ -2,10 +2,11 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyAccessToken } from "@/lib/auth";
-import { generatePresignedUrl } from "@/lib/s3";
+import { uploadToCloudinary } from "@/lib/cloudinary";
 
 /**
- * POST /api/user/avatar/presign — Generate a presigned URL for avatar upload
+ * POST /api/user/avatar — Upload avatar directly to Cloudinary
+ * Accepts multipart/form-data with a "file" field.
  */
 export async function POST(request: NextRequest) {
   const accessToken = request.cookies.get("accessToken")?.value;
@@ -18,32 +19,51 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { fileName, contentType } = await request.json();
-    if (!fileName || !contentType) {
+    const formData = await request.formData();
+    const file = formData.get("file") as File | null;
+
+    if (!file) {
+      return NextResponse.json({ error: "No file provided." }, { status: 400 });
+    }
+
+    if (!file.type.startsWith("image/")) {
       return NextResponse.json(
-        { error: "Missing fileName or contentType" },
+        { error: "Only image files are allowed for avatars." },
         { status: 400 },
       );
     }
 
-    const safeFileName = `avatars/${payload.userId}-${Date.now()}-${fileName.replaceAll(/\s+/g, "_")}`;
-    const { uploadUrl, finalUrl } = await generatePresignedUrl(
-      safeFileName,
-      contentType,
-    );
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
 
-    return NextResponse.json({ uploadUrl, finalUrl });
+    const result = await uploadToCloudinary(buffer, {
+      folder: "param-adventures/avatars",
+      resource_type: "image",
+      public_id: `avatar-${payload.userId}`, // Overwrite on re-upload
+    });
+
+    // Save the new avatar URL on the user record
+    const updated = await prisma.user.update({
+      where: { id: payload.userId },
+      data: { avatarUrl: result.secure_url },
+      select: { id: true, avatarUrl: true },
+    });
+
+    return NextResponse.json({
+      success: true,
+      avatarUrl: updated.avatarUrl,
+    });
   } catch (error) {
-    console.error("[Avatar Presign] Error:", error);
+    console.error("[Avatar Upload] Error:", error);
     return NextResponse.json(
-      { error: "Failed to generate upload URL" },
+      { error: "Failed to upload avatar." },
       { status: 500 },
     );
   }
 }
 
 /**
- * PATCH /api/user/avatar — Save the avatarUrl to the user record
+ * PATCH /api/user/avatar — Save a pre-existing avatarUrl to the user record
  */
 export async function PATCH(request: NextRequest) {
   const accessToken = request.cookies.get("accessToken")?.value;
