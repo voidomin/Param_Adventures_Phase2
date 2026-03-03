@@ -13,7 +13,7 @@ import type { NextRequest } from "next/server";
  * so we only check for token presence here. Actual verification happens
  * in the API route handlers via verifyAccessToken().
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // ─── Always-public routes ──────────────────────────────
