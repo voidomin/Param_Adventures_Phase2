@@ -429,6 +429,19 @@ export default function DashboardPage() {
                   >
                     <PenLine className="w-3.5 h-3.5" /> My Blogs
                   </Link>
+                  {[
+                    "TREK_LEAD",
+                    "TRIP_MANAGER",
+                    "ADMIN",
+                    "SUPER_ADMIN",
+                  ].includes(user.roleName) && (
+                    <Link
+                      href="/dashboard/assignments"
+                      className="inline-flex items-center gap-2 text-sm text-primary font-semibold hover:underline"
+                    >
+                      <Compass className="w-3.5 h-3.5" /> My Assignments
+                    </Link>
+                  )}
                 </div>
               ) : (
                 <div className="mt-4 p-4 bg-background border border-border rounded-xl space-y-3 max-w-sm">

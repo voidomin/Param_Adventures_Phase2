@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import Navbar from "@/components/layout/Navbar";
-import dynamic from "next/dynamic";
 import {
   MapPin,
   CalendarDays,
@@ -16,7 +15,7 @@ import ClientTiptapViewer from "@/components/blog/ClientTiptapViewer";
 
 export const revalidate = 60;
 
-type Props = { params: Promise<{ slug: string }> };
+type Props = Readonly<{ params: Promise<{ slug: string }> }>;
 
 export default async function BlogArticlePage({ params }: Props) {
   const { slug } = await params;
@@ -35,7 +34,6 @@ export default async function BlogArticlePage({ params }: Props) {
           images: true,
         },
       },
-      coverImage: { select: { originalUrl: true } },
     },
   });
 
@@ -44,7 +42,6 @@ export default async function BlogArticlePage({ params }: Props) {
   }
 
   const cover =
-    blog.coverImage?.originalUrl ??
     blog.experience?.images[0] ??
     `https://picsum.photos/seed/${blog.id}/1200/600`;
 

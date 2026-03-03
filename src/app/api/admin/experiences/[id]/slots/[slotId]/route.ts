@@ -2,93 +2,118 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 
-interface RouteContext {
-  params: Promise<{ id: string; slotId: string }>;
-}
-
-/**
- * PATCH /api/admin/experiences/[id]/slots/[slotId] — Update a slot
- */
-export async function PATCH(request: NextRequest, context: RouteContext) {
-  const auth = await authorizeRequest(request, "trip:edit");
+// PATCH /api/admin/experiences/[id]/slots/[slotId]
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; slotId: string }> },
+) {
+  const auth = await authorizeRequest(request, "trip:moderate");
   if (!auth.authorized) return auth.response;
 
-  const { slotId } = await context.params;
-
   try {
-    const existing = await prisma.slot.findUnique({ where: { id: slotId } });
-    if (!existing) {
-      return NextResponse.json({ error: "Slot not found." }, { status: 404 });
-    }
-
+    const { id, slotId } = await params;
     const body = await request.json();
     const { date, capacity } = body;
 
-    const data: Record<string, unknown> = {};
-    if (date) data.date = new Date(date);
+    if (!date && typeof capacity !== "number") {
+      return NextResponse.json(
+        { error: "Date or capacity must be provided." },
+        { status: 400 },
+      );
+    }
+
+    const slot = await prisma.slot.findUnique({
+      where: { id: slotId },
+      include: {
+        _count: {
+          select: {
+            bookings: { where: { bookingStatus: { not: "CANCELLED" } } },
+          },
+        },
+      },
+    });
+
+    if (!slot || slot.experienceId !== id) {
+      return NextResponse.json({ error: "Slot not found" }, { status: 404 });
+    }
+
+    const bookedCount = slot.capacity - slot.remainingCapacity;
+
     if (capacity !== undefined) {
-      const newCapacity = Number(capacity);
-      if (newCapacity <= 0) {
+      if (capacity < bookedCount) {
         return NextResponse.json(
-          { error: "Capacity must be greater than 0." },
+          {
+            error: `Cannot reduce capacity below currently booked seats (${bookedCount}).`,
+          },
           { status: 400 },
         );
       }
-      // Adjust remaining capacity proportionally
-      const bookedCount = existing.capacity - existing.remainingCapacity;
-      data.capacity = newCapacity;
-      data.remainingCapacity = Math.max(0, newCapacity - bookedCount);
     }
 
-    const slot = await prisma.slot.update({
+    const newCapacity = capacity !== undefined ? capacity : slot.capacity;
+    const newRemaining = newCapacity - bookedCount;
+
+    const updatedSlot = await prisma.slot.update({
       where: { id: slotId },
-      data,
+      data: {
+        ...(date && { date: new Date(date) }),
+        capacity: newCapacity,
+        remainingCapacity: newRemaining,
+      },
     });
 
-    return NextResponse.json({ slot });
+    return NextResponse.json({ slot: updatedSlot });
   } catch (error) {
-    console.error("Error updating slot:", error);
+    console.error("Update slot error:", error);
     return NextResponse.json(
-      { error: "Failed to update slot." },
+      { error: "Failed to update slot" },
       { status: 500 },
     );
   }
 }
 
-/**
- * DELETE /api/admin/experiences/[id]/slots/[slotId] — Delete a slot
- */
-export async function DELETE(request: NextRequest, context: RouteContext) {
-  const auth = await authorizeRequest(request, "trip:edit");
+// DELETE /api/admin/experiences/[id]/slots/[slotId]
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; slotId: string }> },
+) {
+  const auth = await authorizeRequest(request, "trip:moderate");
   if (!auth.authorized) return auth.response;
 
-  const { slotId } = await context.params;
-
   try {
-    const existing = await prisma.slot.findUnique({
+    const { id, slotId } = await params;
+
+    const slot = await prisma.slot.findUnique({
       where: { id: slotId },
-      include: { _count: { select: { bookings: true } } },
+      include: {
+        _count: {
+          select: {
+            bookings: { where: { bookingStatus: { not: "CANCELLED" } } },
+          },
+        },
+      },
     });
 
-    if (!existing) {
-      return NextResponse.json({ error: "Slot not found." }, { status: 404 });
+    if (!slot || slot.experienceId !== id) {
+      return NextResponse.json({ error: "Slot not found" }, { status: 404 });
     }
 
-    if (existing._count.bookings > 0) {
+    if (slot._count.bookings > 0) {
       return NextResponse.json(
-        {
-          error: `Cannot delete: ${existing._count.bookings} booking(s) exist for this slot.`,
-        },
+        { error: "Cannot delete a slot that has active bookings." },
         { status: 409 },
       );
     }
 
-    await prisma.slot.delete({ where: { id: slotId } });
-    return NextResponse.json({ message: "Slot deleted." });
+    await prisma.slot.delete({
+      where: { id: slotId },
+    });
+
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Error deleting slot:", error);
+    console.error("Delete slot error:", error);
     return NextResponse.json(
-      { error: "Failed to delete slot." },
+      { error: "Failed to delete slot" },
       { status: 500 },
     );
   }

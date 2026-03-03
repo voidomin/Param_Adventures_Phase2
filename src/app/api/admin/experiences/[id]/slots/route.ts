@@ -2,63 +2,66 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 
-interface RouteContext {
-  params: Promise<{ id: string }>;
-}
-
-/**
- * GET /api/admin/experiences/[id]/slots — List all slots for an experience
- */
-export async function GET(request: NextRequest, context: RouteContext) {
-  const auth = await authorizeRequest(request, "trip:browse");
+// GET /api/admin/experiences/[id]/slots - List all slots for an experience
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const auth = await authorizeRequest(request, "trip:moderate");
+  // Assuming Trip Manager / Admin can view slots
   if (!auth.authorized) return auth.response;
 
-  const { id } = await context.params;
-
   try {
+    const { id } = await params;
     const slots = await prisma.slot.findMany({
       where: { experienceId: id },
       orderBy: { date: "asc" },
       include: {
-        _count: { select: { bookings: true } },
+        _count: {
+          select: {
+            bookings: { where: { bookingStatus: { not: "CANCELLED" } } },
+          },
+        },
       },
     });
 
     return NextResponse.json({ slots });
   } catch (error) {
-    console.error("Error fetching slots:", error);
+    console.error("Fetch slots error:", error);
     return NextResponse.json(
-      { error: "Failed to fetch slots." },
+      { error: "Failed to fetch slots" },
       { status: 500 },
     );
   }
 }
 
-/**
- * POST /api/admin/experiences/[id]/slots — Create a new slot
- */
-export async function POST(request: NextRequest, context: RouteContext) {
-  const auth = await authorizeRequest(request, "trip:create");
+// POST /api/admin/experiences/[id]/slots - Create a new slot
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const auth = await authorizeRequest(request, "trip:moderate"); // Need to verify correct permission
   if (!auth.authorized) return auth.response;
 
-  const { id } = await context.params;
-
   try {
-    const experience = await prisma.experience.findUnique({ where: { id } });
-    if (!experience) {
+    const { id } = await params;
+    const { date, capacity } = await request.json();
+
+    if (!date || !capacity || capacity < 1) {
       return NextResponse.json(
-        { error: "Experience not found." },
-        { status: 404 },
+        { error: "Valid date and capacity (>0) are required." },
+        { status: 400 },
       );
     }
 
-    const body = await request.json();
-    const { date, capacity } = body;
+    const experience = await prisma.experience.findUnique({
+      where: { id },
+    });
 
-    if (!date || !capacity || capacity <= 0) {
+    if (!experience) {
       return NextResponse.json(
-        { error: "date and capacity (> 0) are required." },
-        { status: 400 },
+        { error: "Experience not found" },
+        { status: 404 },
       );
     }
 
@@ -73,9 +76,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({ slot }, { status: 201 });
   } catch (error) {
-    console.error("Error creating slot:", error);
+    console.error("Create slot error:", error);
     return NextResponse.json(
-      { error: "Failed to create slot." },
+      { error: "Failed to create slot" },
       { status: 500 },
     );
   }

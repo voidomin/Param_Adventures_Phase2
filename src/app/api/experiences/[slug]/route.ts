@@ -14,6 +14,13 @@ export async function GET(
         categories: {
           include: { category: true },
         },
+        slots: {
+          where: {
+            date: { gt: new Date() },
+            remainingCapacity: { gt: 0 },
+          },
+          orderBy: { date: "asc" },
+        },
       },
     });
 

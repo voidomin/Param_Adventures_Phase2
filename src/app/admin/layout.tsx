@@ -14,6 +14,7 @@ import {
   Image as ImageIcon,
   MonitorPlay,
   PenLine,
+  ClipboardList,
 } from "lucide-react";
 
 export default function AdminLayout({
@@ -73,6 +74,12 @@ export default function AdminLayout({
       href: "/admin/hero",
       icon: MonitorPlay,
       permission: "trip:create",
+    },
+    {
+      name: "Operational Trips",
+      href: "/admin/trips",
+      icon: ClipboardList,
+      permission: "trip:moderate",
     },
     {
       name: "Bookings",
