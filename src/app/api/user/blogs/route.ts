@@ -28,7 +28,8 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/user/blogs — create a new blog draft
- * Gate: user must have exactly one CONFIRMED booking for the experienceId
+ * Gate: user must have a CONFIRMED booking for the experience
+ *       AND the trip slot date must be in the past (trip completed)
  * Constraint: one blog per (user, experience)
  */
 export async function POST(request: NextRequest) {
@@ -49,20 +50,22 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Gate: must have a CONFIRMED booking for this experience
+  // Gate: must have a CONFIRMED booking AND the trip must be completed (slot date in the past)
+  const now = new Date();
   const confirmedBooking = await prisma.booking.findFirst({
     where: {
       userId: payload.userId,
       experienceId,
       bookingStatus: "CONFIRMED",
       deletedAt: null,
+      slot: { date: { lt: now } },
     },
   });
   if (!confirmedBooking) {
     return NextResponse.json(
       {
         error:
-          "You can only write about experiences you have attended (confirmed booking required).",
+          "You can only write about experiences where your trip has been completed (trip date must have passed).",
       },
       { status: 403 },
     );

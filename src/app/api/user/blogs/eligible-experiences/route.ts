@@ -4,8 +4,10 @@ import { verifyAccessToken } from "@/lib/auth";
 
 /**
  * GET /api/user/blogs/eligible-experiences
- * Returns experiences the user has a CONFIRMED booking for
- * AND has not yet written a blog about.
+ * Returns experiences where:
+ *   - User has a CONFIRMED booking
+ *   - The slot date has already passed (trip is completed)
+ *   - User has not yet written a blog about it
  */
 export async function GET(request: NextRequest) {
   const token = request.cookies.get("accessToken")?.value;
@@ -24,13 +26,15 @@ export async function GET(request: NextRequest) {
     .map((b) => b.experienceId)
     .filter(Boolean) as string[];
 
-  // Get confirmed bookings for distinct experiences not yet blogged
+  // Only return experiences where the trip is completed (slot date in the past)
+  const now = new Date();
   const bookings = await prisma.booking.findMany({
     where: {
       userId: payload.userId,
       bookingStatus: "CONFIRMED",
       deletedAt: null,
       experienceId: { notIn: bloggedIds },
+      slot: { date: { lt: now } }, // trip must have already happened
     },
     include: {
       experience: {
