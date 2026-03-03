@@ -4,7 +4,7 @@ import { authorizeRequest } from "@/lib/api-auth";
 
 // GET /api/admin/users?role=SOME_ROLE
 export async function GET(request: NextRequest) {
-  const auth = await authorizeRequest(request, "trip:moderate"); // Or higher permission
+  const auth = await authorizeRequest(request, "user:view-all"); // Or higher permission
   if (!auth.authorized) return auth.response;
 
   try {

@@ -65,12 +65,14 @@ export async function authorizeRequest(
       };
     }
 
-    const hasPermission = user.role.permissions.some((rp) => {
-      if (Array.isArray(requiredPermission)) {
-        return requiredPermission.includes(rp.permission.key);
-      }
-      return rp.permission.key === requiredPermission;
-    });
+    const hasPermission =
+      user.role.name === "SUPER_ADMIN" ||
+      user.role.permissions.some((rp) => {
+        if (Array.isArray(requiredPermission)) {
+          return requiredPermission.includes(rp.permission.key);
+        }
+        return rp.permission.key === requiredPermission;
+      });
 
     if (!hasPermission) {
       return {
