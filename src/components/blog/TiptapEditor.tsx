@@ -61,6 +61,7 @@ export default function TiptapEditor({
     extensions: [StarterKit, Placeholder.configure({ placeholder })],
     content,
     editable,
+    immediatelyRender: false,
     onUpdate({ editor }) {
       onChange(editor.getJSON());
     },
