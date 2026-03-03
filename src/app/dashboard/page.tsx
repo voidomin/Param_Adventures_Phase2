@@ -19,6 +19,10 @@ import {
   IndianRupee,
   Loader2,
   Camera,
+  Pencil,
+  Save,
+  X as XIcon,
+  User,
 } from "lucide-react";
 
 interface DashboardData {
@@ -219,6 +223,10 @@ export default function DashboardPage() {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileForm, setProfileForm] = useState({ name: "", phoneNumber: "" });
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileSaved, setProfileSaved] = useState(false);
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -247,41 +255,53 @@ export default function DashboardPage() {
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setIsUploadingAvatar(true);
     try {
-      // 1. Get presigned URL
-      const presignRes = await fetch("/api/user/avatar", {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/user/avatar", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fileName: file.name,
-          contentType: file.type,
-        }),
+        body: form,
       });
-      const { uploadUrl, finalUrl } = await presignRes.json();
-
-      // 2. Upload file (skip if mock)
-      if (uploadUrl !== "MOCK_UPLOAD") {
-        await fetch(uploadUrl, {
-          method: "PUT",
-          body: file,
-          headers: { "Content-Type": file.type },
-        });
-      }
-
-      // 3. Save URL to user record
-      await fetch("/api/user/avatar", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ avatarUrl: finalUrl }),
-      });
-
-      setAvatarUrl(finalUrl);
+      const data = await res.json();
+      if (res.ok && data.avatarUrl) setAvatarUrl(data.avatarUrl);
     } catch (err) {
       console.error("Avatar upload failed:", err);
     } finally {
       setIsUploadingAvatar(false);
+    }
+  };
+
+  const openProfileEditor = () => {
+    if (!data) return;
+    setProfileForm({
+      name: data.user.name,
+      phoneNumber: data.user.phoneNumber ?? "",
+    });
+    setIsEditingProfile(true);
+    setProfileSaved(false);
+  };
+
+  const handleProfileSave = async () => {
+    setIsSavingProfile(true);
+    try {
+      const res = await fetch("/api/user/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(profileForm),
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        setData((prev) =>
+          prev ? { ...prev, user: { ...prev.user, ...saved.user } } : prev,
+        );
+        setProfileSaved(true);
+        setTimeout(() => setIsEditingProfile(false), 800);
+      }
+    } catch (err) {
+      console.error("Profile save failed:", err);
+    } finally {
+      setIsSavingProfile(false);
     }
   };
 
@@ -379,7 +399,7 @@ export default function DashboardPage() {
             <div className="flex-1">
               <div className="flex flex-wrap items-center gap-3 mb-2">
                 <h1 className="text-3xl md:text-4xl font-heading font-black text-foreground">
-                  {user.name}
+                  {data.user.name}
                 </h1>
                 <span className="px-3 py-1 bg-primary/10 text-primary border border-primary/20 rounded-full text-xs font-bold uppercase tracking-wider">
                   {user.roleName.replaceAll("_", " ")}
@@ -392,6 +412,83 @@ export default function DashboardPage() {
               <p className="text-foreground/40 text-sm mt-2">
                 Member since {memberSince}
               </p>
+
+              {/* Profile Edit Toggle */}
+              {!isEditingProfile ? (
+                <button
+                  onClick={openProfileEditor}
+                  className="mt-4 inline-flex items-center gap-2 text-sm text-primary font-semibold hover:underline"
+                >
+                  <Pencil className="w-3.5 h-3.5" /> Edit Profile
+                </button>
+              ) : (
+                <div className="mt-4 p-4 bg-background border border-border rounded-xl space-y-3 max-w-sm">
+                  <div className="flex items-center gap-2 mb-1">
+                    <User className="w-4 h-4 text-foreground/50" />
+                    <span className="text-xs font-semibold text-foreground/50 uppercase tracking-wider">
+                      Edit Profile
+                    </span>
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="profile-name"
+                      className="block text-xs text-foreground/50 mb-1"
+                    >
+                      Display Name
+                    </label>
+                    <input
+                      id="profile-name"
+                      type="text"
+                      value={profileForm.name}
+                      onChange={(e) =>
+                        setProfileForm((p) => ({ ...p, name: e.target.value }))
+                      }
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="profile-phone"
+                      className="block text-xs text-foreground/50 mb-1"
+                    >
+                      Phone Number
+                    </label>
+                    <input
+                      id="profile-phone"
+                      type="tel"
+                      placeholder="+91 98765 43210"
+                      value={profileForm.phoneNumber}
+                      onChange={(e) =>
+                        setProfileForm((p) => ({
+                          ...p,
+                          phoneNumber: e.target.value,
+                        }))
+                      }
+                      className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={handleProfileSave}
+                      disabled={isSavingProfile}
+                      className="flex-1 flex items-center justify-center gap-1.5 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-bold hover:bg-primary/90 transition-colors disabled:opacity-50"
+                    >
+                      {isSavingProfile ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Save className="w-3.5 h-3.5" />
+                      )}
+                      {profileSaved ? "Saved ✓" : "Save"}
+                    </button>
+                    <button
+                      onClick={() => setIsEditingProfile(false)}
+                      className="px-3 py-2 border border-border rounded-lg text-sm text-foreground/60 hover:bg-foreground/5 transition-colors"
+                    >
+                      <XIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Stats */}
