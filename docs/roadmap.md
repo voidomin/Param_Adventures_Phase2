@@ -27,13 +27,13 @@ This roadmap outlines the path from planning to the production release of **Phas
 ## 🔜 Milestone 4: Booking & Payments (Priority)
 
 - [ ] **Slot Management**: Capacity-aware scheduling — fixed date batches (e.g., "June 14–20, 2025") with seat limits.
-- [ ] **Checkout Flow**: Razorpay integration for secure group bookings with payment confirmation.
-- [ ] **User Dashboard**: Booking history, upcoming trips, and profile management for logged-in users.
+- [x] **Checkout Flow**: Razorpay integration for secure group bookings with payment confirmation.
+- [x] **User Dashboard**: Booking history, upcoming trips, and profile management for logged-in users.
 
 ## 🔜 Milestone 4b: Operations & Content
 
 - [ ] **Operational Tools**: Trip Lead assignments and participant manifest lists.
-- [ ] **Blog System**: SEO-friendly article CMS with admin moderation.
+- [x] **Blog System**: SEO-friendly article CMS with admin moderation.
 - [ ] **Notification Engine**: Automated Email (SES) and SMS triggers on booking events.
 
 ## 🔜 Milestone 5: Polishing & Launch

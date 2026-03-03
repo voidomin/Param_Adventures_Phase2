@@ -62,15 +62,24 @@ export default function UserBlogsPage() {
 
   useEffect(() => {
     fetch("/api/user/blogs")
-      .then((r) => {
+      .then(async (r) => {
         if (r.status === 401) {
           router.push("/login?redirect=/dashboard/blog");
           return null;
         }
-        return r.json();
+        if (!r.ok) {
+          console.error("Failed to fetch blogs:", await r.text());
+          return null;
+        }
+        try {
+          return await r.json();
+        } catch (e) {
+          console.error("Invalid JSON response:", e);
+          return null;
+        }
       })
       .then((data) => {
-        if (data) setBlogs(data.blogs);
+        if (data && data.blogs) setBlogs(data.blogs);
       })
       .finally(() => setIsLoading(false));
   }, [router]);

@@ -23,6 +23,7 @@ import {
   Save,
   X as XIcon,
   User,
+  PenLine,
 } from "lucide-react";
 
 interface DashboardData {
@@ -415,12 +416,20 @@ export default function DashboardPage() {
 
               {/* Profile Edit Toggle */}
               {!isEditingProfile ? (
-                <button
-                  onClick={openProfileEditor}
-                  className="mt-4 inline-flex items-center gap-2 text-sm text-primary font-semibold hover:underline"
-                >
-                  <Pencil className="w-3.5 h-3.5" /> Edit Profile
-                </button>
+                <div className="mt-4 flex flex-wrap gap-5">
+                  <button
+                    onClick={openProfileEditor}
+                    className="inline-flex items-center gap-2 text-sm text-primary font-semibold hover:underline"
+                  >
+                    <Pencil className="w-3.5 h-3.5" /> Edit Profile
+                  </button>
+                  <Link
+                    href="/dashboard/blog"
+                    className="inline-flex items-center gap-2 text-sm text-primary font-semibold hover:underline"
+                  >
+                    <PenLine className="w-3.5 h-3.5" /> My Blogs
+                  </Link>
+                </div>
               ) : (
                 <div className="mt-4 p-4 bg-background border border-border rounded-xl space-y-3 max-w-sm">
                   <div className="flex items-center gap-2 mb-1">
