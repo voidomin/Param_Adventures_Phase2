@@ -11,6 +11,7 @@ import {
   Users,
   CheckCircle,
   XCircle,
+  CalendarDays,
 } from "lucide-react";
 
 interface Category {
@@ -260,6 +261,13 @@ export default function AdminExperiencesPage() {
                   className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg transition-colors font-medium border border-primary/20"
                 >
                   <Edit2 className="w-4 h-4" /> Edit
+                </Link>
+                <Link
+                  href={`/admin/experiences/${exp.id}/slots`}
+                  className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-foreground/5 text-foreground/70 hover:bg-foreground/10 rounded-lg transition-colors font-medium border border-border"
+                  title="Manage Slots"
+                >
+                  <CalendarDays className="w-4 h-4" /> Slots
                 </Link>
                 <button
                   onClick={() =>
