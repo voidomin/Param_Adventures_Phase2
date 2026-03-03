@@ -116,8 +116,17 @@ export default function AdminBlogsPage() {
       router.push("/login");
       return;
     }
-    const data = await res.json();
-    setBlogs(data.blogs ?? []);
+    if (!res.ok) {
+      console.error("Admin blogs fetch failed:", await res.text());
+      setIsLoading(false);
+      return;
+    }
+    try {
+      const data = await res.json();
+      setBlogs(data.blogs ?? []);
+    } catch (e) {
+      console.error("Invalid JSON response from admin blogs:", e);
+    }
     setIsLoading(false);
   };
 
