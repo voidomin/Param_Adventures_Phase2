@@ -12,10 +12,7 @@ import {
   Mountain,
 } from "lucide-react";
 
-// Render Tiptap JSON read-only
-const TiptapEditor = dynamic(() => import("@/components/blog/TiptapEditor"), {
-  ssr: false,
-});
+import ClientTiptapViewer from "@/components/blog/ClientTiptapViewer";
 
 export const revalidate = 60;
 
@@ -122,11 +119,7 @@ export default async function BlogArticlePage({ params }: Props) {
 
         {/* Content */}
         <div className="prose prose-sm md:prose dark:prose-invert max-w-none mb-12">
-          <TiptapEditor
-            content={blog.content as object}
-            onChange={() => {}}
-            editable={false}
-          />
+          <ClientTiptapViewer content={blog.content as object} />
         </div>
 
         {/* Experience CTA */}
