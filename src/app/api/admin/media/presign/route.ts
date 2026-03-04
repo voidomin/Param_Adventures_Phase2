@@ -26,10 +26,7 @@ export async function POST(request: NextRequest) {
     if (process.env.CLOUDINARY_API_KEY) {
       console.log("Using Cloudinary for direct upload presign");
       const { generateCloudinarySignature } = await import("@/lib/cloudinary");
-      const cloudData = await generateCloudinarySignature(
-        "param-adventures",
-        contentType.startsWith("video/") ? "video" : "image",
-      );
+      const cloudData = await generateCloudinarySignature("param-adventures");
       return NextResponse.json({ provider: "cloudinary", ...cloudData });
     }
 
@@ -50,7 +47,7 @@ export async function POST(request: NextRequest) {
       `Using ${isS3Configured ? "S3" : "Mock"} for direct upload presign`,
     );
     return NextResponse.json({ provider: "s3", uploadUrl, finalUrl });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Presign error:", error);
     return NextResponse.json(
       { error: "Failed to generate upload URL" },

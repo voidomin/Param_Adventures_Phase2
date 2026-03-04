@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 import { authorizeRequest } from "@/lib/api-auth";
 
 // GET /api/admin/users?role=SOME_ROLE
@@ -11,7 +12,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const roleName = searchParams.get("role");
 
-    const whereClause: any = {
+    const whereClause: Prisma.UserWhereInput = {
       status: "ACTIVE",
     };
 

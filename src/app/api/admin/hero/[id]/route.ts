@@ -25,7 +25,7 @@ export async function GET(
     }
 
     return NextResponse.json(slide);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Fetch hero slide error:", error);
     return NextResponse.json(
       { error: "Failed to fetch hero slide" },
@@ -66,7 +66,7 @@ export async function PUT(
     });
 
     return NextResponse.json(updatedSlide);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Update hero slide error:", error);
     return NextResponse.json(
       { error: "Failed to update hero slide" },
@@ -95,7 +95,7 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Delete hero slide error:", error);
     return NextResponse.json(
       { error: "Failed to delete hero slide" },

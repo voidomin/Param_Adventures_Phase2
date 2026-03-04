@@ -56,8 +56,8 @@ export default function TrekLeadTripManifestPage() {
 
       setTrip(data.trip);
       setManifest(data.manifest || []);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load");
     } finally {
       setIsLoading(false);
     }

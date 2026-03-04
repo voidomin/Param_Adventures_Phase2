@@ -27,7 +27,7 @@ interface ItineraryDay {
 export default function ExperienceForm({
   initialData = null,
 }: Readonly<{
-  initialData?: any;
+  initialData?: Record<string, any> | null;
 }>) {
   const router = useRouter();
   const isEditing = !!initialData;
@@ -55,14 +55,15 @@ export default function ExperienceForm({
     initialData?.isFeatured || false,
   );
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
-    initialData?.categories?.map((c: any) => c.categoryId) || [],
+    initialData?.categories?.map((c: Record<string, any>) => c.categoryId) ||
+      [],
   );
 
   // Arrays
   const [images, setImages] = useState<string[]>(initialData?.images || []);
   const [itinerary, setItinerary] = useState<ItineraryDay[]>(
     (initialData?.itinerary || [{ title: "", description: "" }]).map(
-      (d: any) => ({
+      (d: Record<string, any>) => ({
         ...d,
         _id: d._id || crypto.randomUUID(),
       }),

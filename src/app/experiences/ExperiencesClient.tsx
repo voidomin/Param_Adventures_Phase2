@@ -222,6 +222,7 @@ export default function ExperiencesClient({
             animate="show"
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
           >
+            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             {filteredExperiences.map((exp: any) => (
               <motion.div key={exp.id} variants={itemVariants}>
                 <ExperienceCard experience={exp} />

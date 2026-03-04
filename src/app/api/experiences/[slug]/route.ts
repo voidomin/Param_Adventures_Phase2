@@ -32,7 +32,7 @@ export async function GET(
     }
 
     return NextResponse.json(experience);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Fetch experience details error:", error);
     return NextResponse.json(
       { error: "Failed to fetch experience details" },

@@ -13,6 +13,7 @@ export async function logActivity(
   actorId: string | null,
   targetType: string,
   targetId?: string | null,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   metadata?: Record<string, any>,
 ) {
   try {
@@ -22,7 +23,8 @@ export async function logActivity(
         actorId,
         targetType,
         targetId,
-        metadata: metadata ? JSON.parse(JSON.stringify(metadata)) : null,
+        // @ts-expect-error Prisma strictly expects InputJsonValue which clashes with Record<string,any>
+        metadata: metadata ? structuredClone(metadata) : null,
       },
     });
   } catch (error) {

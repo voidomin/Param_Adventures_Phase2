@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({ slides });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Fetch hero slides error:", error);
     return NextResponse.json(
       { error: "Failed to fetch hero slides" },
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json(slide, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Create hero slide error:", error);
     return NextResponse.json(
       { error: "Failed to create hero slide" },

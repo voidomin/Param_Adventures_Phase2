@@ -30,7 +30,7 @@ export async function uploadToCloudinary(
   } = {},
 ): Promise<CloudinaryUploadResult> {
   return new Promise((resolve, reject) => {
-    const uploadOptions: any = {
+    const uploadOptions: Record<string, unknown> = {
       folder: options.folder ?? "param-adventures",
       resource_type: options.resource_type ?? "auto",
       public_id: options.public_id,
@@ -90,7 +90,6 @@ export async function deleteFromCloudinary(
  */
 export async function generateCloudinarySignature(
   folder: string = "param-adventures",
-  resourceType: "image" | "video" = "image",
 ) {
   const timestamp = Math.round(Date.now() / 1000);
   const signature = cloudinary.utils.api_sign_request(

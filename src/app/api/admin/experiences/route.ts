@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({ experiences });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Failed to fetch experiences:", err);
     return NextResponse.json(
       { error: "Failed to fetch experiences" },
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
       { message: "Experience created successfully", experience: newExperience },
       { status: 201 },
     );
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Failed to create experience:", err);
     return NextResponse.json(
       { error: "Internal Server Error" },

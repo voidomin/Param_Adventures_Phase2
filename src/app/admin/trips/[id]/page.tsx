@@ -68,7 +68,7 @@ export default function TripManifestPage() {
       // Let's just fetch all trips and find it.
       const res = await fetch("/api/admin/trips");
       const data = await res.json();
-      const found = data.trips?.find((t: any) => t.id === tripId);
+      const found = data.trips?.find((t: { id: string }) => t.id === tripId);
       if (found) setTrip(found);
     } catch (err) {
       console.error(err);
@@ -119,8 +119,8 @@ export default function TripManifestPage() {
 
       setSelectedLeadId("");
       fetchTripDetails(); // Refresh assignments
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to assign lead.");
     } finally {
       setIsAssigning(false);
     }
@@ -137,8 +137,9 @@ export default function TripManifestPage() {
       if (!res.ok) throw new Error("Failed to remove lead.");
 
       fetchTripDetails();
-    } catch (err: any) {
-      alert(err.message || "Failed to remove lead.");
+    } catch (err: unknown) {
+      console.error(err);
+      alert(err instanceof Error ? err.message : "Failed to remove lead.");
     }
   };
 

@@ -74,8 +74,8 @@ export default function AdminUsersPage() {
       );
 
       setTimeout(() => setSuccessMsg(""), 3000);
-    } catch (error: any) {
-      setErrorMsg(error.message);
+    } catch (error: unknown) {
+      setErrorMsg(error instanceof Error ? error.message : "Update failed");
       setTimeout(() => setErrorMsg(""), 5000);
     } finally {
       setUpdatingUserId(null);

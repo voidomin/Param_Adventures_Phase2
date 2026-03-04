@@ -37,6 +37,7 @@ export interface RefreshPayload {
  */
 export function generateAccessToken(userId: string, roleName: string): string {
   return jwt.sign({ userId, roleName } satisfies TokenPayload, JWT_SECRET, {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expiresIn: JWT_EXPIRY as any,
   });
 }
@@ -48,6 +49,7 @@ export function generateRefreshToken(userId: string): string {
   return jwt.sign(
     { userId, type: "refresh" } satisfies RefreshPayload,
     JWT_SECRET,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     { expiresIn: REFRESH_TOKEN_EXPIRY as any },
   );
 }

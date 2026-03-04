@@ -36,7 +36,7 @@ export async function GET(
     }
 
     return NextResponse.json({ experience });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Failed to fetch experience:", err);
     return NextResponse.json(
       { error: "Internal Server Error" },
@@ -140,7 +140,7 @@ export async function PUT(
       message: "Experience updated successfully",
       experience: updatedExperience,
     });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Failed to update experience:", err);
     return NextResponse.json(
       { error: "Internal Server Error" },
@@ -186,7 +186,7 @@ export async function DELETE(
       await prisma.experience.delete({ where: { id } });
       return NextResponse.json({ message: "Experience permanently deleted" });
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error("Failed to delete experience:", err);
     return NextResponse.json(
       { error: "Internal Server Error" },

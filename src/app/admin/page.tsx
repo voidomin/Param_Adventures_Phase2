@@ -27,8 +27,9 @@ interface AdminDashboardData {
     action: string;
     actorId: string | null;
     targetType: string;
+    targetId: string | null;
     timestamp: string;
-    metadata: any;
+    metadata: Record<string, any> | null;
   }[];
 }
 

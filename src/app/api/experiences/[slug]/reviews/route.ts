@@ -126,7 +126,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     }
 
     // Upsert the review (one per user per experience)
-    const review = await prisma.experienceReview.upsert({
+    const reviewResult = await prisma.experienceReview.upsert({
       where: {
         experienceId_userId: {
           experienceId: experience.id,
@@ -148,7 +148,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       },
     });
 
-    return NextResponse.json({ success: true, review });
+    return NextResponse.json({ review: reviewResult });
   } catch (error) {
     console.error("Submit review error:", error);
     return NextResponse.json(

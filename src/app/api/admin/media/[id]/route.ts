@@ -36,7 +36,7 @@ export async function DELETE(
     });
 
     return NextResponse.json({ success: true, s3Success });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Delete media error:", error);
     return NextResponse.json(
       { error: "Failed to delete media" },

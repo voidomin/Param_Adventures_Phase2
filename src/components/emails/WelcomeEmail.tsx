@@ -35,8 +35,8 @@ export const WelcomeEmail = ({
             </Text>
             <Text style={text}>
               Thanks for joining the Param Adventures community! We curate
-              incredible trekking and adventure experiences across India's most
-              breathtaking landscapes.
+              incredible trekking and adventure experiences across India&apos;s
+              most breathtaking landscapes.
             </Text>
             <Text style={text}>
               Browse our upcoming trips, pick a date that works for you, invite

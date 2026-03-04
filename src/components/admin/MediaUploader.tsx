@@ -5,7 +5,7 @@ import { UploadCloud, Loader2 } from "lucide-react";
 
 async function uploadToCloudinaryDirect(
   file: File,
-  uploadData: any,
+  uploadData: Record<string, any>,
   onProgress?: (percent: number) => void,
 ): Promise<string> {
   // Cloudinary standard upload limit is 100MB.
@@ -134,7 +134,7 @@ async function uploadToCloudinaryDirect(
 
 async function uploadToS3Direct(
   file: File,
-  uploadData: any,
+  uploadData: Record<string, any>,
   onProgress?: (percent: number) => void,
 ): Promise<string> {
   if (uploadData.uploadUrl === "MOCK_UPLOAD") {

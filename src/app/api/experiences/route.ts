@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 
 export async function GET(request: Request) {
   try {
@@ -8,7 +9,7 @@ export async function GET(request: Request) {
     const difficulty = searchParams.get("difficulty");
 
     // Build the query
-    const where: any = {
+    const where: Prisma.ExperienceWhereInput = {
       status: "PUBLISHED",
     };
 
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
     }
 
     if (difficulty) {
-      where.difficulty = difficulty;
+      where.difficulty = difficulty as "EASY" | "MODERATE" | "HARD" | "EXTREME";
     }
 
     const experiences = await prisma.experience.findMany({
@@ -33,7 +34,7 @@ export async function GET(request: Request) {
     });
 
     return NextResponse.json({ experiences });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Fetch experiences error:", error);
     return NextResponse.json(
       { error: "Failed to fetch experiences" },

@@ -210,8 +210,8 @@ export default async function ExperienceDetailPage({
                   Detailed Itinerary
                 </h2>
                 <div className="space-y-6">
-                  {(experience.itinerary as any[]).map(
-                    (dayItem: any, index: number) => (
+                  {(experience.itinerary as Record<string, any>[]).map(
+                    (dayItem: Record<string, any>, index: number) => (
                       <div
                         key={dayItem.id || dayItem._id || `day-${index}`}
                         className="relative pl-8 md:pl-0"
