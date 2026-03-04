@@ -11,11 +11,6 @@ const prisma = new PrismaClient({ adapter });
 
 const ROLES = [
   {
-    name: "GUEST",
-    description: "Unauthenticated visitor — read-only access",
-    isSystem: true,
-  },
-  {
     name: "REGISTERED_USER",
     description: "Authenticated customer — can book, write blogs",
     isSystem: true,
@@ -198,8 +193,6 @@ const PERMISSIONS = [
 // ─── Role → Permission mapping (from Section 5 matrix) ──
 
 const ROLE_PERMISSIONS: Record<string, string[]> = {
-  GUEST: ["trip:browse"],
-
   REGISTERED_USER: [
     "trip:browse",
     "booking:create",

@@ -26,14 +26,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Admins can see all roles except SUPER_ADMIN unless they are SUPER_ADMIN
-    const whereClause =
-      userRole.role.name === "SUPER_ADMIN"
-        ? {}
-        : { name: { not: "SUPER_ADMIN" } };
+    // Exclude GUEST (removed) and SUPER_ADMIN (unless acting user is SUPER_ADMIN)
+    const excludedRoles = ["GUEST"];
+    if (userRole.role.name !== "SUPER_ADMIN") {
+      excludedRoles.push("SUPER_ADMIN");
+    }
 
     const roles = await prisma.role.findMany({
-      where: whereClause,
+      where: { name: { notIn: excludedRoles } },
       orderBy: { name: "asc" },
       select: {
         id: true,
