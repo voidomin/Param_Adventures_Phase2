@@ -41,7 +41,11 @@ export async function uploadToCloudinary(
       },
       (error, result) => {
         if (error || !result) {
-          reject(error ?? new Error("Cloudinary upload failed"));
+          reject(
+            error instanceof Error
+              ? error
+              : new Error(error?.message || "Cloudinary upload failed"),
+          );
         } else {
           resolve(result as CloudinaryUploadResult);
         }

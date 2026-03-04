@@ -8,7 +8,6 @@ import {
   PenLine,
   CheckCircle,
   Clock,
-  XCircle,
   Trash2,
   Edit3,
   AlertTriangle,
@@ -79,7 +78,7 @@ export default function UserBlogsPage() {
         }
       })
       .then((data) => {
-        if (data && data.blogs) setBlogs(data.blogs);
+        if (data?.blogs) setBlogs(data.blogs);
       })
       .finally(() => setIsLoading(false));
   }, [router]);
@@ -114,11 +113,13 @@ export default function UserBlogsPage() {
           </Link>
         </div>
 
-        {isLoading ? (
+        {isLoading && (
           <div className="flex justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
-        ) : blogs.length === 0 ? (
+        )}
+
+        {!isLoading && blogs.length === 0 && (
           <div className="text-center py-20 border border-dashed border-border rounded-2xl">
             <Mountain className="w-12 h-12 text-foreground/20 mx-auto mb-4" />
             <h2 className="text-lg font-bold text-foreground/60 mb-2">
@@ -134,7 +135,9 @@ export default function UserBlogsPage() {
               <PenLine className="w-4 h-4" /> Write your first blog
             </Link>
           </div>
-        ) : (
+        )}
+
+        {!isLoading && blogs.length > 0 && (
           <div className="space-y-4">
             {blogs.map((blog) => (
               <div

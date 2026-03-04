@@ -40,7 +40,7 @@ declare global {
 
 function loadRazorpayScript(): Promise<boolean> {
   return new Promise((resolve) => {
-    if (typeof window.Razorpay !== "undefined") {
+    if ((globalThis as any).Razorpay !== undefined) {
       resolve(true);
       return;
     }
@@ -68,7 +68,7 @@ export default function BookingModal({
   basePrice,
   maxCapacity,
   onClose,
-}: BookingModalProps) {
+}: Readonly<BookingModalProps>) {
   const [slots, setSlots] = useState<Slot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(true);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
@@ -135,7 +135,7 @@ export default function BookingModal({
       setBookingId(bId);
 
       // Launch Razorpay checkout
-      const rzp = new window.Razorpay({
+      const rzp = new (globalThis as any).Razorpay({
         key: keyId,
         amount,
         currency,
@@ -209,11 +209,13 @@ export default function BookingModal({
               Choose a Date
             </h3>
 
-            {slotsLoading ? (
+            {slotsLoading && (
               <div className="flex justify-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
-            ) : slots.length === 0 ? (
+            )}
+
+            {!slotsLoading && slots.length === 0 && (
               <div className="text-center py-12">
                 <CalendarDays className="w-12 h-12 mx-auto mb-3 text-foreground/20" />
                 <p className="text-foreground/50 font-medium">
@@ -223,7 +225,9 @@ export default function BookingModal({
                   Check back soon for upcoming slots.
                 </p>
               </div>
-            ) : (
+            )}
+
+            {!slotsLoading && slots.length > 0 && (
               <>
                 <div className="space-y-3">
                   {visibleSlots.map((slot) => (
@@ -246,7 +250,7 @@ export default function BookingModal({
                           </p>
                           <p className="text-xs text-foreground/50 mt-0.5">
                             {slot.remainingCapacity} seat
-                            {slot.remainingCapacity !== 1 ? "s" : ""} available
+                            {slot.remainingCapacity === 1 ? "" : "s"} available
                           </p>
                         </div>
                       </div>
@@ -333,7 +337,7 @@ export default function BookingModal({
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-sm text-foreground/60">
                     ₹{basePrice.toLocaleString("en-IN")} × {participants} person
-                    {participants !== 1 ? "s" : ""}
+                    {participants === 1 ? "" : "s"}
                   </span>
                   <span className="text-xl font-black text-primary">
                     ₹{totalPrice.toLocaleString("en-IN")}
@@ -367,7 +371,7 @@ export default function BookingModal({
                 {
                   icon: <Users className="w-4 h-4" />,
                   label: "Participants",
-                  value: `${participants} person${participants !== 1 ? "s" : ""}`,
+                  value: `${participants} person${participants === 1 ? "" : "s"}`,
                 },
                 {
                   icon: <IndianRupee className="w-4 h-4" />,

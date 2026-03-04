@@ -66,7 +66,7 @@ export default function WriteBlogPage() {
     }
     setIsSaving(true);
     try {
-      if (!blogId) {
+      if (blogId === null) {
         // Create new blog
         const res = await fetch("/api/user/blogs", {
           method: "POST",
@@ -212,14 +212,19 @@ export default function WriteBlogPage() {
 
           {/* Editor */}
           <div>
-            <label className="block text-sm font-semibold text-foreground/70 mb-2">
+            <label
+              htmlFor="blog-writer-content"
+              className="block text-sm font-semibold text-foreground/70 mb-2"
+            >
               Your Story
             </label>
-            <TiptapEditor
-              content={EMPTY_DOC}
-              onChange={setContent}
-              placeholder="Describe your experience in vivid detail — the views, the people, the emotions…"
-            />
+            <div id="blog-writer-content">
+              <TiptapEditor
+                content={EMPTY_DOC}
+                onChange={setContent}
+                placeholder="Describe your experience in vivid detail — the views, the people, the emotions…"
+              />
+            </div>
           </div>
 
           {/* Error */}
