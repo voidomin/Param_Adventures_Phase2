@@ -1,4 +1,5 @@
 import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
 import Hero from "@/components/layout/Hero";
 import CategoryBar from "@/components/home/CategoryBar";
 import { prisma } from "@/lib/db";
@@ -53,14 +54,7 @@ export default async function Home() {
         )}
       </div>
 
-      {/* Footer Placeholder */}
-      <footer className="bg-black py-20 border-t border-white/5">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <p className="text-white/30 text-sm">
-            © 2026 Param Adventure. All rights reserved.
-          </p>
-        </div>
-      </footer>
+      <Footer />
     </main>
   );
 }

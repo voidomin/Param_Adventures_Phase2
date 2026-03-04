@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import Navbar from "@/components/layout/Navbar";
 import {
   Clock,
@@ -15,6 +16,45 @@ import {
 import BookNowButton from "@/components/booking/BookNowButton";
 
 export const revalidate = 60;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const experience = await prisma.experience.findUnique({
+    where: { slug },
+    select: {
+      title: true,
+      description: true,
+      images: true,
+      location: true,
+    },
+  });
+
+  if (!experience) return { title: "Experience Not Found" };
+
+  const ogImage = experience.images?.[0] || "/param-logo.png";
+
+  return {
+    title: experience.title,
+    description:
+      experience.description ||
+      `Explore ${experience.title} in ${experience.location || "India"} with Param Adventures.`,
+    openGraph: {
+      title: experience.title,
+      description: experience.description || undefined,
+      images: [{ url: ogImage, alt: experience.title }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: experience.title,
+      description: experience.description || undefined,
+      images: [ogImage],
+    },
+  };
+}
 
 export default async function ExperienceDetailPage({
   params,

@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import Navbar from "@/components/layout/Navbar";
 import {
@@ -16,6 +17,38 @@ import ClientTiptapViewer from "@/components/blog/ClientTiptapViewer";
 export const revalidate = 60;
 
 type Props = Readonly<{ params: Promise<{ slug: string }> }>;
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params;
+  const blog = await prisma.blog.findUnique({
+    where: { slug },
+    select: {
+      title: true,
+      coverImage: { select: { originalUrl: true } },
+    },
+  });
+
+  if (!blog) return { title: "Blog Not Found" };
+
+  const ogImage = blog.coverImage?.originalUrl || "/param-logo.png";
+  const desc = `Read "${blog.title}" on the Param Adventures blog.`;
+
+  return {
+    title: blog.title,
+    description: desc,
+    openGraph: {
+      title: blog.title,
+      description: desc,
+      images: [{ url: ogImage, alt: blog.title }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: blog.title,
+      description: desc,
+      images: [ogImage],
+    },
+  };
+}
 
 export default async function BlogArticlePage({ params }: Props) {
   const { slug } = await params;

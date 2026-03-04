@@ -1,0 +1,68 @@
+import type { MetadataRoute } from "next";
+import { prisma } from "@/lib/db";
+
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // Static pages
+  const staticPages: MetadataRoute.Sitemap = [
+    {
+      url: BASE_URL,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 1,
+    },
+    {
+      url: `${BASE_URL}/experiences`,
+      lastModified: new Date(),
+      changeFrequency: "daily",
+      priority: 0.9,
+    },
+    {
+      url: `${BASE_URL}/blog`,
+      lastModified: new Date(),
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+    {
+      url: `${BASE_URL}/terms`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.3,
+    },
+    {
+      url: `${BASE_URL}/privacy`,
+      lastModified: new Date(),
+      changeFrequency: "monthly",
+      priority: 0.3,
+    },
+  ];
+
+  // Dynamic experience pages
+  const experiences = await prisma.experience.findMany({
+    where: { status: "PUBLISHED", deletedAt: null },
+    select: { slug: true, updatedAt: true },
+  });
+
+  const experiencePages: MetadataRoute.Sitemap = experiences.map((exp) => ({
+    url: `${BASE_URL}/experiences/${exp.slug}`,
+    lastModified: exp.updatedAt,
+    changeFrequency: "weekly" as const,
+    priority: 0.8,
+  }));
+
+  // Dynamic blog pages
+  const blogs = await prisma.blog.findMany({
+    where: { status: "PUBLISHED", deletedAt: null },
+    select: { slug: true, updatedAt: true },
+  });
+
+  const blogPages: MetadataRoute.Sitemap = blogs.map((blog) => ({
+    url: `${BASE_URL}/blog/${blog.slug}`,
+    lastModified: blog.updatedAt,
+    changeFrequency: "monthly" as const,
+    priority: 0.6,
+  }));
+
+  return [...staticPages, ...experiencePages, ...blogPages];
+}

@@ -36,8 +36,8 @@ This roadmap outlines the path from planning to the production release of **Phas
 - [x] **Blog System**: SEO-friendly article CMS with admin moderation.
 - [x] **Notification Engine**: Automated email notifications via Resend (booking confirmations + welcome emails).
 
-## 🔜 Milestone 5: Polishing & Launch
+## ✅ Milestone 5: Polishing & Launch (Complete)
 
-- [ ] **SEO & Legal**: Finalize metadata, sitemaps, robots.txt, and legal pages (T&C, Privacy).
+- [x] **SEO & Legal**: Dynamic OG/Twitter meta, sitemap.xml, robots.txt, Terms & Conditions, Privacy Policy, Footer.
 - [ ] **Pre-Launch Audit**: Security checks, audit logging verification, and load testing.
 - [ ] **Production Deployment**: Final push to AWS and client handover.
