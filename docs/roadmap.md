@@ -34,7 +34,7 @@ This roadmap outlines the path from planning to the production release of **Phas
 
 - [x] **Operational Tools**: Trip Lead assignments and participant manifest lists.
 - [x] **Blog System**: SEO-friendly article CMS with admin moderation.
-- [ ] **Notification Engine**: Automated Email (SES) and SMS triggers on booking events.
+- [x] **Notification Engine**: Automated email notifications via Resend (booking confirmations + welcome emails).
 
 ## 🔜 Milestone 5: Polishing & Launch
 
