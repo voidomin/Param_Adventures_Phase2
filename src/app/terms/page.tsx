@@ -1,151 +1,106 @@
-import type { Metadata } from "next";
-import Navbar from "@/components/layout/Navbar";
-import Link from "next/link";
+import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Terms & Conditions",
-  description: "Terms and conditions for using Param Adventures services.",
+  title: "Terms and Conditions",
+  description:
+    "Terms and conditions for booking experiences with Param Adventures.",
 };
 
 export default function TermsPage() {
   return (
-    <main className="min-h-screen bg-background">
-      <Navbar />
-      <div className="max-w-3xl mx-auto px-4 py-24">
-        <h1 className="text-4xl font-heading font-black text-foreground mb-2">
-          Terms &amp; Conditions
+    <div className="min-h-screen bg-background pt-32 pb-20">
+      <div className="max-w-4xl mx-auto px-4 prose prose-neutral dark:prose-invert">
+        <h1 className="text-4xl font-black font-heading mb-8">
+          Terms and Conditions
         </h1>
-        <p className="text-sm text-foreground/40 mb-12">
-          Last updated: March 2026
+
+        <p className="text-lg text-foreground/70 mb-8">
+          Last updated:{" "}
+          {new Date().toLocaleDateString("en-US", {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          })}
         </p>
 
-        <div className="prose prose-invert max-w-none space-y-8 text-foreground/80 leading-relaxed text-[15px]">
-          <section>
-            <h2 className="text-xl font-bold text-foreground mb-3">
-              1. Acceptance of Terms
-            </h2>
-            <p>
-              By accessing and using the Param Adventures website and services,
-              you agree to be bound by these Terms &amp; Conditions. If you do
-              not agree, please do not use our services.
-            </p>
-          </section>
+        <section className="mb-8">
+          <h2 className="text-2xl font-bold mb-4">1. Agreement to Terms</h2>
+          <p>
+            By accessing or using Param Adventures website and booking our
+            trekking or adventure services, you agree to be bound by these Terms
+            and Conditions. If you disagree with any part of these terms, you
+            may not access our services.
+          </p>
+        </section>
 
-          <section>
-            <h2 className="text-xl font-bold text-foreground mb-3">
-              2. Services
-            </h2>
-            <p>
-              Param Adventures provides curated trekking, adventure, and
-              experiential travel services across India. Our services include
-              trip planning, booking management, and on-ground coordination for
-              outdoor experiences.
-            </p>
-          </section>
+        <section className="mb-8">
+          <h2 className="text-2xl font-bold mb-4">2. Bookings and Payments</h2>
+          <p>
+            All bookings are subject to availability and confirmation. A booking
+            is only confirmed once full or partial payment (as specified per
+            trip) has been received. We reserve the right to cancel bookings if
+            payment is not received within the specified timeframe. Payments are
+            securely processed via Razorpay.
+          </p>
+        </section>
 
-          <section>
-            <h2 className="text-xl font-bold text-foreground mb-3">
-              3. Booking &amp; Payments
-            </h2>
-            <p>
-              All bookings are subject to availability. Payments are processed
-              securely through Razorpay. Once a booking is confirmed and payment
-              is received, you will receive a confirmation email with your
-              booking details.
-            </p>
-            <p className="mt-2">
-              Prices listed on the website are in Indian Rupees (INR) and
-              include applicable taxes unless stated otherwise. Param Adventures
-              reserves the right to modify pricing at any time.
-            </p>
-          </section>
+        <section className="mb-8">
+          <h2 className="text-2xl font-bold mb-4">
+            3. Cancellation and Refunds
+          </h2>
+          <p>
+            Cancellations made 30 days or more before the trip start date are
+            eligible for a full refund minus a 10% processing fee. Cancellations
+            made between 15-29 days before the trip are eligible for a 50%
+            refund. No refunds are provided for cancellations made less than 15
+            days before the trip. In the event Param Adventures cancels a trip
+            due to weather or operational reasons, a full refund or free
+            rescheduling will be offered.
+          </p>
+        </section>
 
-          <section>
-            <h2 className="text-xl font-bold text-foreground mb-3">
-              4. Cancellation &amp; Refunds
-            </h2>
-            <p>
-              Cancellation policies vary by experience. Specific cancellation
-              terms will be provided at the time of booking. Refunds, if
-              applicable, will be processed within 7–14 business days to the
-              original payment method.
-            </p>
-          </section>
+        <section className="mb-8">
+          <h2 className="text-2xl font-bold mb-4">4. Health and Safety</h2>
+          <p>
+            Trekking and adventure sports involve inherent risks. Participants
+            are responsible for ensuring they meet the physical and medical
+            requirements of the chosen activity. It is mandatory to disclose any
+            pre-existing medical conditions before booking. The Trek Lead has
+            the final authority to refuse participation if they determine a
+            participant is unfit or endangers the group.
+          </p>
+        </section>
 
-          <section>
-            <h2 className="text-xl font-bold text-foreground mb-3">
-              5. User Responsibilities
-            </h2>
-            <p>
-              Participants are responsible for ensuring they are physically fit
-              and medically cleared for the activities they book. Param
-              Adventures is not liable for injuries, illness, or accidents
-              caused by participants{"'"} negligence or failure to disclose
-              medical conditions.
-            </p>
-          </section>
+        <section className="mb-8">
+          <h2 className="text-2xl font-bold mb-4">5. Code of Conduct</h2>
+          <p>
+            Participants are expected to respect nature, local cultures, and
+            fellow trekkers. Consumption of alcohol or illegal substances during
+            the active trek is strictly prohibited. Param Adventures maintains a
+            zero-tolerance policy for harassment or discrimination. Violators
+            may be immediately expelled from the trip without refund.
+          </p>
+        </section>
 
-          <section>
-            <h2 className="text-xl font-bold text-foreground mb-3">
-              6. Intellectual Property
-            </h2>
-            <p>
-              All content on this website, including text, images, logos, and
-              design, is the property of Param Adventures and is protected by
-              copyright laws. Unauthorized reproduction or distribution is
-              prohibited.
-            </p>
-          </section>
+        <section className="mb-8">
+          <h2 className="text-2xl font-bold mb-4">6. Liability Waiver</h2>
+          <p>
+            While we prioritize safety, Param Adventures and its vendors/leads
+            shall not be liable for any injury, loss, damage, or death occurring
+            during the trip, except where such liability cannot be excluded by
+            law. Participants must sign a physical liability waiver before the
+            trip commences.
+          </p>
+        </section>
 
-          <section>
-            <h2 className="text-xl font-bold text-foreground mb-3">
-              7. Limitation of Liability
-            </h2>
-            <p>
-              Param Adventures shall not be held liable for any indirect,
-              incidental, or consequential damages arising from the use of our
-              services. Our total liability is limited to the amount paid for
-              the specific booking in question.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-bold text-foreground mb-3">
-              8. Changes to Terms
-            </h2>
-            <p>
-              We reserve the right to modify these terms at any time. Continued
-              use of the website after changes constitutes acceptance of the
-              updated terms.
-            </p>
-          </section>
-
-          <section>
-            <h2 className="text-xl font-bold text-foreground mb-3">
-              9. Contact Us
-            </h2>
-            <p>
-              For questions about these Terms &amp; Conditions, please contact
-              us at{" "}
-              <a
-                href="mailto:support@paramadventures.com"
-                className="text-primary hover:underline font-semibold"
-              >
-                support@paramadventures.com
-              </a>
-            </p>
-          </section>
-        </div>
-
-        <div className="mt-16 pt-8 border-t border-border">
-          <Link
-            href="/privacy"
-            className="text-primary text-sm font-semibold hover:underline"
-          >
-            Read our Privacy Policy →
-          </Link>
-        </div>
+        <section>
+          <h2 className="text-2xl font-bold mb-4">7. Contact Information</h2>
+          <p>
+            For any questions regarding these Terms, please contact us at
+            support@paramadventures.com.
+          </p>
+        </section>
       </div>
-    </main>
+    </div>
   );
 }
