@@ -1,8 +1,27 @@
+import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import Navbar from "@/components/layout/Navbar";
 import ExperiencesClient from "./ExperiencesClient";
 
 export const revalidate = 60; // Revalidate every minute
+
+export const metadata: Metadata = {
+  title: "Explore Adventures",
+  description:
+    "Browse all of Param Adventures' curated treks, spiritual journeys, camping trips, and immersive experiences across India's most breathtaking landscapes.",
+  openGraph: {
+    title: "Explore Adventures | Param Adventures",
+    description:
+      "Browse all curated treks, spiritual journeys, and immersive experiences across India.",
+    url: "/experiences",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Explore Adventures | Param Adventures",
+    description:
+      "Browse all curated treks, camping trips, and immersive experiences across India.",
+  },
+};
 
 type Props = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
