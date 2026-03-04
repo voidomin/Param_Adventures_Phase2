@@ -33,10 +33,19 @@ This roadmap outlines the path from planning to the production release of **Phas
 ## ✅ Milestone 4b: Operations & Content (Complete)
 
 - [x] **Operational Tools**: Trip Lead assignments and participant manifest lists.
+- [x] **Trip Lifecycle & D-Day**: App interface for Trek Leads to start/end trips on location.
+- [x] **Manager Approvals**: Trip Manager review workflow for completed trips.
 - [x] **Blog System**: SEO-friendly article CMS with admin moderation.
-- [x] **Notification Engine**: Automated email notifications via Resend (booking confirmations + welcome emails).
+- [x] **Notification Engine**: Automated email notifications via Resend (Welcome, Bookings, Role updates, Trip completions) using React Email.
 
-## ✅ Milestone 5: Polishing & Launch (Complete)
+## ✅ Milestone 5: Reviews & Admin Infrastructure (Complete)
+
+- [x] **Post-Trip User Reviews**: Eligible participants can leave 1-5 star ratings and reviews.
+- [x] **Review Moderation & Display**: Public average rating on Experience pages.
+- [x] **Admin Dashboard**: Central Hub for high-level metrics (Revenue, Bookings, Upcoming trips).
+- [x] **System Audit Logs**: Real-time logging of critical system events (Roles, Trips, Bookings).
+
+## 🔜 Milestone 6: Polishing & Launch (Next)
 
 - [x] **SEO & Legal**: Dynamic OG/Twitter meta, sitemap.xml, robots.txt, Terms & Conditions, Privacy Policy, Footer.
 - [ ] **Pre-Launch Audit**: Security checks, audit logging verification, and load testing.

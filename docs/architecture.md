@@ -11,8 +11,8 @@
 | **ORM**        | Prisma                  | Type-safe schema management and query building.                     |
 | **Auth**       | Custom JWT (bcrypt)     | Self-hosted auth matching Phase 1 patterns. No third-party lock-in. |
 | **Payments**   | Razorpay                | Indian payment gateway with UPI, cards, and netbanking.             |
-| **Media**      | AWS S3                  | Scalable storage for images and videos.                             |
-| **Emails**     | AWS SES                 | Booking confirmations and notifications.                            |
+| **Media**      | AWS S3 & Cloudinary     | Scalable storage for images/videos. Cloudinary for optimizations.   |
+| **Emails**     | Resend (React Email)    | Booking confirmations, Welcome, and Status notifications.           |
 | **Icons**      | Lucide React            | Consistent, lightweight icon library.                               |
 | **Animations** | Framer Motion           | Smooth micro-animations and page transitions.                       |
 
@@ -52,7 +52,8 @@ User → UserRole → Role → RolePermission → Permission
 | AWS App Runner | Automated deployments from GitHub            |
 | Amazon RDS     | Managed PostgreSQL database                  |
 | Amazon S3      | Image/video storage for experiences          |
-| AWS SES        | Booking confirmation and notification emails |
+| Cloudinary     | Image transformation and optimized delivery  |
+| Resend         | Booking confirmation and notification emails |
 
 ## 5. Design System (Saffron & Obsidian)
 

@@ -1,36 +1,61 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Param Adventures (V2)
 
-## Getting Started
+Param Adventures is a mobile-first, full-stack experiential events platform. It organizes, markets, and manages real-world experiences—including treks, corporate outings, and city walks—through a single digital platform.
 
-First, run the development server:
+## 🏗️ Tech Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Framework:** Next.js 16 (App Router)
+- **Database:** PostgreSQL (via Prisma ORM)
+- **Authentication:** Custom JWT + RBAC (Role-Based Access Control)
+- **Styling:** Tailwind CSS 4 (Saffron & Obsidian Design System)
+- **Payments:** Razorpay
+- **Media Storage:** AWS S3 & Cloudinary
+- **Emails:** Resend & React Email
+
+## 📂 Project Structure
+
+```text
+├── docs/                 # Product requirements and technical documentation
+├── prisma/               # Database schema and seed scripts
+├── src/
+│   ├── app/              # Next.js App Router (Public, Dashboard, Admin)
+│   ├── components/       # Reusable UI components (Emails, Forms, Views)
+│   ├── lib/              # Core utilities (auth, db, payments, email, s3)
+│   └── middleware.ts     # Edge middleware for RBAC routing
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🚀 Getting Started
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 1. Environment Variables
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Create a `.env` file referencing `.env.example`. You will need PostgreSQL credentials, a secret key, Razorpay keys, Resend keys, and Cloudinary keys.
 
-## Learn More
+### 2. Install & Run
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm install
+npm run dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 3. Database & Seeding
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Ensure you seed the database to generate the 7 required Roles and 25 Permissions necessary for the app to function.
 
-## Deploy on Vercel
+```bash
+npx prisma db push
+npx prisma generate
+npm run seed
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🔐 Roles & Access Control
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+The application is governed by a strict Role-Based Access Control (RBAC) system. The seed script creates the following base roles:
+
+- `SUPER_ADMIN`, `ADMIN` (Full dashboard access)
+- `TRIP_MANAGER` (Approves completed treks and handles scheduling)
+- `TREK_LEAD` (Manages D-Day operations via the mobile trip interface)
+- `BLOGGER` (Writes content that requires admin approval)
+- `UPLOADER` (Restricted access to the S3 Media upload endpoints)
+- `REGISTERED_USER` (Default public user role)
+
+> **Documentation:** Please refer to the `/docs` folder for an in-depth reading of the PRD, the architecture, and the database schema.
