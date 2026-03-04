@@ -548,6 +548,29 @@ export default function DashboardPage() {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 space-y-16">
+        {/* Manager Hub — only visible to TRIP_MANAGER role */}
+        {user.roleName === "TRIP_MANAGER" && (
+          <section>
+            <div className="flex items-center justify-between bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-2xl p-6">
+              <div>
+                <h2 className="text-xl font-heading font-bold text-foreground">
+                  Manager Hub
+                </h2>
+                <p className="text-sm text-foreground/60 mt-1">
+                  You have trips assigned to you. Set up vendor contacts, assign
+                  trek leads, and manage your participants.
+                </p>
+              </div>
+              <Link
+                href="/dashboard/manager"
+                className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl font-bold hover:scale-105 transition-transform shadow-lg shadow-primary/25 text-sm shrink-0 ml-4"
+              >
+                My Trips <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </section>
+        )}
+
         {/* Upcoming Trips */}
         <section>
           <div className="flex items-center justify-between mb-8">

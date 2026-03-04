@@ -65,15 +65,42 @@ export async function PATCH(
 }
 
 /**
+ * Helper: resolves whether the caller is admin/super admin OR is the slot's assigned manager.
+ */
+async function canModifySlot(
+  callerId: string,
+  slotId: string,
+): Promise<boolean> {
+  const [caller, slot] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: callerId },
+      select: { role: { select: { name: true } } },
+    }),
+    prisma.slot.findUnique({
+      where: { id: slotId },
+      select: { managerId: true },
+    }),
+  ]);
+
+  if (!caller || !slot) return false;
+
+  const isPrivileged = ["ADMIN", "SUPER_ADMIN"].includes(caller.role.name);
+  const isAssignedManager = slot.managerId === callerId;
+
+  return isPrivileged || isAssignedManager;
+}
+
+/**
  * POST /api/admin/trips/[id]/assign
  * Assigns a Trek Lead to a specific slot.
+ * Allowed: Admin, Super Admin, or the assigned Trip Manager for this slot.
  * Body: { userId: string }
  */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await authorizeRequest(request, "trip:moderate");
+  const auth = await authorizeRequest(request);
   if (!auth.authorized) return auth.response;
 
   try {
@@ -84,6 +111,15 @@ export async function POST(
       return NextResponse.json(
         { error: "userId is required to assign a trek lead." },
         { status: 400 },
+      );
+    }
+
+    // Check permission: admin OR assigned manager
+    const allowed = await canModifySlot(auth.userId, slotId);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "You are not authorized to modify this trip." },
+        { status: 403 },
       );
     }
 
@@ -116,8 +152,13 @@ export async function POST(
     });
 
     return NextResponse.json({ assignment }, { status: 201 });
-  } catch (error: any) {
-    if (error.code === "P2002") {
+  } catch (error: unknown) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as { code: string }).code === "P2002"
+    ) {
       return NextResponse.json(
         { error: "User is already assigned to this trip." },
         { status: 409 },
@@ -134,12 +175,13 @@ export async function POST(
 /**
  * DELETE /api/admin/trips/[id]/assign?userId=xxx
  * Unassigns a Trek Lead from a slot.
+ * Allowed: Admin, Super Admin, or the assigned Trip Manager for this slot.
  */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await authorizeRequest(request, "trip:moderate");
+  const auth = await authorizeRequest(request);
   if (!auth.authorized) return auth.response;
 
   try {
@@ -151,6 +193,15 @@ export async function DELETE(
       return NextResponse.json(
         { error: "userId query parameter is required." },
         { status: 400 },
+      );
+    }
+
+    // Check permission: admin OR assigned manager
+    const allowed = await canModifySlot(auth.userId, slotId);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "You are not authorized to modify this trip." },
+        { status: 403 },
       );
     }
 
