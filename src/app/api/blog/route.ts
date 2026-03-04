@@ -23,16 +23,6 @@ export async function GET(request: NextRequest) {
       orderBy: { updatedAt: "desc" },
       skip,
       take: limit,
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        coverImage: true,
-        author: true,
-        experience: true,
-        createdAt: true,
-        updatedAt: true,
-      },
     }),
     prisma.blog.count({ where: { status: "PUBLISHED", deletedAt: null } }),
   ]);

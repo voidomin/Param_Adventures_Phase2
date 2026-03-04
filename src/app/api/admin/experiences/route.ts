@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { authorizeRequest } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
 import { ExperienceStatus, Difficulty } from "@prisma/client";
@@ -12,9 +12,9 @@ function generateSlug(title: string): string {
 }
 
 // GET /api/admin/experiences
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const result = await authorizeRequest(request, "trip:browse");
-  if ("error" in result) return result.error;
+  if (!result.authorized) return result.response;
 
   try {
     const experiences = await prisma.experience.findMany({
@@ -36,9 +36,9 @@ export async function GET(request: Request) {
 }
 
 // POST /api/admin/experiences
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   const result = await authorizeRequest(request, "trip:create");
-  if ("error" in result) return result.error;
+  if (!result.authorized) return result.response;
 
   try {
     const body = await request.json();

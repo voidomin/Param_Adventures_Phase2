@@ -37,7 +37,7 @@ export interface RefreshPayload {
  */
 export function generateAccessToken(userId: string, roleName: string): string {
   return jwt.sign({ userId, roleName } satisfies TokenPayload, JWT_SECRET, {
-    expiresIn: JWT_EXPIRY,
+    expiresIn: JWT_EXPIRY as any,
   });
 }
 
@@ -48,7 +48,7 @@ export function generateRefreshToken(userId: string): string {
   return jwt.sign(
     { userId, type: "refresh" } satisfies RefreshPayload,
     JWT_SECRET,
-    { expiresIn: REFRESH_TOKEN_EXPIRY },
+    { expiresIn: REFRESH_TOKEN_EXPIRY as any },
   );
 }
 

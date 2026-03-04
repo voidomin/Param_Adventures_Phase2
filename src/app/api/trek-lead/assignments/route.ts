@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 
@@ -6,7 +6,7 @@ import { authorizeRequest } from "@/lib/api-auth";
  * GET /api/trek-lead/assignments
  * Returns upcoming trips (Slots) that are specifically assigned to the logged-in user.
  */
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   // We use "booking:create" as a base permission, but we will strictly check the role.
   const auth = await authorizeRequest(request);
   if (!auth.authorized) return auth.response;

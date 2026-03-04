@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { authorizeRequest } from "@/lib/api-auth";
 import { generatePresignedUrl } from "@/lib/s3";
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const auth = await authorizeRequest(request, [
       "trip:create",

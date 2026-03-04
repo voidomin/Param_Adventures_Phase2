@@ -16,7 +16,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const result = await authorizeRequest(request, "trip:browse");
-  if ("error" in result) return result.error;
+  if (!result.authorized) return result.response;
 
   const { id } = await params;
 
@@ -51,7 +51,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const result = await authorizeRequest(request, "trip:edit");
-  if ("error" in result) return result.error;
+  if (!result.authorized) return result.response;
 
   const { id } = await params;
 
@@ -155,7 +155,7 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const result = await authorizeRequest(request, "trip:edit"); // Assume edit perm implies soft delete
-  if ("error" in result) return result.error;
+  if (!result.authorized) return result.response;
 
   const { id } = await params;
 

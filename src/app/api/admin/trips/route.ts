@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 
@@ -7,7 +7,7 @@ import { authorizeRequest } from "@/lib/api-auth";
  * Trip Manager / Admin view of all upcoming trips (Slots).
  * Returns slots including experience details, participant count, and assigned Trek Leads.
  */
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   const auth = await authorizeRequest(request, "trip:moderate");
   if (!auth.authorized) return auth.response;
 
