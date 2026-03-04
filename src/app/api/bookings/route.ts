@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       prisma.slot.findUnique({ where: { id: slotId } }),
     ]);
 
-    if (!experience || experience.status !== "PUBLISHED") {
+    if (experience?.status !== "PUBLISHED") {
       return NextResponse.json(
         { error: "Experience not found." },
         { status: 404 },

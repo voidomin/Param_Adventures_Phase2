@@ -33,9 +33,9 @@ export async function PATCH(request: NextRequest) {
       where: { id: payload.userId },
       data: {
         ...(name ? { name: name.trim() } : {}),
-        ...(phoneNumber !== undefined
-          ? { phoneNumber: phoneNumber?.trim() || null }
-          : {}),
+        ...(phoneNumber === undefined
+          ? {}
+          : { phoneNumber: phoneNumber?.trim() || null }),
       },
       select: {
         id: true,

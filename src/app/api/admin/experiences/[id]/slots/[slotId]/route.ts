@@ -50,7 +50,7 @@ export async function PATCH(
       }
     }
 
-    const newCapacity = capacity !== undefined ? capacity : slot.capacity;
+    const newCapacity = capacity ?? slot.capacity;
     const newRemaining = newCapacity - bookedCount;
 
     const updatedSlot = await prisma.slot.update({
