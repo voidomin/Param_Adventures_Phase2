@@ -18,6 +18,7 @@ import {
   AlertCircle,
   X,
   Check,
+  Play,
 } from "lucide-react";
 
 interface TrekLead {
@@ -33,6 +34,7 @@ interface Booking {
 }
 
 interface VendorContact {
+  _id: string; // stable client-side key
   label: string;
   value: string;
 }
@@ -85,6 +87,10 @@ export default function ManagerTripDetailPage() {
   const [leadAssignError, setLeadAssignError] = useState("");
   const [showLeadModal, setShowLeadModal] = useState(false);
 
+  // Start Trip
+  const [isStarting, setIsStarting] = useState(false);
+  const [startError, setStartError] = useState("");
+
   const fetchSlot = useCallback(async () => {
     try {
       const res = await fetch(`/api/manager/trips/${slotId}`);
@@ -94,7 +100,14 @@ export default function ManagerTripDetailPage() {
       }
       const data = await res.json();
       setSlot(data.slot);
-      setContacts(data.slot.vendorContacts ?? []);
+      setContacts(
+        (data.slot.vendorContacts ?? []).map(
+          (c: { label: string; value: string }) => ({
+            ...c,
+            _id: crypto.randomUUID(),
+          }),
+        ),
+      );
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load trip");
     } finally {
@@ -112,24 +125,29 @@ export default function ManagerTripDetailPage() {
 
   // ─── Vendor Contacts ───────────────────────────────────────
   const addContact = () =>
-    setContacts((prev) => [...prev, { label: "", value: "" }]);
+    setContacts((prev) => [
+      ...prev,
+      { _id: crypto.randomUUID(), label: "", value: "" },
+    ]);
 
-  const removeContact = (i: number) =>
-    setContacts((prev) => prev.filter((_, idx) => idx !== i));
+  const removeContact = (id: string) =>
+    setContacts((prev) => prev.filter((c) => c._id !== id));
 
-  const updateContact = (i: number, key: "label" | "value", val: string) =>
+  const updateContact = (id: string, key: "label" | "value", val: string) =>
     setContacts((prev) =>
-      prev.map((c, idx) => (idx === i ? { ...c, [key]: val } : c)),
+      prev.map((c) => (c._id === id ? { ...c, [key]: val } : c)),
     );
 
   const saveContacts = async () => {
     setIsSavingContacts(true);
     setContactsSaved(false);
     try {
+      // Strip client-only _id before sending to API
+      const payload = contacts.map(({ label, value }) => ({ label, value }));
       const res = await fetch(`/api/manager/trips/${slotId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ vendorContacts: contacts }),
+        body: JSON.stringify({ vendorContacts: payload }),
       });
       if (!res.ok) throw new Error("Failed to save");
       setContactsSaved(true);
@@ -183,6 +201,24 @@ export default function ManagerTripDetailPage() {
     }
   };
 
+  // ─── Start Trip ────────────────────────────────────────────
+  const handleStartTrip = async () => {
+    setIsStarting(true);
+    setStartError("");
+    try {
+      const res = await fetch(`/api/manager/trips/${slotId}/start`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to start trip");
+      await fetchSlot(); // refresh status badge
+    } catch (e: unknown) {
+      setStartError(e instanceof Error ? e.message : "Failed to start trip");
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
   // ─── Render ────────────────────────────────────────────────
   if (isLoading)
     return (
@@ -222,7 +258,7 @@ export default function ManagerTripDetailPage() {
 
       {/* Header */}
       <div className="bg-card border border-border rounded-2xl p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-heading font-bold text-foreground">
               {slot.experience.title}
@@ -238,20 +274,51 @@ export default function ManagerTripDetailPage() {
               <span className="flex items-center gap-1.5">
                 <Users className="w-4 h-4" />
                 {totalParticipants} participant
-                {totalParticipants !== 1 ? "s" : ""} confirmed
+                {totalParticipants === 1 ? "" : "s"} confirmed
               </span>
             </div>
           </div>
-          <div
-            className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${
-              slot.status === "ACTIVE"
-                ? "bg-green-500/10 text-green-400 border-green-500/20"
-                : "bg-blue-500/10 text-blue-400 border-blue-500/20"
-            }`}
-          >
-            {slot.status.replace("_", " ")}
+          <div className="flex flex-col items-end gap-3">
+            <div
+              className={`px-3 py-1.5 rounded-full text-sm font-semibold border ${
+                slot.status === "ACTIVE"
+                  ? "bg-green-500/10 text-green-400 border-green-500/20"
+                  : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+              }`}
+            >
+              {slot.status.replace("_", " ")}
+            </div>
+
+            {/* Start Trip button — only show when UPCOMING */}
+            {slot.status === "UPCOMING" && (
+              <button
+                onClick={handleStartTrip}
+                disabled={isStarting || slot.assignments.length === 0}
+                title={
+                  slot.assignments.length === 0
+                    ? "Assign at least one Trek Lead first"
+                    : "Start this trip"
+                }
+                className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100 shadow-lg shadow-green-900/30"
+              >
+                {isStarting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Play className="w-4 h-4 fill-current" />
+                )}
+                {isStarting ? "Starting..." : "Start Trip"}
+              </button>
+            )}
           </div>
         </div>
+
+        {/* Start error */}
+        {startError && (
+          <div className="mt-4 flex items-center gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            {startError}
+          </div>
+        )}
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
@@ -328,25 +395,32 @@ export default function ManagerTripDetailPage() {
             </p>
           ) : (
             <div className="space-y-2">
-              {contacts.map((c, i) => (
-                <div key={i} className="flex gap-2 items-center">
+              {contacts.map((c) => (
+                <div key={c._id} className="flex gap-2 items-center">
                   <input
                     type="text"
                     value={c.label}
-                    onChange={(e) => updateContact(i, "label", e.target.value)}
+                    aria-label="Contact label"
+                    onChange={(e) =>
+                      updateContact(c._id, "label", e.target.value)
+                    }
                     placeholder="Label (e.g. Driver)"
                     className="w-1/3 px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground placeholder-foreground/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
                   />
                   <input
                     type="text"
                     value={c.value}
-                    onChange={(e) => updateContact(i, "value", e.target.value)}
+                    aria-label="Contact value"
+                    onChange={(e) =>
+                      updateContact(c._id, "value", e.target.value)
+                    }
                     placeholder="Value (e.g. +91 98765...)"
                     className="flex-1 px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground placeholder-foreground/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
                   />
                   <button
-                    onClick={() => removeContact(i)}
+                    onClick={() => removeContact(c._id)}
                     className="text-foreground/30 hover:text-red-500 transition-colors"
+                    aria-label="Remove contact"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -360,13 +434,12 @@ export default function ManagerTripDetailPage() {
             disabled={isSavingContacts}
             className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-primary text-primary-foreground rounded-xl hover:scale-105 transition-transform disabled:opacity-50 shadow-lg shadow-primary/20"
           >
-            {isSavingContacts ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : contactsSaved ? (
-              <Check className="w-4 h-4" />
-            ) : (
-              <Save className="w-4 h-4" />
-            )}
+            {(() => {
+              if (isSavingContacts)
+                return <Loader2 className="w-4 h-4 animate-spin" />;
+              if (contactsSaved) return <Check className="w-4 h-4" />;
+              return <Save className="w-4 h-4" />;
+            })()}
             {contactsSaved ? "Saved!" : "Save Contacts"}
           </button>
         </div>
@@ -376,7 +449,7 @@ export default function ManagerTripDetailPage() {
       <div className="bg-card border border-border rounded-2xl p-6">
         <h2 className="text-lg font-bold text-foreground mb-4">
           Confirmed Participants ({slot.bookings.length} booking
-          {slot.bookings.length !== 1 ? "s" : ""} · {totalParticipants} people)
+          {slot.bookings.length === 1 ? "" : "s"} · {totalParticipants} people)
         </h2>
 
         {slot.bookings.length === 0 ? (
@@ -446,10 +519,14 @@ export default function ManagerTripDetailPage() {
                 </div>
               )}
               <div>
-                <label className="block text-sm font-medium text-slate-200 mb-2">
+                <label
+                  htmlFor="trek-lead-select"
+                  className="block text-sm font-medium text-slate-200 mb-2"
+                >
                   Select Trek Lead
                 </label>
                 <select
+                  id="trek-lead-select"
                   value={selectedLeadId}
                   onChange={(e) => setSelectedLeadId(e.target.value)}
                   className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-primary/50"
