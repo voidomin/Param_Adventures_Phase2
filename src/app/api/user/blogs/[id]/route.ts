@@ -49,10 +49,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     where: { id },
     data: {
       ...(title ? { title: title.trim() } : {}),
-      ...(content !== undefined ? { content } : {}),
-      ...(coverImageId !== undefined
-        ? { coverImageId: coverImageId || null }
-        : {}),
+      ...(content === undefined ? {} : { content }),
+      ...(coverImageId === undefined
+        ? {}
+        : { coverImageId: coverImageId || null }),
     },
   });
 

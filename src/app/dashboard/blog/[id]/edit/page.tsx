@@ -165,10 +165,15 @@ export default function EditBlogPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-foreground/70 mb-2">
+            <label
+              htmlFor="blog-content-editor"
+              className="block text-sm font-semibold text-foreground/70 mb-2"
+            >
               Content
             </label>
-            <TiptapEditor content={content} onChange={setContent} />
+            <div id="blog-content-editor">
+              <TiptapEditor content={content} onChange={setContent} />
+            </div>
           </div>
 
           {error && (

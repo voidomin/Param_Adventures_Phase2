@@ -415,35 +415,7 @@ export default function DashboardPage() {
               </p>
 
               {/* Profile Edit Toggle */}
-              {!isEditingProfile ? (
-                <div className="mt-4 flex flex-wrap gap-5">
-                  <button
-                    onClick={openProfileEditor}
-                    className="inline-flex items-center gap-2 text-sm text-primary font-semibold hover:underline"
-                  >
-                    <Pencil className="w-3.5 h-3.5" /> Edit Profile
-                  </button>
-                  <Link
-                    href="/dashboard/blog"
-                    className="inline-flex items-center gap-2 text-sm text-primary font-semibold hover:underline"
-                  >
-                    <PenLine className="w-3.5 h-3.5" /> My Blogs
-                  </Link>
-                  {[
-                    "TREK_LEAD",
-                    "TRIP_MANAGER",
-                    "ADMIN",
-                    "SUPER_ADMIN",
-                  ].includes(user.roleName) && (
-                    <Link
-                      href="/dashboard/assignments"
-                      className="inline-flex items-center gap-2 text-sm text-primary font-semibold hover:underline"
-                    >
-                      <Compass className="w-3.5 h-3.5" /> My Assignments
-                    </Link>
-                  )}
-                </div>
-              ) : (
+              {isEditingProfile ? (
                 <div className="mt-4 p-4 bg-background border border-border rounded-xl space-y-3 max-w-sm">
                   <div className="flex items-center gap-2 mb-1">
                     <User className="w-4 h-4 text-foreground/50" />
@@ -509,6 +481,34 @@ export default function DashboardPage() {
                       <XIcon className="w-4 h-4" />
                     </button>
                   </div>
+                </div>
+              ) : (
+                <div className="mt-4 flex flex-wrap gap-5">
+                  <button
+                    onClick={openProfileEditor}
+                    className="inline-flex items-center gap-2 text-sm text-primary font-semibold hover:underline"
+                  >
+                    <Pencil className="w-3.5 h-3.5" /> Edit Profile
+                  </button>
+                  <Link
+                    href="/dashboard/blog"
+                    className="inline-flex items-center gap-2 text-sm text-primary font-semibold hover:underline"
+                  >
+                    <PenLine className="w-3.5 h-3.5" /> My Blogs
+                  </Link>
+                  {[
+                    "TREK_LEAD",
+                    "TRIP_MANAGER",
+                    "ADMIN",
+                    "SUPER_ADMIN",
+                  ].includes(user.roleName) && (
+                    <Link
+                      href="/dashboard/assignments"
+                      className="inline-flex items-center gap-2 text-sm text-primary font-semibold hover:underline"
+                    >
+                      <Compass className="w-3.5 h-3.5" /> My Assignments
+                    </Link>
+                  )}
                 </div>
               )}
             </div>

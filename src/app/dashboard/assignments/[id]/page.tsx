@@ -175,7 +175,7 @@ export default function TrekLeadTripManifestPage() {
                   <span className="font-bold text-foreground">
                     {p.participantCount}
                   </span>{" "}
-                  Guest{p.participantCount !== 1 ? "s" : ""}
+                  Guest{p.participantCount === 1 ? "" : "s"}
                 </div>
               </div>
             ))}

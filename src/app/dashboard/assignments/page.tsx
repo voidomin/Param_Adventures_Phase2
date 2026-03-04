@@ -43,15 +43,6 @@ export default function TrekLeadAssignmentsPage() {
     fetchAssignments();
   }, []);
 
-  function formatDate(dateStr: string) {
-    return new Date(dateStr).toLocaleDateString("en-IN", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-  }
-
   if (isLoading) {
     return (
       <div className="flex justify-center py-20">
@@ -122,4 +113,13 @@ export default function TrekLeadAssignmentsPage() {
       )}
     </div>
   );
+}
+
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString("en-IN", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
 }
