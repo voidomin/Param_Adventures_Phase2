@@ -19,6 +19,8 @@ import {
   X,
   Check,
   Play,
+  FlagOff,
+  CheckCircle,
 } from "lucide-react";
 
 interface TrekLead {
@@ -55,6 +57,10 @@ interface TripSlot {
   };
   assignments: { trekLead: TrekLead }[];
   bookings: Booking[];
+  tripLog?: {
+    trekLeadNote?: string | null;
+    managerNote?: string | null;
+  } | null;
 }
 
 function formatDate(dateStr: string) {
@@ -90,6 +96,11 @@ export default function ManagerTripDetailPage() {
   // Start Trip
   const [isStarting, setIsStarting] = useState(false);
   const [startError, setStartError] = useState("");
+
+  // Complete Trip (Phase 5)
+  const [managerNote, setManagerNote] = useState("");
+  const [isCompleting, setIsCompleting] = useState(false);
+  const [completeError, setCompleteError] = useState("");
 
   const fetchSlot = useCallback(async () => {
     try {
@@ -216,6 +227,28 @@ export default function ManagerTripDetailPage() {
       setStartError(e instanceof Error ? e.message : "Failed to start trip");
     } finally {
       setIsStarting(false);
+    }
+  };
+
+  // ─── Complete Trip ────────────────────────────────────────
+  const handleCompleteTrip = async () => {
+    setIsCompleting(true);
+    setCompleteError("");
+    try {
+      const res = await fetch(`/api/manager/trips/${slotId}/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ managerNote }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to complete trip");
+      await fetchSlot();
+    } catch (e: unknown) {
+      setCompleteError(
+        e instanceof Error ? e.message : "Failed to complete trip",
+      );
+    } finally {
+      setIsCompleting(false);
     }
   };
 
@@ -498,6 +531,75 @@ export default function ManagerTripDetailPage() {
           </div>
         )}
       </div>
+
+      {/* ── Completion Approval: only when TREK_ENDED ── */}
+      {slot.status === "TREK_ENDED" && (
+        <div className="bg-card border border-orange-500/20 rounded-2xl p-6 space-y-4">
+          <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+            <FlagOff className="w-5 h-5 text-orange-400" /> Trek Ended — Approve
+            Completion
+          </h2>
+
+          {slot.tripLog?.trekLeadNote && (
+            <div className="p-4 bg-foreground/5 border border-border rounded-xl space-y-1">
+              <p className="text-xs font-bold text-foreground/40 uppercase tracking-wider">
+                Trek Lead Note
+              </p>
+              <p className="text-sm text-foreground/80 whitespace-pre-wrap">
+                {slot.tripLog.trekLeadNote}
+              </p>
+            </div>
+          )}
+
+          <div>
+            <label
+              htmlFor="manager-note"
+              className="block text-sm font-medium text-foreground/60 mb-2"
+            >
+              Your note (optional)
+            </label>
+            <textarea
+              id="manager-note"
+              value={managerNote}
+              onChange={(e) => setManagerNote(e.target.value)}
+              placeholder="Trip completed successfully. All participants safe. Great job by the trek lead team."
+              rows={3}
+              className="w-full px-4 py-3 bg-background border border-border rounded-xl text-sm text-foreground placeholder-foreground/30 focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+            />
+          </div>
+
+          {completeError && (
+            <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+              <AlertCircle className="w-4 h-4 shrink-0" /> {completeError}
+            </div>
+          )}
+
+          <button
+            onClick={handleCompleteTrip}
+            disabled={isCompleting}
+            className="flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold text-sm transition-all hover:scale-105 disabled:opacity-50 shadow-lg shadow-purple-900/30"
+          >
+            {isCompleting ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <CheckCircle className="w-4 h-4" />
+            )}
+            {isCompleting ? "Completing..." : "Approve & Complete Trip"}
+          </button>
+        </div>
+      )}
+
+      {slot.status === "COMPLETED" && (
+        <div className="bg-card border border-purple-500/20 rounded-2xl p-6">
+          <div className="flex items-center gap-2 text-purple-400 font-bold mb-1">
+            <CheckCircle className="w-5 h-5" /> Trip Completed!
+          </div>
+          <p className="text-sm text-foreground/60">
+            This trip has been fully completed. Participants who attended can
+            now write reviews.
+          </p>
+        </div>
+      )}
 
       {/* Assign Trek Lead Modal */}
       {showLeadModal && (

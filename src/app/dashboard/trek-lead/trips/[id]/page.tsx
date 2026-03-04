@@ -17,6 +17,7 @@ import {
   CheckSquare,
   Square,
   Info,
+  FlagOff,
 } from "lucide-react";
 
 interface Booking {
@@ -86,6 +87,11 @@ export default function TrekLeadTripDetailPage() {
   // Trek start state
   const [isStartingTrek, setIsStartingTrek] = useState(false);
   const [trekStartError, setTrekStartError] = useState("");
+
+  // Trek end state
+  const [trekEndNote, setTrekEndNote] = useState("");
+  const [isEndingTrek, setIsEndingTrek] = useState(false);
+  const [trekEndError, setTrekEndError] = useState("");
 
   const fetchSlot = useCallback(async () => {
     try {
@@ -191,7 +197,27 @@ export default function TrekLeadTripDetailPage() {
     0,
   );
   const canActToday = isDDay && slot.status === "ACTIVE";
-  const trekAlreadyStarted = slot.status === "TREK_STARTED";
+  const trekInProgress = slot.status === "TREK_STARTED";
+  const trekEnded = slot.status === "TREK_ENDED";
+
+  const handleEndTrek = async () => {
+    setIsEndingTrek(true);
+    setTrekEndError("");
+    try {
+      const res = await fetch(`/api/trek-lead/trips/${slotId}/trek-end`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trekLeadNote: trekEndNote }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to end trek");
+      await fetchSlot();
+    } catch (e: unknown) {
+      setTrekEndError(e instanceof Error ? e.message : "Failed to end trek");
+    } finally {
+      setIsEndingTrek(false);
+    }
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -297,8 +323,8 @@ export default function TrekLeadTripDetailPage() {
         )}
       </div>
 
-      {/* Attendance + Trek Start — only when D-Day and ACTIVE or TREK_STARTED */}
-      {(canActToday || trekAlreadyStarted) && (
+      {/* Attendance + Trek Start — D-Day ACTIVE or trek in progress */}
+      {(canActToday || trekInProgress) && (
         <div className="bg-card border border-border rounded-2xl p-6 space-y-5">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-foreground">
@@ -321,7 +347,7 @@ export default function TrekLeadTripDetailPage() {
                   attendance[booking.id]
                     ? "bg-green-500/10 border-green-500/30"
                     : "bg-foreground/5 border-border hover:border-primary/30"
-                } ${!canActToday ? "cursor-default" : "cursor-pointer"}`}
+                } ${canActToday ? "cursor-pointer" : "cursor-default"}`}
               >
                 <div className="flex items-center gap-3">
                   {attendance[booking.id] ? (
@@ -396,11 +422,60 @@ export default function TrekLeadTripDetailPage() {
             </div>
           )}
 
-          {trekAlreadyStarted && (
+          {trekInProgress && (
             <div className="flex items-center gap-2 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-yellow-400 text-sm">
               <Check className="w-4 h-4" /> Trek started! Safe travels 🏔️
             </div>
           )}
+        </div>
+      )}
+
+      {/* End Trek — only when TREK_STARTED */}
+      {trekInProgress && (
+        <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+          <h2 className="text-lg font-bold text-foreground flex items-center gap-2">
+            <FlagOff className="w-5 h-5 text-orange-400" /> End Trek
+          </h2>
+          <p className="text-sm text-foreground/60">
+            Leave a note for the trip manager summarising how the trek went, any
+            issues encountered, or special observations.
+          </p>
+          <textarea
+            value={trekEndNote}
+            onChange={(e) => setTrekEndNote(e.target.value)}
+            placeholder="Trek went smoothly. All participants completed the trail. Minor delay at checkpoint 2 due to weather..."
+            rows={4}
+            className="w-full px-4 py-3 bg-background border border-border rounded-xl text-sm text-foreground placeholder-foreground/30 focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+          />
+          {trekEndError && (
+            <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+              <AlertCircle className="w-4 h-4 shrink-0" /> {trekEndError}
+            </div>
+          )}
+          <button
+            onClick={handleEndTrek}
+            disabled={isEndingTrek}
+            className="flex items-center gap-2 px-6 py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-xl font-bold text-sm transition-all hover:scale-105 disabled:opacity-50 shadow-lg shadow-orange-900/30"
+          >
+            {isEndingTrek ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <FlagOff className="w-4 h-4" />
+            )}
+            {isEndingTrek ? "Ending Trek..." : "End Trek & Submit Note"}
+          </button>
+        </div>
+      )}
+
+      {trekEnded && (
+        <div className="bg-card border border-orange-500/20 rounded-2xl p-6">
+          <div className="flex items-center gap-2 text-orange-400 font-bold mb-2">
+            <Check className="w-5 h-5" /> Trek Ended
+          </div>
+          <p className="text-sm text-foreground/60">
+            Your note has been submitted. The Trip Manager will review and
+            approve completion.
+          </p>
         </div>
       )}
     </div>
