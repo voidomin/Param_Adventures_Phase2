@@ -1,18 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { X, Image as ImageIcon } from "lucide-react";
 import MediaUploader from "./MediaUploader";
 
-export default function HeroForm({
-  slide,
-  onClose,
-  onSuccess,
-}: {
-  slide: any | null;
-  onClose: () => void;
-  onSuccess: () => void;
-}) {
+interface HeroSlide {
+  id: string;
+  title: string;
+  subtitle: string | null;
+  videoUrl: string;
+  ctaLink: string | null;
+  isActive: boolean;
+  order: number;
+}
+
+interface HeroFormProps {
+  readonly slide: HeroSlide | null;
+  readonly onClose: () => void;
+  readonly onSuccess: () => void;
+}
+
+export default function HeroForm({ slide, onClose, onSuccess }: HeroFormProps) {
   const isEditing = !!slide;
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -23,13 +31,14 @@ export default function HeroForm({
   const [ctaLink, setCtaLink] = useState(slide?.ctaLink || "");
   const [isActive, setIsActive] = useState(slide ? slide.isActive : true);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError("");
 
     try {
-      const url = isEditing ? `/api/admin/hero/${slide.id}` : "/api/admin/hero";
+      const url =
+        isEditing && slide ? `/api/admin/hero/${slide.id}` : "/api/admin/hero";
       const method = isEditing ? "PUT" : "POST";
 
       const res = await fetch(url, {
@@ -48,8 +57,12 @@ export default function HeroForm({
       if (!res.ok) throw new Error(data.error || "Failed to save slide");
 
       onSuccess();
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("An unknown error occurred");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -79,12 +92,13 @@ export default function HeroForm({
             )}
 
             <div>
-              <label className="block text-sm font-medium text-foreground/80 mb-1">
+              <p className="block text-sm font-medium text-foreground/80 mb-1">
                 Background Media (Image or Video)
-              </label>
+              </p>
               {videoUrl ? (
                 <div className="relative group rounded-xl overflow-hidden border border-border">
-                  {videoUrl.match(/\.(mp4|webm)$/i) ? (
+                  {/\.(mp4|webm|ogv)$/i.test(videoUrl) ||
+                  videoUrl.includes("/video/upload/") ? (
                     <video
                       src={videoUrl}
                       className="w-full aspect-video object-cover"
@@ -127,8 +141,11 @@ export default function HeroForm({
                     <div className="h-px bg-border flex-1"></div>
                   </div>
                   <div className="flex gap-2 items-center bg-background border border-border rounded-xl px-3 py-2.5">
-                    <ImageIcon className="w-4 h-4 text-foreground/50" />
+                    <label htmlFor="media-url-input">
+                      <ImageIcon className="w-4 h-4 text-foreground/50" />
+                    </label>
                     <input
+                      id="media-url-input"
                       type="url"
                       value={videoUrl}
                       onChange={(e) => setVideoUrl(e.target.value)}
@@ -141,10 +158,14 @@ export default function HeroForm({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-foreground/80 mb-1">
+              <label
+                htmlFor="slide-title"
+                className="block text-sm font-medium text-foreground/80 mb-1"
+              >
                 Primary Title
               </label>
               <input
+                id="slide-title"
                 type="text"
                 required
                 value={title}
@@ -155,10 +176,14 @@ export default function HeroForm({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-foreground/80 mb-1">
+              <label
+                htmlFor="slide-subtitle"
+                className="block text-sm font-medium text-foreground/80 mb-1"
+              >
                 Subtitle / Description
               </label>
               <input
+                id="slide-subtitle"
                 type="text"
                 value={subtitle}
                 onChange={(e) => setSubtitle(e.target.value)}
@@ -168,10 +193,14 @@ export default function HeroForm({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-foreground/80 mb-1">
+              <label
+                htmlFor="slide-cta"
+                className="block text-sm font-medium text-foreground/80 mb-1"
+              >
                 Call to Action Link (Optional)
               </label>
               <input
+                id="slide-cta"
                 type="text"
                 value={ctaLink}
                 onChange={(e) => setCtaLink(e.target.value)}
@@ -180,22 +209,23 @@ export default function HeroForm({
               />
             </div>
 
-            <label className="flex items-center gap-3 cursor-pointer p-4 rounded-xl border border-border hover:bg-foreground/5 transition-colors">
+            <div className="p-4 rounded-xl border border-border hover:bg-foreground/5 transition-colors flex items-center gap-3">
               <input
+                id="slide-active"
                 type="checkbox"
                 checked={isActive}
                 onChange={(e) => setIsActive(e.target.checked)}
-                className="w-5 h-5 rounded border-border text-primary focus:ring-primary focus:ring-offset-background bg-background"
+                className="w-5 h-5 rounded border-border text-primary focus:ring-primary focus:ring-offset-background bg-background cursor-pointer"
               />
-              <div>
+              <label htmlFor="slide-active" className="flex-1 cursor-pointer">
                 <span className="block text-sm font-medium text-foreground">
                   Active Slide
                 </span>
                 <span className="block text-xs text-foreground/60">
                   Slide will be visible to the public.
                 </span>
-              </div>
-            </label>
+              </label>
+            </div>
           </form>
         </div>
 

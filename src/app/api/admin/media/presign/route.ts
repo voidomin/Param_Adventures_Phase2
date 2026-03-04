@@ -22,12 +22,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Priority 1: Cloudinary (Direct Upload)
+    if (process.env.CLOUDINARY_API_KEY) {
+      console.log("Using Cloudinary for direct upload presign");
+      const { generateCloudinarySignature } = await import("@/lib/cloudinary");
+      const cloudData = await generateCloudinarySignature(
+        "param-adventures",
+        contentType.startsWith("video/") ? "video" : "image",
+      );
+      return NextResponse.json({ provider: "cloudinary", ...cloudData });
+    }
+
+    // Priority 2: AWS S3 (Direct Upload)
+    const isS3Configured = !!(
+      process.env.AWS_REGION &&
+      process.env.AWS_ACCESS_KEY_ID &&
+      process.env.AWS_SECRET_ACCESS_KEY &&
+      process.env.AWS_S3_BUCKET_NAME
+    );
+
     const { uploadUrl, finalUrl } = await generatePresignedUrl(
       fileName,
       contentType,
     );
 
-    return NextResponse.json({ uploadUrl, finalUrl });
+    console.log(
+      `Using ${isS3Configured ? "S3" : "Mock"} for direct upload presign`,
+    );
+    return NextResponse.json({ provider: "s3", uploadUrl, finalUrl });
   } catch (error: any) {
     console.error("Presign error:", error);
     return NextResponse.json(

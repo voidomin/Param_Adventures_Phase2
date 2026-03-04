@@ -47,7 +47,7 @@ export default function AdminHeroPage() {
   }, []);
 
   const handleDelete = async (id: string, title: string) => {
-    if (!window.confirm(`Delete slider "${title}"?`)) return;
+    if (!globalThis.confirm(`Delete slider "${title}"?`)) return;
     try {
       const res = await fetch(`/api/admin/hero/${id}`, { method: "DELETE" });
       if (res.ok) {
@@ -119,49 +119,41 @@ export default function AdminHeroPage() {
     fetchSlides();
   };
 
-  return (
-    <div>
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-heading font-bold text-foreground">
-            Hero Slider
-          </h1>
-          <p className="text-foreground/60 mt-1">
-            Manage the background slides on your public homepage.
-          </p>
-        </div>
+  // Content rendering logic refactored to avoid nested ternaries
+  let content;
+  if (isLoading) {
+    content = (
+      <div className="flex justify-center py-20">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  } else if (slides.length === 0) {
+    content = (
+      <div className="bg-card border border-border rounded-2xl p-12 text-center text-foreground/60">
+        <ImageIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
+        <h3 className="text-lg font-bold text-foreground mb-2">
+          No Slides Yet
+        </h3>
+        <p className="mb-6">
+          Upload an image or video to create your first homepage banner.
+        </p>
         <button
           onClick={() => openForm()}
-          className="bg-primary text-primary-foreground px-6 py-2.5 rounded-full font-bold flex items-center gap-2 hover:scale-105 transition-transform shadow-lg shadow-primary/25"
+          className="inline-block bg-background border border-border text-foreground px-6 py-2.5 rounded-full font-bold hover:bg-foreground/5 transition-colors"
         >
-          <Plus className="w-5 h-5" />
-          Add Slide
+          Create Slide
         </button>
       </div>
+    );
+  } else {
+    content = (
+      <div className="grid gap-4">
+        {slides.map((slide, index) => {
+          const isVideo =
+            /\.(mp4|webm|ogv)$/i.test(slide.videoUrl) ||
+            slide.videoUrl.includes("/video/upload/");
 
-      {isLoading ? (
-        <div className="flex justify-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        </div>
-      ) : slides.length === 0 ? (
-        <div className="bg-card border border-border rounded-2xl p-12 text-center text-foreground/60">
-          <ImageIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
-          <h3 className="text-lg font-bold text-foreground mb-2">
-            No Slides Yet
-          </h3>
-          <p className="mb-6">
-            Upload an image or video to create your first homepage banner.
-          </p>
-          <button
-            onClick={() => openForm()}
-            className="inline-block bg-background border border-border text-foreground px-6 py-2.5 rounded-full font-bold hover:bg-foreground/5 transition-colors"
-          >
-            Create Slide
-          </button>
-        </div>
-      ) : (
-        <div className="grid gap-4">
-          {slides.map((slide, index) => (
+          return (
             <div
               key={slide.id}
               className={`bg-card border border-border rounded-xl p-4 flex flex-col md:flex-row gap-6 items-center transition-colors hover:border-foreground/30 ${
@@ -169,7 +161,7 @@ export default function AdminHeroPage() {
               }`}
             >
               <div className="w-full md:w-48 h-24 rounded-lg bg-foreground/5 overflow-hidden relative shrink-0">
-                {slide.videoUrl.match(/\.(mp4|webm)$/i) ? (
+                {isVideo ? (
                   <video
                     src={slide.videoUrl}
                     className="w-full h-full object-cover"
@@ -242,9 +234,33 @@ export default function AdminHeroPage() {
                 </button>
               </div>
             </div>
-          ))}
+          );
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-heading font-bold text-foreground">
+            Hero Slider
+          </h1>
+          <p className="text-foreground/60 mt-1">
+            Manage the background slides on your public homepage.
+          </p>
         </div>
-      )}
+        <button
+          onClick={() => openForm()}
+          className="bg-primary text-primary-foreground px-6 py-2.5 rounded-full font-bold flex items-center gap-2 hover:scale-105 transition-transform shadow-lg shadow-primary/25"
+        >
+          <Plus className="w-5 h-5" />
+          Add Slide
+        </button>
+      </div>
+
+      {content}
 
       {isFormOpen && (
         <HeroForm

@@ -56,7 +56,7 @@ export default function Hero({
   const isVideo = /\.(mp4|webm)$/i.test(currentSlide.videoUrl);
 
   return (
-    <section className="relative h-screen w-full flex items-center justify-center overflow-hidden pt-16 group">
+    <section className="relative h-screen w-full flex items-center justify-center overflow-hidden pt-16 bg-black group">
       {/* Background with Overlay */}
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black z-10" />
@@ -64,10 +64,10 @@ export default function Hero({
         <AnimatePresence mode="wait">
           <motion.div
             key={currentSlide.id + "-bg"}
-            initial={{ opacity: 0, scale: 1.05 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 1.2 }}
+            initial={{ opacity: 0, scale: 1.1, filter: "blur(20px)" }}
+            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+            exit={{ opacity: 0, scale: 0.95, filter: "blur(10px)" }}
+            transition={{ duration: 1.5, ease: "easeInOut" }}
             className="absolute inset-0"
           >
             {isVideo ? (
@@ -113,10 +113,10 @@ export default function Hero({
         <AnimatePresence mode="wait">
           <motion.div
             key={currentSlide.id + "-content"}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
+            initial={{ opacity: 0, y: 40, filter: "blur(10px)" }}
+            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+            exit={{ opacity: 0, y: -40, filter: "blur(10px)" }}
+            transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
           >
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 text-primary text-xs font-bold uppercase tracking-widest mb-6">
               <Mountain className="w-3 h-3" />

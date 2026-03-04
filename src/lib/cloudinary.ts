@@ -30,15 +30,21 @@ export async function uploadToCloudinary(
   } = {},
 ): Promise<CloudinaryUploadResult> {
   return new Promise((resolve, reject) => {
+    const uploadOptions: any = {
+      folder: options.folder ?? "param-adventures",
+      resource_type: options.resource_type ?? "auto",
+      public_id: options.public_id,
+    };
+
+    // Apply auto-optimization only for images.
+    // Cloudinary's upload_stream with quality: "auto" can fail for videos.
+    if (options.resource_type === "image") {
+      uploadOptions.quality = "auto";
+      uploadOptions.fetch_format = "auto";
+    }
+
     const uploadStream = cloudinary.uploader.upload_stream(
-      {
-        folder: options.folder ?? "param-adventures",
-        resource_type: options.resource_type ?? "auto",
-        public_id: options.public_id,
-        // Auto-optimize: compress images, strip metadata
-        quality: "auto",
-        fetch_format: "auto",
-      },
+      uploadOptions,
       (error, result) => {
         if (error || !result) {
           reject(
@@ -73,4 +79,29 @@ export async function deleteFromCloudinary(
   }
 }
 
-export default cloudinary;
+/**
+ * Generate a signature for a direct browser-to-Cloudinary upload.
+ */
+export async function generateCloudinarySignature(
+  folder: string = "param-adventures",
+  resourceType: "image" | "video" = "image",
+) {
+  const timestamp = Math.round(Date.now() / 1000);
+  const signature = cloudinary.utils.api_sign_request(
+    {
+      timestamp,
+      folder,
+    },
+    process.env.CLOUDINARY_API_SECRET!,
+  );
+
+  return {
+    timestamp,
+    signature,
+    apiKey: process.env.CLOUDINARY_API_KEY,
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+    folder,
+  };
+}
+
+export { v2 as default } from "cloudinary";
