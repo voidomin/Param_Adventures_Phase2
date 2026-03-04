@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { prisma } from "@/lib/db";
 import { sendBookingConfirmation } from "@/lib/email";
+import { logActivity } from "@/lib/audit-logger";
 
 /**
  * Fetches full booking details and sends a confirmation email.
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Signature valid — confirm booking and payment
-    await prisma.$transaction([
+    const [updatedBooking] = await prisma.$transaction([
       prisma.booking.update({
         where: { id: bookingId },
         data: { bookingStatus: "CONFIRMED", paymentStatus: "PAID" },
@@ -90,6 +91,14 @@ export async function POST(request: NextRequest) {
         },
       }),
     ]);
+
+    await logActivity(
+      "BOOKING_CONFIRMED",
+      updatedBooking.userId,
+      "Booking",
+      bookingId,
+      { paymentId: razorpay_payment_id },
+    );
 
     // Send confirmation email (fire-and-forget — don't block the response)
     sendBookingConfirmationEmail(bookingId).catch((err) =>

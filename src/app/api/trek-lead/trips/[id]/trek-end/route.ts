@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
+import { logActivity } from "@/lib/audit-logger";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -70,6 +71,10 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         update: { trekLeadNote },
       }),
     ]);
+
+    await logActivity("TREK_ENDED", auth.userId, "Slot", slotId, {
+      trekLeadNote,
+    });
 
     return NextResponse.json({
       success: true,

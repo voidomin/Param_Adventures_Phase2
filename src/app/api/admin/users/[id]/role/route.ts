@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
+import { logActivity } from "@/lib/audit-logger";
+import { sendRoleAssignedEmail } from "@/lib/email";
 
 // PATCH /api/admin/users/[id]/role
 // Updates a user's role.
@@ -93,6 +95,18 @@ export async function PATCH(
         role: { select: { name: true } },
       },
     });
+
+    await logActivity("ROLE_ASSIGNED", auth.userId, "User", targetUserId, {
+      newRole: updatedUser.role.name,
+      targetEmail: updatedUser.email,
+    });
+
+    // Fire and forget email notification
+    sendRoleAssignedEmail({
+      userName: updatedUser.name || "User",
+      userEmail: updatedUser.email,
+      roleName: updatedUser.role.name,
+    }).catch(console.error);
 
     return NextResponse.json({ user: updatedUser });
   } catch (error) {

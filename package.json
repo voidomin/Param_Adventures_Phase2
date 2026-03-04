@@ -13,6 +13,8 @@
     "@aws-sdk/s3-request-presigner": "^3.1000.0",
     "@prisma/adapter-pg": "^7.4.2",
     "@prisma/client": "^7.4.2",
+    "@react-email/components": "^1.0.8",
+    "@react-email/render": "^2.0.4",
     "@tiptap/extension-character-count": "^3.20.0",
     "@tiptap/extension-placeholder": "^3.20.0",
     "@tiptap/pm": "^3.20.0",

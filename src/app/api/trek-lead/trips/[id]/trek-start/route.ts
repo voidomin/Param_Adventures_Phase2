@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 import { isSlotDayToday } from "@/lib/ist-utils";
+import { logActivity } from "@/lib/audit-logger";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -80,6 +81,8 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         trekStartedAt: new Date(),
       },
     });
+
+    await logActivity("TREK_STARTED", auth.userId, "Slot", slotId);
 
     return NextResponse.json({
       success: true,

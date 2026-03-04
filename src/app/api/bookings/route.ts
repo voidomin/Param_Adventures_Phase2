@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Razorpay from "razorpay";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
+import { logActivity } from "@/lib/audit-logger";
 
 const razorpay = new Razorpay({
   key_id: process.env.RAZORPAY_KEY_ID!,
@@ -114,6 +115,12 @@ export async function POST(request: NextRequest) {
         currency: "INR",
         status: "PENDING",
       },
+    });
+
+    await logActivity("BOOKING_REQUESTED", userId, "Booking", booking.id, {
+      experienceId,
+      slotId,
+      participantCount,
     });
 
     return NextResponse.json({

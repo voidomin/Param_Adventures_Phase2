@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
+import { logActivity } from "@/lib/audit-logger";
+import { sendTripCompletedEmail } from "@/lib/email";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -86,6 +88,35 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
         data: { canReview: true },
       }),
     ]);
+
+    await logActivity("TRIP_COMPLETED", auth.userId, "Slot", slotId, {
+      managerNote: managerNote || null,
+    });
+
+    // Fetch attended bookings to send completion emails
+    const attendedBookings = await prisma.booking.findMany({
+      where: {
+        slotId,
+        attended: true,
+        bookingStatus: "CONFIRMED",
+      },
+      include: {
+        user: { select: { name: true, email: true } },
+        experience: { select: { title: true, slug: true } },
+      },
+    });
+
+    // Fire and forget emails
+    Promise.allSettled(
+      attendedBookings.map((b) =>
+        sendTripCompletedEmail({
+          userName: b.user.name || "Adventurer",
+          userEmail: b.user.email,
+          experienceTitle: b.experience.title,
+          experienceSlug: b.experience.slug,
+        }),
+      ),
+    ).catch(console.error);
 
     return NextResponse.json({ success: true, status: "COMPLETED" });
   } catch (error) {
