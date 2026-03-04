@@ -107,31 +107,35 @@ export default function AdminBlogsPage() {
   const [rejectingBlog, setRejectingBlog] = useState<string | null>(null);
   const [search, setSearch] = useState("");
 
-  const fetchBlogs = async (status: string) => {
-    setIsLoading(true);
-    const q = status === "ALL" ? "" : `?status=${status}`;
-    const res = await fetch(`/api/admin/blogs${q}`);
-    if (res.status === 401 || res.status === 403) {
-      router.push("/login");
-      return;
-    }
-    if (!res.ok) {
-      console.error("Admin blogs fetch failed:", await res.text());
-      setIsLoading(false);
-      return;
-    }
-    try {
-      const data = await res.json();
-      setBlogs(data.blogs ?? []);
-    } catch (e) {
-      console.error("Invalid JSON response from admin blogs:", e);
-    }
-    setIsLoading(false);
-  };
-
   useEffect(() => {
-    fetchBlogs(statusFilter);
-  }, [statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+    let active = true;
+    setIsLoading(true);
+    const q = statusFilter === "ALL" ? "" : `?status=${statusFilter}`;
+
+    fetch(`/api/admin/blogs${q}`)
+      .then((res) => {
+        if (!active) return null;
+        if (res.status === 401 || res.status === 403) {
+          router.push("/login");
+          return null;
+        }
+        if (!res.ok) throw new Error("Fetch failed");
+        return res.json();
+      })
+      .then((data) => {
+        if (active && data) {
+          setBlogs(data.blogs ?? []);
+        }
+      })
+      .catch((e) => console.error("Admin blogs error:", e))
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [statusFilter, router]);
 
   const handleApprove = async (id: string) => {
     setApprovingId(id);

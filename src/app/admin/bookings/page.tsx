@@ -80,14 +80,26 @@ export default function AdminBookingsPage() {
   const [search, setSearch] = useState("");
 
   useEffect(() => {
+    let active = true;
     const params = new URLSearchParams();
     if (statusFilter !== "ALL") params.set("status", statusFilter);
     setIsLoading(true);
+
     fetch(`/api/admin/bookings?${params}`)
       .then((r) => r.json())
-      .then((d) => setBookings(d.bookings || []))
-      .catch(console.error)
-      .finally(() => setIsLoading(false));
+      .then((d) => {
+        if (active) setBookings(d.bookings || []);
+      })
+      .catch((err) => {
+        if (active) console.error(err);
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [statusFilter]);
 
   const filtered = bookings.filter((b) => {

@@ -13,7 +13,7 @@ import type { NextRequest } from "next/server";
  * so we only check for token presence here. Actual verification happens
  * in the API route handlers via verifyAccessToken().
  */
-export function proxy(request: NextRequest) {
+export default function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // ─── Always-public routes ──────────────────────────────
@@ -77,7 +77,7 @@ export function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     // Match all routes except static files and Next.js internals
-    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    "/(api|trpc)(.*)",
+    String.raw`/((?!_next|[^?]*\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)`,
+    String.raw`/(api|trpc)(.*)`,
   ],
 };

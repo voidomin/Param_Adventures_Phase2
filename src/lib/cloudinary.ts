@@ -47,11 +47,17 @@ export async function uploadToCloudinary(
       uploadOptions,
       (error, result) => {
         if (error || !result) {
-          reject(
-            error instanceof Error
-              ? error
-              : new Error(error?.message || "Cloudinary upload failed"),
-          );
+          if (error instanceof Error) {
+            reject(error);
+          } else {
+            reject(
+              new Error(
+                typeof error === "string"
+                  ? error
+                  : error?.message || "Cloudinary upload failed",
+              ),
+            );
+          }
         } else {
           resolve(result as CloudinaryUploadResult);
         }
@@ -103,5 +109,3 @@ export async function generateCloudinarySignature(
     folder,
   };
 }
-
-export { v2 as default } from "cloudinary";
