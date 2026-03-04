@@ -61,6 +61,14 @@ enum BlogStatus {
   PUBLISHED
 }
 
+enum TripStatus {
+  UPCOMING      // Slot created, not yet started
+  ACTIVE        // Manager has started; trek leads notified
+  TREK_STARTED  // Trek Lead kicked off on D-Day
+  TREK_ENDED    // Trek Lead ended; awaiting manager approval
+  COMPLETED     // Manager approved end; reviews unlocked
+}
+
 enum MediaType {
   IMAGE
   VIDEO
@@ -120,7 +128,8 @@ model User {
 
   bookings    Booking[]
   blogs       Blog[]
-  assignments TripAssignment[]
+  assignments TripAssignment[]  @relation("TrekLeadAssignments")
+  managedSlots Slot[]           @relation("SlotManager")
   uploads     Image[]
 }
 
@@ -179,11 +188,23 @@ model Slot {
   date              DateTime
   capacity          Int
   remainingCapacity Int
+
+  // Trip lifecycle
+  status            TripStatus       @default(UPCOMING)
+  managerId         String?          // Trip Manager assigned by admin
+  manager           User?            @relation("SlotManager", fields: [managerId], references: [id])
+  vendorContacts    Json?            // [{label: "Driver", value: "+91..."}, ...]
+  startedAt         DateTime?        // When manager started the trip
+  trekStartedAt     DateTime?        // When trek lead started trek
+  trekEndedAt       DateTime?        // When trek lead ended trek
+  completedAt       DateTime?        // When manager completed the trip
+
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
 
   bookings          Booking[]
   assignments       TripAssignment[]
+  tripLog           TripLog?
 }
 
 // ─── BOOKING & PAYMENTS ──────────────────────────────────
@@ -200,6 +221,8 @@ model Booking {
   totalPrice        Decimal       @db.Decimal(10, 2) // Frozen at booking time
   bookingStatus     BookingStatus @default(REQUESTED)
   paymentStatus     PaymentStatus @default(PENDING)
+  attended          Boolean       @default(false)   // Marked by trek lead on D-Day
+  canReview         Boolean       @default(false)   // Unlocked when trip COMPLETED
   deletedAt         DateTime?
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
@@ -229,9 +252,22 @@ model TripAssignment {
   slotId      String
   slot        Slot   @relation(fields: [slotId], references: [id])
   trekLeadId  String
-  trekLead    User   @relation(fields: [trekLeadId], references: [id])
+  trekLead    User   @relation("TrekLeadAssignments", fields: [trekLeadId], references: [id])
 
   @@unique([slotId, trekLeadId])
+}
+
+// One TripLog per slot — attendance, photos, notes
+model TripLog {
+  id             String    @id @default(uuid())
+  slotId         String    @unique
+  slot           Slot      @relation(fields: [slotId], references: [id])
+  attendees      Json?     // [{ bookingId, userName, present: bool }]
+  photoUrls      String[]  // Docs/photos uploaded by trek lead
+  trekLeadNote   String?   @db.Text // Trek lead end-of-trip review
+  managerNote    String?   @db.Text // Manager reply/feedback
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 // ─── CONTENT & MEDIA ─────────────────────────────────────

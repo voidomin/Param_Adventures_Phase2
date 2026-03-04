@@ -24,6 +24,13 @@ export async function GET(request: NextRequest) {
             location: true,
           },
         },
+        manager: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
         assignments: {
           include: {
             trekLead: {

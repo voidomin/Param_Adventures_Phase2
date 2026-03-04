@@ -3,6 +3,68 @@ import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 
 /**
+ * PATCH /api/admin/trips/[id]/assign
+ * Assigns a Trip Manager to a slot.
+ * Body: { managerId: string }
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const auth = await authorizeRequest(request, "trip:moderate");
+  if (!auth.authorized) return auth.response;
+
+  try {
+    const { id: slotId } = await params;
+    const { managerId } = await request.json();
+
+    if (!managerId) {
+      return NextResponse.json(
+        { error: "managerId is required." },
+        { status: 400 },
+      );
+    }
+
+    // Verify user exists and has Trip Manager role
+    const user = await prisma.user.findUnique({
+      where: { id: managerId },
+      include: { role: true },
+    });
+
+    if (!user || user.status !== "ACTIVE") {
+      return NextResponse.json(
+        { error: "User not found or inactive." },
+        { status: 404 },
+      );
+    }
+
+    const allowedRoles = ["TRIP_MANAGER", "ADMIN", "SUPER_ADMIN"];
+    if (!allowedRoles.includes(user.role.name)) {
+      return NextResponse.json(
+        { error: "This user does not have the Trip Manager role." },
+        { status: 403 },
+      );
+    }
+
+    const slot = await prisma.slot.update({
+      where: { id: slotId },
+      data: { managerId },
+      include: {
+        manager: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    return NextResponse.json({ slot });
+  } catch (error) {
+    console.error("Assign Manager error:", error);
+    return NextResponse.json(
+      { error: "Failed to assign Trip Manager." },
+      { status: 500 },
+    );
+  }
+}
+
+/**
  * POST /api/admin/trips/[id]/assign
  * Assigns a Trek Lead to a specific slot.
  * Body: { userId: string }
