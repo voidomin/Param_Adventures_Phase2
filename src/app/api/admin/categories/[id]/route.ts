@@ -17,7 +17,7 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
   try {
     const body = await request.json();
-    const { name, isActive } = body;
+    const { name, isActive, icon } = body;
 
     const existing = await prisma.category.findUnique({ where: { id } });
     if (!existing) {
@@ -57,6 +57,10 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
     if (isActive !== undefined) {
       data.isActive = Boolean(isActive);
+    }
+
+    if (icon !== undefined) {
+      data.icon = icon || null;
     }
 
     const category = await prisma.category.update({

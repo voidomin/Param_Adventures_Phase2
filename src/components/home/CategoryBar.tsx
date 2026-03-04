@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   Mountain,
   Tent,
@@ -8,6 +9,20 @@ import {
   Building2,
   MapPin,
   Waves,
+  Compass,
+  Sun,
+  Trees,
+  Bike,
+  Camera,
+  Coffee,
+  Anchor,
+  Leaf,
+  Wind,
+  Zap,
+  Star,
+  Globe,
+  Heart,
+  Shield,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -16,16 +31,43 @@ interface Category {
   id: string;
   name: string;
   slug: string;
+  icon?: string | null;
 }
 
-const CATEGORY_ICONS: Record<string, React.ElementType> = {
-  trekking: Mountain,
-  camping: Tent,
-  spiritual: Flame,
-  corporate: Building2,
-  "city-tours": MapPin,
-  "water-sports": Waves,
+// Mirrors the icon map in the admin page — single source of lookup
+const ICON_MAP: Record<string, React.ElementType> = {
+  Mountain,
+  Tent,
+  Flame,
+  Building2,
+  MapPin,
+  Waves,
+  Compass,
+  Sun,
+  Trees,
+  Bike,
+  Camera,
+  Coffee,
+  Anchor,
+  Leaf,
+  Wind,
+  Zap,
+  Star,
+  Globe,
+  Heart,
+  Shield,
 };
+
+function DynamicIcon({
+  name,
+  className,
+}: Readonly<{
+  name?: string | null;
+  className?: string;
+}>) {
+  const Icon = name && ICON_MAP[name] ? ICON_MAP[name] : MapPin;
+  return <Icon className={className} />;
+}
 
 export default function CategoryBar() {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -34,6 +76,7 @@ export default function CategoryBar() {
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -144,21 +187,30 @@ export default function CategoryBar() {
         >
           {allItems.map((item, index) => {
             const isAll = item.slug === "all";
-            const Icon = isAll ? null : CATEGORY_ICONS[item.slug] || MapPin;
             const isActive = activeCategory === item.slug;
 
             return (
               <button
                 key={`${item.id}-${index}`}
-                onClick={() => setActiveCategory(item.slug)}
+                onClick={() => {
+                  setActiveCategory(item.slug);
+                  router.push(
+                    item.slug === "all"
+                      ? "/experiences"
+                      : `/experiences?category=${item.slug}`,
+                  );
+                }}
                 className={`flex items-center gap-2 px-5 py-2.5 rounded-full whitespace-nowrap transition-all duration-300 flex-shrink-0 ${
                   isActive
                     ? "bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/20 scale-105"
                     : "bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white font-medium"
                 }`}
               >
-                {Icon && (
-                  <Icon className={`w-4 h-4 ${isActive ? "" : "opacity-70"}`} />
+                {!isAll && (
+                  <DynamicIcon
+                    name={item.icon}
+                    className={`w-4 h-4 ${isActive ? "" : "opacity-70"}`}
+                  />
                 )}
                 {item.name}
               </button>

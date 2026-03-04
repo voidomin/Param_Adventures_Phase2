@@ -61,6 +61,16 @@ export default function MediaLibraryPage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const handleVideoMouseEnter = (e: React.MouseEvent<HTMLVideoElement>) => {
+    const video = e.target as HTMLVideoElement;
+    video.play().catch(() => {});
+  };
+
+  const handleVideoMouseLeave = (e: React.MouseEvent<HTMLVideoElement>) => {
+    const video = e.target as HTMLVideoElement;
+    video.pause();
+  };
+
   function renderGallery() {
     if (isLoading) {
       return (
@@ -93,8 +103,21 @@ export default function MediaLibraryPage() {
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="flex items-center justify-center h-full text-foreground/50">
-                  <span className="text-sm font-medium">Video File</span>
+                <div className="relative w-full h-full bg-black">
+                  <video
+                    src={item.originalUrl}
+                    className="w-full h-full object-cover opacity-80 transition-opacity group-hover:opacity-100"
+                    muted
+                    loop
+                    playsInline
+                    onMouseEnter={handleVideoMouseEnter}
+                    onMouseLeave={handleVideoMouseLeave}
+                  />
+                  <div className="absolute top-2 left-2 pointer-events-none">
+                    <span className="bg-black/60 text-white text-[10px] px-2 py-1 rounded-full uppercase tracking-wider font-bold backdrop-blur-sm shadow-sm border border-white/20">
+                      Video
+                    </span>
+                  </div>
                 </div>
               )}
 

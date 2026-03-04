@@ -130,6 +130,7 @@ model Category {
   id          String               @id @default(uuid())
   name        String
   slug        String               @unique
+  icon        String?              // lucide-react icon name, e.g. "Mountain"
   isActive    Boolean              @default(true)
   createdAt   DateTime             @default(now())
 

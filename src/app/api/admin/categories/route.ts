@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
         id: c.id,
         name: c.name,
         slug: c.slug,
+        icon: c.icon,
         isActive: c.isActive,
         createdAt: c.createdAt,
         experienceCount: c._count.experiences,
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name } = body;
+    const { name, icon } = body;
 
     if (!name || typeof name !== "string" || name.trim().length === 0) {
       return NextResponse.json(
@@ -76,6 +77,7 @@ export async function POST(request: NextRequest) {
       data: {
         name: name.trim(),
         slug,
+        icon: icon || null,
       },
     });
 

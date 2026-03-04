@@ -1,12 +1,80 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Edit2, Trash2, Check, X } from "lucide-react";
+import {
+  Plus,
+  Edit2,
+  Trash2,
+  Check,
+  X,
+  Mountain,
+  Tent,
+  Flame,
+  Building2,
+  MapPin,
+  Waves,
+  Compass,
+  Sun,
+  Trees,
+  Bike,
+  Camera,
+  Coffee,
+  Anchor,
+  Leaf,
+  Wind,
+  Zap,
+  Star,
+  Globe,
+  Heart,
+  Shield,
+} from "lucide-react";
+
+// Curated list of available icons admins can choose from
+const AVAILABLE_ICONS: {
+  name: string;
+  label: string;
+  Icon: React.ElementType;
+}[] = [
+  { name: "Mountain", label: "Mountain", Icon: Mountain },
+  { name: "Tent", label: "Tent / Camping", Icon: Tent },
+  { name: "Flame", label: "Flame / Spiritual", Icon: Flame },
+  { name: "Building2", label: "Building / Corporate", Icon: Building2 },
+  { name: "MapPin", label: "Map Pin / City", Icon: MapPin },
+  { name: "Waves", label: "Waves / Water", Icon: Waves },
+  { name: "Compass", label: "Compass / Explore", Icon: Compass },
+  { name: "Sun", label: "Sun / Summer", Icon: Sun },
+  { name: "Trees", label: "Trees / Forest", Icon: Trees },
+  { name: "Bike", label: "Bike / Cycling", Icon: Bike },
+  { name: "Camera", label: "Camera / Photography", Icon: Camera },
+  { name: "Coffee", label: "Coffee / Leisure", Icon: Coffee },
+  { name: "Anchor", label: "Anchor / Sailing", Icon: Anchor },
+  { name: "Leaf", label: "Leaf / Eco", Icon: Leaf },
+  { name: "Wind", label: "Wind / Paragliding", Icon: Wind },
+  { name: "Zap", label: "Zap / Extreme", Icon: Zap },
+  { name: "Star", label: "Star / Featured", Icon: Star },
+  { name: "Globe", label: "Globe / International", Icon: Globe },
+  { name: "Heart", label: "Heart / Wellness", Icon: Heart },
+  { name: "Shield", label: "Shield / Safe", Icon: Shield },
+];
+
+// Helper to render a Lucide icon by stored string name
+function DynamicIcon({
+  name,
+  className,
+}: {
+  name?: string | null;
+  className?: string;
+}) {
+  const found = AVAILABLE_ICONS.find((i) => i.name === name);
+  const Icon = found?.Icon ?? MapPin;
+  return <Icon className={className} />;
+}
 
 interface Category {
   id: string;
   name: string;
   slug: string;
+  icon: string | null;
   isActive: boolean;
   experienceCount: number;
   createdAt: string;
@@ -20,6 +88,7 @@ export default function AdminCategoriesPage() {
 
   // Form State
   const [name, setName] = useState("");
+  const [selectedIcon, setSelectedIcon] = useState<string>("");
   const [isActive, setIsActive] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -48,6 +117,7 @@ export default function AdminCategoriesPage() {
   const openCreateModal = () => {
     setEditCategory(null);
     setName("");
+    setSelectedIcon("");
     setIsActive(true);
     setError("");
     setIsModalOpen(true);
@@ -56,6 +126,7 @@ export default function AdminCategoriesPage() {
   const openEditModal = (category: Category) => {
     setEditCategory(category);
     setName(category.name);
+    setSelectedIcon(category.icon ?? "");
     setIsActive(category.isActive);
     setError("");
     setIsModalOpen(true);
@@ -75,7 +146,7 @@ export default function AdminCategoriesPage() {
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, isActive }),
+        body: JSON.stringify({ name, icon: selectedIcon || null, isActive }),
       });
 
       const data = await res.json();
@@ -86,8 +157,8 @@ export default function AdminCategoriesPage() {
 
       await fetchCategories();
       setIsModalOpen(false);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "An error occurred");
     } finally {
       setIsSubmitting(false);
     }
@@ -120,8 +191,8 @@ export default function AdminCategoriesPage() {
       }
 
       await fetchCategories();
-    } catch (err: any) {
-      alert(err.message);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "An error occurred");
     }
   };
 
@@ -155,6 +226,7 @@ export default function AdminCategoriesPage() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-border bg-foreground/5">
+                  <th className="p-4 font-semibold text-foreground/70">Icon</th>
                   <th className="p-4 font-semibold text-foreground/70">Name</th>
                   <th className="p-4 font-semibold text-foreground/70">Slug</th>
                   <th className="p-4 font-semibold text-foreground/70 text-center">
@@ -172,7 +244,7 @@ export default function AdminCategoriesPage() {
                 {categories.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className="p-8 text-center text-foreground/50"
                     >
                       No categories found. Create one to get started.
@@ -184,6 +256,14 @@ export default function AdminCategoriesPage() {
                       key={category.id}
                       className="hover:bg-foreground/5 transition-colors"
                     >
+                      <td className="p-4">
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                          <DynamicIcon
+                            name={category.icon}
+                            className="w-4 h-4"
+                          />
+                        </div>
+                      </td>
                       <td className="p-4 font-medium text-foreground">
                         {category.name}
                       </td>
@@ -247,7 +327,7 @@ export default function AdminCategoriesPage() {
       {/* Create/Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-slate-900 border border-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative">
+          <div className="bg-slate-900 border border-border rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden relative">
             <div className="p-6 border-b border-white/10 flex justify-between items-center">
               <h2 className="text-xl font-heading font-bold text-white">
                 {editCategory ? "Edit Category" : "Add Category"}
@@ -283,6 +363,54 @@ export default function AdminCategoriesPage() {
                   className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
                   placeholder="e.g. Backpacking, Workation..."
                 />
+              </div>
+
+              {/* Icon Picker */}
+              <div>
+                <p className="block text-sm font-medium text-slate-200 mb-3">
+                  Choose Icon
+                  {selectedIcon && (
+                    <span className="ml-2 text-primary text-xs font-normal">
+                      ✓ {selectedIcon} selected
+                    </span>
+                  )}
+                </p>
+                <div className="grid grid-cols-5 gap-2 max-h-56 overflow-y-auto pr-1 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10">
+                  {/* "No icon" option */}
+                  <button
+                    type="button"
+                    title="No icon"
+                    onClick={() => setSelectedIcon("")}
+                    className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
+                      selectedIcon === ""
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-white/10 bg-white/5 text-slate-400 hover:border-white/20 hover:text-white"
+                    }`}
+                  >
+                    <X className="w-5 h-5" />
+                    <span className="text-[9px] leading-tight text-center">
+                      None
+                    </span>
+                  </button>
+                  {AVAILABLE_ICONS.map(({ name: iconName, label, Icon }) => (
+                    <button
+                      key={iconName}
+                      type="button"
+                      title={label}
+                      onClick={() => setSelectedIcon(iconName)}
+                      className={`flex flex-col items-center gap-1 p-2 rounded-xl border transition-all ${
+                        selectedIcon === iconName
+                          ? "border-primary bg-primary/10 text-primary"
+                          : "border-white/10 bg-white/5 text-slate-400 hover:border-white/20 hover:text-white"
+                      }`}
+                    >
+                      <Icon className="w-5 h-5" />
+                      <span className="text-[9px] leading-tight text-center">
+                        {label.split(" / ")[0]}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {editCategory && (

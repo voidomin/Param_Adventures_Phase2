@@ -1,10 +1,19 @@
 import { prisma } from "@/lib/db";
 import Navbar from "@/components/layout/Navbar";
-import ExperienceCard from "@/components/experiences/ExperienceCard";
+import ExperiencesClient from "./ExperiencesClient";
 
 export const revalidate = 60; // Revalidate every minute
 
-export default async function ExperiencesPage() {
+type Props = {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+};
+
+export default async function ExperiencesPage({
+  searchParams,
+}: Readonly<Props>) {
+  const params = await searchParams;
+  const initialFilter = (params?.category as string) || "all";
+
   const experiences = await prisma.experience.findMany({
     where: { status: "PUBLISHED" },
     orderBy: { createdAt: "desc" },
@@ -15,59 +24,52 @@ export default async function ExperiencesPage() {
     },
   });
 
+  const dbCategories = await prisma.category.findMany({
+    where: { isActive: true },
+    orderBy: { name: "asc" },
+  });
+
+  const serializedCategories = dbCategories.map((c) => ({
+    id: c.id,
+    name: c.name,
+    slug: c.slug,
+  }));
+
+  // Serialize Prisma objects to plain JS objects for Client Component
+  const serializedExperiences = experiences.map((exp) => ({
+    id: exp.id,
+    title: exp.title,
+    slug: exp.slug,
+    description: exp.description,
+    durationDays: exp.durationDays,
+    location: exp.location,
+    basePrice: Number(exp.basePrice),
+    capacity: exp.capacity,
+    difficulty: exp.difficulty,
+    status: exp.status,
+    images: exp.images,
+    createdAt: exp.createdAt.toISOString(),
+    updatedAt: exp.updatedAt.toISOString(),
+    startDate: exp.startDate?.toISOString() || null,
+    endDate: exp.endDate?.toISOString() || null,
+    categories: exp.categories.map((c) => ({
+      category: {
+        id: c.category.id,
+        name: c.category.name,
+        slug: c.category.slug,
+      },
+    })),
+  }));
+
   return (
     <main className="min-h-screen bg-background flex flex-col">
       <Navbar />
 
-      <div className="bg-card w-full pt-32 pb-16 border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <h1 className="text-4xl md:text-5xl font-heading font-black text-foreground mb-4">
-            Curated <span className="text-primary italic">Adventures</span>
-          </h1>
-          <p className="text-foreground/70 max-w-2xl mx-auto text-lg">
-            Discover our hand-picked collection of treks, spiritual journeys,
-            and immersive experiences across India.
-          </p>
-        </div>
-      </div>
-
-      <div className="flex-1 max-w-7xl mx-auto px-4 w-full py-12">
-        {/* Simple Filters Placeholder */}
-        <div className="flex flex-wrap items-center justify-between mb-8 gap-4 border-b border-border pb-6">
-          <div className="flex gap-2">
-            <button className="px-4 py-2 bg-foreground text-background rounded-full text-sm font-bold">
-              All Trips
-            </button>
-            <button className="px-4 py-2 bg-foreground/5 text-foreground hover:bg-foreground/10 rounded-full text-sm font-medium transition-colors">
-              Trekking
-            </button>
-            <button className="px-4 py-2 bg-foreground/5 text-foreground hover:bg-foreground/10 rounded-full text-sm font-medium transition-colors">
-              Spiritual
-            </button>
-            <button className="px-4 py-2 bg-foreground/5 text-foreground hover:bg-foreground/10 rounded-full text-sm font-medium transition-colors">
-              Cultural
-            </button>
-          </div>
-          <div className="text-sm text-foreground/60 font-medium">
-            Showing {experiences.length} trips
-          </div>
-        </div>
-
-        {experiences.length === 0 ? (
-          <div className="text-center py-20 text-foreground/50">
-            <h3 className="text-xl font-bold text-foreground mb-2">
-              No experiences found
-            </h3>
-            <p>Check back later or adjust your filters.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {experiences.map((exp: any) => (
-              <ExperienceCard key={exp.id} experience={exp} />
-            ))}
-          </div>
-        )}
-      </div>
+      <ExperiencesClient
+        initialExperiences={serializedExperiences as any}
+        categories={serializedCategories}
+        initialFilter={initialFilter}
+      />
 
       {/* Footer Placeholder */}
       <footer className="bg-black py-16 mt-auto">

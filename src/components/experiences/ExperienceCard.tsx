@@ -20,13 +20,15 @@ interface ExperienceCardProps {
     basePrice: number;
     capacity: number;
     difficulty: "EASY" | "MODERATE" | "HARD" | "EXTREME";
-    isActive: boolean;
+    status: string;
     images: string[];
     categories: Category[];
   };
 }
 
-export default function ExperienceCard({ experience }: ExperienceCardProps) {
+export default function ExperienceCard({
+  experience,
+}: Readonly<ExperienceCardProps>) {
   const getDifficultyColor = (diff: string) => {
     switch (diff) {
       case "EASY":
@@ -44,7 +46,7 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
 
   const primaryImage =
     experience.images[0] || "https://picsum.photos/seed/placeholder/800/600";
-  const isVideo = primaryImage.match(/\.(mp4|webm)$/i);
+  const isVideo = /\.(mp4|webm)$/i.test(primaryImage);
 
   return (
     <Link
@@ -92,13 +94,13 @@ export default function ExperienceCard({ experience }: ExperienceCardProps) {
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-0 opacity-80" />
 
         <div className="absolute bottom-4 left-4 right-4 z-10 flex justify-between items-end">
-          <div className="flex gap-4 text-white font-medium text-sm">
-            <div className="flex items-center gap-1.5">
+          <div className="flex gap-3 text-white font-medium text-xs sm:text-sm">
+            <div className="flex items-center gap-1.5 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 shadow-sm">
               <Clock className="w-4 h-4 text-primary" />
               {experience.durationDays}D /{" "}
               {experience.durationDays > 1 ? experience.durationDays - 1 : 0}N
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 shadow-sm">
               <MapPin className="w-4 h-4 text-primary" />
               <span className="truncate max-w-[100px]">
                 {experience.location}
