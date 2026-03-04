@@ -571,6 +571,29 @@ export default function DashboardPage() {
           </section>
         )}
 
+        {/* Trek Lead Hub — only visible to TREK_LEAD role */}
+        {user.roleName === "TREK_LEAD" && (
+          <section>
+            <div className="flex items-center justify-between bg-gradient-to-r from-yellow-500/10 via-yellow-500/5 to-transparent border border-yellow-500/20 rounded-2xl p-6">
+              <div>
+                <h2 className="text-xl font-heading font-bold text-foreground">
+                  Trek Lead Hub
+                </h2>
+                <p className="text-sm text-foreground/60 mt-1">
+                  View your assigned trips. On D-Day, mark attendance and start
+                  the trek on-site.
+                </p>
+              </div>
+              <Link
+                href="/dashboard/trek-lead"
+                className="flex items-center gap-2 px-5 py-2.5 bg-yellow-500 text-black rounded-xl font-bold hover:scale-105 transition-transform shadow-lg shadow-yellow-500/25 text-sm shrink-0 ml-4"
+              >
+                My Assignments <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
+          </section>
+        )}
+
         {/* Upcoming Trips */}
         <section>
           <div className="flex items-center justify-between mb-8">
