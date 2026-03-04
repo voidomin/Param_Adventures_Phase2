@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
       where: {
         status: "ACTIVE",
         role: {
-          name: { in: ["TRIP_MANAGER", "ADMIN", "SUPER_ADMIN"] },
+          name: "TRIP_MANAGER",
         },
       },
       select: {

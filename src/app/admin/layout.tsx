@@ -79,7 +79,7 @@ export default function AdminLayout({
       name: "Operational Trips",
       href: "/admin/trips",
       icon: ClipboardList,
-      permission: "trip:moderate",
+      permission: "trip:create",
     },
     {
       name: "Bookings",
