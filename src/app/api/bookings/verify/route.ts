@@ -1,6 +1,33 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { prisma } from "@/lib/db";
+import { sendBookingConfirmation } from "@/lib/email";
+
+/**
+ * Fetches full booking details and sends a confirmation email.
+ */
+async function sendBookingConfirmationEmail(bookingId: string) {
+  const booking = await prisma.booking.findUnique({
+    where: { id: bookingId },
+    include: {
+      user: { select: { name: true, email: true } },
+      experience: { select: { title: true } },
+      slot: { select: { date: true } },
+    },
+  });
+
+  if (!booking || !booking.slot) return;
+
+  await sendBookingConfirmation({
+    userName: booking.user.name,
+    userEmail: booking.user.email,
+    experienceTitle: booking.experience.title,
+    slotDate: booking.slot.date.toISOString(),
+    participantCount: booking.participantCount,
+    totalPrice: Number(booking.totalPrice),
+    bookingId: booking.id,
+  });
+}
 
 /**
  * POST /api/bookings/verify — Verify Razorpay payment signature.
@@ -63,6 +90,11 @@ export async function POST(request: NextRequest) {
         },
       }),
     ]);
+
+    // Send confirmation email (fire-and-forget — don't block the response)
+    sendBookingConfirmationEmail(bookingId).catch((err) =>
+      console.error("Background email error:", err),
+    );
 
     return NextResponse.json({
       success: true,

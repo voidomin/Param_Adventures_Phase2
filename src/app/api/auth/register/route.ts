@@ -5,6 +5,7 @@ import {
   generateAccessToken,
   generateRefreshToken,
 } from "@/lib/auth";
+import { sendWelcomeEmail } from "@/lib/email";
 
 export async function POST(request: NextRequest) {
   try {
@@ -97,6 +98,12 @@ export async function POST(request: NextRequest) {
       path: "/",
       maxAge: 7 * 24 * 60 * 60, // 7 days
     });
+
+    // Send welcome email (fire-and-forget)
+    sendWelcomeEmail({
+      userName: user.name,
+      userEmail: user.email,
+    }).catch((err) => console.error("Welcome email error:", err));
 
     return response;
   } catch (error) {
