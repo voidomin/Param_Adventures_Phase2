@@ -34,7 +34,10 @@ export async function GET(request: NextRequest) {
       bookingStatus: "CONFIRMED",
       deletedAt: null,
       experienceId: { notIn: bloggedIds },
-      slot: { date: { lt: now } }, // trip must have already happened
+      OR: [
+        { slot: { date: { lt: now } } }, // Trip date has passed
+        { slot: { status: "COMPLETED" } }, // Or manager explicitly marked it completed
+      ],
     },
     include: {
       experience: {

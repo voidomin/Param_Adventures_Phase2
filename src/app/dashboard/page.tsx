@@ -61,6 +61,7 @@ interface Booking {
     difficulty: string;
   };
   slot: { date: string; capacity: number } | null;
+  canReview: boolean;
   payments: { status: string; amount: string; method: string | null }[];
 }
 
@@ -177,12 +178,22 @@ function BookingCard({
             <IndianRupee className="w-5 h-5 text-primary" />
             {Number(booking.totalPrice).toLocaleString("en-IN")}
           </div>
-          <Link
-            href={`/experiences/${booking.experience.slug}`}
-            className="flex items-center gap-1.5 text-sm text-primary font-bold hover:gap-2.5 transition-all"
-          >
-            View Trip <ArrowRight className="w-4 h-4" />
-          </Link>
+          <div className="flex items-center gap-3">
+            {!isUpcoming && booking.canReview && (
+              <Link
+                href={`/experiences/${booking.experience.slug}`}
+                className="flex items-center gap-1.5 text-sm bg-primary/10 text-primary px-3 py-1.5 rounded-lg font-bold hover:bg-primary hover:text-primary-foreground transition-all"
+              >
+                <PenLine className="w-4 h-4" /> Write Review
+              </Link>
+            )}
+            <Link
+              href={`/experiences/${booking.experience.slug}`}
+              className="flex items-center gap-1.5 text-sm text-primary font-bold hover:gap-2.5 transition-all"
+            >
+              View Trip <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
         </div>
       </div>
     </div>

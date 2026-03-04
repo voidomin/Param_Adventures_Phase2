@@ -62,11 +62,11 @@ enum BlogStatus {
 }
 
 enum TripStatus {
-  UPCOMING      // Slot created, not yet started
-  ACTIVE        // Manager has started; trek leads notified
-  TREK_STARTED  // Trek Lead kicked off on D-Day
-  TREK_ENDED    // Trek Lead ended; awaiting manager approval
-  COMPLETED     // Manager approved end; reviews unlocked
+  UPCOMING // Slot created, not yet started
+  ACTIVE // Manager has started; trek leads notified
+  TREK_STARTED // Trek Lead kicked off on D-Day
+  TREK_ENDED // Trek Lead ended; awaiting manager approval
+  COMPLETED // Manager approved end; reviews unlocked
 }
 
 enum MediaType {
@@ -77,23 +77,23 @@ enum MediaType {
 // ─── RBAC ────────────────────────────────────────────────
 
 model Role {
-  id          String           @id @default(uuid())
-  name        String           @unique // SUPER_ADMIN, ADMIN, TRIP_MANAGER, etc.
+  id          String   @id @default(uuid())
+  name        String   @unique // SUPER_ADMIN, ADMIN, TRIP_MANAGER, etc.
   description String?
-  isSystem    Boolean          @default(false)
-  createdAt   DateTime         @default(now())
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
 
   users       User[]
   permissions RolePermission[]
 }
 
 model Permission {
-  id          String           @id @default(uuid())
-  key         String           @unique // e.g. "trip:create", "booking:approve"
+  id          String  @id @default(uuid())
+  key         String  @unique // e.g. "trip:create", "booking:approve"
   description String?
-  category    String?          // grouping: trip, booking, media, user, etc.
+  category    String? // grouping: trip, booking, media, user, etc.
 
-  roles       RolePermission[]
+  roles RolePermission[]
 }
 
 model RolePermission {
@@ -108,68 +108,70 @@ model RolePermission {
 // ─── USER ────────────────────────────────────────────────
 
 model User {
-  id          String      @id @default(uuid())
-  email       String      @unique
-  password    String?     // bcrypt-hashed
-  name        String      @default("")
+  id          String  @id @default(uuid())
+  email       String  @unique
+  password    String? // bcrypt-hashed
+  name        String  @default("")
   phoneNumber String?
   avatarUrl   String?
 
-  roleId      String
-  role        Role        @relation(fields: [roleId], references: [id])
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id])
 
-  isVerified  Boolean     @default(false)
-  status      UserStatus  @default(ACTIVE)
-  googleId    String?     @unique
+  isVerified Boolean    @default(false)
+  status     UserStatus @default(ACTIVE)
+  googleId   String?    @unique
 
-  deletedAt   DateTime?
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  bookings    Booking[]
-  blogs       Blog[]
-  assignments TripAssignment[]  @relation("TrekLeadAssignments")
-  managedSlots Slot[]           @relation("SlotManager")
-  uploads     Image[]
+  bookings     Booking[]
+  blogs        Blog[]
+  assignments  TripAssignment[]   @relation("TrekLeadAssignments")
+  managedSlots Slot[]             @relation("SlotManager")
+  uploads      Image[]
+  reviews      ExperienceReview[]
 }
 
 // ─── EXPERIENCE MANAGEMENT ───────────────────────────────
 
 model Category {
-  id          String               @id @default(uuid())
-  name        String
-  slug        String               @unique
-  icon        String?              // lucide-react icon name, e.g. "Mountain"
-  isActive    Boolean              @default(true)
-  createdAt   DateTime             @default(now())
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  icon      String? // lucide-react icon name, e.g. "Mountain"
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
 
   experiences ExperienceCategory[]
 }
 
 model Experience {
-  id             String               @id @default(uuid())
-  title          String
-  slug           String               @unique
-  description    String               @db.Text
-  itinerary      Json
-  basePrice      Decimal              @db.Decimal(10, 2)
-  durationDays   Int                  @default(1)
-  location       String               @default("")
-  difficulty     Difficulty           @default(EASY)
-  capacity       Int
-  status         ExperienceStatus     @default(DRAFT)
-  images         String[]             // S3 URLs
-  isFeatured     Boolean              @default(false)
-  startDate      DateTime?
-  endDate        DateTime?
-  deletedAt      DateTime?
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
+  id           String           @id @default(uuid())
+  title        String
+  slug         String           @unique
+  description  String           @db.Text
+  itinerary    Json
+  basePrice    Decimal          @db.Decimal(10, 2)
+  durationDays Int              @default(1)
+  location     String           @default("")
+  difficulty   Difficulty       @default(EASY)
+  capacity     Int
+  status       ExperienceStatus @default(DRAFT)
+  images       String[] // S3 URLs
+  isFeatured   Boolean          @default(false)
+  startDate    DateTime?
+  endDate      DateTime?
+  deletedAt    DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
-  categories     ExperienceCategory[]
-  slots          Slot[]
-  bookings       Booking[]
-  blogs          Blog[]
+  categories ExperienceCategory[]
+  slots      Slot[]
+  bookings   Booking[]
+  blogs      Blog[]
+  reviews    ExperienceReview[]
 }
 
 model ExperienceCategory {
@@ -182,145 +184,162 @@ model ExperienceCategory {
 }
 
 model Slot {
-  id                String           @id @default(uuid())
+  id                String     @id @default(uuid())
   experienceId      String
-  experience        Experience       @relation(fields: [experienceId], references: [id])
+  experience        Experience @relation(fields: [experienceId], references: [id])
   date              DateTime
   capacity          Int
   remainingCapacity Int
 
   // Trip lifecycle
-  status            TripStatus       @default(UPCOMING)
-  managerId         String?          // Trip Manager assigned by admin
-  manager           User?            @relation("SlotManager", fields: [managerId], references: [id])
-  vendorContacts    Json?            // [{label: "Driver", value: "+91..."}, ...]
-  startedAt         DateTime?        // When manager started the trip
-  trekStartedAt     DateTime?        // When trek lead started trek
-  trekEndedAt       DateTime?        // When trek lead ended trek
-  completedAt       DateTime?        // When manager completed the trip
+  status         TripStatus @default(UPCOMING)
+  managerId      String? // Trip Manager assigned by admin
+  manager        User?      @relation("SlotManager", fields: [managerId], references: [id])
+  vendorContacts Json? // [{label: "Driver", value: "+91..."}, ...]
+  startedAt      DateTime? // When manager started the trip
+  trekStartedAt  DateTime? // When trek lead started trek
+  trekEndedAt    DateTime? // When trek lead ended trek
+  completedAt    DateTime? // When manager completed the trip
 
-  createdAt         DateTime         @default(now())
-  updatedAt         DateTime         @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  bookings          Booking[]
-  assignments       TripAssignment[]
-  tripLog           TripLog?
+  bookings    Booking[]
+  assignments TripAssignment[]
+  tripLog     TripLog?
 }
 
 // ─── BOOKING & PAYMENTS ──────────────────────────────────
 
 model Booking {
-  id                String        @id @default(uuid())
-  userId            String
-  user              User          @relation(fields: [userId], references: [id])
-  experienceId      String
-  experience        Experience    @relation(fields: [experienceId], references: [id])
-  slotId            String?
-  slot              Slot?         @relation(fields: [slotId], references: [id])
-  participantCount  Int           @default(1)
-  totalPrice        Decimal       @db.Decimal(10, 2) // Frozen at booking time
-  bookingStatus     BookingStatus @default(REQUESTED)
-  paymentStatus     PaymentStatus @default(PENDING)
-  attended          Boolean       @default(false)   // Marked by trek lead on D-Day
-  canReview         Boolean       @default(false)   // Unlocked when trip COMPLETED
-  deletedAt         DateTime?
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  id               String        @id @default(uuid())
+  userId           String
+  user             User          @relation(fields: [userId], references: [id])
+  experienceId     String
+  experience       Experience    @relation(fields: [experienceId], references: [id])
+  slotId           String?
+  slot             Slot?         @relation(fields: [slotId], references: [id])
+  participantCount Int           @default(1)
+  totalPrice       Decimal       @db.Decimal(10, 2) // Frozen at booking time
+  bookingStatus    BookingStatus @default(REQUESTED)
+  paymentStatus    PaymentStatus @default(PENDING)
+  attended         Boolean       @default(false) // Marked by trek lead on D-Day
+  canReview        Boolean       @default(false) // Unlocked when trip COMPLETED
+  deletedAt        DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
 
-  payments          Payment[]
+  payments Payment[]
 }
 
 model Payment {
-  id                  String          @id @default(uuid())
-  bookingId           String
-  booking             Booking         @relation(fields: [bookingId], references: [id])
-  provider            PaymentProvider @default(RAZORPAY)
-  providerOrderId     String?
-  providerPaymentId   String?         @unique
-  amount              Decimal         @db.Decimal(10, 2)
-  currency            String          @default("INR")
-  method              PaymentMethod?
-  status              PaymentStatus   @default(PENDING)
-  fullPayload         Json?           // Raw gateway response
-  createdAt           DateTime        @default(now())
+  id                String          @id @default(uuid())
+  bookingId         String
+  booking           Booking         @relation(fields: [bookingId], references: [id])
+  provider          PaymentProvider @default(RAZORPAY)
+  providerOrderId   String?
+  providerPaymentId String?         @unique
+  amount            Decimal         @db.Decimal(10, 2)
+  currency          String          @default("INR")
+  method            PaymentMethod?
+  status            PaymentStatus   @default(PENDING)
+  fullPayload       Json? // Raw gateway response
+  createdAt         DateTime        @default(now())
 }
 
 // ─── OPERATIONS ──────────────────────────────────────────
 
 model TripAssignment {
-  id          String @id @default(uuid())
-  slotId      String
-  slot        Slot   @relation(fields: [slotId], references: [id])
-  trekLeadId  String
-  trekLead    User   @relation("TrekLeadAssignments", fields: [trekLeadId], references: [id])
+  id         String @id @default(uuid())
+  slotId     String
+  slot       Slot   @relation(fields: [slotId], references: [id])
+  trekLeadId String
+  trekLead   User   @relation("TrekLeadAssignments", fields: [trekLeadId], references: [id])
 
   @@unique([slotId, trekLeadId])
 }
 
 // One TripLog per slot — attendance, photos, notes
 model TripLog {
-  id             String    @id @default(uuid())
-  slotId         String    @unique
-  slot           Slot      @relation(fields: [slotId], references: [id])
-  attendees      Json?     // [{ bookingId, userName, present: bool }]
-  photoUrls      String[]  // Docs/photos uploaded by trek lead
-  trekLeadNote   String?   @db.Text // Trek lead end-of-trip review
-  managerNote    String?   @db.Text // Manager reply/feedback
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  id           String   @id @default(uuid())
+  slotId       String   @unique
+  slot         Slot     @relation(fields: [slotId], references: [id])
+  attendees    Json? // [{ bookingId, userName, present: bool }]
+  photoUrls    String[] // Docs/photos uploaded by trek lead
+  trekLeadNote String?  @db.Text // Trek lead end-of-trip review
+  managerNote  String?  @db.Text // Manager reply/feedback
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 // ─── CONTENT & MEDIA ─────────────────────────────────────
 
 model Blog {
-  id              String     @id @default(uuid())
+  id              String      @id @default(uuid())
   title           String
-  slug            String     @unique
-  content         Json       // Rich text editor output
+  slug            String      @unique
+  content         Json // Rich text editor output
   authorId        String
-  author          User       @relation(fields: [authorId], references: [id])
-  experienceId    String?    // Optional: linked to an experience
+  author          User        @relation(fields: [authorId], references: [id])
+  experienceId    String? // Optional: linked to an experience
   experience      Experience? @relation(fields: [experienceId], references: [id])
   coverImageId    String?
-  coverImage      Image?     @relation(fields: [coverImageId], references: [id])
-  status          BlogStatus @default(DRAFT)
+  coverImage      Image?      @relation(fields: [coverImageId], references: [id])
+  status          BlogStatus  @default(DRAFT)
   rejectionReason String?
   deletedAt       DateTime?
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
 }
 
 model Image {
   id           String    @id @default(uuid())
-  originalUrl  String    // Full-size S3 / Cloudinary URL
-  mediumUrl    String?   // Optimized for display
-  thumbUrl     String?   // Thumbnail
+  originalUrl  String // Full-size S3 / Cloudinary URL
+  mediumUrl    String? // Optimized for display
+  thumbUrl     String? // Thumbnail
   type         MediaType @default(IMAGE)
   uploadedById String
   uploadedBy   User      @relation(fields: [uploadedById], references: [id])
   createdAt    DateTime  @default(now())
 
-  blogCovers   Blog[]    // Blogs using this as cover image
+  blogCovers Blog[] // Blogs using this as cover image
 }
 
 model HeroSlide {
-  id        String  @id @default(uuid())
-  title     String
-  subtitle  String?
-  videoUrl  String  // Background video URL
-  ctaLink   String? // CTA button target
-  order     Int     // Display sequence
-  isActive  Boolean @default(true)
+  id       String  @id @default(uuid())
+  title    String
+  subtitle String?
+  videoUrl String // Background video URL
+  ctaLink  String? // CTA button target
+  order    Int // Display sequence
+  isActive Boolean @default(true)
 }
 
 // ─── SYSTEM ──────────────────────────────────────────────
 
 model AuditLog {
-  id          String   @id @default(uuid())
-  actorId     String?
-  action      String   // e.g. TRIP_CREATED, USER_LOGIN, ROLE_ASSIGNED
-  targetType  String   // e.g. "User", "Trip", "Booking"
-  targetId    String?
-  metadata    Json?    // Extra context
-  timestamp   DateTime @default(now())
+  id         String   @id @default(uuid())
+  actorId    String?
+  action     String // e.g. TRIP_CREATED, USER_LOGIN, ROLE_ASSIGNED
+  targetType String // e.g. "User", "Trip", "Booking"
+  targetId   String?
+  metadata   Json? // Extra context
+  timestamp  DateTime @default(now())
+}
+
+model ExperienceReview {
+  id         String @id @default(uuid())
+  rating     Int    @db.SmallInt // 1 to 5
+  reviewText String @db.Text
+
+  experienceId String
+  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([experienceId, userId]) // One review per user per experience
 }

@@ -50,7 +50,7 @@ export async function GET(request: NextRequest) {
             difficulty: true,
           },
         },
-        slot: { select: { date: true, capacity: true } },
+        slot: { select: { date: true, capacity: true, status: true } },
         payments: {
           select: { status: true, amount: true, method: true },
           orderBy: { createdAt: "desc" },
@@ -64,14 +64,17 @@ export async function GET(request: NextRequest) {
 
     const upcomingBookings = allBookings.filter((b) => {
       const isNotCancelled = b.bookingStatus !== "CANCELLED";
+      const isNotCompleted = b.slot?.status !== "COMPLETED";
+      // It's future if there's no slot date, or if the date is >= now.
       const isFuture = b.slot ? new Date(b.slot.date) >= now : true;
-      return isNotCancelled && isFuture;
+      return isNotCancelled && isNotCompleted && isFuture;
     });
 
     const pastBookings = allBookings.filter((b) => {
       const isCancelled = b.bookingStatus === "CANCELLED";
+      const isCompleted = b.slot?.status === "COMPLETED";
       const isPast = b.slot ? new Date(b.slot.date) < now : false;
-      return isCancelled || isPast;
+      return isCancelled || isCompleted || isPast;
     });
 
     return NextResponse.json({

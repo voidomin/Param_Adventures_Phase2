@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Navbar from "@/components/layout/Navbar";
@@ -14,6 +15,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import BookNowButton from "@/components/booking/BookNowButton";
+import ExperienceReviews from "@/components/experiences/ExperienceReviews";
 
 export const revalidate = 60;
 
@@ -276,6 +278,11 @@ export default async function ExperienceDetailPage({
               </div>
             </section>
           )}
+
+          {/* User Reviews */}
+          <section className="pt-8 border-t border-border">
+            <ExperienceReviews slug={experience.slug} />
+          </section>
         </div>
 
         {/* Right Column - Sticky Sidebar */}
