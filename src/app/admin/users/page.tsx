@@ -122,16 +122,18 @@ export default function AdminUsersPage() {
         />
       </div>
 
-      {isLoading ? (
+      {isLoading && (
         <div className="flex justify-center py-20">
           <Loader2 className="w-12 h-12 text-primary animate-spin" />
         </div>
-      ) : filteredUsers.length === 0 ? (
+      )}
+      {!isLoading && filteredUsers.length === 0 && (
         <div className="bg-card border border-border rounded-2xl p-16 text-center text-foreground/50">
           <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
           <p>No active users found matching your search.</p>
         </div>
-      ) : (
+      )}
+      {!isLoading && filteredUsers.length > 0 && (
         <div className="bg-card border border-border rounded-2xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">

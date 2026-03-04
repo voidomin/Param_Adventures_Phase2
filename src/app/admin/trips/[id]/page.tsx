@@ -259,7 +259,7 @@ export default function TripManifestPage() {
                     </div>
                     <div className="bg-foreground/5 border border-border px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap text-center">
                       {p.participantCount} Guest
-                      {p.participantCount !== 1 ? "s" : ""}
+                      {p.participantCount === 1 ? "" : "s"}
                     </div>
                   </div>
                 ))}

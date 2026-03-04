@@ -196,11 +196,12 @@ export default function SlotsManagementPage() {
       </div>
 
       {/* Slot Table */}
-      {isLoading ? (
+      {isLoading && (
         <div className="flex justify-center py-20">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
-      ) : slots.length === 0 ? (
+      )}
+      {!isLoading && slots.length === 0 && (
         <div className="bg-card border border-border rounded-2xl p-16 text-center">
           <CalendarDays className="w-12 h-12 mx-auto mb-4 text-foreground/20" />
           <p className="text-foreground/50 font-medium">No slots yet</p>
@@ -214,7 +215,8 @@ export default function SlotsManagementPage() {
             Add First Slot
           </button>
         </div>
-      ) : (
+      )}
+      {!isLoading && slots.length > 0 && (
         <div className="bg-card border border-border rounded-2xl overflow-hidden">
           <table className="w-full">
             <thead>

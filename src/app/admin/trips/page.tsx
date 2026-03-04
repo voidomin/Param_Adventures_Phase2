@@ -36,6 +36,15 @@ interface TripSlot {
   };
 }
 
+function formatDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString("en-IN", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 export default function AdminTripsPage() {
   const [trips, setTrips] = useState<TripSlot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -56,15 +65,6 @@ export default function AdminTripsPage() {
     fetchTrips();
   }, []);
 
-  function formatDate(dateStr: string) {
-    return new Date(dateStr).toLocaleDateString("en-IN", {
-      weekday: "short",
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-  }
-
   return (
     <div>
       <div className="flex justify-between items-center mb-8">
@@ -78,11 +78,12 @@ export default function AdminTripsPage() {
         </div>
       </div>
 
-      {isLoading ? (
+      {isLoading && (
         <div className="flex justify-center py-20">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
         </div>
-      ) : trips.length === 0 ? (
+      )}
+      {!isLoading && trips.length === 0 && (
         <div className="bg-card border border-border rounded-2xl p-16 text-center text-foreground/50">
           <CalendarDays className="w-12 h-12 mx-auto mb-4 opacity-50" />
           <h3 className="text-lg font-bold text-foreground mb-1">
@@ -90,7 +91,8 @@ export default function AdminTripsPage() {
           </h3>
           <p>There are no slots scheduled in the future.</p>
         </div>
-      ) : (
+      )}
+      {!isLoading && trips.length > 0 && (
         <div className="grid gap-4">
           {trips.map((trip) => {
             const fillPct = Math.round(

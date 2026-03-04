@@ -131,7 +131,7 @@ export default function AdminBlogsPage() {
 
   useEffect(() => {
     fetchBlogs(statusFilter);
-  }, [statusFilter]); // eslint-disable-line
+  }, [statusFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleApprove = async (id: string) => {
     setApprovingId(id);
@@ -176,6 +176,15 @@ export default function AdminBlogsPage() {
     }
   };
 
+  const getStatusLabel = (s: string) => {
+    if (s === "PENDING_REVIEW") {
+      return counts.PENDING_REVIEW > 0
+        ? `Pending (${counts.PENDING_REVIEW})`
+        : "Pending";
+    }
+    return s.replace("_", " ");
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="max-w-6xl mx-auto px-4 py-8">
@@ -202,11 +211,7 @@ export default function AdminBlogsPage() {
                     : "border-border text-foreground/60 hover:text-foreground hover:bg-foreground/5"
                 }`}
               >
-                {s === "PENDING_REVIEW" && counts.PENDING_REVIEW > 0
-                  ? `Pending (${counts.PENDING_REVIEW})`
-                  : s === "PENDING_REVIEW"
-                    ? "Pending"
-                    : s.replace("_", " ")}
+                {getStatusLabel(s)}
               </button>
             ))}
           </div>
@@ -223,16 +228,20 @@ export default function AdminBlogsPage() {
         </div>
 
         {/* Table */}
-        {isLoading ? (
+        {isLoading && (
           <div className="flex justify-center py-20">
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
-        ) : filtered.length === 0 ? (
+        )}
+
+        {!isLoading && filtered.length === 0 && (
           <div className="text-center py-20 border border-dashed border-border rounded-2xl">
             <Mountain className="w-10 h-10 text-foreground/20 mx-auto mb-3" />
             <p className="text-foreground/40">No blogs found</p>
           </div>
-        ) : (
+        )}
+
+        {!isLoading && filtered.length > 0 && (
           <div className="space-y-3">
             {filtered.map((blog) => (
               <div

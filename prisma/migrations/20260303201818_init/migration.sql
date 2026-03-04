@@ -2,7 +2,7 @@
 CREATE TYPE "UserStatus" AS ENUM ('ACTIVE', 'SUSPENDED', 'BANNED');
 
 -- CreateEnum
-CREATE TYPE "ExperienceStatus" AS ENUM ('DRAFT', 'PUBLISHED', 'ARCHIVED');
+CREATE TYPE "ExperienceStatus" AS ENUM ('DRAFT', 'PUBLISHED', 'ARCHIVED'); -- NOSONAR
 
 -- CreateEnum
 CREATE TYPE "Difficulty" AS ENUM ('EASY', 'MODERATE', 'HARD', 'EXTREME');
@@ -11,7 +11,7 @@ CREATE TYPE "Difficulty" AS ENUM ('EASY', 'MODERATE', 'HARD', 'EXTREME');
 CREATE TYPE "BookingStatus" AS ENUM ('REQUESTED', 'CONFIRMED', 'CANCELLED');
 
 -- CreateEnum
-CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'PAID', 'FAILED');
+CREATE TYPE "PaymentStatus" AS ENUM ('PENDING', 'PAID', 'FAILED'); -- NOSONAR
 
 -- CreateEnum
 CREATE TYPE "PaymentProvider" AS ENUM ('RAZORPAY');
