@@ -46,6 +46,10 @@ function loadRazorpayScript(): Promise<boolean> {
     }
     const script = document.createElement("script");
     script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    // SRI (Subresource Integrity) is intentionally omitted here because:
+    // 1. Razorpay v1 is a frequently updated script; hardcoding a hash would break payments on updates.
+    // 2. Official documentation recommends against SRI for this specific bundle.
+    script.crossOrigin = "anonymous";
     script.onload = () => resolve(true);
     script.onerror = () => resolve(false);
     document.body.appendChild(script);
