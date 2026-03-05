@@ -169,6 +169,162 @@ export default function AdminReviewsPage() {
   const featuredHomeCount = reviews.filter((r) => r.isFeaturedHome).length;
   const featuredExpCount = reviews.filter((r) => r.isFeaturedExperience).length;
 
+  let mainContent;
+
+  if (isLoading) {
+    mainContent = (
+      <div className="flex justify-center py-16">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  } else if (filtered.length === 0) {
+    mainContent = (
+      <div className="py-16 text-center text-foreground/40">
+        <Quote className="w-10 h-10 mx-auto mb-3 opacity-40" />
+        <p>No reviews found.</p>
+      </div>
+    );
+  } else {
+    mainContent = (
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead>
+            <tr className="border-b border-border bg-foreground/[0.03]">
+              <th className="px-5 py-3 font-semibold text-foreground/60 text-xs uppercase tracking-wider">
+                Reviewer
+              </th>
+              <th className="px-5 py-3 font-semibold text-foreground/60 text-xs uppercase tracking-wider">
+                Experience
+              </th>
+              <th className="px-5 py-3 font-semibold text-foreground/60 text-xs uppercase tracking-wider w-16">
+                Rating
+              </th>
+              <th className="px-5 py-3 font-semibold text-foreground/60 text-xs uppercase tracking-wider max-w-xs">
+                Review
+              </th>
+              <th className="px-5 py-3 font-semibold text-foreground/60 text-xs uppercase tracking-wider text-center">
+                Homepage
+              </th>
+              <th className="px-5 py-3 font-semibold text-foreground/60 text-xs uppercase tracking-wider text-center">
+                Experience Page
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border/50">
+            {filtered.map((review) => {
+              const homeKey = `${review.id}-isFeaturedHome`;
+              const expKey = `${review.id}-isFeaturedExperience`;
+              const isFeatured =
+                review.isFeaturedHome || review.isFeaturedExperience;
+              const rowBg = isFeatured ? "bg-primary/[0.02]" : "";
+              return (
+                <tr
+                  key={review.id}
+                  className={`hover:bg-foreground/[0.02] transition-colors ${rowBg}`}
+                >
+                  {/* Reviewer */}
+                  <td className="px-5 py-4">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs shrink-0">
+                        {review.user.name?.charAt(0)?.toUpperCase() ?? "?"}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-foreground leading-tight">
+                          {review.user.name}
+                        </p>
+                        <p className="text-foreground/40 text-xs mt-0.5">
+                          {review.user.email}
+                        </p>
+                      </div>
+                    </div>
+                  </td>
+
+                  {/* Experience */}
+                  <td className="px-5 py-4">
+                    <a
+                      href={`/experiences/${review.experience.slug}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-medium text-foreground hover:text-primary transition-colors line-clamp-2"
+                    >
+                      {review.experience.title}
+                    </a>
+                    <p className="text-foreground/40 text-xs mt-0.5">
+                      {new Date(review.createdAt).toLocaleDateString("en-IN", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
+                    </p>
+                  </td>
+
+                  {/* Rating */}
+                  <td className="px-5 py-4">
+                    <div className="flex flex-col gap-1">
+                      <StarRow rating={review.rating} />
+                      <span className="text-xs text-foreground/50 font-bold">
+                        {review.rating}/5
+                      </span>
+                    </div>
+                  </td>
+
+                  {/* Review text */}
+                  <td className="px-5 py-4 max-w-xs">
+                    <p className="text-foreground/70 text-xs leading-relaxed line-clamp-3">
+                      {review.reviewText}
+                    </p>
+                  </td>
+
+                  {/* Featured Home toggle */}
+                  <td className="px-5 py-4 text-center">
+                    {updating[homeKey] ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-primary mx-auto" />
+                    ) : (
+                      <Toggle
+                        checked={review.isFeaturedHome}
+                        onChange={() =>
+                          handleToggle(
+                            review.id,
+                            "isFeaturedHome",
+                            review.isFeaturedHome,
+                          )
+                        }
+                        label="Home"
+                        icon={Globe}
+                        color="primary"
+                      />
+                    )}
+                  </td>
+
+                  {/* Featured Experience toggle */}
+                  <td className="px-5 py-4 text-center">
+                    {updating[expKey] ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-purple-500 mx-auto" />
+                    ) : (
+                      <Toggle
+                        checked={review.isFeaturedExperience}
+                        onChange={() =>
+                          handleToggle(
+                            review.id,
+                            "isFeaturedExperience",
+                            review.isFeaturedExperience,
+                          )
+                        }
+                        label="Trip"
+                        icon={Mountain}
+                        color="purple"
+                      />
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -228,152 +384,7 @@ export default function AdminReviewsPage() {
 
       {/* Table */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
-        {isLoading ? (
-          <div className="flex justify-center py-16">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="py-16 text-center text-foreground/40">
-            <Quote className="w-10 h-10 mx-auto mb-3 opacity-40" />
-            <p>No reviews found.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-border bg-foreground/[0.03]">
-                  <th className="px-5 py-3 font-semibold text-foreground/60 text-xs uppercase tracking-wider">
-                    Reviewer
-                  </th>
-                  <th className="px-5 py-3 font-semibold text-foreground/60 text-xs uppercase tracking-wider">
-                    Experience
-                  </th>
-                  <th className="px-5 py-3 font-semibold text-foreground/60 text-xs uppercase tracking-wider w-16">
-                    Rating
-                  </th>
-                  <th className="px-5 py-3 font-semibold text-foreground/60 text-xs uppercase tracking-wider max-w-xs">
-                    Review
-                  </th>
-                  <th className="px-5 py-3 font-semibold text-foreground/60 text-xs uppercase tracking-wider text-center">
-                    Homepage
-                  </th>
-                  <th className="px-5 py-3 font-semibold text-foreground/60 text-xs uppercase tracking-wider text-center">
-                    Experience Page
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/50">
-                {filtered.map((review) => {
-                  const homeKey = `${review.id}-isFeaturedHome`;
-                  const expKey = `${review.id}-isFeaturedExperience`;
-                  const isFeatured =
-                    review.isFeaturedHome || review.isFeaturedExperience;
-                  const rowBg = isFeatured ? "bg-primary/[0.02]" : "";
-                  return (
-                    <tr
-                      key={review.id}
-                      className={`hover:bg-foreground/[0.02] transition-colors ${rowBg}`}
-                    >
-                      {/* Reviewer */}
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs shrink-0">
-                            {review.user.name?.charAt(0)?.toUpperCase() ?? "?"}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-foreground leading-tight">
-                              {review.user.name}
-                            </p>
-                            <p className="text-foreground/40 text-xs mt-0.5">
-                              {review.user.email}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Experience */}
-                      <td className="px-5 py-4">
-                        <a
-                          href={`/experiences/${review.experience.slug}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="font-medium text-foreground hover:text-primary transition-colors line-clamp-2"
-                        >
-                          {review.experience.title}
-                        </a>
-                        <p className="text-foreground/40 text-xs mt-0.5">
-                          {new Date(review.createdAt).toLocaleDateString(
-                            "en-IN",
-                            { month: "short", day: "numeric", year: "numeric" },
-                          )}
-                        </p>
-                      </td>
-
-                      {/* Rating */}
-                      <td className="px-5 py-4">
-                        <div className="flex flex-col gap-1">
-                          <StarRow rating={review.rating} />
-                          <span className="text-xs text-foreground/50 font-bold">
-                            {review.rating}/5
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Review text */}
-                      <td className="px-5 py-4 max-w-xs">
-                        <p className="text-foreground/70 text-xs leading-relaxed line-clamp-3">
-                          {review.reviewText}
-                        </p>
-                      </td>
-
-                      {/* Featured Home toggle */}
-                      <td className="px-5 py-4 text-center">
-                        {updating[homeKey] ? (
-                          <Loader2 className="w-4 h-4 animate-spin text-primary mx-auto" />
-                        ) : (
-                          <Toggle
-                            checked={review.isFeaturedHome}
-                            onChange={() =>
-                              handleToggle(
-                                review.id,
-                                "isFeaturedHome",
-                                review.isFeaturedHome,
-                              )
-                            }
-                            label="Home"
-                            icon={Globe}
-                            color="primary"
-                          />
-                        )}
-                      </td>
-
-                      {/* Featured Experience toggle */}
-                      <td className="px-5 py-4 text-center">
-                        {updating[expKey] ? (
-                          <Loader2 className="w-4 h-4 animate-spin text-purple-500 mx-auto" />
-                        ) : (
-                          <Toggle
-                            checked={review.isFeaturedExperience}
-                            onChange={() =>
-                              handleToggle(
-                                review.id,
-                                "isFeaturedExperience",
-                                review.isFeaturedExperience,
-                              )
-                            }
-                            label="Trip"
-                            icon={Mountain}
-                            color="purple"
-                          />
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+        {mainContent}
       </div>
 
       {/* Pagination */}
