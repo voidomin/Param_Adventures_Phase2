@@ -126,7 +126,7 @@ function BookingCard({
           alt={booking.experience.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent" />
         {isUpcoming && (
           <div className="absolute top-3 right-3 bg-primary text-primary-foreground px-3 py-1 rounded-full text-xs font-bold shadow-lg">
             Upcoming
@@ -364,13 +364,13 @@ export default function DashboardPage() {
 
       {/* Hero / Profile Header */}
       <div className="relative pt-16 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-background" />
+        <div className="absolute inset-0 bg-linear-to-br from-primary/10 via-background to-background" />
         <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
         <div className="relative max-w-7xl mx-auto px-4 py-16">
           <div className="flex flex-col md:flex-row items-start md:items-center gap-8">
             {/* Avatar with upload */}
-            <div className="relative flex-shrink-0">
-              <div className="w-24 h-24 md:w-28 md:h-28 rounded-2xl overflow-hidden shadow-2xl shadow-primary/30 bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
+            <div className="relative shrink-0">
+              <div className="w-24 h-24 md:w-28 md:h-28 rounded-2xl overflow-hidden shadow-2xl shadow-primary/30 bg-linear-to-br from-primary to-primary/60 flex items-center justify-center">
                 {currentAvatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -562,7 +562,7 @@ export default function DashboardPage() {
         {/* Manager Hub — only visible to TRIP_MANAGER role */}
         {user.roleName === "TRIP_MANAGER" && (
           <section>
-            <div className="flex items-center justify-between bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-2xl p-6">
+            <div className="flex items-center justify-between bg-linear-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-2xl p-6">
               <div>
                 <h2 className="text-xl font-heading font-bold text-foreground">
                   Manager Hub
@@ -585,7 +585,7 @@ export default function DashboardPage() {
         {/* Trek Lead Hub — only visible to TREK_LEAD role */}
         {user.roleName === "TREK_LEAD" && (
           <section>
-            <div className="flex items-center justify-between bg-gradient-to-r from-yellow-500/10 via-yellow-500/5 to-transparent border border-yellow-500/20 rounded-2xl p-6">
+            <div className="flex items-center justify-between bg-linear-to-r from-yellow-500/10 via-yellow-500/5 to-transparent border border-yellow-500/20 rounded-2xl p-6">
               <div>
                 <h2 className="text-xl font-heading font-bold text-foreground">
                   Trek Lead Hub
@@ -658,7 +658,7 @@ export default function DashboardPage() {
                   className="bg-card border border-border rounded-xl p-5 flex flex-col sm:flex-row gap-4 items-start sm:items-center hover:bg-foreground/5 transition-colors"
                 >
                   {/* Thumbnail */}
-                  <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-muted">
+                  <div className="w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-muted">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={
