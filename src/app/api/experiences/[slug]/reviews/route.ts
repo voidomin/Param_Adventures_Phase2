@@ -56,18 +56,28 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       breakdown[row.rating] = row._count.rating;
     }
 
-    // Fetch the featured pull-quote for this experience (if any)
-    const featuredReview = await prisma.experienceReview.findFirst({
+    // Fetch the featured pull-quote for this experience (if any).
+    // The explicit JS check below guards against any Prisma filter caching issue:
+    // even if the WHERE clause is silently ignored, we only return it when the
+    // flag is actually true on the returned row.
+    const rawFeatured = await prisma.experienceReview.findFirst({
       where: {
         experienceId: experience.id,
         isFeaturedExperience: true,
       },
       include: { user: { select: { name: true } } },
     });
+    const featuredReview =
+      rawFeatured?.isFeaturedExperience === true ? rawFeatured : null;
+
+    // Exclude the featured review from the regular list to avoid showing it twice.
+    const reviewList = featuredReview
+      ? reviews.filter((r) => r.id !== featuredReview.id)
+      : reviews;
 
     return NextResponse.json({
-      reviews,
-      featuredReview: featuredReview ?? null,
+      reviews: reviewList,
+      featuredReview,
       pagination: {
         total: totalCount,
         page,
