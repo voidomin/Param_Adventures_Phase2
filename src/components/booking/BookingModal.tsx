@@ -40,19 +40,22 @@ declare global {
 
 function loadRazorpayScript(): Promise<boolean> {
   return new Promise((resolve) => {
-    if (typeof window !== "undefined" && window.Razorpay !== undefined) {
+    if (
+      typeof globalThis !== "undefined" &&
+      (globalThis as any).Razorpay !== undefined
+    ) {
       resolve(true);
       return;
     }
-    const script = document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    const script = globalThis.document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js"; // NOSONAR: SRI omitted intentionally as per Razorpay docs
     // SRI (Subresource Integrity) is intentionally omitted here because:
     // 1. Razorpay v1 is a frequently updated script; hardcoding a hash would break payments on updates.
     // 2. Official documentation recommends against SRI for this specific bundle.
     script.crossOrigin = "anonymous";
     script.onload = () => resolve(true);
     script.onerror = () => resolve(false);
-    document.body.appendChild(script);
+    globalThis.document.body.appendChild(script);
   });
 }
 
@@ -121,13 +124,15 @@ export default function BookingModal({
     }
 
     try {
+      if (!selectedSlot) throw new Error("No slot selected.");
+
       // Create booking + Razorpay order
       const bookRes = await fetch("/api/bookings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           experienceId,
-          slotId: selectedSlot!.id,
+          slotId: selectedSlot.id,
           participantCount: participants,
         }),
       });
@@ -139,7 +144,7 @@ export default function BookingModal({
       setBookingId(bId);
 
       // Launch Razorpay checkout
-      const rzp = new window.Razorpay({
+      const rzp = new (globalThis as any).Razorpay({
         key: keyId,
         amount,
         currency,
@@ -441,7 +446,10 @@ export default function BookingModal({
             </h3>
             <p className="text-foreground/60 text-sm mb-1">
               Your adventure on{" "}
-              <strong>{formatDate(selectedSlot!.date)}</strong> is confirmed.
+              <strong>
+                {selectedSlot ? formatDate(selectedSlot.date) : "N/A"}
+              </strong>{" "}
+              is confirmed.
             </p>
             <p className="text-xs text-foreground/40 mt-1 font-mono">
               ID: {bookingId.slice(0, 8)}…
