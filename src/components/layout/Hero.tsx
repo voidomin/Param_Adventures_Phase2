@@ -166,23 +166,24 @@ export default function Hero({
             </div>
           </motion.div>
         </AnimatePresence>
-
-        {slides.length > 1 && (
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 z-30">
-            {slides.map((slide, idx) => (
-              <button
-                key={slide.id}
-                onClick={() => setCurrentIndex(idx)}
-                className={`transition-all rounded-full ${
-                  idx === currentIndex
-                    ? "w-8 h-2 bg-primary shadow-[0_0_10px_var(--primary)]"
-                    : "w-2 h-2 bg-white/30 hover:bg-white/60"
-                }`}
-              />
-            ))}
-          </div>
-        )}
       </div>
+
+      {/* Slider Indicators fixed to the bottom of the screen */}
+      {slides.length > 1 && (
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 z-30">
+          {slides.map((slide, idx) => (
+            <button
+              key={slide.id}
+              onClick={() => setCurrentIndex(idx)}
+              className={`transition-all rounded-full ${
+                idx === currentIndex
+                  ? "w-8 h-2 bg-primary shadow-[0_0_10px_var(--primary)]"
+                  : "w-2 h-2 bg-white/30 hover:bg-white/60"
+              }`}
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 }
