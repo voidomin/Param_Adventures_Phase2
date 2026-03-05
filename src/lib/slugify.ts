@@ -4,14 +4,17 @@
 export function generateSlug(text: string): string {
   if (!text) return "";
 
-  return text
+  let slug = text
     .toLowerCase()
-    .normalize("NFD") // Split accents into separate characters
-    .replace(/[\u0300-\u036f]/g, "") // Remove all accent marks
-    .trim()
-    .replace(/[^a-z0-9\s_-]/g, "") // Remove non-alphanumeric except space, hyphen, and underscore
-    .replace(/[\s_]+/g, "-") // Replace spaces and underscores with a single hyphen
-    .replace(/-+/g, "-") // Collapse multiple hyphens into a single one
-    .replace(/^-+/, "") // Remove leading hyphens
-    .replace(/-+$/, ""); // Remove trailing hyphens
+    .normalize("NFD")
+    .replaceAll(/[\u0300-\u036f]/g, "")
+    .replaceAll(/[^a-z0-9\s_-]/g, "") // Strip symbols
+    .replaceAll(/[\s_]+/g, "-") // Convert spaces and underscores to hyphens
+    .replaceAll(/-+/g, "-"); // Collapse multiple hyphens
+
+  // Remove leading/trailing hyphens without using anchored quantifiers to satisfy SonarQube S5852
+  if (slug.startsWith("-")) slug = slug.substring(1);
+  if (slug.endsWith("-")) slug = slug.substring(0, slug.length - 1);
+
+  return slug;
 }
