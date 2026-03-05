@@ -119,7 +119,7 @@ export default function AdminLayout({
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto mt-4">
           {navItems.map((item) => {
             // Only show items user has permission for
-            if (item.permission && !hasPermission(item.permission as any))
+            if (item.permission && !hasPermission(item.permission))
               return null;
 
             const isActive =
