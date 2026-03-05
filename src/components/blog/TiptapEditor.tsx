@@ -12,7 +12,11 @@ import {
   ListOrdered,
   Quote,
   Minus,
+  Image as ImageIcon,
+  Youtube as YoutubeIcon,
 } from "lucide-react";
+import Image from "@tiptap/extension-image";
+import Youtube from "@tiptap/extension-youtube";
 
 interface TiptapEditorProps {
   content: object;
@@ -58,7 +62,17 @@ export default function TiptapEditor({
   editable = true,
 }: Readonly<TiptapEditorProps>) {
   const editor = useEditor({
-    extensions: [StarterKit, Placeholder.configure({ placeholder })],
+    extensions: [
+      StarterKit,
+      Placeholder.configure({ placeholder }),
+      Image,
+      Youtube.configure({
+        inline: false,
+        HTMLAttributes: {
+          class: "w-full aspect-video rounded-xl",
+        },
+      }),
+    ],
     content,
     editable,
     immediatelyRender: false,
@@ -135,6 +149,42 @@ export default function TiptapEditor({
             title="Horizontal Rule"
           >
             <Minus className="w-4 h-4" />
+          </ToolbarButton>
+          <div className="w-px h-5 bg-border mx-1" />
+          <ToolbarButton
+            onClick={() => {
+              const url = window.prompt("Enter image URL");
+              if (url) {
+                editor.chain().focus().setImage({ src: url }).run();
+              }
+            }}
+            title="Insert Image"
+          >
+            <ImageIcon className="w-4 h-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => {
+              const url = window.prompt("Enter YouTube URL");
+              if (url) {
+                editor.commands.setYoutubeVideo({
+                  src: url,
+                  width:
+                    Math.max(
+                      320,
+                      parseInt(editor.view.dom.clientWidth.toString(), 10),
+                    ) || 640,
+                  height:
+                    Math.max(
+                      180,
+                      parseInt(editor.view.dom.clientWidth.toString(), 10) *
+                        0.5625,
+                    ) || 360,
+                });
+              }
+            }}
+            title="Insert YouTube Video"
+          >
+            <YoutubeIcon className="w-4 h-4 text-red-500" />
           </ToolbarButton>
         </div>
       )}

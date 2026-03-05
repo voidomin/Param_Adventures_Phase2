@@ -169,6 +169,7 @@ async function uploadToS3Direct(
 // Module-level helper — uploads file via direct cloud flow with progress support
 async function uploadSingleFile(
   file: File,
+  apiPrefix: string,
   onProgress?: (percent: number) => void,
 ): Promise<string> {
   const isVideo = file.type.startsWith("video/");
@@ -179,7 +180,7 @@ async function uploadSingleFile(
   }
 
   // 1. Get Presigned Data/URL
-  const presignRes = await fetch("/api/admin/media/presign", {
+  const presignRes = await fetch(`${apiPrefix}/presign`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -202,7 +203,7 @@ async function uploadSingleFile(
   if (onProgress) onProgress(100);
 
   // 3. Register Media in Database
-  const registerRes = await fetch("/api/admin/media/register", {
+  const registerRes = await fetch(`${apiPrefix}/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -223,9 +224,11 @@ async function uploadSingleFile(
 
 export default function MediaUploader({
   id = "media-upload",
+  apiPrefix = "/api/admin/media",
   onUploadSuccess,
 }: Readonly<{
   id?: string;
+  apiPrefix?: string;
   onUploadSuccess?: (urls?: string[]) => void;
 }>) {
   const [isDragging, setIsDragging] = useState(false);
@@ -267,7 +270,9 @@ export default function MediaUploader({
     try {
       const uploadedUrls: string[] = [];
       for (const file of files) {
-        uploadedUrls.push(await uploadSingleFile(file, (p) => setProgress(p)));
+        uploadedUrls.push(
+          await uploadSingleFile(file, apiPrefix, (p) => setProgress(p)),
+        );
       }
       if (onUploadSuccess) onUploadSuccess(uploadedUrls);
     } catch (err: unknown) {

@@ -43,16 +43,18 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
 
   const body = await request.json();
-  const { title, content, coverImageId } = body;
+  const { title, content, coverImageUrl, authorSocials, theme } = body;
 
   const updated = await prisma.blog.update({
     where: { id },
     data: {
       ...(title ? { title: title.trim() } : {}),
       ...(content === undefined ? {} : { content }),
-      ...(coverImageId === undefined
+      ...(coverImageUrl === undefined
         ? {}
-        : { coverImageId: coverImageId || null }),
+        : { coverImageUrl: coverImageUrl || null }),
+      ...(authorSocials === undefined ? {} : { authorSocials }),
+      ...(theme === undefined ? {} : { theme }),
     },
   });
 

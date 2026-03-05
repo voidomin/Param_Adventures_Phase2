@@ -18,7 +18,6 @@ export async function GET(request: NextRequest) {
     where: { authorId: payload.userId, deletedAt: null },
     include: {
       experience: { select: { id: true, title: true, slug: true } },
-      coverImage: { select: { originalUrl: true } },
     },
     orderBy: { updatedAt: "desc" },
   });
@@ -33,77 +32,88 @@ export async function GET(request: NextRequest) {
  * Constraint: one blog per (user, experience)
  */
 export async function POST(request: NextRequest) {
-  const token = request.cookies.get("accessToken")?.value;
-  if (!token)
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const payload = verifyAccessToken(token);
-  if (!payload)
-    return NextResponse.json({ error: "Invalid token." }, { status: 401 });
+  try {
+    const token = request.cookies.get("accessToken")?.value;
+    if (!token)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const payload = verifyAccessToken(token);
+    if (!payload)
+      return NextResponse.json({ error: "Invalid token." }, { status: 401 });
 
-  const body = await request.json();
-  const { experienceId, title } = body;
+    const body = await request.json();
+    const { experienceId, title, coverImageUrl, theme, authorSocials } = body;
 
-  if (!experienceId || !title?.trim()) {
-    return NextResponse.json(
-      { error: "experienceId and title are required." },
-      { status: 400 },
-    );
-  }
+    if (!experienceId || !title?.trim()) {
+      return NextResponse.json(
+        { error: "experienceId and title are required." },
+        { status: 400 },
+      );
+    }
 
-  // Gate: must have a CONFIRMED booking AND the trip must be completed (slot date in the past)
-  const now = new Date();
-  const confirmedBooking = await prisma.booking.findFirst({
-    where: {
-      userId: payload.userId,
-      experienceId,
-      bookingStatus: "CONFIRMED",
-      deletedAt: null,
-      slot: { date: { lt: now } },
-    },
-  });
-  if (!confirmedBooking) {
-    return NextResponse.json(
-      {
-        error:
-          "You can only write about experiences where your trip has been completed (trip date must have passed).",
+    // Gate: must have a CONFIRMED booking AND the trip must be completed (slot date in the past)
+    const now = new Date();
+    const confirmedBooking = await prisma.booking.findFirst({
+      where: {
+        userId: payload.userId,
+        experienceId,
+        bookingStatus: "CONFIRMED",
+        deletedAt: null,
+        slot: { date: { lt: now } },
       },
-      { status: 403 },
-    );
-  }
+    });
+    if (!confirmedBooking) {
+      return NextResponse.json(
+        {
+          error:
+            "You can only write about experiences where your trip has been completed (trip date must have passed).",
+        },
+        { status: 403 },
+      );
+    }
 
-  // Constraint: one blog per (user, experience)
-  const existing = await prisma.blog.findFirst({
-    where: { authorId: payload.userId, experienceId, deletedAt: null },
-  });
-  if (existing) {
-    return NextResponse.json(
-      {
-        error: "You have already written a blog about this experience.",
-        blogId: existing.id,
+    // Constraint: one blog per (user, experience)
+    const existing = await prisma.blog.findFirst({
+      where: { authorId: payload.userId, experienceId, deletedAt: null },
+    });
+    if (existing) {
+      return NextResponse.json(
+        {
+          error: "You have already written a blog about this experience.",
+          blogId: existing.id,
+        },
+        { status: 409 },
+      );
+    }
+
+    // Generate a unique slug
+    const baseSlug = generateSlug(title);
+    let slug = baseSlug;
+    let attempt = 0;
+    while (await prisma.blog.findUnique({ where: { slug } })) {
+      attempt++;
+      slug = `${baseSlug}-${attempt}`;
+    }
+
+    const blog = await prisma.blog.create({
+      data: {
+        title: title.trim(),
+        slug,
+        content: { type: "doc", content: [] }, // empty Tiptap doc
+        authorId: payload.userId,
+        experienceId,
+        status: "DRAFT",
+        coverImageUrl: coverImageUrl || null,
+        theme: theme || "CLASSIC",
+        authorSocials: authorSocials || null,
       },
-      { status: 409 },
+    });
+
+    return NextResponse.json({ blog }, { status: 201 });
+  } catch (error: any) {
+    console.error("POST /api/user/blogs error:", error);
+    return NextResponse.json(
+      { error: error.message || "Internal Server Error" },
+      { status: 500 },
     );
   }
-
-  // Generate a unique slug
-  const baseSlug = generateSlug(title);
-  let slug = baseSlug;
-  let attempt = 0;
-  while (await prisma.blog.findUnique({ where: { slug } })) {
-    attempt++;
-    slug = `${baseSlug}-${attempt}`;
-  }
-
-  const blog = await prisma.blog.create({
-    data: {
-      title: title.trim(),
-      slug,
-      content: { type: "doc", content: [] }, // empty Tiptap doc
-      authorId: payload.userId,
-      experienceId,
-      status: "DRAFT",
-    },
-  });
-
-  return NextResponse.json({ blog }, { status: 201 });
 }

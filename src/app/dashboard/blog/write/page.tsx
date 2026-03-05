@@ -4,7 +4,16 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "@/components/layout/Navbar";
 import dynamic from "next/dynamic";
-import { Loader2, Send, Save, Mountain } from "lucide-react";
+import {
+  Loader2,
+  Send,
+  Save,
+  Mountain,
+  Instagram,
+  Twitter,
+  Youtube as YoutubeIcon,
+} from "lucide-react";
+import MediaUploader from "@/components/admin/MediaUploader";
 
 // Lazy-load the editor to avoid SSR issues
 const TiptapEditor = dynamic(() => import("@/components/blog/TiptapEditor"), {
@@ -37,6 +46,13 @@ export default function WriteBlogPage() {
   const [error, setError] = useState("");
   const [blogId, setBlogId] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [coverImageUrl, setCoverImageUrl] = useState("");
+  const [theme, setTheme] = useState("CLASSIC");
+  const [socials, setSocials] = useState({
+    instagram: "",
+    twitter: "",
+    youtube: "",
+  });
 
   // Fetch confirmed experiences eligible for blogging
   useEffect(() => {
@@ -71,7 +87,13 @@ export default function WriteBlogPage() {
         const res = await fetch("/api/user/blogs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ experienceId: selectedExp, title }),
+          body: JSON.stringify({
+            experienceId: selectedExp,
+            title,
+            coverImageUrl,
+            theme,
+            authorSocials: socials,
+          }),
         });
         const data = await res.json();
         if (!res.ok) {
@@ -85,11 +107,16 @@ export default function WriteBlogPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ content }),
         });
-      } else {
         await fetch(`/api/user/blogs/${blogId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title, content }),
+          body: JSON.stringify({
+            title,
+            content,
+            coverImageUrl,
+            theme,
+            authorSocials: socials,
+          }),
         });
       }
       setSavedAt(new Date().toLocaleTimeString("en-IN"));
@@ -192,6 +219,61 @@ export default function WriteBlogPage() {
             </select>
           </div>
 
+          {/* Theme Selector */}
+          <div>
+            <label className="block text-sm font-semibold text-foreground/70 mb-2">
+              Story Theme
+            </label>
+            <div className="flex items-center gap-3">
+              {["CLASSIC", "MODERN", "MINIMAL"].map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setTheme(t)}
+                  className={`px-4 py-2 rounded-lg text-sm font-bold border-2 transition-all ${
+                    theme === t
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-foreground/50 hover:border-foreground/20"
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Cover Image */}
+          <div>
+            <label className="block text-sm font-semibold text-foreground/70 mb-2">
+              Hero Cover Image
+            </label>
+            {coverImageUrl ? (
+              <div className="relative w-full aspect-[21/9] rounded-2xl overflow-hidden group">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={coverImageUrl}
+                  alt="Cover"
+                  className="object-cover w-full h-full"
+                />
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => setCoverImageUrl("")}
+                    className="bg-background text-foreground px-4 py-2 rounded-xl text-sm font-bold"
+                  >
+                    Change Image
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <MediaUploader
+                id="blog-cover-upload"
+                apiPrefix="/api/user/media"
+                onUploadSuccess={(urls) => {
+                  if (urls && urls[0]) setCoverImageUrl(urls[0]);
+                }}
+              />
+            )}
+          </div>
+
           {/* Title */}
           <div>
             <label
@@ -220,10 +302,61 @@ export default function WriteBlogPage() {
             </label>
             <div id="blog-writer-content">
               <TiptapEditor
-                content={EMPTY_DOC}
+                content={content}
                 onChange={setContent}
                 placeholder="Describe your experience in vivid detail — the views, the people, the emotions…"
               />
+            </div>
+          </div>
+
+          {/* Socials */}
+          <div className="p-6 border border-border rounded-2xl bg-foreground/[0.02]">
+            <h3 className="font-bold text-foreground mb-4">
+              Author Profile Details
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="text-xs font-semibold text-foreground/60 mb-1 flex items-center gap-1">
+                  <Instagram className="w-3 h-3" /> Instagram URL
+                </label>
+                <input
+                  type="text"
+                  value={socials.instagram}
+                  onChange={(e) =>
+                    setSocials({ ...socials, instagram: e.target.value })
+                  }
+                  className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg"
+                  placeholder="https://instagram.com/..."
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-foreground/60 mb-1 flex items-center gap-1">
+                  <Twitter className="w-3 h-3" /> Twitter/X URL
+                </label>
+                <input
+                  type="text"
+                  value={socials.twitter}
+                  onChange={(e) =>
+                    setSocials({ ...socials, twitter: e.target.value })
+                  }
+                  className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg"
+                  placeholder="https://x.com/..."
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-foreground/60 mb-1 flex items-center gap-1">
+                  <YoutubeIcon className="w-3 h-3" /> YouTube URL
+                </label>
+                <input
+                  type="text"
+                  value={socials.youtube}
+                  onChange={(e) =>
+                    setSocials({ ...socials, youtube: e.target.value })
+                  }
+                  className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg"
+                  placeholder="https://youtube.com/..."
+                />
+              </div>
             </div>
           </div>
 

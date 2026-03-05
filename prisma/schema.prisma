@@ -301,6 +301,12 @@ model Blog {
   author          User        @relation(fields: [authorId], references: [id])
   experienceId    String? // Optional: linked to an experience
   experience      Experience? @relation(fields: [experienceId], references: [id])
+  
+  // New Enhancements
+  coverImageUrl   String?
+  authorSocials   Json?       // e.g. { instagram: "", twitter: "", youtube: "" }
+  theme           String      @default("CLASSIC") // CLASSIC, MODERN, MINIMAL
+
   coverImageId    String?
   coverImage      Image?      @relation(fields: [coverImageId], references: [id])
   status          BlogStatus  @default(DRAFT)

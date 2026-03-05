@@ -2,6 +2,8 @@
 
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
+import Image from "@tiptap/extension-image";
+import Youtube from "@tiptap/extension-youtube";
 
 interface RichTextRendererProps {
   content: object;
@@ -11,7 +13,16 @@ export default function RichTextRenderer({
   content,
 }: Readonly<RichTextRendererProps>) {
   const editor = useEditor({
-    extensions: [StarterKit],
+    extensions: [
+      StarterKit,
+      Image,
+      Youtube.configure({
+        inline: false,
+        HTMLAttributes: {
+          class: "w-full aspect-video rounded-xl my-8",
+        },
+      }),
+    ],
     content,
     editable: false,
     immediatelyRender: false,
