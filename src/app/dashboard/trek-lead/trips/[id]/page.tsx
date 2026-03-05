@@ -51,7 +51,7 @@ function formatDate(dateStr: string) {
   });
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status }: Readonly<{ status: string }>) {
   const colors: Record<string, string> = {
     UPCOMING: "bg-blue-500/10 text-blue-400 border-blue-500/20",
     ACTIVE: "bg-green-500/10 text-green-400 border-green-500/20",
@@ -307,9 +307,9 @@ export default function TrekLeadTripDetailPage() {
               Vendor Contacts
             </h2>
             <div className="space-y-2">
-              {slot.vendorContacts.map((vc, i) => (
+              {slot.vendorContacts.map((vc) => (
                 <div
-                  key={i}
+                  key={`${vc.label}-${vc.value}`}
                   className="flex items-center justify-between text-sm"
                 >
                   <span className="text-foreground/50">{vc.label}</span>
@@ -390,8 +390,6 @@ export default function TrekLeadTripDetailPage() {
               >
                 {isSavingAttendance ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
-                ) : attendanceSaved ? (
-                  <Check className="w-4 h-4" />
                 ) : (
                   <Check className="w-4 h-4" />
                 )}
