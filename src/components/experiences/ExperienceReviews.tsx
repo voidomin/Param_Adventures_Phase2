@@ -402,13 +402,13 @@ export default function ExperienceReviews({
             if (e.key === "Escape") setShowModal(false);
           }}
           tabIndex={-1}
-          role="presentation"
         >
-          <section
-            role="dialog"
-            aria-modal="true"
+          {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
+          <dialog
+            open
             aria-label="Write a review"
-            className="bg-card border border-border rounded-t-3xl sm:rounded-3xl shadow-2xl w-full sm:max-w-lg overflow-hidden"
+            className="bg-card border border-border rounded-t-3xl sm:rounded-3xl shadow-2xl w-full sm:max-w-lg overflow-hidden m-0 p-0 max-w-none max-h-none"
+            style={{ position: "static" }}
           >
             {/* Modal Header */}
             <div className="px-6 pt-6 pb-4 border-b border-border/50">
@@ -532,7 +532,7 @@ export default function ExperienceReviews({
                 </>
               )}
             </div>
-          </section>
+          </dialog>
         </div>
       )}
     </div>
