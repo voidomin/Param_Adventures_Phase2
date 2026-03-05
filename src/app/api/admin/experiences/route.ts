@@ -3,13 +3,7 @@ import { authorizeRequest } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
 import { ExperienceStatus, Difficulty } from "@prisma/client";
 
-// Generate a slug from a title string
-function generateSlug(title: string): string {
-  return title
-    .toLowerCase()
-    .replaceAll(/[^a-z0-9]+/g, "-")
-    .replaceAll(/(^-|-$)+/g, "");
-}
+import { generateSlug } from "@/lib/slugify";
 
 // GET /api/admin/experiences
 export async function GET(request: NextRequest) {
