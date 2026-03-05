@@ -34,7 +34,8 @@ export default function AdminLayout({
       } else if (
         !hasPermission("system:config") &&
         !hasPermission("trip:manage-categories") &&
-        !hasPermission("trip:create")
+        !hasPermission("trip:create") &&
+        !hasPermission("media:upload")
       ) {
         // Basic check: if they don't have at least one admin-ish permission, kick them out
         router.push("/");
@@ -80,7 +81,7 @@ export default function AdminLayout({
       name: "Operational Trips",
       href: "/admin/trips",
       icon: ClipboardList,
-      permission: "trip:create",
+      permission: "ops:view-all-trips",
     },
     {
       name: "Bookings",
@@ -98,7 +99,7 @@ export default function AdminLayout({
       name: "Blog Moderation",
       href: "/admin/blogs",
       icon: PenLine,
-      permission: "blog:moderate",
+      permission: ["blog:moderate", "media:upload"],
     },
     {
       name: "Reviews",
@@ -106,7 +107,12 @@ export default function AdminLayout({
       icon: Star,
       permission: "trip:create",
     },
-  ];
+  ] satisfies {
+    name: string;
+    href: string;
+    icon: React.ElementType;
+    permission?: string | string[];
+  }[];
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -125,8 +131,13 @@ export default function AdminLayout({
 
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto mt-4">
           {navItems.map((item) => {
-            // Only show items user has permission for
-            if (item.permission && !hasPermission(item.permission)) return null;
+            // Support single permission key or array of OR-checked keys
+            if (item.permission) {
+              const perms = Array.isArray(item.permission)
+                ? item.permission
+                : [item.permission];
+              if (!perms.some((p) => hasPermission(p))) return null;
+            }
 
             const isActive =
               pathname === item.href || pathname.startsWith(`${item.href}/`);

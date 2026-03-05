@@ -62,21 +62,16 @@ export default function Navbar() {
 
               {!isLoading && user && (
                 <div className="flex items-center gap-4">
-                  {user.role === "ADMIN" || user.role === "SUPER_ADMIN" ? (
+                  {["ADMIN", "SUPER_ADMIN", "MEDIA_UPLOADER"].includes(
+                    user.role,
+                  ) ? (
                     <Link
-                      href="/admin/categories"
+                      href="/admin"
                       className="text-sm font-bold text-primary hover:text-primary/80 transition-colors"
                     >
                       Admin Dashboard
                     </Link>
-                  ) : (
-                    <Link
-                      href="/dashboard"
-                      className="text-sm font-bold text-foreground/70 hover:text-primary transition-colors"
-                    >
-                      My Dashboard
-                    </Link>
-                  )}
+                  ) : null}
                   <Link
                     href="/dashboard"
                     className="flex items-center gap-2 px-3 py-1.5 bg-foreground/5 hover:bg-primary/10 rounded-full transition-colors"
@@ -162,9 +157,11 @@ export default function Navbar() {
                     </p>
                   </div>
                 </div>
-                {user.role === "ADMIN" || user.role === "SUPER_ADMIN" ? (
+                {["ADMIN", "SUPER_ADMIN", "MEDIA_UPLOADER"].includes(
+                  user.role,
+                ) ? (
                   <Link
-                    href="/admin/categories"
+                    href="/admin"
                     onClick={() => setIsOpen(false)}
                     className="w-full py-4 text-lg font-bold text-center block"
                     style={{ color: "#ff9933" }}
