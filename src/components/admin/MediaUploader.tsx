@@ -222,8 +222,10 @@ async function uploadSingleFile(
 }
 
 export default function MediaUploader({
+  id = "media-upload",
   onUploadSuccess,
 }: Readonly<{
+  id?: string;
   onUploadSuccess?: (urls?: string[]) => void;
 }>) {
   const [isDragging, setIsDragging] = useState(false);
@@ -281,7 +283,7 @@ export default function MediaUploader({
     <div className="w-full">
       {/* Native label wraps a hidden file input — natively interactive, no ARIA needed */}
       <label
-        htmlFor="media-upload"
+        htmlFor={id}
         className={`relative border-2 border-dashed rounded-2xl p-10 text-center transition-colors block ${
           isDragging
             ? "border-primary bg-primary/5"
@@ -294,7 +296,7 @@ export default function MediaUploader({
       >
         <input
           type="file"
-          id="media-upload"
+          id={id}
           multiple
           accept="image/*,video/*"
           className="hidden"

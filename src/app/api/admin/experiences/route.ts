@@ -45,9 +45,22 @@ export async function POST(request: NextRequest) {
       location,
       difficulty,
       isFeatured,
+      coverImage,
+      cardImage,
       images,
       itinerary,
       categoryIds,
+      inclusions,
+      exclusions,
+      thingsToCarry,
+      faqs,
+      cancellationPolicy,
+      meetingPoint,
+      minAge,
+      maxAltitude,
+      trekDistance,
+      bestTimeToVisit,
+      maxGroupSize,
     } = body;
 
     // Validate essential fields
@@ -89,8 +102,21 @@ export async function POST(request: NextRequest) {
         difficulty: difficulty || Difficulty.EASY,
         status: ExperienceStatus.DRAFT, // Always default to DRAFT on creation
         isFeatured: isFeatured || false,
+        coverImage,
+        cardImage,
         images: images || [],
         itinerary: itinerary || [],
+        inclusions: inclusions || [],
+        exclusions: exclusions || [],
+        thingsToCarry: thingsToCarry || [],
+        faqs: faqs || [],
+        cancellationPolicy,
+        meetingPoint,
+        minAge,
+        maxAltitude,
+        trekDistance,
+        bestTimeToVisit,
+        maxGroupSize,
         categories: categoryIds
           ? {
               create: categoryIds.map((catId: string) => ({

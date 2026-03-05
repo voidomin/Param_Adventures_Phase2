@@ -59,8 +59,15 @@ export default function ExperienceForm({
       [],
   );
 
-  // Arrays
+  // Images
+  const [coverImage, setCoverImage] = useState<string>(
+    initialData?.coverImage || "",
+  );
+  const [cardImage, setCardImage] = useState<string>(
+    initialData?.cardImage || "",
+  );
   const [images, setImages] = useState<string[]>(initialData?.images || []);
+
   const [itinerary, setItinerary] = useState<ItineraryDay[]>(
     (initialData?.itinerary || [{ title: "", description: "" }]).map(
       (d: Record<string, any>) => ({
@@ -68,6 +75,41 @@ export default function ExperienceForm({
         _id: d._id || crypto.randomUUID(),
       }),
     ),
+  );
+
+  // New Array States
+  const [inclusions, setInclusions] = useState<string[]>(
+    initialData?.inclusions || [],
+  );
+  const [exclusions, setExclusions] = useState<string[]>(
+    initialData?.exclusions || [],
+  );
+  const [thingsToCarry, setThingsToCarry] = useState<string[]>(
+    initialData?.thingsToCarry || [],
+  );
+  const [faqs, setFaqs] = useState<{ question: string; answer: string }[]>(
+    initialData?.faqs || [],
+  );
+
+  // New Logistic States
+  const [cancellationPolicy, setCancellationPolicy] = useState(
+    initialData?.cancellationPolicy || "",
+  );
+  const [meetingPoint, setMeetingPoint] = useState(
+    initialData?.meetingPoint || "",
+  );
+  const [minAge, setMinAge] = useState(initialData?.minAge || "");
+  const [maxAltitude, setMaxAltitude] = useState(
+    initialData?.maxAltitude || "",
+  );
+  const [trekDistance, setTrekDistance] = useState(
+    initialData?.trekDistance || "",
+  );
+  const [bestTimeToVisit, setBestTimeToVisit] = useState(
+    initialData?.bestTimeToVisit || "",
+  );
+  const [maxGroupSize, setMaxGroupSize] = useState(
+    initialData?.maxGroupSize || "",
   );
 
   useEffect(() => {
@@ -114,6 +156,50 @@ export default function ExperienceForm({
   const removeItineraryDay = (index: number) =>
     setItinerary((prev) => prev.filter((_, i) => i !== index));
 
+  // Array Handlers
+  const handleStringArrayChange = (
+    setter: React.Dispatch<React.SetStateAction<string[]>>,
+    index: number,
+    value: string,
+  ) => {
+    setter((prev) => {
+      const updated = [...prev];
+      updated[index] = value;
+      return updated;
+    });
+  };
+
+  const addStringArrayItem = (
+    setter: React.Dispatch<React.SetStateAction<string[]>>,
+  ) => {
+    setter((prev) => [...prev, ""]);
+  };
+
+  const removeStringArrayItem = (
+    setter: React.Dispatch<React.SetStateAction<string[]>>,
+    index: number,
+  ) => {
+    setter((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // FAQ Handlers
+  const handleFaqChange = (
+    index: number,
+    field: "question" | "answer",
+    value: string,
+  ) => {
+    setFaqs((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const addFaq = () =>
+    setFaqs((prev) => [...prev, { question: "", answer: "" }]);
+  const removeFaq = (index: number) =>
+    setFaqs((prev) => prev.filter((_, i) => i !== index));
+
   const addImageUrl = () => setImages((prev) => [...prev, ""]);
   const updateImageUrl = (index: number, val: string) => {
     setImages((prev) => {
@@ -140,9 +226,24 @@ export default function ExperienceForm({
       difficulty,
       status,
       isFeatured,
+      coverImage,
+      cardImage,
       images: images.filter((url) => url.trim() !== ""),
       itinerary,
       categoryIds: selectedCategories,
+      inclusions: inclusions.filter((item) => item.trim() !== ""),
+      exclusions: exclusions.filter((item) => item.trim() !== ""),
+      thingsToCarry: thingsToCarry.filter((item) => item.trim() !== ""),
+      faqs: faqs.filter(
+        (faq) => faq.question.trim() !== "" && faq.answer.trim() !== "",
+      ),
+      cancellationPolicy,
+      meetingPoint,
+      minAge: minAge ? Number(minAge) : null,
+      maxAltitude,
+      trekDistance,
+      bestTimeToVisit,
+      maxGroupSize: maxGroupSize ? Number(maxGroupSize) : null,
     };
 
     try {
@@ -332,14 +433,82 @@ export default function ExperienceForm({
 
           <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
             <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
-              Media & Images
+              Trip Cover Image
             </h2>
             <p className="text-sm text-foreground/60 pb-2">
-              Upload images directly to your media library, or add external
-              URLs.
+              The main hero banner at the top of the trip page.
+            </p>
+            <MediaUploader
+              id="cover-image-upload"
+              onUploadSuccess={(urls) => {
+                if (urls && urls.length > 0) setCoverImage(urls[0]);
+              }}
+            />
+            {coverImage && (
+              <div className="flex gap-2 items-center bg-background border border-border rounded-lg px-3 py-2 mt-2">
+                <ImageIcon className="w-4 h-4 text-primary" />
+                <input
+                  type="url"
+                  value={coverImage}
+                  onChange={(e) => setCoverImage(e.target.value)}
+                  className="w-full bg-transparent text-sm text-foreground focus:outline-none"
+                  placeholder="https://example.com/cover.jpg"
+                />
+                <button
+                  type="button"
+                  onClick={() => setCoverImage("")}
+                  className="p-1 text-foreground/50 hover:text-red-500 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+            <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
+              Trip Card Image
+            </h2>
+            <p className="text-sm text-foreground/60 pb-2">
+              The square/portrait thumbnail shown on the homepage and catalog.
+            </p>
+            <MediaUploader
+              id="card-image-upload"
+              onUploadSuccess={(urls) => {
+                if (urls && urls.length > 0) setCardImage(urls[0]);
+              }}
+            />
+            {cardImage && (
+              <div className="flex gap-2 items-center bg-background border border-border rounded-lg px-3 py-2 mt-2">
+                <ImageIcon className="w-4 h-4 text-primary" />
+                <input
+                  type="url"
+                  value={cardImage}
+                  onChange={(e) => setCardImage(e.target.value)}
+                  className="w-full bg-transparent text-sm text-foreground focus:outline-none"
+                  placeholder="https://example.com/card.jpg"
+                />
+                <button
+                  type="button"
+                  onClick={() => setCardImage("")}
+                  className="p-1 text-foreground/50 hover:text-red-500 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+            <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
+              Gallery Images
+            </h2>
+            <p className="text-sm text-foreground/60 pb-2">
+              Additional photos to display in the trip's gallery section.
             </p>
 
             <MediaUploader
+              id="gallery-images-upload"
               onUploadSuccess={(urls) => {
                 if (urls && urls.length > 0) {
                   setImages((prev) => [...prev, ...urls]);
@@ -383,10 +552,271 @@ export default function ExperienceForm({
               </div>
             )}
           </div>
+
+          {/* Detailed Information Sections */}
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
+            <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
+              Detailed Information
+            </h2>
+
+            {/* Inclusions */}
+            <div className="space-y-3">
+              <label className="block text-sm font-bold text-foreground/80">
+                Inclusions
+              </label>
+              {inclusions.map((item, ix) => (
+                <div key={`inc-${ix}`} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={item}
+                    onChange={(e) =>
+                      handleStringArrayChange(setInclusions, ix, e.target.value)
+                    }
+                    className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
+                    placeholder="e.g. All meals during the trek"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeStringArrayItem(setInclusions, ix)}
+                    className="p-2 text-foreground/50 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => addStringArrayItem(setInclusions)}
+                className="text-xs font-medium text-primary flex items-center gap-1 hover:text-primary/80"
+              >
+                <Plus className="w-3 h-3" /> Add Inclusion
+              </button>
+            </div>
+
+            {/* Exclusions */}
+            <div className="space-y-3 border-t border-border pt-4">
+              <label className="block text-sm font-bold text-foreground/80">
+                Exclusions
+              </label>
+              {exclusions.map((item, ix) => (
+                <div key={`exc-${ix}`} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={item}
+                    onChange={(e) =>
+                      handleStringArrayChange(setExclusions, ix, e.target.value)
+                    }
+                    className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
+                    placeholder="e.g. Flights to basecamp"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeStringArrayItem(setExclusions, ix)}
+                    className="p-2 text-foreground/50 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => addStringArrayItem(setExclusions)}
+                className="text-xs font-medium text-primary flex items-center gap-1 hover:text-primary/80"
+              >
+                <Plus className="w-3 h-3" /> Add Exclusion
+              </button>
+            </div>
+
+            {/* Things to Carry */}
+            <div className="space-y-3 border-t border-border pt-4">
+              <label className="block text-sm font-bold text-foreground/80">
+                Things to Carry
+              </label>
+              {thingsToCarry.map((item, ix) => (
+                <div key={`carry-${ix}`} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={item}
+                    onChange={(e) =>
+                      handleStringArrayChange(
+                        setThingsToCarry,
+                        ix,
+                        e.target.value,
+                      )
+                    }
+                    className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
+                    placeholder="e.g. Trekking shoes"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeStringArrayItem(setThingsToCarry, ix)}
+                    className="p-2 text-foreground/50 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => addStringArrayItem(setThingsToCarry)}
+                className="text-xs font-medium text-primary flex items-center gap-1 hover:text-primary/80"
+              >
+                <Plus className="w-3 h-3" /> Add Item
+              </button>
+            </div>
+
+            {/* FAQs */}
+            <div className="space-y-3 border-t border-border pt-4">
+              <label className="block text-sm font-bold text-foreground/80">
+                Frequently Asked Questions (FAQs)
+              </label>
+              {faqs.map((faq, ix) => (
+                <div
+                  key={`faq-${ix}`}
+                  className="flex gap-4 items-start bg-background border border-border rounded-xl p-3"
+                >
+                  <div className="flex-1 space-y-2">
+                    <input
+                      type="text"
+                      value={faq.question}
+                      onChange={(e) =>
+                        handleFaqChange(ix, "question", e.target.value)
+                      }
+                      className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50 font-medium"
+                      placeholder="Question"
+                    />
+                    <textarea
+                      value={faq.answer}
+                      rows={2}
+                      onChange={(e) =>
+                        handleFaqChange(ix, "answer", e.target.value)
+                      }
+                      className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
+                      placeholder="Answer..."
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeFaq(ix)}
+                    className="p-2 text-foreground/50 hover:text-red-500 transition-colors h-full"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={addFaq}
+                className="w-full py-2 border-2 border-dashed border-border rounded-lg text-foreground/60 hover:text-foreground hover:border-foreground/30 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+              >
+                <Plus className="w-4 h-4" /> Add FAQ
+              </button>
+            </div>
+
+            {/* Cancellation Policy */}
+            <div className="pt-4 border-t border-border">
+              <label
+                htmlFor="cancelPolicy"
+                className="block text-sm font-bold text-foreground/80 mb-1"
+              >
+                Cancellation Policy
+              </label>
+              <textarea
+                id="cancelPolicy"
+                rows={4}
+                value={cancellationPolicy}
+                onChange={(e) => setCancellationPolicy(e.target.value)}
+                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                placeholder="e.g. 100% refund if cancelled 30 days prior..."
+              />
+            </div>
+          </div>
         </div>
 
         {/* Sidebar Settings (Right Column) */}
         <div className="space-y-6">
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+            <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
+              Trek Specifications
+            </h2>
+            <div>
+              <label className="block text-sm font-medium text-foreground/80 mb-1">
+                Meeting Point
+              </label>
+              <input
+                type="text"
+                value={meetingPoint}
+                onChange={(e) => setMeetingPoint(e.target.value)}
+                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
+                placeholder="e.g. Dehradun Railway Station"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground/80 mb-1">
+                Max Altitude
+              </label>
+              <input
+                type="text"
+                value={maxAltitude}
+                onChange={(e) => setMaxAltitude(e.target.value)}
+                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
+                placeholder="e.g. 14,000 ft"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground/80 mb-1">
+                Trek Distance
+              </label>
+              <input
+                type="text"
+                value={trekDistance}
+                onChange={(e) => setTrekDistance(e.target.value)}
+                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
+                placeholder="e.g. 45 km"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-foreground/80 mb-1">
+                Best Time To Visit
+              </label>
+              <input
+                type="text"
+                value={bestTimeToVisit}
+                onChange={(e) => setBestTimeToVisit(e.target.value)}
+                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
+                placeholder="e.g. Sep - Dec"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-foreground/80 mb-1">
+                  Min Age
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={minAge}
+                  onChange={(e) => setMinAge(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
+                  placeholder="e.g. 12"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground/80 mb-1">
+                  Max Group Size
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={maxGroupSize}
+                  onChange={(e) => setMaxGroupSize(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
+                  placeholder="e.g. 15"
+                />
+              </div>
+            </div>
+          </div>
+
           <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
             <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
               Pricing & Logistics

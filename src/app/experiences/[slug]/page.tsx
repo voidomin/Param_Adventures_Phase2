@@ -13,6 +13,13 @@ import {
   CalendarDays,
   Activity,
   Image as ImageIcon,
+  Info,
+  Shield,
+  X,
+  Footprints,
+  Baby,
+  Backpack,
+  ChevronDown,
 } from "lucide-react";
 import BookNowButton from "@/components/booking/BookNowButton";
 import ExperienceReviews from "@/components/experiences/ExperienceReviews";
@@ -31,6 +38,8 @@ export async function generateMetadata({
     select: {
       title: true,
       description: true,
+      coverImage: true,
+      cardImage: true,
       images: true,
       location: true,
     },
@@ -38,7 +47,11 @@ export async function generateMetadata({
 
   if (!experience) return { title: "Experience Not Found" };
 
-  const ogImage = experience.images?.[0] || "/param-logo.png";
+  const ogImage =
+    experience.coverImage ||
+    experience.cardImage ||
+    experience.images?.[0] ||
+    "/param-logo.png";
 
   return {
     title: experience.title,
@@ -78,7 +91,9 @@ export default async function ExperienceDetailPage({
   }
 
   const primaryMedia =
-    experience.images[0] || "https://picsum.photos/seed/placeholder/1920/1080";
+    experience.coverImage ||
+    experience.images[0] ||
+    "https://picsum.photos/seed/placeholder/1920/1080";
   const isVideo = /\.(mp4|webm)$/i.exec(primaryMedia);
 
   return (
@@ -127,6 +142,17 @@ export default async function ExperienceDetailPage({
             <span className="bg-background/80 backdrop-blur-md text-foreground px-4 py-1.5 rounded-full text-sm font-bold border border-border shadow-lg">
               Difficulty: {experience.difficulty}
             </span>
+            {experience.maxGroupSize && (
+              <span className="bg-background/80 backdrop-blur-md text-foreground px-4 py-1.5 rounded-full text-sm font-bold border border-border shadow-lg flex items-center gap-1.5">
+                <Users className="w-4 h-4" /> Max Group:{" "}
+                {experience.maxGroupSize}
+              </span>
+            )}
+            {experience.minAge !== null && experience.minAge !== undefined && (
+              <span className="bg-background/80 backdrop-blur-md text-foreground px-4 py-1.5 rounded-full text-sm font-bold border border-border shadow-lg flex items-center gap-1.5">
+                <Baby className="w-4 h-4" /> Age {experience.minAge}+
+              </span>
+            )}
           </div>
           <h1 className="text-4xl md:text-5xl lg:text-7xl font-heading font-black text-white leading-tight drop-shadow-2xl max-w-4xl">
             {experience.title}
@@ -161,48 +187,53 @@ export default async function ExperienceDetailPage({
 
           {/* Quick Stats Grid */}
           <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-card border border-border p-6 rounded-2xl flex flex-col items-center text-center gap-3">
+            <div className="bg-card border border-border p-6 rounded-2xl flex flex-col items-center text-center gap-3 hover:border-primary/50 transition-colors">
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                 <Clock className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-sm text-foreground/60 font-medium">
+                <p className="text-sm text-foreground/60 font-medium whitespace-nowrap">
                   Duration
                 </p>
                 <p className="font-bold">{experience.durationDays} Days</p>
               </div>
             </div>
-            <div className="bg-card border border-border p-6 rounded-2xl flex flex-col items-center text-center gap-3">
+
+            <div className="bg-card border border-border p-6 rounded-2xl flex flex-col items-center text-center gap-3 hover:border-primary/50 transition-colors">
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                <Activity className="w-6 h-6" />
+                <Mountain className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-sm text-foreground/60 font-medium">
-                  Difficulty
+                <p className="text-sm text-foreground/60 font-medium whitespace-nowrap">
+                  Max Altitude
                 </p>
-                <p className="font-bold">{experience.difficulty}</p>
+                <p className="font-bold">{experience.maxAltitude || "N/A"}</p>
               </div>
             </div>
-            <div className="bg-card border border-border p-6 rounded-2xl flex flex-col items-center text-center gap-3">
+
+            <div className="bg-card border border-border p-6 rounded-2xl flex flex-col items-center text-center gap-3 hover:border-primary/50 transition-colors">
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                <Users className="w-6 h-6" />
+                <Footprints className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-sm text-foreground/60 font-medium">
-                  Group Size
+                <p className="text-sm text-foreground/60 font-medium whitespace-nowrap">
+                  Trek Distance
                 </p>
-                <p className="font-bold">Max {experience.capacity}</p>
+                <p className="font-bold">{experience.trekDistance || "N/A"}</p>
               </div>
             </div>
-            <div className="bg-card border border-border p-6 rounded-2xl flex flex-col items-center text-center gap-3">
+
+            <div className="bg-card border border-border p-6 rounded-2xl flex flex-col items-center text-center gap-3 hover:border-primary/50 transition-colors">
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                 <CalendarDays className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-sm text-foreground/60 font-medium">
+                <p className="text-sm text-foreground/60 font-medium whitespace-nowrap">
                   Best Season
                 </p>
-                <p className="font-bold">Year Round</p>
+                <p className="font-bold">
+                  {experience.bestTimeToVisit || "Year Round"}
+                </p>
               </div>
             </div>
           </section>
@@ -249,6 +280,74 @@ export default async function ExperienceDetailPage({
               </section>
             )}
 
+          {/* Logistics Split Section: Inclusions & Exclusions */}
+          {(Array.isArray(experience.inclusions) &&
+            experience.inclusions.length > 0) ||
+          (Array.isArray(experience.exclusions) &&
+            experience.exclusions.length > 0) ? (
+            <section className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Inclusions */}
+              <div className="bg-green-500/5 border border-green-500/20 rounded-3xl p-8">
+                <h3 className="text-2xl font-bold mb-6 flex items-center gap-2 text-green-500/90">
+                  <Check className="w-6 h-6" /> What's Included
+                </h3>
+                <ul className="space-y-4">
+                  {(experience.inclusions as string[]).map((item, ix) => (
+                    <li
+                      key={`inc-${ix}`}
+                      className="flex items-start gap-3 text-foreground/80"
+                    >
+                      <Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
+                      <span className="leading-relaxed">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Exclusions */}
+              <div className="bg-red-500/5 border border-red-500/20 rounded-3xl p-8">
+                <h3 className="text-2xl font-bold mb-6 flex items-center gap-2 text-red-500/90">
+                  <X className="w-6 h-6" /> What's Not Included
+                </h3>
+                <ul className="space-y-4">
+                  {(experience.exclusions as string[]).map((item, ix) => (
+                    <li
+                      key={`exc-${ix}`}
+                      className="flex items-start gap-3 text-foreground/80"
+                    >
+                      <X className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                      <span className="leading-relaxed">{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </section>
+          ) : null}
+
+          {/* Things to Carry */}
+          {Array.isArray(experience.thingsToCarry) &&
+            experience.thingsToCarry.length > 0 && (
+              <section className="bg-card border border-border rounded-3xl p-8 shadow-sm">
+                <h2 className="text-3xl font-heading font-bold mb-6 flex items-center gap-3">
+                  <Backpack className="w-8 h-8 text-primary" />
+                  Things to Carry
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-8">
+                  {(experience.thingsToCarry as string[]).map((item, ix) => (
+                    <div
+                      key={`carry-${ix}`}
+                      className="flex items-center gap-3 border-b border-border/50 pb-2"
+                    >
+                      <div className="w-2 h-2 rounded-full bg-primary/60 shrink-0" />
+                      <span className="text-foreground/80 font-medium">
+                        {item}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
           {/* Gallery */}
           {experience.images.length > 1 && (
             <section>
@@ -282,6 +381,46 @@ export default async function ExperienceDetailPage({
                   </div>
                 ))}
               </div>
+            </section>
+          )}
+
+          {/* FAQs */}
+          {Array.isArray(experience.faqs) && experience.faqs.length > 0 && (
+            <section className="bg-background pt-4">
+              <h2 className="text-3xl font-heading font-bold mb-8 flex items-center gap-3">
+                <Info className="w-8 h-8 text-primary" />
+                Frequently Asked Questions
+              </h2>
+              <div className="space-y-4">
+                {(
+                  experience.faqs as { question: string; answer: string }[]
+                ).map((faq, ix) => (
+                  <details
+                    key={`faq-page-${ix}`}
+                    className="group bg-card border border-border rounded-2xl overflow-hidden [&_summary::-webkit-details-marker]:hidden"
+                  >
+                    <summary className="flex items-center justify-between gap-4 p-6 cursor-pointer font-bold text-lg select-none hover:bg-foreground/5 transition-colors">
+                      {faq.question}
+                      <ChevronDown className="w-5 h-5 text-primary transition-transform duration-300 group-open:-rotate-180 shrink-0" />
+                    </summary>
+                    <div className="p-6 pt-0 text-foreground/70 leading-relaxed border-t border-border/10 bg-foreground/5">
+                      {faq.answer}
+                    </div>
+                  </details>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Policies */}
+          {experience.cancellationPolicy && (
+            <section className="bg-red-500/5 border border-red-500/20 rounded-3xl p-8 mb-8">
+              <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-red-500/90">
+                <Shield className="w-6 h-6" /> Cancellation Policy
+              </h2>
+              <p className="text-foreground/80 leading-relaxed whitespace-pre-line text-sm">
+                {experience.cancellationPolicy}
+              </p>
             </section>
           )}
 

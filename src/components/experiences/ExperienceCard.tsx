@@ -21,7 +21,8 @@ interface ExperienceCardProps {
     basePrice: number;
     capacity: number;
     difficulty: "EASY" | "MODERATE" | "HARD" | "EXTREME";
-    status: string;
+    coverImage?: string;
+    cardImage?: string;
     images: string[];
     categories: Category[];
   };
@@ -46,7 +47,10 @@ export default function ExperienceCard({
   };
 
   const primaryImage =
-    experience.images[0] || "https://picsum.photos/seed/placeholder/800/600";
+    experience.cardImage ||
+    experience.coverImage ||
+    experience.images[0] ||
+    "https://picsum.photos/seed/placeholder/800/600";
   const isVideo = /\.(mp4|webm)$/i.test(primaryImage);
 
   return (

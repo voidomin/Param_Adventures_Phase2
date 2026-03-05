@@ -160,10 +160,26 @@ model Experience {
   difficulty   Difficulty       @default(EASY)
   capacity     Int
   status       ExperienceStatus @default(DRAFT)
+  coverImage   String?
+  cardImage    String?
   images       String[] // S3 URLs
   isFeatured   Boolean          @default(false)
   startDate    DateTime?
   endDate      DateTime?
+
+  // Detailed Logistics
+  inclusions         Json?
+  exclusions         Json?
+  thingsToCarry      Json?
+  faqs               Json?
+  cancellationPolicy String?          @db.Text
+  meetingPoint       String?
+  minAge             Int?
+  maxAltitude        String?
+  trekDistance       String?
+  bestTimeToVisit    String?
+  maxGroupSize       Int?
+
   deletedAt    DateTime?
   createdAt    DateTime         @default(now())
   updatedAt    DateTime         @updatedAt
