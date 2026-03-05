@@ -61,10 +61,10 @@ const AVAILABLE_ICONS: {
 function DynamicIcon({
   name,
   className,
-}: {
+}: Readonly<{
   name?: string | null;
   className?: string;
-}) {
+}>) {
   const found = AVAILABLE_ICONS.find((i) => i.name === name);
   const Icon = found?.Icon ?? MapPin;
   return <Icon className={className} />;
