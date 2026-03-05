@@ -132,6 +132,7 @@ model User {
   managedSlots Slot[]             @relation("SlotManager")
   uploads      Image[]
   reviews      ExperienceReview[]
+  savedExperiences SavedExperience[]
 }
 
 // ─── EXPERIENCE MANAGEMENT ───────────────────────────────
@@ -172,6 +173,7 @@ model Experience {
   bookings   Booking[]
   blogs      Blog[]
   reviews    ExperienceReview[]
+  savedBy    SavedExperience[]
 }
 
 model ExperienceCategory {
@@ -345,4 +347,17 @@ model ExperienceReview {
   updatedAt DateTime @updatedAt
 
   @@unique([experienceId, userId]) // One review per user per experience
+}
+
+// ─── WISHLIST / SAVED ────────────────────────────────────
+
+model SavedExperience {
+  id           String     @id @default(uuid())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  experienceId String
+  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  savedAt      DateTime   @default(now())
+
+  @@unique([userId, experienceId])
 }

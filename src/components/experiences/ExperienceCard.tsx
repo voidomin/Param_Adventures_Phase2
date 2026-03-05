@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Clock, MapPin, Users, IndianRupee } from "lucide-react";
+import SaveButton from "./SaveButton";
 
 interface Category {
   category: {
@@ -108,6 +109,11 @@ export default function ExperienceCard({
             </div>
           </div>
         </div>
+
+        <SaveButton
+          experienceId={experience.id}
+          className="top-16 right-4 z-20"
+        />
       </div>
 
       <div className="p-6 flex flex-col flex-1">

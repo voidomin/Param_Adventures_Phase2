@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import BookNowButton from "@/components/booking/BookNowButton";
 import ExperienceReviews from "@/components/experiences/ExperienceReviews";
+import SaveButton from "@/components/experiences/SaveButton";
 
 export const revalidate = 60;
 
@@ -89,6 +90,11 @@ export default async function ExperienceDetailPage({
         <div className="absolute inset-0 z-0 bg-black">
           <div className="absolute inset-0 bg-black/40 z-10" />
           <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-10" />
+
+          <SaveButton
+            experienceId={experience.id}
+            className="top-6 right-6 md:top-8 md:right-8 z-30 scale-125"
+          />
           {isVideo ? (
             <video
               src={primaryMedia}
