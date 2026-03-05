@@ -58,7 +58,10 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
 
     // Fetch the featured pull-quote for this experience (if any)
     const featuredReview = await prisma.experienceReview.findFirst({
-      where: { experienceId: experience.id, isFeaturedExperience: true },
+      where: {
+        experienceId: experience.id,
+        isFeaturedExperience: true,
+      },
       include: { user: { select: { name: true } } },
     });
 

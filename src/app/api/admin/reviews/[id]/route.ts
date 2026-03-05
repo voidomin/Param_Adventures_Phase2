@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 
@@ -26,19 +27,16 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     const { id } = await params;
     const body = await request.json();
 
-    const data: {
-      isFeaturedHome?: boolean;
-      isFeaturedExperience?: boolean;
-    } = {};
+    const updateData: Prisma.ExperienceReviewUpdateInput = {};
 
     if (typeof body.isFeaturedHome === "boolean") {
-      data.isFeaturedHome = body.isFeaturedHome;
+      updateData.isFeaturedHome = body.isFeaturedHome;
     }
     if (typeof body.isFeaturedExperience === "boolean") {
-      data.isFeaturedExperience = body.isFeaturedExperience;
+      updateData.isFeaturedExperience = body.isFeaturedExperience;
     }
 
-    if (Object.keys(data).length === 0) {
+    if (Object.keys(updateData).length === 0) {
       return NextResponse.json(
         { error: "Provide isFeaturedHome or isFeaturedExperience." },
         { status: 400 },
@@ -47,14 +45,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
     const review = await prisma.experienceReview.update({
       where: { id },
-      data: {
-        ...(data.isFeaturedHome !== undefined && {
-          isFeaturedHome: data.isFeaturedHome,
-        }),
-        ...(data.isFeaturedExperience !== undefined && {
-          isFeaturedExperience: data.isFeaturedExperience,
-        }),
-      },
+      data: updateData,
       include: {
         user: { select: { name: true } },
         experience: { select: { title: true, slug: true } },

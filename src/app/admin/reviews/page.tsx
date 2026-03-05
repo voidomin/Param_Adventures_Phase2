@@ -61,6 +61,10 @@ function Toggle({
   const ringColor =
     color === "purple" ? "focus:ring-purple-500/50" : "focus:ring-primary/50";
 
+  const activeLabelColor =
+    color === "purple" ? "text-purple-500" : "text-primary";
+  const labelColor = checked ? activeLabelColor : "text-foreground/40";
+
   return (
     <div className="flex flex-col items-center gap-1.5 min-w-[70px]">
       <button
@@ -73,7 +77,7 @@ function Toggle({
         />
       </button>
       <span
-        className={`flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider transition-colors ${checked ? (color === "purple" ? "text-purple-500" : "text-primary") : "text-foreground/40"}`}
+        className={`flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wider transition-colors ${labelColor}`}
       >
         <Icon className="w-3 h-3" />
         {label}
@@ -96,7 +100,10 @@ export default function AdminReviewsPage() {
     setIsLoading(true);
     setError("");
     try {
-      const url = new URL("/api/admin/reviews", window.location.origin);
+      const url = new URL(
+        "/api/admin/reviews",
+        globalThis.location?.origin ?? "",
+      );
       url.searchParams.set("page", String(page));
       url.searchParams.set("limit", "20");
 
@@ -259,10 +266,13 @@ export default function AdminReviewsPage() {
                 {filtered.map((review) => {
                   const homeKey = `${review.id}-isFeaturedHome`;
                   const expKey = `${review.id}-isFeaturedExperience`;
+                  const isFeatured =
+                    review.isFeaturedHome || review.isFeaturedExperience;
+                  const rowBg = isFeatured ? "bg-primary/[0.02]" : "";
                   return (
                     <tr
                       key={review.id}
-                      className={`hover:bg-foreground/[0.02] transition-colors ${review.isFeaturedHome || review.isFeaturedExperience ? "bg-primary/[0.02]" : ""}`}
+                      className={`hover:bg-foreground/[0.02] transition-colors ${rowBg}`}
                     >
                       {/* Reviewer */}
                       <td className="px-5 py-4">

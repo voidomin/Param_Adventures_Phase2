@@ -19,9 +19,7 @@ interface Review {
   rating: number;
   reviewText: string;
   createdAt: string;
-  user: {
-    name: string;
-  };
+  user: { name: string };
 }
 
 interface FeaturedReview {
@@ -46,6 +44,34 @@ interface MyReviewState {
   } | null;
 }
 
+/** Resolves the my-review API response into a MyReviewState value. */
+function resolveMyReviewState(data: {
+  canReview: boolean;
+  review: { id: string; rating: number; reviewText: string } | null;
+}): MyReviewState {
+  if (!data.canReview) return { status: "ineligible", existingReview: null };
+  if (data.review) return { status: "reviewed", existingReview: data.review };
+  return { status: "eligible", existingReview: null };
+}
+
+/** Star rating row (display-only). */
+function StarRow({
+  rating,
+  size = "sm",
+}: Readonly<{ rating: number; size?: "sm" | "md" }>) {
+  const cls = size === "md" ? "w-5 h-5" : "w-4 h-4";
+  return (
+    <div className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map((s) => (
+        <Star
+          key={s}
+          className={`${cls} ${s <= rating ? "fill-primary text-primary" : "text-foreground/15"}`}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function ExperienceReviews({
   slug,
 }: Readonly<{ slug: string }>) {
@@ -67,7 +93,7 @@ export default function ExperienceReviews({
     existingReview: null,
   });
 
-  // Modal & Form state
+  // Modal & form state
   const [showModal, setShowModal] = useState(false);
   const [rating, setRating] = useState(5);
   const [hoverRating, setHoverRating] = useState(0);
@@ -83,8 +109,7 @@ export default function ExperienceReviews({
         const data = await res.json();
         setReviews(data.reviews || []);
         if (data.stats) setStats(data.stats);
-        if (data.featuredReview) setFeaturedReview(data.featuredReview);
-        else setFeaturedReview(null);
+        setFeaturedReview(data.featuredReview ?? null);
       }
     } catch (e) {
       console.error(e);
@@ -105,13 +130,7 @@ export default function ExperienceReviews({
         return;
       }
       const data = await res.json();
-      if (!data.canReview) {
-        setMyReview({ status: "ineligible", existingReview: null });
-      } else if (data.review) {
-        setMyReview({ status: "reviewed", existingReview: data.review });
-      } else {
-        setMyReview({ status: "eligible", existingReview: null });
-      }
+      setMyReview(resolveMyReviewState(data));
     } catch {
       setMyReview({ status: "eligible", existingReview: null });
     }
@@ -163,67 +182,66 @@ export default function ExperienceReviews({
     }
   };
 
-  // ─── Action Button ───────────────────────────────────────────────────────────
+  // ─── Action Button ────────────────────────────────────────────────────────────
 
   const renderActionButton = () => {
-    switch (myReview.status) {
-      case "loading":
-        return (
-          <div className="w-36 h-10 rounded-xl bg-foreground/10 animate-pulse" />
-        );
-
-      case "guest":
-        return (
-          <button
-            onClick={() =>
-              router.push(
-                `/login?redirect=${encodeURIComponent(pathname ?? `/experiences/${slug}`)}`,
-              )
-            }
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl border-2 border-primary/50 text-primary/80 font-bold hover:border-primary hover:text-primary hover:bg-primary/5 transition-all text-sm"
-          >
-            <LogIn className="w-4 h-4" />
-            Log in to Review
-          </button>
-        );
-
-      case "ineligible":
-        return (
-          <div
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-border text-foreground/40 font-semibold text-sm cursor-not-allowed select-none"
-            title="Reviews are unlocked after you complete this trip"
-          >
-            <Lock className="w-4 h-4" />
-            Review after your trip
-          </div>
-        );
-
-      case "reviewed":
-        return (
-          <button
-            onClick={openModal}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl border-2 border-primary text-primary font-bold hover:bg-primary hover:text-primary-foreground transition-all text-sm group"
-          >
-            <Pencil className="w-4 h-4 group-hover:rotate-12 transition-transform" />
-            Edit Your Review
-          </button>
-        );
-
-      case "eligible":
-      default:
-        return (
-          <button
-            onClick={openModal}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-xl border-2 border-primary text-primary font-bold hover:bg-primary hover:text-primary-foreground transition-all text-sm group"
-          >
-            <Pencil className="w-4 h-4 group-hover:rotate-12 transition-transform" />
-            Write a Review
-          </button>
-        );
+    if (myReview.status === "loading") {
+      return (
+        <div className="w-36 h-10 rounded-xl bg-foreground/10 animate-pulse" />
+      );
     }
+
+    if (myReview.status === "guest") {
+      return (
+        <button
+          onClick={() => {
+            const redirect = pathname ?? "/experiences/" + slug;
+            router.push("/login?redirect=" + encodeURIComponent(redirect));
+          }}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl border-2 border-primary/50 text-primary/80 font-bold hover:border-primary hover:text-primary hover:bg-primary/5 transition-all text-sm"
+        >
+          <LogIn className="w-4 h-4" />
+          Log in to Review
+        </button>
+      );
+    }
+
+    if (myReview.status === "ineligible") {
+      return (
+        <div
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl border border-border text-foreground/40 font-semibold text-sm cursor-not-allowed select-none"
+          title="Reviews are unlocked after you complete this trip"
+        >
+          <Lock className="w-4 h-4" />
+          Review after your trip
+        </div>
+      );
+    }
+
+    if (myReview.status === "reviewed") {
+      return (
+        <button
+          onClick={openModal}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl border-2 border-primary text-primary font-bold hover:bg-primary hover:text-primary-foreground transition-all text-sm group"
+        >
+          <Pencil className="w-4 h-4 group-hover:rotate-12 transition-transform" />
+          Edit Your Review
+        </button>
+      );
+    }
+
+    return (
+      <button
+        onClick={openModal}
+        className="flex items-center gap-2 px-6 py-2.5 rounded-xl border-2 border-primary text-primary font-bold hover:bg-primary hover:text-primary-foreground transition-all text-sm group"
+      >
+        <Pencil className="w-4 h-4 group-hover:rotate-12 transition-transform" />
+        Write a Review
+      </button>
+    );
   };
 
-  // ─── Breakdown Bars ──────────────────────────────────────────────────────────
+  // ─── Rating Breakdown ─────────────────────────────────────────────────────────
 
   const renderBreakdown = () => {
     const total = stats.totalReviews;
@@ -232,7 +250,7 @@ export default function ExperienceReviews({
       <div className="space-y-2 min-w-[160px]">
         {[5, 4, 3, 2, 1].map((star) => {
           const count = stats.breakdown[star] ?? 0;
-          const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+          const pct = Math.round((count / total) * 100);
           return (
             <div key={star} className="flex items-center gap-2 text-xs">
               <span className="w-3 text-right text-foreground/60 font-medium">
@@ -251,6 +269,13 @@ export default function ExperienceReviews({
         })}
       </div>
     );
+  };
+
+  // ─── Submit button label ──────────────────────────────────────────────────────
+
+  const getSubmitLabel = () => {
+    if (isSubmitting) return <Loader2 className="w-4 h-4 animate-spin" />;
+    return myReview.status === "reviewed" ? "Update Review" : "Submit Review";
   };
 
   if (isLoading) {
@@ -273,26 +298,18 @@ export default function ExperienceReviews({
 
           {stats.totalReviews > 0 ? (
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-              {/* Average score block */}
+              {/* Average score */}
               <div className="flex items-center gap-3 bg-card border border-border rounded-2xl px-5 py-4">
                 <div className="text-4xl font-black text-foreground leading-none">
                   {stats.averageRating.toFixed(1)}
                 </div>
                 <div>
-                  <div className="flex gap-0.5 mb-1">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <Star
-                        key={s}
-                        className={`w-4 h-4 ${s <= Math.round(stats.averageRating) ? "fill-primary text-primary" : "text-foreground/20"}`}
-                      />
-                    ))}
-                  </div>
-                  <p className="text-xs text-foreground/50">
+                  <StarRow rating={Math.round(stats.averageRating)} size="md" />
+                  <p className="text-xs text-foreground/50 mt-1">
                     {stats.totalReviews} reviews
                   </p>
                 </div>
               </div>
-              {/* Breakdown */}
               {renderBreakdown()}
             </div>
           ) : (
@@ -301,31 +318,17 @@ export default function ExperienceReviews({
             </p>
           )}
         </div>
-
-        {/* Action button */}
         <div className="shrink-0">{renderActionButton()}</div>
       </div>
 
       {/* ── Featured Pull-quote ── */}
       {featuredReview && (
         <div className="relative bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-2xl p-6 sm:p-8 overflow-hidden">
-          {/* decorative background quote */}
           <Quote className="absolute -top-2 -left-2 w-20 h-20 text-primary/5 rotate-180" />
 
-          <div className="flex gap-0.5 mb-4">
-            {[1, 2, 3, 4, 5].map((s) => (
-              <Star
-                key={s}
-                className={`w-5 h-5 ${
-                  s <= featuredReview.rating
-                    ? "fill-primary text-primary"
-                    : "text-foreground/15"
-                }`}
-              />
-            ))}
-          </div>
+          <StarRow rating={featuredReview.rating} size="md" />
 
-          <blockquote className="text-lg sm:text-xl font-semibold text-foreground leading-relaxed italic mb-5">
+          <blockquote className="text-lg sm:text-xl font-semibold text-foreground leading-relaxed italic my-4">
             &ldquo;{featuredReview.reviewText}&rdquo;
           </blockquote>
 
@@ -363,7 +366,6 @@ export default function ExperienceReviews({
             >
               <div className="flex items-start justify-between gap-4 mb-3">
                 <div className="flex items-center gap-3">
-                  {/* Avatar initial */}
                   <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm shrink-0">
                     {review.user.name?.charAt(0)?.toUpperCase() ?? "?"}
                   </div>
@@ -379,15 +381,7 @@ export default function ExperienceReviews({
                     </div>
                   </div>
                 </div>
-                {/* Stars */}
-                <div className="flex gap-0.5 shrink-0">
-                  {[1, 2, 3, 4, 5].map((s) => (
-                    <Star
-                      key={s}
-                      className={`w-4 h-4 ${s <= review.rating ? "fill-primary text-primary" : "text-foreground/15"}`}
-                    />
-                  ))}
-                </div>
+                <StarRow rating={review.rating} />
               </div>
               <p className="text-foreground/75 leading-relaxed whitespace-pre-wrap text-sm sm:text-base">
                 {review.reviewText}
@@ -404,8 +398,18 @@ export default function ExperienceReviews({
           onClick={(e) => {
             if (e.target === e.currentTarget) setShowModal(false);
           }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setShowModal(false);
+          }}
+          tabIndex={-1}
+          role="presentation"
         >
-          <div className="bg-card border border-border rounded-t-3xl sm:rounded-3xl shadow-2xl w-full sm:max-w-lg overflow-hidden">
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-label="Write a review"
+            className="bg-card border border-border rounded-t-3xl sm:rounded-3xl shadow-2xl w-full sm:max-w-lg overflow-hidden"
+          >
             {/* Modal Header */}
             <div className="px-6 pt-6 pb-4 border-b border-border/50">
               <div className="w-10 h-1 bg-border rounded-full mx-auto mb-4 sm:hidden" />
@@ -442,23 +446,27 @@ export default function ExperienceReviews({
                       Your Rating
                     </p>
                     <div className="flex justify-center gap-2">
-                      {[1, 2, 3, 4, 5].map((s) => (
-                        <button
-                          key={s}
-                          onClick={() => setRating(s)}
-                          onMouseEnter={() => setHoverRating(s)}
-                          onMouseLeave={() => setHoverRating(0)}
-                          className="focus:outline-none transition-transform hover:scale-125 active:scale-110"
-                        >
-                          <Star
-                            className={`w-10 h-10 transition-colors ${
-                              s <= (hoverRating || rating)
-                                ? "fill-primary text-primary"
-                                : "text-foreground/20"
-                            }`}
-                          />
-                        </button>
-                      ))}
+                      {[1, 2, 3, 4, 5].map((s) => {
+                        const isActive = s <= (hoverRating || rating);
+                        const starCls = isActive
+                          ? "fill-primary text-primary"
+                          : "text-foreground/20";
+                        return (
+                          <button
+                            key={s}
+                            type="button"
+                            onClick={() => setRating(s)}
+                            onMouseEnter={() => setHoverRating(s)}
+                            onMouseLeave={() => setHoverRating(0)}
+                            className="focus:outline-none transition-transform hover:scale-125 active:scale-110"
+                            aria-label={`Rate ${s} star${s > 1 ? "s" : ""}`}
+                          >
+                            <Star
+                              className={`w-10 h-10 transition-colors ${starCls}`}
+                            />
+                          </button>
+                        );
+                      })}
                     </div>
                     <p className="text-center text-xs text-foreground/40 mt-2">
                       {
@@ -506,29 +514,25 @@ export default function ExperienceReviews({
                   {/* Actions */}
                   <div className="flex gap-3 pt-1">
                     <button
+                      type="button"
                       onClick={() => setShowModal(false)}
                       className="flex-1 py-3 rounded-xl font-bold border border-border text-foreground/70 hover:bg-foreground/5 transition-colors text-sm"
                     >
                       Cancel
                     </button>
                     <button
+                      type="button"
                       onClick={handleSubmit}
                       disabled={isSubmitting || reviewText.length < 10}
                       className="flex-1 py-3 bg-primary text-primary-foreground rounded-xl font-bold flex justify-center items-center gap-2 hover:scale-[1.02] transition-all disabled:opacity-50 disabled:hover:scale-100 shadow-lg shadow-primary/20 text-sm"
                     >
-                      {isSubmitting ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : myReview.status === "reviewed" ? (
-                        "Update Review"
-                      ) : (
-                        "Submit Review"
-                      )}
+                      {getSubmitLabel()}
                     </button>
                   </div>
                 </>
               )}
             </div>
-          </div>
+          </section>
         </div>
       )}
     </div>
