@@ -110,7 +110,7 @@ export async function sendRoleAssignedEmail(data: RoleAssignedData) {
     const { error } = await resend.emails.send({
       from: FROM_EMAIL,
       to: data.userEmail,
-      subject: `Role Updated: ${data.roleName.replace(/_/g, " ")}`,
+      subject: `Role Updated: ${data.roleName.replaceAll("_", " ")}`,
       html,
     });
 

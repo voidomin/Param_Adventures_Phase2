@@ -168,7 +168,7 @@ export default function AdminDashboardPage() {
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-bold text-foreground">
-                        {log.action.replace(/_/g, " ")}
+                        {log.action.replaceAll("_", " ")}
                       </p>
                       <time className="text-xs text-foreground/50 whitespace-nowrap">
                         {new Date(log.timestamp).toLocaleString("en-IN", {
