@@ -25,24 +25,36 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
     const limit = Number.parseInt(searchParams.get("limit") || "10");
     const skip = (page - 1) * limit;
 
-    const [reviews, totalCount, aggregations] = await Promise.all([
-      prisma.experienceReview.findMany({
-        where: { experienceId: experience.id },
-        include: {
-          user: { select: { id: true, name: true } },
-        },
-        orderBy: { createdAt: "desc" },
-        skip,
-        take: limit,
-      }),
-      prisma.experienceReview.count({
-        where: { experienceId: experience.id },
-      }),
-      prisma.experienceReview.aggregate({
-        where: { experienceId: experience.id },
-        _avg: { rating: true },
-      }),
-    ]);
+    const [reviews, totalCount, aggregations, groupedByRating] =
+      await Promise.all([
+        prisma.experienceReview.findMany({
+          where: { experienceId: experience.id },
+          include: {
+            user: { select: { id: true, name: true } },
+          },
+          orderBy: { createdAt: "desc" },
+          skip,
+          take: limit,
+        }),
+        prisma.experienceReview.count({
+          where: { experienceId: experience.id },
+        }),
+        prisma.experienceReview.aggregate({
+          where: { experienceId: experience.id },
+          _avg: { rating: true },
+        }),
+        prisma.experienceReview.groupBy({
+          by: ["rating"],
+          where: { experienceId: experience.id },
+          _count: { rating: true },
+        }),
+      ]);
+
+    // Convert groupBy result to a flat { 1: n, 2: n, ... } map
+    const breakdown: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    for (const row of groupedByRating) {
+      breakdown[row.rating] = row._count.rating;
+    }
 
     return NextResponse.json({
       reviews,
@@ -55,6 +67,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
       stats: {
         averageRating: aggregations._avg.rating || 0,
         totalReviews: totalCount,
+        breakdown,
       },
     });
   } catch (error) {
