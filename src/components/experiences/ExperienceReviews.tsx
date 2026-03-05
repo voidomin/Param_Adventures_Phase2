@@ -24,6 +24,13 @@ interface Review {
   };
 }
 
+interface FeaturedReview {
+  id: string;
+  rating: number;
+  reviewText: string;
+  user: { name: string };
+}
+
 interface ReviewStats {
   averageRating: number;
   totalReviews: number;
@@ -46,6 +53,9 @@ export default function ExperienceReviews({
   const pathname = usePathname();
 
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [featuredReview, setFeaturedReview] = useState<FeaturedReview | null>(
+    null,
+  );
   const [stats, setStats] = useState<ReviewStats>({
     averageRating: 0,
     totalReviews: 0,
@@ -73,6 +83,8 @@ export default function ExperienceReviews({
         const data = await res.json();
         setReviews(data.reviews || []);
         if (data.stats) setStats(data.stats);
+        if (data.featuredReview) setFeaturedReview(data.featuredReview);
+        else setFeaturedReview(null);
       }
     } catch (e) {
       console.error(e);
@@ -293,6 +305,43 @@ export default function ExperienceReviews({
         {/* Action button */}
         <div className="shrink-0">{renderActionButton()}</div>
       </div>
+
+      {/* ── Featured Pull-quote ── */}
+      {featuredReview && (
+        <div className="relative bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-2xl p-6 sm:p-8 overflow-hidden">
+          {/* decorative background quote */}
+          <Quote className="absolute -top-2 -left-2 w-20 h-20 text-primary/5 rotate-180" />
+
+          <div className="flex gap-0.5 mb-4">
+            {[1, 2, 3, 4, 5].map((s) => (
+              <Star
+                key={s}
+                className={`w-5 h-5 ${
+                  s <= featuredReview.rating
+                    ? "fill-primary text-primary"
+                    : "text-foreground/15"
+                }`}
+              />
+            ))}
+          </div>
+
+          <blockquote className="text-lg sm:text-xl font-semibold text-foreground leading-relaxed italic mb-5">
+            &ldquo;{featuredReview.reviewText}&rdquo;
+          </blockquote>
+
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-primary font-black text-sm shrink-0">
+              {featuredReview.user.name?.charAt(0)?.toUpperCase() ?? "?"}
+            </div>
+            <div>
+              <p className="font-bold text-foreground text-sm">
+                {featuredReview.user.name}
+              </p>
+              <p className="text-xs text-foreground/50">Verified Traveler</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Reviews List ── */}
       <div className="grid gap-4">

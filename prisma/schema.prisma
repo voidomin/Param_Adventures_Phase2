@@ -338,6 +338,9 @@ model ExperienceReview {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  isFeaturedHome       Boolean @default(false) // Shown in homepage testimonials section
+  isFeaturedExperience Boolean @default(false) // Shown as pull-quote on the experience page
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

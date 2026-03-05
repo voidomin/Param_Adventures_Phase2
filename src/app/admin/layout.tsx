@@ -15,6 +15,7 @@ import {
   MonitorPlay,
   PenLine,
   ClipboardList,
+  Star,
 } from "lucide-react";
 
 export default function AdminLayout({
@@ -99,6 +100,12 @@ export default function AdminLayout({
       icon: PenLine,
       permission: "blog:moderate",
     },
+    {
+      name: "Reviews",
+      href: "/admin/reviews",
+      icon: Star,
+      permission: "trip:create",
+    },
   ];
 
   return (
@@ -119,8 +126,7 @@ export default function AdminLayout({
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto mt-4">
           {navItems.map((item) => {
             // Only show items user has permission for
-            if (item.permission && !hasPermission(item.permission))
-              return null;
+            if (item.permission && !hasPermission(item.permission)) return null;
 
             const isActive =
               pathname === item.href || pathname.startsWith(`${item.href}/`);

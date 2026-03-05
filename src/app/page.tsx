@@ -2,6 +2,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import Hero from "@/components/layout/Hero";
 import CategoryBar from "@/components/home/CategoryBar";
+import Testimonials from "@/components/home/Testimonials";
 import { prisma } from "@/lib/db";
 import ExperienceCard from "@/components/experiences/ExperienceCard";
 
@@ -54,6 +55,8 @@ export default async function Home() {
           </div>
         )}
       </div>
+
+      <Testimonials />
 
       <Footer />
     </main>
