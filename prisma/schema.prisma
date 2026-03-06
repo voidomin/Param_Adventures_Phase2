@@ -110,9 +110,11 @@ model RolePermission {
 model User {
   id          String  @id @default(uuid())
   email       String  @unique
-  password    String? // bcrypt-hashed
-  name        String  @default("")
-  phoneNumber String?
+  password         String? // bcrypt-hashed
+  resetToken       String?
+  resetTokenExpiry DateTime?
+  name             String  @default("")
+  phoneNumber      String?
   avatarUrl   String?
 
   roleId String

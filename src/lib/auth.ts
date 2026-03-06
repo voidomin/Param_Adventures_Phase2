@@ -2,7 +2,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET || "fallback-dev-secret";
-const JWT_EXPIRY = process.env.JWT_EXPIRY || "15m";
+const JWT_EXPIRY = process.env.JWT_EXPIRY || "1h";
 const REFRESH_TOKEN_EXPIRY = process.env.REFRESH_TOKEN_EXPIRY || "7d";
 
 // ─── Password Hashing ───────────────────────────────────
