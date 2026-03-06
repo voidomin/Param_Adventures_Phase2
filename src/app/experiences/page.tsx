@@ -40,6 +40,13 @@ export default async function ExperiencesPage({
       categories: {
         include: { category: true },
       },
+      slots: {
+        where: {
+          date: { gte: new Date() },
+          status: "UPCOMING",
+        },
+        select: { id: true },
+      },
     },
   });
 
@@ -71,6 +78,7 @@ export default async function ExperiencesPage({
     updatedAt: exp.updatedAt.toISOString(),
     startDate: exp.startDate?.toISOString() || null,
     endDate: exp.endDate?.toISOString() || null,
+    slotsCount: exp.slots.length,
     categories: exp.categories.map((c) => ({
       category: {
         id: c.category.id,
