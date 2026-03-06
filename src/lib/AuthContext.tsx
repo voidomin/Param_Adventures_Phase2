@@ -30,6 +30,7 @@ interface AuthContextType {
   register: (email: string, password: string, name: string) => Promise<void>;
   logout: () => Promise<void>;
   hasPermission: (key: string) => boolean;
+  mutateUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -132,8 +133,16 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   );
 
   const contextValue = useMemo(
-    () => ({ user, isLoading, login, register, logout, hasPermission }),
-    [user, isLoading, login, register, logout, hasPermission],
+    () => ({
+      user,
+      isLoading,
+      login,
+      register,
+      logout,
+      hasPermission,
+      mutateUser: fetchUser,
+    }),
+    [user, isLoading, login, register, logout, hasPermission, fetchUser],
   );
 
   return (
