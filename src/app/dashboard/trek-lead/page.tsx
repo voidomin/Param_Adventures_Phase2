@@ -11,6 +11,8 @@ import {
   Lock,
   Unlock,
   AlertCircle,
+  ArrowLeft,
+  Map,
 } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -67,8 +69,8 @@ function TripCard({ trip }: Readonly<{ trip: TripSlot }>) {
   const canAct = isToday && trip.status === "ACTIVE";
 
   return (
-    <div className="bg-card border border-border rounded-xl p-5 flex flex-col gap-4">
-      <div className="flex flex-col sm:flex-row sm:items-start gap-2">
+    <div className="bg-card border border-border rounded-[1.5rem] p-6 sm:p-8 flex flex-col gap-6 hover:shadow-xl hover:border-foreground/20 transition-all group">
+      <div className="flex flex-col sm:flex-row sm:items-start gap-4">
         <div className="flex-1">
           <div className="flex flex-wrap items-center gap-2 mb-1">
             <h3 className="text-lg font-bold text-foreground">
@@ -115,16 +117,16 @@ function TripCard({ trip }: Readonly<{ trip: TripSlot }>) {
         </div>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex justify-end pt-2">
         <Link
           href={`/dashboard/trek-lead/trips/${trip.id}`}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-semibold text-sm transition-all ${
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${
             canAct
-              ? "bg-primary text-primary-foreground hover:scale-105 shadow-lg shadow-primary/20"
-              : "bg-foreground/5 text-foreground/60 hover:bg-foreground/10"
+              ? "bg-primary text-primary-foreground hover:scale-105 shadow-lg shadow-primary/20 animate-pulse"
+              : "bg-foreground/5 text-foreground/70 hover:bg-foreground/10 hover:text-foreground"
           }`}
         >
-          {canAct ? "Open D-Day" : "View Details"}
+          {canAct ? "Open D-Day Portal" : "View Trip Context"}
           <ChevronRight className="w-4 h-4" />
         </Link>
       </div>
@@ -162,14 +164,26 @@ export default function TrekLeadTripsPage() {
   const past = trips.filter((t) => t.status === "COMPLETED");
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="max-w-4xl mx-auto pb-12">
+      {/* Global Navigation */}
+      <div className="mb-6">
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-2 text-sm font-semibold text-foreground/60 hover:text-primary transition-colors hover:gap-3"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Dashboard
+        </Link>
+      </div>
+
       <div className="mb-8">
-        <h1 className="text-3xl font-heading font-bold text-foreground">
+        <h1 className="text-3xl font-heading font-black text-foreground flex items-center gap-3">
+          <Map className="w-8 h-8 text-primary" />
           My Trek Assignments
         </h1>
         <p className="text-foreground/60 mt-1">
-          Your assigned trips. Attendance and trek-start unlock on the day of
-          the trip (IST).
+          Your assigned operations. D-Day tools (Attendance & Start) seamlessly
+          unlock on the day of the trip (IST).
         </p>
       </div>
 
@@ -194,9 +208,9 @@ export default function TrekLeadTripsPage() {
       {!isLoading && trips.length > 0 && (
         <div className="space-y-10">
           {active.length > 0 && (
-            <section>
-              <h2 className="text-lg font-bold text-foreground mb-3 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-yellow-400 animate-pulse inline-block" />{" "}
+            <section className="bg-gradient-to-br from-yellow-500/5 to-transparent p-6 sm:p-8 rounded-[2rem] border border-yellow-500/10">
+              <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-3 border-b border-border/50 pb-4">
+                <span className="w-3 h-3 rounded-full bg-yellow-400 animate-pulse shadow-[0_0_10px_rgba(250,204,21,0.5)]" />{" "}
                 In Progress
               </h2>
               <div className="grid gap-4">
@@ -208,10 +222,10 @@ export default function TrekLeadTripsPage() {
           )}
 
           {upcoming.length > 0 && (
-            <section>
-              <h2 className="text-lg font-bold text-foreground mb-3 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-blue-400 inline-block" />{" "}
-                Upcoming
+            <section className="bg-foreground/[0.02] p-6 sm:p-8 rounded-[2rem] border border-border">
+              <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-3 border-b border-border/50 pb-4">
+                <span className="w-3 h-3 rounded-full bg-blue-400 inline-block" />{" "}
+                Upcoming Missions
               </h2>
               <div className="grid gap-4">
                 {upcoming.map((t) => (
@@ -222,10 +236,10 @@ export default function TrekLeadTripsPage() {
           )}
 
           {past.length > 0 && (
-            <section>
-              <h2 className="text-lg font-bold text-foreground mb-3 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-purple-400 inline-block" />{" "}
-                Completed
+            <section className="p-6 sm:p-8">
+              <h2 className="text-xl font-bold text-foreground/50 mb-4 flex items-center gap-3">
+                <span className="w-3 h-3 rounded-full bg-purple-400/50 inline-block" />{" "}
+                Completed operations
               </h2>
               <div className="grid gap-4">
                 {past.map((t) => (

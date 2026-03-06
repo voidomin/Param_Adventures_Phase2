@@ -8,9 +8,11 @@ import {
   Users,
   UserCheck,
   ChevronRight,
-  ClipboardList,
   AlertCircle,
   Mountain,
+  ArrowLeft,
+  Briefcase,
+  ClipboardList,
 } from "lucide-react";
 
 const STATUS_COLORS: Record<string, string> = {
@@ -69,14 +71,26 @@ export default function ManagerTripsPage() {
   }, [fetchTrips]);
 
   return (
-    <div>
+    <div className="max-w-4xl mx-auto pb-12">
+      {/* Global Navigation */}
+      <div className="mb-6">
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-2 text-sm font-semibold text-foreground/60 hover:text-primary transition-colors hover:gap-3"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Dashboard
+        </Link>
+      </div>
+
       <div className="mb-8">
-        <h1 className="text-3xl font-heading font-bold text-foreground">
+        <h1 className="text-3xl font-heading font-black text-foreground flex items-center gap-3">
+          <Briefcase className="w-8 h-8 text-primary" />
           My Assigned Trips
         </h1>
         <p className="text-foreground/60 mt-1">
           Trips assigned to you for management. Set up vendor contacts and trek
-          leads before starting.
+          leads before unlocking for operation.
         </p>
       </div>
 
@@ -106,12 +120,22 @@ export default function ManagerTripsPage() {
             const vendorCount = trip.vendorContacts?.length ?? 0;
             const leadCount = trip.assignments.length;
 
+            let leadText = "No Trek Lead Assigned";
+            if (leadCount === 1) leadText = "1 Trek Lead Assigned";
+            else if (leadCount > 1)
+              leadText = `${leadCount} Trek Leads Assigned`;
+
+            let vendorText = "No Vendor Contacts Yet";
+            if (vendorCount === 1) vendorText = "1 Vendor Contact";
+            else if (vendorCount > 1)
+              vendorText = `${vendorCount} Vendor Contacts`;
+
             return (
               <div
                 key={trip.id}
-                className="bg-card border border-border rounded-xl p-6 flex flex-col gap-4"
+                className="bg-card border border-border rounded-[1.5rem] p-6 sm:p-8 flex flex-col gap-6 hover:shadow-xl hover:border-foreground/20 transition-all group"
               >
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
                   <div className="flex-1">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
                       <h3 className="text-xl font-bold text-foreground">
@@ -154,9 +178,7 @@ export default function ManagerTripsPage() {
                     ) : (
                       <AlertCircle className="w-4 h-4" />
                     )}
-                    {leadCount > 0
-                      ? `${leadCount} Trek Lead${leadCount > 1 ? "s" : ""} Assigned`
-                      : "No Trek Lead Assigned"}
+                    {leadText}
                   </div>
                   <div
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border ${
@@ -166,18 +188,16 @@ export default function ManagerTripsPage() {
                     }`}
                   >
                     <ClipboardList className="w-4 h-4" />
-                    {vendorCount > 0
-                      ? `${vendorCount} Vendor Contact${vendorCount > 1 ? "s" : ""}`
-                      : "No Vendor Contacts Yet"}
+                    {vendorText}
                   </div>
                 </div>
 
-                <div className="flex justify-end">
+                <div className="flex justify-end pt-2">
                   <Link
                     href={`/dashboard/manager/trips/${trip.id}`}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl font-semibold hover:scale-105 transition-transform shadow-lg shadow-primary/20 text-sm"
+                    className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-xl font-bold hover:scale-105 transition-transform shadow-lg shadow-primary/20 text-sm opacity-90 group-hover:opacity-100"
                   >
-                    Manage Trip
+                    Action Center
                     <ChevronRight className="w-4 h-4" />
                   </Link>
                 </div>
