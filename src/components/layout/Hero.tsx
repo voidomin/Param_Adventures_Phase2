@@ -19,38 +19,67 @@ interface HeroSlide {
   ctaLink: string | null;
 }
 
+const FALLBACK_SLIDES: HeroSlide[] = [
+  {
+    id: "fallback-1",
+    title: "Experience the\n Extraordinary",
+    subtitle:
+      "From spiritual pilgrimage to rugged mountain summits, Param Adventure curates real stories for real explorers.",
+    videoUrl:
+      "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=2670&auto=format&fit=crop",
+    ctaLink: "/experiences",
+  },
+  {
+    id: "fallback-2",
+    title: "Conquer the\n Unknown",
+    subtitle:
+      "Push your limits with our expert-led high altitude expeditions. Safety guaranteed, adrenaline promised.",
+    videoUrl:
+      "https://images.unsplash.com/photo-1522163182402-834f871fd851?q=80&w=2603&auto=format&fit=crop",
+    ctaLink: "/experiences",
+  },
+  {
+    id: "fallback-3",
+    title: "Discover Hidden\n Valleys",
+    subtitle:
+      "Walk through ancient forests and discover pristine glacial lakes off the beaten path.",
+    videoUrl:
+      "https://images.unsplash.com/photo-1454496522488-7a8e488e8606?q=80&w=2676&auto=format&fit=crop",
+    ctaLink: "/experiences",
+  },
+];
+
 export default function Hero({
   slides = [],
 }: Readonly<{ slides?: HeroSlide[] }>) {
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  // Fallback defaults if no slides exist in DB
-  const currentSlide =
-    slides.length > 0
-      ? slides[currentIndex]
-      : {
-          id: "fallback",
-          title: "Experience the\n Extraordinary",
-          subtitle:
-            "From spiritual pilgrimage to rugged mountain summits, Param Adventure curates real stories for real explorers across India.",
-          videoUrl:
-            "https://assets.mixkit.co/videos/preview/mixkit-hikers-walking-on-a-mountain-trail-34444-large.mp4",
-          ctaLink: "/experiences",
-        };
+  const activeSlides = slides.length > 0 ? slides : FALLBACK_SLIDES;
+  const currentSlide = activeSlides[currentIndex];
 
   useEffect(() => {
-    if (slides.length <= 1) return;
+    if (activeSlides.length <= 1) return;
+
+    // Check if the currently active slide is a video. If so, let it play naturally
+    // until it fires its 'onEnded' event instead of relying on the interval.
+    const activeIsVideo = /\.(mp4|webm)$/i.test(
+      activeSlides[currentIndex].videoUrl,
+    );
+    if (activeIsVideo) return;
+
     const timer = setInterval(() => {
-      setCurrentIndex((prev) => (prev + 1) % slides.length);
+      setCurrentIndex((prev) => (prev + 1) % activeSlides.length);
     }, 6000); // cycle every 6 seconds
     return () => clearInterval(timer);
-  }, [slides.length]);
+  }, [activeSlides.length, currentIndex]);
 
   const goToPrev = () => {
-    setCurrentIndex((prev) => (prev === 0 ? slides.length - 1 : prev - 1));
+    setCurrentIndex((prev) =>
+      prev === 0 ? activeSlides.length - 1 : prev - 1,
+    );
   };
   const goToNext = () => {
-    setCurrentIndex((prev) => (prev + 1) % slides.length);
+    setCurrentIndex((prev) => (prev + 1) % activeSlides.length);
   };
 
   const isVideo = /\.(mp4|webm)$/i.test(currentSlide.videoUrl);
@@ -64,20 +93,20 @@ export default function Hero({
         <AnimatePresence mode="wait">
           <motion.div
             key={currentSlide.id + "-bg"}
-            initial={{ opacity: 0, scale: 1.1, filter: "blur(20px)" }}
+            initial={{ opacity: 0, scale: 1.15, filter: "blur(20px)" }}
             animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-            exit={{ opacity: 0, scale: 0.95, filter: "blur(10px)" }}
+            exit={{ opacity: 0, scale: 1.05, filter: "blur(10px)" }}
             transition={{ duration: 1.5, ease: "easeInOut" }}
             className="absolute inset-0"
           >
             {isVideo ? (
               <video
                 autoPlay
-                loop
                 muted
                 playsInline
                 className="w-full h-full object-cover"
                 src={currentSlide.videoUrl}
+                onEnded={goToNext} // Move to next slide precisely when the video finishes
               />
             ) : (
               // eslint-disable-next-line @next/next/no-img-element
@@ -91,7 +120,7 @@ export default function Hero({
         </AnimatePresence>
       </div>
 
-      {slides.length > 1 && (
+      {activeSlides.length > 1 && (
         <>
           <button
             onClick={goToPrev}
@@ -169,9 +198,9 @@ export default function Hero({
       </div>
 
       {/* Slider Indicators fixed to the bottom of the screen */}
-      {slides.length > 1 && (
+      {activeSlides.length > 1 && (
         <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 z-30">
-          {slides.map((slide, idx) => (
+          {activeSlides.map((slide, idx) => (
             <button
               key={slide.id}
               onClick={() => setCurrentIndex(idx)}

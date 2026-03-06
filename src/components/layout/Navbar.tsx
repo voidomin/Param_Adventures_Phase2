@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Menu, X, Compass, Map, BookOpen, LogOut, User } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/lib/AuthContext";
+import ThemeToggle from "@/components/ui/ThemeToggle";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -101,10 +102,13 @@ export default function Navbar() {
                   Sign In
                 </Link>
               )}
+
+              <ThemeToggle />
             </div>
 
             {/* Mobile Menu Button */}
             <div className="md:hidden flex items-center space-x-4">
+              <ThemeToggle />
               <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="text-foreground relative z-[60]"
