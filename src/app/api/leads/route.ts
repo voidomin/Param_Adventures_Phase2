@@ -4,9 +4,7 @@ import { z } from "zod";
 
 const leadSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  email: z
-    .string()
-    .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, { message: "Invalid email address" }),
+  email: z.email({ message: "Invalid email address" }),
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
   requirements: z
     .string()
