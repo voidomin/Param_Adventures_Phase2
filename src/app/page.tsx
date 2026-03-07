@@ -23,14 +23,14 @@ export default async function Home() {
       categories: { include: { category: true } },
       _count: { select: { slots: true } },
     },
-    take: 6,
+    take: 10,
     orderBy: { createdAt: "desc" },
   });
 
   // Fetch recent blogs
   const recentBlogs = await prisma.blog.findMany({
     where: { status: "PUBLISHED" },
-    take: 3,
+    take: 10,
     orderBy: { createdAt: "desc" },
     include: {
       author: { select: { name: true, avatarUrl: true } },
