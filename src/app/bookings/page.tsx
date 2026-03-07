@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/AuthContext";
-import Navbar from "@/components/layout/Navbar";
 import Link from "next/link";
 import { Clock, MapPin, IndianRupee, Loader2 } from "lucide-react";
 import SaveButton from "@/components/experiences/SaveButton";
@@ -143,7 +142,6 @@ export default function BookingsPage() {
   if (!user) {
     return (
       <div className="min-h-screen bg-background flex flex-col justify-center items-center">
-        <Navbar />
         <h2 className="text-2xl font-bold mb-4">
           Please log in to view your bookings
         </h2>
@@ -229,7 +227,6 @@ export default function BookingsPage() {
 
   return (
     <main className="min-h-screen bg-background pb-20 pt-24">
-      <Navbar />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <h1 className="text-4xl font-heading font-black text-foreground mb-8">
           My Bookings

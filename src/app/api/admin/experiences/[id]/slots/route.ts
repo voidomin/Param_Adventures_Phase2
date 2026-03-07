@@ -7,7 +7,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await authorizeRequest(request, "trip:moderate");
+  const auth = await authorizeRequest(request, ["trip:create", "trip:edit"]);
   // Assuming Trip Manager / Admin can view slots
   if (!auth.authorized) return auth.response;
 
@@ -40,7 +40,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await authorizeRequest(request, "trip:moderate"); // Need to verify correct permission
+  const auth = await authorizeRequest(request, ["trip:create", "trip:edit"]);
   if (!auth.authorized) return auth.response;
 
   try {

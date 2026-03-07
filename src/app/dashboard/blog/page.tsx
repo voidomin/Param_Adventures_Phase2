@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Navbar from "@/components/layout/Navbar";
 import {
   PenLine,
   CheckCircle,
@@ -93,7 +92,6 @@ export default function UserBlogsPage() {
 
   return (
     <main className="min-h-screen bg-background pb-20">
-      <Navbar />
       <div className="max-w-4xl mx-auto px-4 pt-28">
         {/* Header */}
         <div className="flex items-center justify-between mb-10">

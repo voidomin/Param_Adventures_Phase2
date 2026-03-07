@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Navbar from "@/components/layout/Navbar";
 import dynamic from "next/dynamic";
 import {
   Loader2,
@@ -152,7 +151,6 @@ export default function WriteBlogPage() {
   if (isLoadingExp) {
     return (
       <main className="min-h-screen bg-background">
-        <Navbar />
         <div className="flex items-center justify-center min-h-screen">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
@@ -163,7 +161,6 @@ export default function WriteBlogPage() {
   if (experiences.length === 0) {
     return (
       <main className="min-h-screen bg-background">
-        <Navbar />
         <div className="max-w-2xl mx-auto px-4 pt-32 text-center">
           <Mountain className="w-14 h-14 text-foreground/20 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-foreground mb-3">
@@ -181,7 +178,6 @@ export default function WriteBlogPage() {
 
   return (
     <main className="min-h-screen bg-background pb-20">
-      <Navbar />
       <div className="max-w-3xl mx-auto px-4 pt-28">
         <div className="mb-8">
           <h1 className="text-3xl font-heading font-black text-foreground">

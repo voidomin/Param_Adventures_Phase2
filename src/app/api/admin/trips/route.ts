@@ -8,7 +8,10 @@ import { authorizeRequest } from "@/lib/api-auth";
  * Returns slots including experience details, participant count, and assigned Trek Leads.
  */
 export async function GET(request: NextRequest) {
-  const auth = await authorizeRequest(request, "trip:moderate");
+  const auth = await authorizeRequest(request, [
+    "ops:view-all-trips",
+    "trip:create",
+  ]);
   if (!auth.authorized) return auth.response;
 
   try {

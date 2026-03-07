@@ -35,7 +35,8 @@ export default function AdminLayout({
         !hasPermission("system:config") &&
         !hasPermission("trip:manage-categories") &&
         !hasPermission("trip:create") &&
-        !hasPermission("media:upload")
+        !hasPermission("media:upload") &&
+        !hasPermission("ops:view-all-trips")
       ) {
         // Basic check: if they don't have at least one admin-ish permission, kick them out
         router.push("/");

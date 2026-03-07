@@ -4,17 +4,30 @@ import Link from "next/link";
 import Image from "next/image";
 import { Menu, X, Compass, Map, BookOpen, LogOut, User } from "lucide-react";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import ThemeToggle from "@/components/ui/ThemeToggle";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const { user, isLoading, logout } = useAuth();
+  const pathname = usePathname();
+
+  // Hide Navbar on specific routes
+  if (
+    pathname.startsWith("/admin") ||
+    pathname.includes("/login") ||
+    pathname.includes("/register") ||
+    pathname.includes("/forgot-password") ||
+    pathname.includes("/reset-password")
+  ) {
+    return null;
+  }
 
   const navLinks = [
     { name: "Explore", href: "/experiences", icon: Compass },
     { name: "My Bookings", href: "/bookings", icon: Map },
-    { name: "Stories", href: "/blogs", icon: BookOpen },
+    { name: "Stories", href: "/blog", icon: BookOpen },
   ];
 
   const handleLogout = async () => {

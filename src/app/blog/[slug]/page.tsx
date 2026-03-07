@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
-import Navbar from "@/components/layout/Navbar";
 import {
   MapPin,
   CalendarDays,
@@ -86,8 +85,6 @@ export default async function BlogArticlePage({ params }: Props) {
 
   return (
     <main className="min-h-screen bg-background pb-20">
-      <Navbar />
-
       {/* Hero Cover */}
       <div className="relative h-[45vh] min-h-[300px] overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}

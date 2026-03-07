@@ -7,7 +7,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; slotId: string }> },
 ) {
-  const auth = await authorizeRequest(request, "trip:moderate");
+  const auth = await authorizeRequest(request, ["trip:create", "trip:edit"]);
   if (!auth.authorized) return auth.response;
 
   try {
@@ -77,7 +77,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; slotId: string }> },
 ) {
-  const auth = await authorizeRequest(request, "trip:moderate");
+  const auth = await authorizeRequest(request, ["trip:create", "trip:edit"]);
   if (!auth.authorized) return auth.response;
 
   try {

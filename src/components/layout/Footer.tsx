@@ -1,90 +1,184 @@
+"use client";
+
 import Link from "next/link";
-import { Mountain, Mail, MapPin } from "lucide-react";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
+import { Mail, Phone, MapPin, Instagram, Youtube, Twitter } from "lucide-react";
 
 export default function Footer() {
+  const pathname = usePathname();
+
+  // Hide footer on admin, auth, and specific dashboard operational routes if desired.
+  // The user requested Manager and Trek Lead to have the global header/footer,
+  // so we won't hide it on those, but we will hide it on pure Admin and Auth pages.
+  if (
+    pathname.startsWith("/admin") ||
+    pathname.includes("/login") ||
+    pathname.includes("/register") ||
+    pathname.includes("/forgot-password") ||
+    pathname.includes("/reset-password")
+  ) {
+    return null;
+  }
+
   return (
-    <footer className="bg-black border-t border-white/5">
-      <div className="max-w-7xl mx-auto px-4 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-12 md:gap-8">
-          {/* Brand */}
-          <div className="md:col-span-2">
-            <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
-                <Mountain className="w-5 h-5 text-primary-foreground" />
-              </div>
-              <span className="text-lg font-heading font-black text-white tracking-tight">
-                Param Adventures
+    <footer className="bg-background border-t border-border mt-auto">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
+          {/* Brand Info */}
+          <div className="space-y-6">
+            <Link href="/" className="flex items-center gap-3">
+              <Image
+                src="/param-logo.png"
+                alt="Param Adventures"
+                width={40}
+                height={40}
+                className="rounded-full"
+              />
+              <span className="text-xl font-heading font-bold text-foreground">
+                <span className="text-primary">PARAM</span> Adventures
               </span>
-            </div>
-            <p className="text-white/40 text-sm leading-relaxed max-w-sm mb-6">
-              Curated trekking &amp; adventure experiences across India&apos;s
-              most breathtaking landscapes. From Himalayan base camps to
-              spiritual trails — we make extraordinary accessible.
+            </Link>
+            <p className="text-sm text-foreground/60 leading-relaxed">
+              Curated experiences, spiritual journeys, and unforgettable treks
+              across India's most breathtaking landscapes. Discover the
+              extraordinary with us.
             </p>
-            <div className="flex flex-col gap-2 text-white/30 text-sm">
-              <span className="flex items-center gap-2">
-                <Mail className="w-3.5 h-3.5 text-primary" />
-                support@paramadventures.com
-              </span>
-              <span className="flex items-center gap-2">
-                <MapPin className="w-3.5 h-3.5 text-primary" />
-                India
-              </span>
+            <div className="flex items-center gap-4">
+              <a
+                href="#"
+                className="w-10 h-10 rounded-full bg-foreground/5 flex items-center justify-center text-foreground/60 hover:bg-primary/10 hover:text-primary transition-colors"
+              >
+                <Instagram className="w-4 h-4" />
+              </a>
+              <a
+                href="#"
+                className="w-10 h-10 rounded-full bg-foreground/5 flex items-center justify-center text-foreground/60 hover:bg-primary/10 hover:text-primary transition-colors"
+              >
+                <Youtube className="w-4 h-4" />
+              </a>
+              <a
+                href="#"
+                className="w-10 h-10 rounded-full bg-foreground/5 flex items-center justify-center text-foreground/60 hover:bg-primary/10 hover:text-primary transition-colors"
+              >
+                <Twitter className="w-4 h-4" />
+              </a>
             </div>
           </div>
 
           {/* Quick Links */}
           <div>
-            <h4 className="text-white/80 font-bold text-sm uppercase tracking-wider mb-4">
+            <h3 className="text-sm font-bold text-foreground uppercase tracking-wider mb-6">
               Explore
-            </h4>
-            <ul className="space-y-2.5">
-              {[
-                { label: "All Experiences", href: "/experiences" },
-                { label: "Blog", href: "/blog" },
-                { label: "Dashboard", href: "/dashboard" },
-              ].map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="text-white/40 text-sm hover:text-primary transition-colors"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
+            </h3>
+            <ul className="space-y-4 text-sm text-foreground/60">
+              <li>
+                <Link
+                  href="/experiences"
+                  className="hover:text-primary transition-colors"
+                >
+                  All Adventures
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/blog"
+                  className="hover:text-primary transition-colors"
+                >
+                  Travel Stories
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/about"
+                  className="hover:text-primary transition-colors"
+                >
+                  About Us
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/contact"
+                  className="hover:text-primary transition-colors"
+                >
+                  Contact
+                </Link>
+              </li>
             </ul>
           </div>
 
           {/* Legal */}
           <div>
-            <h4 className="text-white/80 font-bold text-sm uppercase tracking-wider mb-4">
+            <h3 className="text-sm font-bold text-foreground uppercase tracking-wider mb-6">
               Legal
-            </h4>
-            <ul className="space-y-2.5">
-              {[
-                { label: "Terms & Conditions", href: "/terms" },
-                { label: "Privacy Policy", href: "/privacy" },
-              ].map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="text-white/40 text-sm hover:text-primary transition-colors"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
+            </h3>
+            <ul className="space-y-4 text-sm text-foreground/60">
+              <li>
+                <Link
+                  href="/privacy"
+                  className="hover:text-primary transition-colors"
+                >
+                  Privacy Policy
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/terms"
+                  className="hover:text-primary transition-colors"
+                >
+                  Terms of Service
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/refunds"
+                  className="hover:text-primary transition-colors"
+                >
+                  Cancellation Policy
+                </Link>
+              </li>
+            </ul>
+          </div>
+
+          {/* Contact */}
+          <div>
+            <h3 className="text-sm font-bold text-foreground uppercase tracking-wider mb-6">
+              Get in Touch
+            </h3>
+            <ul className="space-y-4 text-sm text-foreground/60">
+              <li className="flex items-start gap-3">
+                <MapPin className="w-5 h-5 text-primary shrink-0" />
+                <span>
+                  123 Adventure Lane, Himalayas,
+                  <br />
+                  India 175131
+                </span>
+              </li>
+              <li className="flex items-center gap-3">
+                <Phone className="w-5 h-5 text-primary shrink-0" />
+                <span>+91 98765 43210</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <Mail className="w-5 h-5 text-primary shrink-0" />
+                <a
+                  href="mailto:hello@paramadventures.com"
+                  className="hover:text-primary transition-colors"
+                >
+                  hello@paramadventures.com
+                </a>
+              </li>
             </ul>
           </div>
         </div>
 
-        {/* Bottom Bar */}
-        <div className="mt-12 pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-white/20 text-xs">
+        <div className="mt-16 pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
+          <p className="text-xs text-foreground/40">
             © {new Date().getFullYear()} Param Adventures. All rights reserved.
           </p>
-          <p className="text-white/20 text-xs">Made with ❤️ for adventurers</p>
+          <div className="flex items-center gap-2 text-xs text-foreground/40">
+            <span>Powered by</span>
+            <span className="font-bold text-foreground/60">Param Tech</span>
+          </div>
         </div>
       </div>
     </footer>

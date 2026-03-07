@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import Navbar from "@/components/layout/Navbar";
 import { MapPin, CalendarDays, ArrowRight, PenLine } from "lucide-react";
 
 export const revalidate = 60;
@@ -19,7 +18,6 @@ export default async function BlogListingPage() {
 
   return (
     <main className="min-h-screen bg-background pb-20">
-      <Navbar />
 
       {/* Hero */}
       <div className="relative pt-16 overflow-hidden">

@@ -8,7 +8,10 @@ import { authorizeRequest } from "@/lib/api-auth";
  * Used to populate the "Assign Manager" dropdown on the Admin Trips page.
  */
 export async function GET(request: NextRequest) {
-  const auth = await authorizeRequest(request, "trip:moderate");
+  const auth = await authorizeRequest(request, [
+    "trip:create",
+    "ops:assign-trek-leads",
+  ]);
   if (!auth.authorized) return auth.response;
 
   try {

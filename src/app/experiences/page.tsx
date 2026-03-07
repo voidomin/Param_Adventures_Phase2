@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
-import Navbar from "@/components/layout/Navbar";
 import ExperiencesClient from "./ExperiencesClient";
 
 export const revalidate = 60; // Revalidate every minute
@@ -90,7 +89,6 @@ export default async function ExperiencesPage({
 
   return (
     <main className="min-h-screen bg-background flex flex-col">
-      <Navbar />
 
       <ExperiencesClient
         initialExperiences={serializedExperiences as any}

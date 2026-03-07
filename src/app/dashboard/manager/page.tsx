@@ -71,7 +71,7 @@ export default function ManagerTripsPage() {
   }, [fetchTrips]);
 
   return (
-    <div className="max-w-4xl mx-auto pb-12">
+    <div className="max-w-4xl mx-auto pt-24 px-4 md:px-8 pb-12">
       {/* Global Navigation */}
       <div className="mb-6">
         <Link

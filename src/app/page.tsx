@@ -1,5 +1,3 @@
-import Navbar from "@/components/layout/Navbar";
-import Footer from "@/components/layout/Footer";
 import Hero from "@/components/layout/Hero";
 import CategoryBar from "@/components/home/CategoryBar";
 import Testimonials from "@/components/home/Testimonials";
@@ -41,7 +39,6 @@ export default async function Home() {
 
   return (
     <main className="relative min-h-screen bg-background text-foreground">
-      <Navbar />
       <Hero slides={heroSlides} />
       <CategoryBar />
 
@@ -90,7 +87,7 @@ export default async function Home() {
                 </p>
               </div>
               <Link
-                href="/blogs"
+                href="/blog"
                 className="hidden md:inline-flex items-center px-6 py-3 bg-primary/10 text-primary font-bold rounded-full hover:bg-primary hover:text-primary-foreground transition-colors"
               >
                 View All Stories
@@ -103,7 +100,7 @@ export default async function Home() {
               {recentBlogs.map((blog, idx) => (
                 <ScrollReveal key={blog.id} delay={0.1 * idx}>
                   <Link
-                    href={`/blogs/${blog.slug}`}
+                    href={`/blog/${blog.slug}`}
                     className="group bg-card rounded-3xl border border-border flex flex-col h-full overflow-hidden hover:shadow-2xl hover:shadow-primary/5 hover:border-primary/50 transition-all"
                   >
                     {blog.coverImage && (
@@ -167,7 +164,7 @@ export default async function Home() {
 
           <div className="mt-8 text-center md:hidden">
             <Link
-              href="/blogs"
+              href="/blog"
               className="inline-flex items-center px-8 py-3.5 bg-primary text-primary-foreground font-bold rounded-full transition-transform hover:scale-105 shadow-xl shadow-primary/20"
             >
               View All Stories
@@ -177,8 +174,6 @@ export default async function Home() {
       </div>
 
       <Testimonials />
-
-      <Footer />
     </main>
   );
 }

@@ -11,7 +11,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await authorizeRequest(request, "trip:moderate");
+  const auth = await authorizeRequest(request, "ops:assign-trek-leads");
   if (!auth.authorized) return auth.response;
 
   try {

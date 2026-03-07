@@ -2,7 +2,6 @@ import { prisma } from "@/lib/db";
 
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import Navbar from "@/components/layout/Navbar";
 import {
   Clock,
   MapPin,
@@ -98,8 +97,6 @@ export default async function ExperienceDetailPage({
 
   return (
     <main className="min-h-screen bg-background text-foreground pb-20">
-      <Navbar />
-
       {/* Hero Section */}
       <section className="relative h-[60vh] md:h-[70vh] w-full mt-16 group">
         <div className="absolute inset-0 z-0 bg-black">
