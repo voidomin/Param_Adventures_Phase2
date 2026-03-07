@@ -5,7 +5,7 @@ import { z } from "zod";
 
 const customTripFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  email: z.string().email({ message: "Invalid email address" }),
+  email: z.string().email("Invalid email address"),
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
   requirements: z
     .string()
@@ -44,7 +44,7 @@ export default function CustomTripForm() {
 
     if (!validationResult.success) {
       setLoading(false);
-      const firstError = validationResult.error.errors[0];
+      const firstError = validationResult.error.issues[0];
       setError(firstError.message);
       return;
     }
