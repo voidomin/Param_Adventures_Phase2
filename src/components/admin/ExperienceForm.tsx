@@ -77,18 +77,34 @@ export default function ExperienceForm({
     ),
   );
 
-  // New Array States
-  const [inclusions, setInclusions] = useState<string[]>(
-    initialData?.inclusions || [],
+  // New Array States with stable IDs
+  const [inclusions, setInclusions] = useState<{ id: string; text: string }[]>(
+    (initialData?.inclusions || []).map((text: string) => ({
+      id: crypto.randomUUID(),
+      text,
+    })),
   );
-  const [exclusions, setExclusions] = useState<string[]>(
-    initialData?.exclusions || [],
+  const [exclusions, setExclusions] = useState<{ id: string; text: string }[]>(
+    (initialData?.exclusions || []).map((text: string) => ({
+      id: crypto.randomUUID(),
+      text,
+    })),
   );
-  const [thingsToCarry, setThingsToCarry] = useState<string[]>(
-    initialData?.thingsToCarry || [],
+  const [thingsToCarry, setThingsToCarry] = useState<
+    { id: string; text: string }[]
+  >(
+    (initialData?.thingsToCarry || []).map((text: string) => ({
+      id: crypto.randomUUID(),
+      text,
+    })),
   );
-  const [faqs, setFaqs] = useState<{ question: string; answer: string }[]>(
-    initialData?.faqs || [],
+  const [faqs, setFaqs] = useState<
+    { id: string; question: string; answer: string }[]
+  >(
+    (initialData?.faqs || []).map((faq: any) => ({
+      id: crypto.randomUUID(),
+      ...faq,
+    })),
   );
 
   // New Logistic States
@@ -157,48 +173,54 @@ export default function ExperienceForm({
     setItinerary((prev) => prev.filter((_, i) => i !== index));
 
   // Array Handlers
+  // Array Handlers for stable object-based states
   const handleStringArrayChange = (
-    setter: React.Dispatch<React.SetStateAction<string[]>>,
-    index: number,
+    setter: React.Dispatch<
+      React.SetStateAction<{ id: string; text: string }[]>
+    >,
+    id: string,
     value: string,
   ) => {
-    setter((prev) => {
-      const updated = [...prev];
-      updated[index] = value;
-      return updated;
-    });
+    setter((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, text: value } : item)),
+    );
   };
 
   const addStringArrayItem = (
-    setter: React.Dispatch<React.SetStateAction<string[]>>,
+    setter: React.Dispatch<
+      React.SetStateAction<{ id: string; text: string }[]>
+    >,
   ) => {
-    setter((prev) => [...prev, ""]);
+    setter((prev) => [...prev, { id: crypto.randomUUID(), text: "" }]);
   };
 
   const removeStringArrayItem = (
-    setter: React.Dispatch<React.SetStateAction<string[]>>,
-    index: number,
+    setter: React.Dispatch<
+      React.SetStateAction<{ id: string; text: string }[]>
+    >,
+    id: string,
   ) => {
-    setter((prev) => prev.filter((_, i) => i !== index));
+    setter((prev) => prev.filter((item) => item.id !== id));
   };
 
   // FAQ Handlers
   const handleFaqChange = (
-    index: number,
+    id: string,
     field: "question" | "answer",
     value: string,
   ) => {
-    setFaqs((prev) => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], [field]: value };
-      return updated;
-    });
+    setFaqs((prev) =>
+      prev.map((faq) => (faq.id === id ? { ...faq, [field]: value } : faq)),
+    );
   };
 
   const addFaq = () =>
-    setFaqs((prev) => [...prev, { question: "", answer: "" }]);
-  const removeFaq = (index: number) =>
-    setFaqs((prev) => prev.filter((_, i) => i !== index));
+    setFaqs((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), question: "", answer: "" },
+    ]);
+  const removeFaq = (id: string) =>
+    setFaqs((prev) => prev.filter((faq) => faq.id !== id));
 
   const addImageUrl = () => setImages((prev) => [...prev, ""]);
   const updateImageUrl = (index: number, val: string) => {
@@ -231,12 +253,18 @@ export default function ExperienceForm({
       images: images.filter((url) => url.trim() !== ""),
       itinerary,
       categoryIds: selectedCategories,
-      inclusions: inclusions.filter((item) => item.trim() !== ""),
-      exclusions: exclusions.filter((item) => item.trim() !== ""),
-      thingsToCarry: thingsToCarry.filter((item) => item.trim() !== ""),
-      faqs: faqs.filter(
-        (faq) => faq.question.trim() !== "" && faq.answer.trim() !== "",
-      ),
+      inclusions: inclusions
+        .map((item) => item.text)
+        .filter((item) => item.trim() !== ""),
+      exclusions: exclusions
+        .map((item) => item.text)
+        .filter((item) => item.trim() !== ""),
+      thingsToCarry: thingsToCarry
+        .map((item) => item.text)
+        .filter((item) => item.trim() !== ""),
+      faqs: faqs
+        .filter((faq) => faq.question.trim() !== "" && faq.answer.trim() !== "")
+        .map(({ question, answer }) => ({ question, answer })),
       cancellationPolicy,
       meetingPoint,
       minAge: minAge ? Number(minAge) : null,
@@ -564,20 +592,26 @@ export default function ExperienceForm({
               <span className="block text-sm font-bold text-foreground/80">
                 Inclusions
               </span>
-              {inclusions.map((item, ix) => (
-                <div key={`inclusion-field-${ix}`} className="flex gap-2">
+              {inclusions.map((item) => (
+                <div key={item.id} className="flex gap-2">
                   <input
                     type="text"
-                    value={item}
+                    value={item.text}
                     onChange={(e) =>
-                      handleStringArrayChange(setInclusions, ix, e.target.value)
+                      handleStringArrayChange(
+                        setInclusions,
+                        item.id,
+                        e.target.value,
+                      )
                     }
                     className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
                     placeholder="e.g. All meals during the trek"
                   />
                   <button
                     type="button"
-                    onClick={() => removeStringArrayItem(setInclusions, ix)}
+                    onClick={() =>
+                      removeStringArrayItem(setInclusions, item.id)
+                    }
                     className="p-2 text-foreground/50 hover:text-red-500 transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -598,20 +632,26 @@ export default function ExperienceForm({
               <span className="block text-sm font-bold text-foreground/80">
                 Exclusions
               </span>
-              {exclusions.map((item, ix) => (
-                <div key={`exclusion-field-${ix}`} className="flex gap-2">
+              {exclusions.map((item) => (
+                <div key={item.id} className="flex gap-2">
                   <input
                     type="text"
-                    value={item}
+                    value={item.text}
                     onChange={(e) =>
-                      handleStringArrayChange(setExclusions, ix, e.target.value)
+                      handleStringArrayChange(
+                        setExclusions,
+                        item.id,
+                        e.target.value,
+                      )
                     }
                     className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
                     placeholder="e.g. Flights to basecamp"
                   />
                   <button
                     type="button"
-                    onClick={() => removeStringArrayItem(setExclusions, ix)}
+                    onClick={() =>
+                      removeStringArrayItem(setExclusions, item.id)
+                    }
                     className="p-2 text-foreground/50 hover:text-red-500 transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -632,15 +672,15 @@ export default function ExperienceForm({
               <span className="block text-sm font-bold text-foreground/80">
                 Things to Carry
               </span>
-              {thingsToCarry.map((item, ix) => (
-                <div key={`carry-field-${ix}`} className="flex gap-2">
+              {thingsToCarry.map((item) => (
+                <div key={item.id} className="flex gap-2">
                   <input
                     type="text"
-                    value={item}
+                    value={item.text}
                     onChange={(e) =>
                       handleStringArrayChange(
                         setThingsToCarry,
-                        ix,
+                        item.id,
                         e.target.value,
                       )
                     }
@@ -649,7 +689,9 @@ export default function ExperienceForm({
                   />
                   <button
                     type="button"
-                    onClick={() => removeStringArrayItem(setThingsToCarry, ix)}
+                    onClick={() =>
+                      removeStringArrayItem(setThingsToCarry, item.id)
+                    }
                     className="p-2 text-foreground/50 hover:text-red-500 transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -670,9 +712,9 @@ export default function ExperienceForm({
               <span className="block text-sm font-bold text-foreground/80">
                 Frequently Asked Questions (FAQs)
               </span>
-              {faqs.map((faq, ix) => (
+              {faqs.map((faq) => (
                 <div
-                  key={`faq-field-${ix}`}
+                  key={faq.id}
                   className="flex gap-4 items-start bg-background border border-border rounded-xl p-3"
                 >
                   <div className="flex-1 space-y-2">
@@ -680,7 +722,7 @@ export default function ExperienceForm({
                       type="text"
                       value={faq.question}
                       onChange={(e) =>
-                        handleFaqChange(ix, "question", e.target.value)
+                        handleFaqChange(faq.id, "question", e.target.value)
                       }
                       className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50 font-medium"
                       placeholder="Question"
@@ -689,7 +731,7 @@ export default function ExperienceForm({
                       value={faq.answer}
                       rows={2}
                       onChange={(e) =>
-                        handleFaqChange(ix, "answer", e.target.value)
+                        handleFaqChange(faq.id, "answer", e.target.value)
                       }
                       className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
                       placeholder="Answer..."
@@ -697,7 +739,7 @@ export default function ExperienceForm({
                   </div>
                   <button
                     type="button"
-                    onClick={() => removeFaq(ix)}
+                    onClick={() => removeFaq(faq.id)}
                     className="p-2 text-foreground/50 hover:text-red-500 transition-colors h-full"
                   >
                     <Trash2 className="w-4 h-4" />
