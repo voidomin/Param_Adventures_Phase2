@@ -41,7 +41,7 @@ export default function Carousel({
         onClick={() => scroll("left")}
         disabled={!canScrollLeft}
         aria-label="Scroll Left"
-        className={`absolute -left-4 md:-left-6 top-1/2 -translate-y-1/2 z-10 p-2 md:p-3 rounded-full bg-background/90 backdrop-blur border border-border/50 text-foreground transition-all duration-300 shadow-xl ${
+        className={`absolute -left-4 md:-left-6 top-1/2 -translate-y-1/2 z-30 p-2 md:p-3 rounded-full bg-background/90 backdrop-blur border border-border/50 text-foreground transition-all duration-300 shadow-xl ${
           canScrollLeft
             ? "opacity-0 group-hover:opacity-100 hover:scale-110 hover:bg-primary hover:text-primary-foreground hover:border-primary"
             : "opacity-0 pointer-events-none"
@@ -74,7 +74,7 @@ export default function Carousel({
         onClick={() => scroll("right")}
         disabled={!canScrollRight}
         aria-label="Scroll Right"
-        className={`absolute -right-4 md:-right-6 top-1/2 -translate-y-1/2 z-10 p-2 md:p-3 rounded-full bg-background/90 backdrop-blur border border-border/50 text-foreground transition-all duration-300 shadow-xl ${
+        className={`absolute -right-4 md:-right-6 top-1/2 -translate-y-1/2 z-30 p-2 md:p-3 rounded-full bg-background/90 backdrop-blur border border-border/50 text-foreground transition-all duration-300 shadow-xl ${
           canScrollRight
             ? "opacity-0 group-hover:opacity-100 hover:scale-110 hover:bg-primary hover:text-primary-foreground hover:border-primary"
             : "opacity-0 pointer-events-none"
