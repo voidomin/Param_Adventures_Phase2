@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       where: { id: experienceId },
     });
 
-    if (!experience || experience.status !== "PUBLISHED") {
+    if (experience?.status !== "PUBLISHED") {
       return NextResponse.json(
         { error: "Experience not found." },
         { status: 404 },

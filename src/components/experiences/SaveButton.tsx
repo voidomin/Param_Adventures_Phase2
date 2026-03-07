@@ -17,7 +17,7 @@ export default function SaveButton({
   size = 20,
   className = "",
   initialSaved = false,
-}: SaveButtonProps) {
+}: Readonly<SaveButtonProps>) {
   const { user } = useAuth();
   const router = useRouter();
 
@@ -61,7 +61,7 @@ export default function SaveButton({
       // Could show a toast message here
       alert("Please log in to save experiences to your wishlist.");
       router.push(
-        "/login?redirect=" + encodeURIComponent(window.location.pathname),
+        "/login?redirect=" + encodeURIComponent(globalThis.location.pathname),
       );
       return;
     }
