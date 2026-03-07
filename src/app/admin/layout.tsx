@@ -16,6 +16,7 @@ import {
   PenLine,
   ClipboardList,
   Star,
+  Headset,
 } from "lucide-react";
 
 export default function AdminLayout({
@@ -88,6 +89,12 @@ export default function AdminLayout({
       name: "Bookings",
       href: "/admin/bookings",
       icon: Map,
+      permission: "booking:view-all",
+    },
+    {
+      name: "Custom Leads",
+      href: "/admin/leads",
+      icon: Headset,
       permission: "booking:view-all",
     },
     {

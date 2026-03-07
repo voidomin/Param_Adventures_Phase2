@@ -10,7 +10,6 @@ import {
   Mountain,
   Check,
   CalendarDays,
-  Activity,
   Image as ImageIcon,
   Info,
   Shield,
@@ -23,6 +22,7 @@ import {
 import BookNowButton from "@/components/booking/BookNowButton";
 import ExperienceReviews from "@/components/experiences/ExperienceReviews";
 import SaveButton from "@/components/experiences/SaveButton";
+import SimilarTrips from "@/components/experiences/SimilarTrips";
 
 export const revalidate = 60;
 
@@ -253,23 +253,28 @@ export default async function ExperienceDetailPage({
                         <div className="hidden md:flex absolute left-0 top-0 bottom-0 w-12 flex-col items-center">
                           <div className="h-full w-px bg-border"></div>
                         </div>
-                        <div className="md:ml-12 bg-card border border-border rounded-2xl p-6 relative group hover:border-primary/50 transition-colors">
+                        <details className="md:ml-12 bg-card border border-border rounded-2xl relative group hover:border-primary/50 transition-colors [&_summary::-webkit-details-marker]:hidden">
                           <div className="absolute -left-11 md:-left-12 top-6 w-6 h-6 rounded-full border-4 border-background bg-primary z-10"></div>
-                          <h3 className="text-xl font-bold mb-2 flex items-center gap-3">
-                            <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary text-primary-foreground font-black text-sm flex-shrink-0">
-                              {index + 1}
-                            </span>
-                            <span>
-                              <span className="text-primary/60 text-sm font-semibold uppercase tracking-widest block leading-none mb-0.5">
-                                Day {index + 1}
+                          <summary className="p-6 cursor-pointer select-none outline-none flex items-center justify-between gap-4">
+                            <h3 className="text-xl font-bold flex items-center gap-3 m-0">
+                              <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary text-primary-foreground font-black text-sm flex-shrink-0">
+                                {index + 1}
                               </span>
-                              {dayItem.title}
-                            </span>
-                          </h3>
-                          <p className="text-foreground/70 leading-relaxed whitespace-pre-line">
-                            {dayItem.description}
-                          </p>
-                        </div>
+                              <span>
+                                <span className="text-primary/60 text-sm font-semibold uppercase tracking-widest block leading-none mb-0.5">
+                                  Day {index + 1}
+                                </span>
+                                {dayItem.title}
+                              </span>
+                            </h3>
+                            <ChevronDown className="w-5 h-5 text-primary transition-transform duration-300 group-open:-rotate-180 shrink-0" />
+                          </summary>
+                          <div className="px-6 pb-6 pt-0">
+                            <p className="text-foreground/70 leading-relaxed whitespace-pre-line border-t border-border/10 pt-4">
+                              {dayItem.description}
+                            </p>
+                          </div>
+                        </details>
                       </div>
                     ),
                   )}
@@ -291,7 +296,7 @@ export default async function ExperienceDetailPage({
                 <ul className="space-y-4">
                   {(experience.inclusions as string[]).map((item, ix) => (
                     <li
-                      key={`inc-${ix}`}
+                      key={item}
                       className="flex items-start gap-3 text-foreground/80"
                     >
                       <Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
@@ -309,7 +314,7 @@ export default async function ExperienceDetailPage({
                 <ul className="space-y-4">
                   {(experience.exclusions as string[]).map((item, ix) => (
                     <li
-                      key={`exc-${ix}`}
+                      key={item}
                       className="flex items-start gap-3 text-foreground/80"
                     >
                       <X className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
@@ -332,7 +337,7 @@ export default async function ExperienceDetailPage({
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-8">
                   {(experience.thingsToCarry as string[]).map((item, ix) => (
                     <div
-                      key={`carry-${ix}`}
+                      key={item}
                       className="flex items-center gap-3 border-b border-border/50 pb-2"
                     >
                       <div className="w-2 h-2 rounded-full bg-primary/60 shrink-0" />
@@ -393,7 +398,7 @@ export default async function ExperienceDetailPage({
                   experience.faqs as { question: string; answer: string }[]
                 ).map((faq, ix) => (
                   <details
-                    key={`faq-page-${ix}`}
+                    key={faq.question}
                     className="group bg-card border border-border rounded-2xl overflow-hidden [&_summary::-webkit-details-marker]:hidden"
                   >
                     <summary className="flex items-center justify-between gap-4 p-6 cursor-pointer font-bold text-lg select-none hover:bg-foreground/5 transition-colors">
@@ -447,27 +452,17 @@ export default async function ExperienceDetailPage({
               </span>
             </div>
 
-            <ul className="space-y-4 mb-8">
-              <li className="flex items-start gap-3 text-sm text-foreground/80 font-medium">
-                <Check className="w-5 h-5 text-green-500 shrink-0" /> Includes
-                local expert guides
-              </li>
-              <li className="flex items-start gap-3 text-sm text-foreground/80 font-medium">
-                <Check className="w-5 h-5 text-green-500 shrink-0" /> All safety
-                gear & permits
-              </li>
-              <li className="flex items-start gap-3 text-sm text-foreground/80 font-medium">
-                <Check className="w-5 h-5 text-green-500 shrink-0" /> Nutritious
-                trail meals
-              </li>
-            </ul>
-
             <BookNowButton
               experienceId={experience.id}
               experienceTitle={experience.title}
               experienceSlug={experience.slug}
               basePrice={Number(experience.basePrice)}
               maxCapacity={experience.capacity}
+            />
+
+            <SimilarTrips
+              currentExperienceId={experience.id}
+              categoryIds={experience.categories.map((c) => c.category.id)}
             />
           </div>
         </div>

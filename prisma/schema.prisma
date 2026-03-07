@@ -74,6 +74,13 @@ enum MediaType {
   VIDEO
 }
 
+enum LeadStatus {
+  NEW
+  CONTACTED
+  CONVERTED
+  CLOSED
+}
+
 // ─── RBAC ────────────────────────────────────────────────
 
 model Role {
@@ -384,4 +391,17 @@ model SavedExperience {
   savedAt      DateTime   @default(now())
 
   @@unique([userId, experienceId])
+}
+
+// ─── CUSTOM LEADS ────────────────────────────────────────
+
+model CustomLead {
+  id           String     @id @default(uuid())
+  name         String
+  email        String
+  phone        String
+  requirements String     @db.Text
+  status       LeadStatus @default(NEW)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 }

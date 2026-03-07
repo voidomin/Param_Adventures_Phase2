@@ -3,6 +3,7 @@ import CategoryBar from "@/components/home/CategoryBar";
 import Testimonials from "@/components/home/Testimonials";
 import { prisma } from "@/lib/db";
 import ExperienceCard from "@/components/experiences/ExperienceCard";
+import CustomTripForm from "@/components/home/CustomTripForm";
 import { format } from "date-fns";
 import Link from "next/link";
 import ScrollReveal from "@/components/ui/ScrollReveal";
@@ -171,6 +172,12 @@ export default async function Home() {
             </Link>
           </div>
         </div>
+      </div>
+
+      <div className="py-20 max-w-7xl mx-auto px-4">
+        <ScrollReveal direction="up">
+          <CustomTripForm />
+        </ScrollReveal>
       </div>
 
       <Testimonials />

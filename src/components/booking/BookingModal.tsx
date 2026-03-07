@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import {
   X,
   CalendarDays,
@@ -76,6 +77,9 @@ export default function BookingModal({
   maxCapacity,
   onClose,
 }: Readonly<BookingModalProps>) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const [slots, setSlots] = useState<Slot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(true);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
@@ -190,8 +194,10 @@ export default function BookingModal({
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+  if (!mounted) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
       <div className="bg-card border border-border rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-border sticky top-0 bg-card z-10">
@@ -492,6 +498,7 @@ export default function BookingModal({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
