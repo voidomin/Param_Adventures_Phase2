@@ -16,7 +16,6 @@ export async function POST(req: Request) {
     const body = await req.json();
     const data = leadSchema.parse(body);
 
-    // @ts-ignore - Prisma client needs restart to pick up CustomLead
     const lead = await prisma.customLead.create({
       data,
     });

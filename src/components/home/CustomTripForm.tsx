@@ -1,6 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
+import { z } from "zod";
+
+const customTripFormSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  email: z.string().email({ message: "Invalid email address" }),
+  phone: z.string().min(10, "Phone number must be at least 10 digits"),
+  requirements: z
+    .string()
+    .min(10, "Please provide more details on your requirements"),
+});
 import {
   Send,
   CheckCircle2,
@@ -16,37 +26,47 @@ export default function CustomTripForm() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const target = e.target as HTMLFormElement;
     setLoading(true);
     setError("");
 
-    const formData = new FormData(e.currentTarget);
+    const formData = new FormData(target);
     const data = {
-      name: formData.get("name"),
-      email: formData.get("email"),
-      phone: formData.get("phone"),
-      requirements: formData.get("requirements"),
+      name: formData.get("name") as string,
+      email: formData.get("email") as string,
+      phone: formData.get("phone") as string,
+      requirements: formData.get("requirements") as string,
     };
 
-    try {
-      const res = await fetch("/api/leads", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
+    const validationResult = customTripFormSchema.safeParse(data);
 
-      const resData = await res.json();
-      if (!res.ok) throw new Error(resData.error || "Failed to submit");
-
-      setSuccess(true);
-      (e.target as HTMLFormElement).reset();
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
+    if (!validationResult.success) {
       setLoading(false);
+      const firstError = validationResult.error.errors[0];
+      setError(firstError.message);
+      return;
     }
-  }
+
+    fetch("/api/leads", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    })
+      .then(async (res) => {
+        const resData = await res.json();
+        if (!res.ok) throw new Error(resData.error || "Failed to submit");
+        setSuccess(true);
+        target.reset();
+      })
+      .catch((err) => {
+        setError(err.message);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  };
 
   if (success) {
     return (
