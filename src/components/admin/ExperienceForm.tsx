@@ -561,11 +561,11 @@ export default function ExperienceForm({
 
             {/* Inclusions */}
             <div className="space-y-3">
-              <label className="block text-sm font-bold text-foreground/80">
+              <span className="block text-sm font-bold text-foreground/80">
                 Inclusions
-              </label>
+              </span>
               {inclusions.map((item, ix) => (
-                <div key={`inc-${ix}`} className="flex gap-2">
+                <div key={`inclusion-field-${ix}`} className="flex gap-2">
                   <input
                     type="text"
                     value={item}
@@ -595,11 +595,11 @@ export default function ExperienceForm({
 
             {/* Exclusions */}
             <div className="space-y-3 border-t border-border pt-4">
-              <label className="block text-sm font-bold text-foreground/80">
+              <span className="block text-sm font-bold text-foreground/80">
                 Exclusions
-              </label>
+              </span>
               {exclusions.map((item, ix) => (
-                <div key={`exc-${ix}`} className="flex gap-2">
+                <div key={`exclusion-field-${ix}`} className="flex gap-2">
                   <input
                     type="text"
                     value={item}
@@ -629,11 +629,11 @@ export default function ExperienceForm({
 
             {/* Things to Carry */}
             <div className="space-y-3 border-t border-border pt-4">
-              <label className="block text-sm font-bold text-foreground/80">
+              <span className="block text-sm font-bold text-foreground/80">
                 Things to Carry
-              </label>
+              </span>
               {thingsToCarry.map((item, ix) => (
-                <div key={`carry-${ix}`} className="flex gap-2">
+                <div key={`carry-field-${ix}`} className="flex gap-2">
                   <input
                     type="text"
                     value={item}
@@ -667,12 +667,12 @@ export default function ExperienceForm({
 
             {/* FAQs */}
             <div className="space-y-3 border-t border-border pt-4">
-              <label className="block text-sm font-bold text-foreground/80">
+              <span className="block text-sm font-bold text-foreground/80">
                 Frequently Asked Questions (FAQs)
-              </label>
+              </span>
               {faqs.map((faq, ix) => (
                 <div
-                  key={`faq-${ix}`}
+                  key={`faq-field-${ix}`}
                   className="flex gap-4 items-start bg-background border border-border rounded-xl p-3"
                 >
                   <div className="flex-1 space-y-2">
@@ -740,10 +740,14 @@ export default function ExperienceForm({
               Trek Specifications
             </h2>
             <div>
-              <label className="block text-sm font-medium text-foreground/80 mb-1">
+              <label
+                htmlFor="meetingPoint"
+                className="block text-sm font-medium text-foreground/80 mb-1"
+              >
                 Meeting Point
               </label>
               <input
+                id="meetingPoint"
                 type="text"
                 value={meetingPoint}
                 onChange={(e) => setMeetingPoint(e.target.value)}
@@ -752,10 +756,14 @@ export default function ExperienceForm({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground/80 mb-1">
+              <label
+                htmlFor="maxAltitude"
+                className="block text-sm font-medium text-foreground/80 mb-1"
+              >
                 Max Altitude
               </label>
               <input
+                id="maxAltitude"
                 type="text"
                 value={maxAltitude}
                 onChange={(e) => setMaxAltitude(e.target.value)}
@@ -764,10 +772,14 @@ export default function ExperienceForm({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground/80 mb-1">
+              <label
+                htmlFor="trekDistance"
+                className="block text-sm font-medium text-foreground/80 mb-1"
+              >
                 Trek Distance
               </label>
               <input
+                id="trekDistance"
                 type="text"
                 value={trekDistance}
                 onChange={(e) => setTrekDistance(e.target.value)}
@@ -776,10 +788,14 @@ export default function ExperienceForm({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground/80 mb-1">
+              <label
+                htmlFor="bestTime"
+                className="block text-sm font-medium text-foreground/80 mb-1"
+              >
                 Best Time To Visit
               </label>
               <input
+                id="bestTime"
                 type="text"
                 value={bestTimeToVisit}
                 onChange={(e) => setBestTimeToVisit(e.target.value)}
@@ -789,10 +805,14 @@ export default function ExperienceForm({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-1">
+                <label
+                  htmlFor="minAge"
+                  className="block text-sm font-medium text-foreground/80 mb-1"
+                >
                   Min Age
                 </label>
                 <input
+                  id="minAge"
                   type="number"
                   min="0"
                   value={minAge}
@@ -802,10 +822,14 @@ export default function ExperienceForm({
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-1">
+                <label
+                  htmlFor="maxGroupSize"
+                  className="block text-sm font-medium text-foreground/80 mb-1"
+                >
                   Max Group Size
                 </label>
                 <input
+                  id="maxGroupSize"
                   type="number"
                   min="1"
                   value={maxGroupSize}
