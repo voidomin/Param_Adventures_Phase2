@@ -56,7 +56,7 @@ export default function ExperienceCard({
   return (
     <Link
       href={`/experiences/${experience.slug}`}
-      className="group flex flex-col bg-card rounded-2xl border border-border overflow-hidden hover:border-primary/50 transition-all hover:shadow-2xl hover:shadow-primary/5 relative duration-300"
+      className="group flex flex-col h-full bg-card rounded-2xl border border-border overflow-hidden hover:border-primary/50 transition-all hover:shadow-2xl hover:shadow-primary/5 relative duration-300"
     >
       <div className="relative h-64 w-full overflow-hidden bg-foreground/5">
         {isVideo ? (

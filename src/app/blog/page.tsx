@@ -18,7 +18,6 @@ export default async function BlogListingPage() {
 
   return (
     <main className="min-h-screen bg-background pb-20">
-
       {/* Hero */}
       <div className="relative pt-16 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-background" />
@@ -61,7 +60,7 @@ export default async function BlogListingPage() {
                 <Link
                   key={blog.id}
                   href={`/blog/${blog.slug}`}
-                  className="group bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300"
+                  className="group bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 flex flex-col h-full"
                 >
                   {/* Cover */}
                   <div className="relative h-48 overflow-hidden">
@@ -83,7 +82,7 @@ export default async function BlogListingPage() {
                   </div>
 
                   {/* Content */}
-                  <div className="p-5">
+                  <div className="p-5 flex flex-col flex-1">
                     <h2 className="font-heading font-bold text-foreground text-lg line-clamp-2 mb-3 group-hover:text-primary transition-colors">
                       {blog.title}
                     </h2>
@@ -117,7 +116,7 @@ export default async function BlogListingPage() {
                     </div>
 
                     {blog.experience && (
-                      <div className="mt-3 pt-3 border-t border-border flex items-center justify-between text-xs text-foreground/50">
+                      <div className="mt-auto pt-3 border-t border-border flex items-center justify-between text-xs text-foreground/50">
                         <span>
                           About:{" "}
                           <strong className="text-foreground/70">

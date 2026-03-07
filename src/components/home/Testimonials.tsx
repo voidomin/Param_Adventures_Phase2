@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { Star, Quote, ArrowRight } from "lucide-react";
-
+import Carousel from "@/components/ui/Carousel";
 async function getFeaturedHomeReviews() {
   return prisma.experienceReview.findMany({
     where: { isFeaturedHome: true },
@@ -38,29 +38,32 @@ export default async function Testimonials() {
         </div>
 
         {/* Grid */}
-        <div className="columns-1 sm:columns-2 lg:columns-3 gap-6 space-y-6">
+        {/* Grid */}
+        <Carousel>
           {reviews.map((review) => (
             <div
               key={review.id}
-              className="break-inside-avoid bg-card border border-border rounded-2xl p-6 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 group"
+              className="w-[85vw] sm:w-[320px] lg:w-[380px] shrink-0 snap-start bg-card border border-border rounded-2xl p-6 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 group flex flex-col justify-between min-h-64"
             >
-              {/* Stars */}
-              <div className="flex gap-0.5 mb-4">
-                {[1, 2, 3, 4, 5].map((s) => (
-                  <Star
-                    key={s}
-                    className={`w-4 h-4 ${s <= review.rating ? "fill-primary text-primary" : "text-foreground/15"}`}
-                  />
-                ))}
+              <div>
+                {/* Stars */}
+                <div className="flex gap-0.5 mb-4">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Star
+                      key={s}
+                      className={`w-4 h-4 ${s <= review.rating ? "fill-primary text-primary" : "text-foreground/15"}`}
+                    />
+                  ))}
+                </div>
+
+                {/* Large decorative quote */}
+                <Quote className="w-7 h-7 text-primary/20 mb-2" />
+
+                {/* Review text */}
+                <p className="text-foreground/80 leading-relaxed text-sm font-medium">
+                  {review.reviewText}
+                </p>
               </div>
-
-              {/* Large decorative quote */}
-              <Quote className="w-7 h-7 text-primary/20 mb-2" />
-
-              {/* Review text */}
-              <p className="text-foreground/80 leading-relaxed text-sm font-medium">
-                {review.reviewText}
-              </p>
 
               {/* Footer */}
               <div className="mt-5 pt-4 border-t border-border/50 flex items-center justify-between gap-3">
@@ -82,7 +85,7 @@ export default async function Testimonials() {
               </div>
             </div>
           ))}
-        </div>
+        </Carousel>
       </div>
     </section>
   );

@@ -7,6 +7,7 @@ import CustomTripForm from "@/components/home/CustomTripForm";
 import { format } from "date-fns";
 import Link from "next/link";
 import ScrollReveal from "@/components/ui/ScrollReveal";
+import Carousel from "@/components/ui/Carousel";
 
 export default async function Home() {
   // Fetch active hero slides for the homepage carousel
@@ -55,14 +56,19 @@ export default async function Home() {
         </ScrollReveal>
 
         {featuredExperiences.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            {featuredExperiences.map((exp: any, idx: number) => (
-              <ScrollReveal key={exp.id} delay={0.1 * idx}>
-                <ExperienceCard experience={exp} />
-              </ScrollReveal>
-            ))}
-          </div>
+          <ScrollReveal>
+            <Carousel>
+              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
+              {featuredExperiences.map((exp: any) => (
+                <div
+                  key={exp.id}
+                  className="w-[85vw] sm:w-[350px] md:w-[400px] shrink-0 snap-start"
+                >
+                  <ExperienceCard experience={exp} />
+                </div>
+              ))}
+            </Carousel>
+          </ScrollReveal>
         ) : (
           <div className="text-center py-12">
             <p className="text-foreground/60">
@@ -97,63 +103,68 @@ export default async function Home() {
           </ScrollReveal>
 
           {recentBlogs.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {recentBlogs.map((blog, idx) => (
-                <ScrollReveal key={blog.id} delay={0.1 * idx}>
-                  <Link
-                    href={`/blog/${blog.slug}`}
-                    className="group bg-card rounded-3xl border border-border flex flex-col h-full overflow-hidden hover:shadow-2xl hover:shadow-primary/5 hover:border-primary/50 transition-all"
+            <ScrollReveal>
+              <Carousel>
+                {recentBlogs.map((blog) => (
+                  <div
+                    key={blog.id}
+                    className="w-[85vw] sm:w-[350px] md:w-[400px] shrink-0 snap-start h-full flex flex-col"
                   >
-                    {blog.coverImage && (
-                      <div className="relative h-48 w-full overflow-hidden shrink-0">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={
-                            blog.coverImage.mediumUrl ||
-                            blog.coverImage.originalUrl
-                          }
-                          alt={blog.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                        />
-                      </div>
-                    )}
-                    <div className="p-6 flex flex-col flex-1">
-                      {blog.experience && (
-                        <span className="text-primary text-xs font-bold uppercase tracking-wider mb-2">
-                          {blog.experience.title}
-                        </span>
+                    <Link
+                      href={`/blog/${blog.slug}`}
+                      className="group bg-card rounded-3xl border border-border flex flex-col h-full overflow-hidden hover:shadow-2xl hover:shadow-primary/5 hover:border-primary/50 transition-all"
+                    >
+                      {blog.coverImage && (
+                        <div className="relative h-48 w-full overflow-hidden shrink-0">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={
+                              blog.coverImage.mediumUrl ||
+                              blog.coverImage.originalUrl
+                            }
+                            alt={blog.title}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                          />
+                        </div>
                       )}
-                      <h3 className="text-xl font-bold font-heading mb-4 group-hover:text-primary transition-colors line-clamp-2">
-                        {blog.title}
-                      </h3>
+                      <div className="p-6 flex flex-col flex-1">
+                        {blog.experience && (
+                          <span className="text-primary text-xs font-bold uppercase tracking-wider mb-2">
+                            {blog.experience.title}
+                          </span>
+                        )}
+                        <h3 className="text-xl font-bold font-heading mb-4 group-hover:text-primary transition-colors line-clamp-2">
+                          {blog.title}
+                        </h3>
 
-                      <div className="mt-auto pt-4 border-t border-border flex justify-between items-center text-sm">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold overflow-hidden shadow-sm">
-                            {blog.author.avatarUrl ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={blog.author.avatarUrl}
-                                alt={blog.author.name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              blog.author.name.charAt(0).toUpperCase()
-                            )}
+                        <div className="mt-auto pt-4 border-t border-border flex justify-between items-center text-sm">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold overflow-hidden shadow-sm">
+                              {blog.author.avatarUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={blog.author.avatarUrl}
+                                  alt={blog.author.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                blog.author.name.charAt(0).toUpperCase()
+                              )}
+                            </div>
+                            <span className="font-semibold text-foreground/80">
+                              {blog.author.name}
+                            </span>
                           </div>
-                          <span className="font-semibold text-foreground/80">
-                            {blog.author.name}
+                          <span className="text-foreground/50 font-medium">
+                            {format(new Date(blog.createdAt), "MMM d, yyyy")}
                           </span>
                         </div>
-                        <span className="text-foreground/50 font-medium">
-                          {format(new Date(blog.createdAt), "MMM d, yyyy")}
-                        </span>
                       </div>
-                    </div>
-                  </Link>
-                </ScrollReveal>
-              ))}
-            </div>
+                    </Link>
+                  </div>
+                ))}
+              </Carousel>
+            </ScrollReveal>
           ) : (
             <div className="text-center py-12 px-4 border border-dashed border-border rounded-3xl bg-card">
               <p className="text-foreground/60 text-lg">
