@@ -317,7 +317,6 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-background pb-20">
-
       {/* Hero / Profile Header */}
       <div className="relative pt-16 overflow-hidden">
         <div className="absolute inset-0 bg-linear-to-br from-primary/10 via-background to-background" />
@@ -395,16 +394,6 @@ export default function DashboardPage() {
                 >
                   <PenLine className="w-3.5 h-3.5" /> My Blogs
                 </Link>
-                {["TREK_LEAD", "TRIP_MANAGER", "ADMIN", "SUPER_ADMIN"].includes(
-                  user.roleName,
-                ) && (
-                  <Link
-                    href="/dashboard/assignments"
-                    className="inline-flex items-center gap-2 text-sm text-primary font-semibold hover:underline"
-                  >
-                    <Compass className="w-3.5 h-3.5" /> My Assignments
-                  </Link>
-                )}
               </div>
             </div>
 

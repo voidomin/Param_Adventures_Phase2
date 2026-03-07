@@ -69,9 +69,10 @@ export default async function ExperiencesPage({
     durationDays: exp.durationDays,
     location: exp.location,
     basePrice: Number(exp.basePrice),
-    capacity: exp.capacity,
     difficulty: exp.difficulty,
     status: exp.status,
+    coverImage: exp.coverImage,
+    cardImage: exp.cardImage,
     images: exp.images,
     createdAt: exp.createdAt.toISOString(),
     updatedAt: exp.updatedAt.toISOString(),
@@ -89,7 +90,6 @@ export default async function ExperiencesPage({
 
   return (
     <main className="min-h-screen bg-background flex flex-col">
-
       <ExperiencesClient
         initialExperiences={serializedExperiences as any}
         categories={serializedCategories}

@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     const trips = await prisma.slot.findMany({
       where: {
         managerId: userId,
-        date: { gte: new Date() },
+        status: { not: "COMPLETED" },
       },
       orderBy: { date: "asc" },
       include: {
