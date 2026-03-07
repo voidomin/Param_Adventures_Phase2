@@ -13,7 +13,7 @@ import {
   Quote,
   Minus,
   Image as ImageIcon,
-  Youtube as YoutubeIcon,
+  Youtube as YoutubeBrandIcon,
 } from "lucide-react";
 import Image from "@tiptap/extension-image";
 import Youtube from "@tiptap/extension-youtube";
@@ -153,7 +153,7 @@ export default function TiptapEditor({
           <div className="w-px h-5 bg-border mx-1" />
           <ToolbarButton
             onClick={() => {
-              const url = window.prompt("Enter image URL");
+              const url = globalThis.prompt("Enter image URL");
               if (url) {
                 editor.chain().focus().setImage({ src: url }).run();
               }
@@ -164,27 +164,32 @@ export default function TiptapEditor({
           </ToolbarButton>
           <ToolbarButton
             onClick={() => {
-              const url = window.prompt("Enter YouTube URL");
+              const url = globalThis.prompt("Enter YouTube URL");
               if (url) {
                 editor.commands.setYoutubeVideo({
                   src: url,
                   width:
                     Math.max(
                       320,
-                      parseInt(editor.view.dom.clientWidth.toString(), 10),
+                      Number.parseInt(
+                        editor.view.dom.clientWidth.toString(),
+                        10,
+                      ),
                     ) || 640,
                   height:
                     Math.max(
                       180,
-                      parseInt(editor.view.dom.clientWidth.toString(), 10) *
-                        0.5625,
+                      Number.parseInt(
+                        editor.view.dom.clientWidth.toString(),
+                        10,
+                      ) * 0.5625,
                     ) || 360,
                 });
               }
             }}
             title="Insert YouTube Video"
           >
-            <YoutubeIcon className="w-4 h-4 text-red-500" />
+            <YoutubeBrandIcon className="w-4 h-4 text-red-500" />
           </ToolbarButton>
         </div>
       )}
