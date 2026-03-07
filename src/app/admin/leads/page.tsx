@@ -2,6 +2,19 @@ import { prisma } from "@/lib/db";
 import { format } from "date-fns";
 import { Users, Mail, Phone, FileText, CalendarDays } from "lucide-react";
 
+function getStatusStyles(status: string) {
+  switch (status) {
+    case "NEW":
+      return "bg-blue-500/10 text-blue-500";
+    case "CONTACTED":
+      return "bg-yellow-500/10 text-yellow-500";
+    case "CONVERTED":
+      return "bg-green-500/10 text-green-500";
+    default:
+      return "bg-foreground/10 text-foreground/60";
+  }
+}
+
 export default async function AdminLeadsPage() {
   // @ts-ignore - Prisma client needs restart to pick up CustomLead
   const leads = await prisma.customLead.findMany({
@@ -103,15 +116,9 @@ export default async function AdminLeadsPage() {
                     </td>
                     <td className="p-6">
                       <div
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
-                          lead.status === "NEW"
-                            ? "bg-blue-500/10 text-blue-500"
-                            : lead.status === "CONTACTED"
-                              ? "bg-yellow-500/10 text-yellow-500"
-                              : lead.status === "CONVERTED"
-                                ? "bg-green-500/10 text-green-500"
-                                : "bg-foreground/10 text-foreground/60"
-                        }`}
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${getStatusStyles(
+                          lead.status,
+                        )}`}
                       >
                         {lead.status}
                       </div>
