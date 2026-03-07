@@ -174,13 +174,13 @@ export default async function Home() {
         </div>
       </div>
 
+      <Testimonials />
+
       <div className="py-20 max-w-7xl mx-auto px-4">
         <ScrollReveal direction="up">
           <CustomTripForm />
         </ScrollReveal>
       </div>
-
-      <Testimonials />
     </main>
   );
 }
