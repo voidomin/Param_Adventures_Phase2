@@ -247,22 +247,22 @@ export default function ExperiencesClient({
     }
 
     // 4. Duration range
-    const min = parseInt(minDays);
-    const max = parseInt(maxDays);
-    if (!isNaN(min)) {
+    const min = Number.parseInt(minDays);
+    const max = Number.parseInt(maxDays);
+    if (!Number.isNaN(min)) {
       results = results.filter((exp) => exp.durationDays >= min);
     }
-    if (!isNaN(max)) {
+    if (!Number.isNaN(max)) {
       results = results.filter((exp) => exp.durationDays <= max);
     }
 
     // 5. Price range
-    const pMin = parseFloat(minPrice);
-    const pMax = parseFloat(maxPrice);
-    if (!isNaN(pMin)) {
+    const pMin = Number.parseFloat(minPrice);
+    const pMax = Number.parseFloat(maxPrice);
+    if (!Number.isNaN(pMin)) {
       results = results.filter((exp) => exp.basePrice >= pMin);
     }
-    if (!isNaN(pMax)) {
+    if (!Number.isNaN(pMax)) {
       results = results.filter((exp) => exp.basePrice <= pMax);
     }
 
@@ -462,8 +462,10 @@ export default function ExperiencesClient({
               </button>
               {showSortMenu && (
                 <>
-                  <div
-                    className="fixed inset-0 z-40"
+                  <button
+                    type="button"
+                    aria-label="Close sort menu"
+                    className="fixed inset-0 z-40 w-full h-full bg-transparent cursor-default"
                     onClick={() => setShowSortMenu(false)}
                   />
                   <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-xl z-50 py-2 min-w-[200px]">
@@ -516,9 +518,9 @@ export default function ExperiencesClient({
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 py-4 border-t border-border">
                   {/* Difficulty */}
                   <div>
-                    <label className="block text-xs font-bold text-foreground/50 uppercase tracking-wider mb-2">
+                    <span className="block text-xs font-bold text-foreground/50 uppercase tracking-wider mb-2">
                       Difficulty
-                    </label>
+                    </span>
                     <div className="flex flex-wrap gap-2">
                       {DIFFICULTIES.map((diff) => (
                         <button
@@ -539,23 +541,27 @@ export default function ExperiencesClient({
 
                   {/* Duration Range */}
                   <div>
-                    <label className="block text-xs font-bold text-foreground/50 uppercase tracking-wider mb-2">
+                    <span className="block text-xs font-bold text-foreground/50 uppercase tracking-wider mb-2">
                       Duration (Days)
-                    </label>
+                    </span>
                     <div className="flex items-center gap-2">
                       <input
+                        id="min-days"
                         type="number"
                         min={1}
                         placeholder="Min"
+                        aria-label="Minimum days"
                         value={minDays}
                         onChange={(e) => setMinDays(e.target.value)}
                         className="w-20 px-3 py-2 bg-foreground/5 border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-center"
                       />
                       <span className="text-foreground/30 text-sm">—</span>
                       <input
+                        id="max-days"
                         type="number"
                         min={1}
                         placeholder="Max"
+                        aria-label="Maximum days"
                         value={maxDays}
                         onChange={(e) => setMaxDays(e.target.value)}
                         className="w-20 px-3 py-2 bg-foreground/5 border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-center"
@@ -565,23 +571,27 @@ export default function ExperiencesClient({
 
                   {/* Price Range */}
                   <div>
-                    <label className="block text-xs font-bold text-foreground/50 uppercase tracking-wider mb-2">
+                    <span className="block text-xs font-bold text-foreground/50 uppercase tracking-wider mb-2">
                       Price Range (₹)
-                    </label>
+                    </span>
                     <div className="flex items-center gap-2">
                       <input
+                        id="min-price"
                         type="number"
                         min={0}
                         placeholder={`Min (${priceExtent[0].toLocaleString("en-IN")})`}
+                        aria-label="Minimum price"
                         value={minPrice}
                         onChange={(e) => setMinPrice(e.target.value)}
                         className="w-28 px-3 py-2 bg-foreground/5 border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-center"
                       />
                       <span className="text-foreground/30 text-sm">—</span>
                       <input
+                        id="max-price"
                         type="number"
                         min={0}
                         placeholder={`Max (${priceExtent[1].toLocaleString("en-IN")})`}
+                        aria-label="Maximum price"
                         value={maxPrice}
                         onChange={(e) => setMaxPrice(e.target.value)}
                         className="w-28 px-3 py-2 bg-foreground/5 border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-center"
@@ -592,9 +602,9 @@ export default function ExperiencesClient({
                   {/* Availability + Clear */}
                   <div className="flex flex-col gap-3">
                     <div>
-                      <label className="block text-xs font-bold text-foreground/50 uppercase tracking-wider mb-2">
+                      <span className="block text-xs font-bold text-foreground/50 uppercase tracking-wider mb-2">
                         Availability
-                      </label>
+                      </span>
                       <button
                         onClick={() => setHasSlots((v) => !v)}
                         className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold border transition-all ${
