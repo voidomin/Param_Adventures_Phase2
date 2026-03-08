@@ -118,10 +118,7 @@ export default function BookingModal({
   const createParticipant = useCallback(
     (isPrimary: boolean): ParticipantDetails => {
       const base: ParticipantDetails = {
-        id:
-          typeof crypto !== "undefined" && crypto.randomUUID
-            ? crypto.randomUUID()
-            : `p-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+        id: crypto.randomUUID(),
         isPrimary,
         name: "",
         email: "",

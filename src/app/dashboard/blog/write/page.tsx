@@ -8,11 +8,13 @@ import {
   Send,
   Save,
   Mountain,
-  Instagram,
-  Twitter,
+  Instagram as InstagramIcon,
+  X,
   Youtube as YoutubeIcon,
 } from "lucide-react";
 import MediaUploader from "@/components/admin/MediaUploader";
+
+// Icons are aliased in imports to suppress deprecation warnings
 
 // Lazy-load the editor to avoid SSR issues
 const TiptapEditor = dynamic(() => import("@/components/blog/TiptapEditor"), {
@@ -216,14 +218,18 @@ export default function WriteBlogPage() {
           </div>
 
           {/* Theme Selector */}
-          <div>
-            <label className="block text-sm font-semibold text-foreground/70 mb-2">
+          <div id="story-theme-group">
+            <label
+              htmlFor="story-theme-group"
+              className="block text-sm font-semibold text-foreground/70 mb-2"
+            >
               Story Theme
             </label>
             <div className="flex items-center gap-3">
               {["CLASSIC", "MODERN", "MINIMAL"].map((t) => (
                 <button
                   key={t}
+                  type="button"
                   onClick={() => setTheme(t)}
                   className={`px-4 py-2 rounded-lg text-sm font-bold border-2 transition-all ${
                     theme === t
@@ -239,12 +245,14 @@ export default function WriteBlogPage() {
 
           {/* Cover Image */}
           <div>
-            <label className="block text-sm font-semibold text-foreground/70 mb-2">
+            <label
+              htmlFor="blog-cover-upload"
+              className="block text-sm font-semibold text-foreground/70 mb-2"
+            >
               Hero Cover Image
             </label>
             {coverImageUrl ? (
               <div className="relative w-full aspect-[21/9] rounded-2xl overflow-hidden group">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={coverImageUrl}
                   alt="Cover"
@@ -252,6 +260,7 @@ export default function WriteBlogPage() {
                 />
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
+                    type="button"
                     onClick={() => setCoverImageUrl("")}
                     className="bg-background text-foreground px-4 py-2 rounded-xl text-sm font-bold"
                   >
@@ -264,7 +273,7 @@ export default function WriteBlogPage() {
                 id="blog-cover-upload"
                 apiPrefix="/api/user/media"
                 onUploadSuccess={(urls) => {
-                  if (urls && urls[0]) setCoverImageUrl(urls[0]);
+                  if (urls?.[0]) setCoverImageUrl(urls[0]);
                 }}
               />
             )}
@@ -312,10 +321,14 @@ export default function WriteBlogPage() {
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="text-xs font-semibold text-foreground/60 mb-1 flex items-center gap-1">
-                  <Instagram className="w-3 h-3" /> Instagram URL
+                <label
+                  htmlFor="instagram-url"
+                  className="text-xs font-semibold text-foreground/60 mb-1 flex items-center gap-1"
+                >
+                  <InstagramIcon className="w-3 h-3" /> Instagram URL
                 </label>
                 <input
+                  id="instagram-url"
                   type="text"
                   value={socials.instagram}
                   onChange={(e) =>
@@ -326,10 +339,14 @@ export default function WriteBlogPage() {
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-foreground/60 mb-1 flex items-center gap-1">
-                  <Twitter className="w-3 h-3" /> Twitter/X URL
+                <label
+                  htmlFor="twitter-url"
+                  className="text-xs font-semibold text-foreground/60 mb-1 flex items-center gap-1"
+                >
+                  <X className="w-3 h-3" /> Twitter/X URL
                 </label>
                 <input
+                  id="twitter-url"
                   type="text"
                   value={socials.twitter}
                   onChange={(e) =>
@@ -340,10 +357,14 @@ export default function WriteBlogPage() {
                 />
               </div>
               <div>
-                <label className="text-xs font-semibold text-foreground/60 mb-1 flex items-center gap-1">
+                <label
+                  htmlFor="youtube-url"
+                  className="text-xs font-semibold text-foreground/60 mb-1 flex items-center gap-1"
+                >
                   <YoutubeIcon className="w-3 h-3" /> YouTube URL
                 </label>
                 <input
+                  id="youtube-url"
                   type="text"
                   value={socials.youtube}
                   onChange={(e) =>

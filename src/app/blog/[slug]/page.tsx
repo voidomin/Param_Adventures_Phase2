@@ -9,9 +9,9 @@ import {
   IndianRupee,
   ArrowRight,
   Mountain,
-  Instagram,
-  Twitter,
-  Youtube,
+  Instagram as InstagramIcon,
+  X,
+  Youtube as YoutubeIcon,
 } from "lucide-react";
 
 import ClientTiptapViewer from "@/components/blog/ClientTiptapViewer";
@@ -160,7 +160,7 @@ export default async function BlogArticlePage({ params }: Props) {
                     rel="noreferrer"
                     className="text-foreground/40 hover:text-primary transition-colors"
                   >
-                    <Instagram className="w-3.5 h-3.5" />
+                    <InstagramIcon className="w-3.5 h-3.5" />
                   </a>
                 )}
                 {socials.twitter && (
@@ -170,7 +170,7 @@ export default async function BlogArticlePage({ params }: Props) {
                     rel="noreferrer"
                     className="text-foreground/40 hover:text-primary transition-colors"
                   >
-                    <Twitter className="w-3.5 h-3.5" />
+                    <X className="w-3.5 h-3.5" />
                   </a>
                 )}
                 {socials.youtube && (
@@ -180,7 +180,7 @@ export default async function BlogArticlePage({ params }: Props) {
                     rel="noreferrer"
                     className="text-foreground/40 hover:text-primary transition-colors"
                   >
-                    <Youtube className="w-3.5 h-3.5" />
+                    <YoutubeIcon className="w-3.5 h-3.5" />
                   </a>
                 )}
               </div>
