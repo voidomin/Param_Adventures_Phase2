@@ -96,7 +96,7 @@ export default async function BlogArticlePage({ params }: Props) {
   });
 
   return (
-    <main className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background text-foreground pb-20">
       {/* Hero Cover */}
       <div className="relative h-[45vh] min-h-[300px] overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -258,6 +258,6 @@ export default async function BlogArticlePage({ params }: Props) {
           </div>
         )}
       </div>
-    </main>
+    </div>
   );
 }

@@ -106,6 +106,14 @@ export default function ExperienceForm({
       ...faq,
     })),
   );
+  const [pickupPoints, setPickupPoints] = useState<
+    { id: string; text: string }[]
+  >(
+    (initialData?.pickupPoints || []).map((text: string) => ({
+      id: crypto.randomUUID(),
+      text,
+    })),
+  );
 
   // New Logistic States
   const [cancellationPolicy, setCancellationPolicy] = useState(
@@ -260,6 +268,9 @@ export default function ExperienceForm({
         .map((item) => item.text)
         .filter((item) => item.trim() !== ""),
       thingsToCarry: thingsToCarry
+        .map((item) => item.text)
+        .filter((item) => item.trim() !== ""),
+      pickupPoints: pickupPoints
         .map((item) => item.text)
         .filter((item) => item.trim() !== ""),
       faqs: faqs
@@ -704,6 +715,46 @@ export default function ExperienceForm({
                 className="text-xs font-medium text-primary flex items-center gap-1 hover:text-primary/80"
               >
                 <Plus className="w-3 h-3" /> Add Item
+              </button>
+            </div>
+
+            {/* Pickup Points */}
+            <div className="space-y-3 border-t border-border pt-4">
+              <span className="block text-sm font-bold text-foreground/80">
+                Pickup & Drop Locations
+              </span>
+              {pickupPoints.map((item) => (
+                <div key={item.id} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={item.text}
+                    onChange={(e) =>
+                      handleStringArrayChange(
+                        setPickupPoints,
+                        item.id,
+                        e.target.value,
+                      )
+                    }
+                    className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
+                    placeholder="e.g. Bangalore"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      removeStringArrayItem(setPickupPoints, item.id)
+                    }
+                    className="p-2 text-foreground/50 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => addStringArrayItem(setPickupPoints)}
+                className="text-xs font-medium text-primary flex items-center gap-1 hover:text-primary/80"
+              >
+                <Plus className="w-3 h-3" /> Add Location
               </button>
             </div>
 

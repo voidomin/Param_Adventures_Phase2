@@ -89,7 +89,7 @@ export default async function ExperiencesPage({
   }));
 
   return (
-    <main className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background text-foreground pt-24 pb-20">
       <ExperiencesClient
         initialExperiences={serializedExperiences as any}
         categories={serializedCategories}
@@ -104,6 +104,6 @@ export default async function ExperiencesPage({
           </p>
         </div>
       </footer>
-    </main>
+    </div>
   );
 }

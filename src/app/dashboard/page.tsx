@@ -315,27 +315,27 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <main className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background">
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
             <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
             <p className="text-foreground/60">Loading your dashboard...</p>
           </div>
         </div>
-      </main>
+      </div>
     );
   }
 
   if (error || !data) {
     return (
-      <main className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background">
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
             <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
             <p className="text-foreground/60">{error}</p>
           </div>
         </div>
-      </main>
+      </div>
     );
   }
 
@@ -357,7 +357,7 @@ export default function DashboardPage() {
   });
 
   return (
-    <main className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen pt-24 pb-12 px-4 md:px-8">
       {/* Profile Completion Warning */}
       {isIncompleteProfile && (
         <div className="sticky top-16 z-50 bg-orange-500 text-white px-4 py-3 shadow-xl animate-in slide-in-from-top duration-500">
@@ -681,6 +681,6 @@ export default function DashboardPage() {
           )}
         </section>
       </div>
-    </main>
+    </div>
   );
 }

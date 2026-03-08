@@ -85,6 +85,7 @@ export async function PUT(
       trekDistance,
       bestTimeToVisit,
       maxGroupSize,
+      pickupPoints,
     } = body;
 
     // Handle slug update if title changed
@@ -133,6 +134,7 @@ export async function PUT(
           inclusions,
           exclusions,
           thingsToCarry,
+          pickupPoints,
           faqs,
           cancellationPolicy,
           meetingPoint,

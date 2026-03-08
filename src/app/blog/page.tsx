@@ -17,7 +17,7 @@ export default async function BlogListingPage() {
   });
 
   return (
-    <main className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background text-foreground pt-24 pb-20">
       {/* Hero */}
       <div className="relative pt-16 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-background" />
@@ -136,6 +136,6 @@ export default async function BlogListingPage() {
           </div>
         )}
       </div>
-    </main>
+    </div>
   );
 }

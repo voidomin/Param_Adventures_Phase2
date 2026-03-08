@@ -196,6 +196,7 @@ model Experience {
   trekDistance       String?
   bestTimeToVisit    String?
   maxGroupSize       Int?
+  pickupPoints       String[] @default([])
 
   deletedAt    DateTime?
   createdAt    DateTime         @default(now())
@@ -300,6 +301,7 @@ model BookingParticipant {
   emergencyContactName   String?
   emergencyContactNumber String?
   emergencyRelationship  String?
+  pickupPoint            String?
 
   attended         Boolean  @default(false)
 

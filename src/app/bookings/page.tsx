@@ -226,7 +226,7 @@ export default function BookingsPage() {
   ];
 
   return (
-    <main className="min-h-screen bg-background pb-20 pt-24">
+    <div className="min-h-screen bg-background text-foreground pt-32 pb-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <h1 className="text-4xl font-heading font-black text-foreground mb-8">
           My Bookings
@@ -410,7 +410,7 @@ export default function BookingsPage() {
           </div>
         )}
       </div>
-    </main>
+    </div>
   );
 }
 

@@ -105,6 +105,7 @@ export async function POST(request: NextRequest) {
               emergencyContactName: p.emergencyContactName || null,
               emergencyContactNumber: p.emergencyContactNumber || null,
               emergencyRelationship: p.emergencyRelationship || null,
+              pickupPoint: p.pickupPoint || null,
             })),
           },
         },

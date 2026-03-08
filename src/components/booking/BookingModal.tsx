@@ -29,6 +29,7 @@ interface BookingModalProps {
   experienceSlug: string;
   basePrice: number;
   maxCapacity: number;
+  pickupPoints: string[];
   onClose: () => void;
 }
 
@@ -44,6 +45,7 @@ interface ParticipantDetails {
   emergencyContactName: string;
   emergencyContactNumber: string;
   emergencyRelationship: string;
+  pickupPoint: string;
 }
 
 type Step =
@@ -94,6 +96,7 @@ export default function BookingModal({
   experienceSlug,
   basePrice,
   maxCapacity,
+  pickupPoints,
   onClose,
 }: Readonly<BookingModalProps>) {
   const [mounted, setMounted] = useState(false);
@@ -114,8 +117,11 @@ export default function BookingModal({
 
   const createParticipant = useCallback(
     (isPrimary: boolean): ParticipantDetails => {
-      const p: ParticipantDetails = {
-        id: Math.random().toString(),
+      const base: ParticipantDetails = {
+        id:
+          typeof crypto !== "undefined" && crypto.randomUUID
+            ? crypto.randomUUID()
+            : `p-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         isPrimary,
         name: "",
         email: "",
@@ -126,24 +132,23 @@ export default function BookingModal({
         emergencyContactName: "",
         emergencyContactNumber: "",
         emergencyRelationship: "",
+        pickupPoint: "",
       };
 
-      if (isPrimary && user) {
-        if (user.name) p.name = user.name;
-        if (user.email) p.email = user.email;
-        if (user.phoneNumber) p.phoneNumber = user.phoneNumber;
-        if (user.gender) p.gender = user.gender;
-        if (user.age) p.age = user.age.toString();
-        if (user.bloodGroup) p.bloodGroup = user.bloodGroup;
-        if (user.emergencyContactName)
-          p.emergencyContactName = user.emergencyContactName;
-        if (user.emergencyContactNumber)
-          p.emergencyContactNumber = user.emergencyContactNumber;
-        if (user.emergencyRelationship)
-          p.emergencyRelationship = user.emergencyRelationship;
-      }
+      if (!isPrimary || !user) return base;
 
-      return p;
+      return {
+        ...base,
+        name: user.name ?? "",
+        email: user.email ?? "",
+        phoneNumber: user.phoneNumber ?? "",
+        gender: user.gender ?? "",
+        age: user.age ? user.age.toString() : "",
+        bloodGroup: user.bloodGroup ?? "",
+        emergencyContactName: user.emergencyContactName ?? "",
+        emergencyContactNumber: user.emergencyContactNumber ?? "",
+        emergencyRelationship: user.emergencyRelationship ?? "",
+      };
     },
     [user],
   );
@@ -205,6 +210,7 @@ export default function BookingModal({
       emergencyContactName: "",
       emergencyContactNumber: "",
       emergencyRelationship: "",
+      pickupPoint: "",
     };
     setPartInfo(updated);
   };
@@ -694,6 +700,32 @@ export default function BookingModal({
                           <option value="AB-">AB-</option>
                         </select>
                       </div>
+
+                      {pickupPoints && pickupPoints.length > 0 && (
+                        <div>
+                          <label
+                            htmlFor={`pickup-${index}`}
+                            className="block text-xs font-bold text-foreground/60 mb-1"
+                          >
+                            Pickup Location
+                          </label>
+                          <select
+                            id={`pickup-${index}`}
+                            value={p.pickupPoint}
+                            onChange={(e) =>
+                              updatePart(index, "pickupPoint", e.target.value)
+                            }
+                            className="w-full px-3 py-2 bg-card border border-border rounded-lg outline-none appearance-none"
+                          >
+                            <option value="">Select Location (Optional)</option>
+                            {pickupPoints.map((loc) => (
+                              <option key={loc} value={loc}>
+                                {loc}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                     </div>
 
                     {/* Emergency Contact */}

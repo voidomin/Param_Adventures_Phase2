@@ -105,17 +105,17 @@ export default function EditBlogPage() {
 
   if (isLoading)
     return (
-      <main className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background">
         <div className="flex items-center justify-center min-h-screen">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
-      </main>
+      </div>
     );
 
   if (!blog) return null;
 
   return (
-    <main className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-20">
       <div className="max-w-3xl mx-auto px-4 pt-28">
         <div className="mb-8">
           <h1 className="text-3xl font-heading font-black text-foreground">
@@ -212,6 +212,6 @@ export default function EditBlogPage() {
           </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

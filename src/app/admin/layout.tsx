@@ -193,9 +193,9 @@ export default function AdminLayout({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 md:ml-64 relative">
+      <div className="flex-1 md:ml-64 relative">
         <div className="p-6 md:p-10 max-w-7xl mx-auto">{children}</div>
-      </main>
+      </div>
     </div>
   );
 }

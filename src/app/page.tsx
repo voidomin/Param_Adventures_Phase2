@@ -108,7 +108,7 @@ export default async function Home() {
   };
 
   return (
-    <main className="relative min-h-screen bg-background text-foreground">
+    <div className="relative min-h-screen bg-background text-foreground">
       {/* Global Background Glows */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-[20%] -left-[10%] w-[60%] h-[60%] bg-primary/5 rounded-full blur-[120px]" />
@@ -271,6 +271,6 @@ export default async function Home() {
           <CustomTripForm />
         </ScrollReveal>
       </div>
-    </main>
+    </div>
   );
 }

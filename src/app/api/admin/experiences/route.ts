@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
       trekDistance,
       bestTimeToVisit,
       maxGroupSize,
+      pickupPoints,
     } = body;
 
     // Validate essential fields
@@ -109,6 +110,7 @@ export async function POST(request: NextRequest) {
         inclusions: inclusions || [],
         exclusions: exclusions || [],
         thingsToCarry: thingsToCarry || [],
+        pickupPoints: pickupPoints || [],
         faqs: faqs || [],
         cancellationPolicy,
         meetingPoint,

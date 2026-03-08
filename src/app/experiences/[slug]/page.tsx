@@ -96,7 +96,7 @@ export default async function ExperienceDetailPage({
   const isVideo = /\.(mp4|webm)$/i.exec(primaryMedia);
 
   return (
-    <main className="min-h-screen bg-background text-foreground pb-20">
+    <div className="min-h-screen bg-background text-foreground pb-20">
       {/* Hero Section */}
       <section className="relative h-[60vh] md:h-[70vh] w-full mt-16 group">
         <div className="absolute inset-0 z-0 bg-black">
@@ -458,6 +458,7 @@ export default async function ExperienceDetailPage({
               experienceSlug={experience.slug}
               basePrice={Number(experience.basePrice)}
               maxCapacity={experience.capacity}
+              pickupPoints={(experience as any).pickupPoints || []}
             />
 
             <SimilarTrips
@@ -467,6 +468,6 @@ export default async function ExperienceDetailPage({
           </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

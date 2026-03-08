@@ -11,6 +11,7 @@ interface BookNowButtonProps {
   experienceSlug: string;
   basePrice: number;
   maxCapacity: number;
+  pickupPoints: string[];
 }
 
 export default function BookNowButton({
@@ -19,6 +20,7 @@ export default function BookNowButton({
   experienceSlug,
   basePrice,
   maxCapacity,
+  pickupPoints,
 }: Readonly<BookNowButtonProps>) {
   const [isOpen, setIsOpen] = useState(false);
   const { user, isLoading } = useAuth();
@@ -52,6 +54,7 @@ export default function BookNowButton({
           experienceSlug={experienceSlug}
           basePrice={basePrice}
           maxCapacity={maxCapacity}
+          pickupPoints={pickupPoints}
           onClose={() => setIsOpen(false)}
         />
       )}
