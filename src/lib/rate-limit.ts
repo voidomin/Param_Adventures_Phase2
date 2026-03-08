@@ -1,9 +1,8 @@
 /**
- * In-Memory Sliding Window Rate Limiter
+ * In-Memory Sliding Window Rate Limiter (Edge-Compatible)
  *
  * Tracks request counts per key (typically IP + path prefix) within a
- * configurable time window. Designed to be swappable with a Redis-backed
- * store when scaling to multiple server instances.
+ * configurable time window. Designed to work in Next.js Edge Runtime.
  *
  * @module rate-limit
  */
@@ -13,30 +12,13 @@ interface RateLimitEntry {
   resetAt: number; // Unix timestamp (ms) when this window expires
 }
 
-/** In-memory store keyed by identifier (e.g. "1.2.3.4:/api/auth/login") */
-const store = new Map<string, RateLimitEntry>();
-
 /**
- * Periodically sweep expired entries to prevent unbounded memory growth.
- * Runs every 60 seconds. The timer is unref'd so it doesn't keep Node alive.
+ * In-memory store.
+ * Note: In Edge Runtime production (e.g. Vercel), this state is only
+ * persistent for the lifetime of the warm instance. For true persistence
+ * across instances, a Redis store is required.
  */
-const CLEANUP_INTERVAL_MS = 60_000;
-
-if (typeof globalThis !== "undefined") {
-  const timer = setInterval(() => {
-    const now = Date.now();
-    for (const [key, entry] of store) {
-      if (now >= entry.resetAt) {
-        store.delete(key);
-      }
-    }
-  }, CLEANUP_INTERVAL_MS);
-
-  // Prevent the cleanup timer from keeping the process alive
-  if (timer && typeof timer === "object" && "unref" in timer) {
-    (timer as NodeJS.Timeout).unref();
-  }
-}
+const store = new Map<string, RateLimitEntry>();
 
 export interface RateLimitResult {
   /** Whether the request is allowed */
@@ -56,14 +38,6 @@ export interface RateLimitResult {
  * @param limit     Maximum requests allowed per window
  * @param windowMs  Duration of the rate limit window in milliseconds
  * @returns         Result indicating whether the request is allowed
- *
- * @example
- * ```ts
- * const result = rateLimit("1.2.3.4:/api/auth/login", 5, 15 * 60 * 1000);
- * if (!result.success) {
- *   return new NextResponse("Too Many Requests", { status: 429 });
- * }
- * ```
  */
 export function rateLimit(
   key: string,
@@ -71,12 +45,22 @@ export function rateLimit(
   windowMs: number,
 ): RateLimitResult {
   const now = Date.now();
-  const entry = store.get(key);
 
-  // If no entry exists or the window has expired, start a new window
-  if (!entry || now >= entry.resetAt) {
+  // Lazy cleanup: occasionally remove an expired entry if we encounter it
+  // or just handle the current key.
+  let entry = store.get(key);
+
+  // If entry exists but is expired, treat it as non-existent
+  if (entry && now >= entry.resetAt) {
+    store.delete(key);
+    entry = undefined;
+  }
+
+  // If no entry exists, start a new window
+  if (!entry) {
     const resetAt = now + windowMs;
-    store.set(key, { count: 1, resetAt });
+    const newEntry = { count: 1, resetAt };
+    store.set(key, newEntry);
     return { success: true, remaining: limit - 1, limit, resetAt };
   }
 

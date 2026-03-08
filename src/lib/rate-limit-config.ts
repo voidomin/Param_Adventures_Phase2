@@ -77,7 +77,7 @@ export const RATE_LIMIT_RULES: RateLimitRule[] = [
   // 60 requests per minute per IP.
   {
     pathPrefix: "/api/",
-    limit: 60,
+    limit: 500, // Increased for development
     windowMs: 60 * 1000,
     label: "General",
   },

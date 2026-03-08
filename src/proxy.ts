@@ -20,13 +20,15 @@ export default function proxy(request: NextRequest) {
 
   // ─── 1. Rate Limiting ──────────────────────────────────
   const rule = findMatchingRule(pathname);
-  if (rule) {
-    const forwarded = request.headers.get("x-forwarded-for");
-    const realIp = request.headers.get("x-real-ip");
-    const ip = forwarded?.split(",")[0]?.trim() || realIp || "unknown";
+  let rateLimitResult: any = null;
 
+  const forwarded = request.headers.get("x-forwarded-for");
+  const realIp = request.headers.get("x-real-ip");
+  const ip = forwarded?.split(",")[0]?.trim() || realIp || "unknown";
+
+  if (rule) {
     const key = `${ip}:${rule.pathPrefix}`;
-    const rateLimitResult = rateLimit(key, rule.limit, rule.windowMs);
+    rateLimitResult = rateLimit(key, rule.limit, rule.windowMs);
 
     if (!rateLimitResult.success) {
       const retryAfterSeconds = Math.ceil(
@@ -52,8 +54,6 @@ export default function proxy(request: NextRequest) {
         },
       );
     }
-    // Note: We'll attach rate limit headers to the final response if possible,
-    // but Next.js middleware returns allow us to pass headers to the next response.
   }
 
   // ─── Always-public routes ──────────────────────────────
@@ -85,14 +85,12 @@ export default function proxy(request: NextRequest) {
 
   if (isPublic) {
     const response = NextResponse.next();
-    if (rule) {
-      const forwarded = request.headers.get("x-forwarded-for");
-      const realIp = request.headers.get("x-real-ip");
-      const ip = forwarded?.split(",")[0]?.trim() || realIp || "unknown";
-      const key = `${ip}:${rule.pathPrefix}`;
-      const result = rateLimit(key, rule.limit, rule.windowMs);
-      response.headers.set("X-RateLimit-Limit", String(result.limit));
-      response.headers.set("X-RateLimit-Remaining", String(result.remaining));
+    if (rateLimitResult) {
+      response.headers.set("X-RateLimit-Limit", String(rateLimitResult.limit));
+      response.headers.set(
+        "X-RateLimit-Remaining",
+        String(rateLimitResult.remaining),
+      );
     }
     return response;
   }
@@ -128,15 +126,12 @@ export default function proxy(request: NextRequest) {
   const response = NextResponse.next();
 
   // Attach rate limit headers if a rule was matched
-  if (rule) {
-    const forwarded = request.headers.get("x-forwarded-for");
-    const realIp = request.headers.get("x-real-ip");
-    const ip = forwarded?.split(",")[0]?.trim() || realIp || "unknown";
-    const key = `${ip}:${rule.pathPrefix}`;
-    // Re-check just to get the result (or we could have stored it)
-    const result = rateLimit(key, rule.limit, rule.windowMs);
-    response.headers.set("X-RateLimit-Limit", String(result.limit));
-    response.headers.set("X-RateLimit-Remaining", String(result.remaining));
+  if (rateLimitResult) {
+    response.headers.set("X-RateLimit-Limit", String(rateLimitResult.limit));
+    response.headers.set(
+      "X-RateLimit-Remaining",
+      String(rateLimitResult.remaining),
+    );
   }
 
   return response;
