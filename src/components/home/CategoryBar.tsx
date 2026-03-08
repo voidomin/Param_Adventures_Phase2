@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import {
   Mountain,
   Tent,
@@ -166,14 +167,14 @@ export default function CategoryBar() {
   ];
 
   return (
-    <div className="w-full bg-slate-900 border-b border-white/5 sticky top-16 z-30">
-      <div className="relative max-w-7xl mx-auto group">
+    <div className="w-full bg-background/60 backdrop-blur-xl border-b border-white/5 sticky top-16 z-30 transition-all duration-300">
+      <div className="relative w-full group">
         {/* Left gradient fade + arrow */}
         <div className="absolute left-0 top-0 bottom-0 z-20 flex items-center">
-          <div className="absolute inset-y-0 left-0 w-16 bg-gradient-to-r from-slate-900 to-transparent pointer-events-none" />
+          <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-background via-background/80 to-transparent pointer-events-none" />
           <button
             onClick={() => scroll("left")}
-            className="relative ml-1 w-9 h-9 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-white/80 hover:bg-white/20 hover:text-white flex items-center justify-center transition-all duration-200 shadow-lg hover:scale-110"
+            className="relative ml-1 w-9 h-9 rounded-full bg-background/50 backdrop-blur-md border border-border/50 text-foreground/70 hover:bg-primary hover:text-primary-foreground hover:border-primary flex items-center justify-center transition-all duration-200 shadow-lg hover:scale-110 opacity-0 group-hover:opacity-100"
             aria-label="Scroll left"
           >
             <ChevronLeft className="w-5 h-5" />
@@ -183,15 +184,17 @@ export default function CategoryBar() {
         {/* Scrollable container */}
         <div
           ref={scrollRef}
-          className="flex overflow-x-auto no-scrollbar py-4 px-12 gap-3"
+          className="flex overflow-x-auto no-scrollbar py-5 px-12 gap-4"
         >
           {allItems.map((item, index) => {
             const isAll = item.slug === "all";
             const isActive = activeCategory === item.slug;
 
             return (
-              <button
+              <motion.button
                 key={`${item.id}-${index}`}
+                whileHover={{ scale: 1.05, y: -2 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => {
                   setActiveCategory(item.slug);
                   router.push(
@@ -200,30 +203,35 @@ export default function CategoryBar() {
                       : `/experiences?category=${item.slug}`,
                   );
                 }}
-                className={`flex items-center gap-2 px-5 py-2.5 rounded-full whitespace-nowrap transition-all duration-300 flex-shrink-0 ${
+                className={`flex items-center gap-2 px-6 py-2.5 rounded-full whitespace-nowrap transition-all duration-300 flex-shrink-0 border ${
                   isActive
-                    ? "bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/20 scale-105"
-                    : "bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white font-medium"
+                    ? "bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/20 border-primary"
+                    : "bg-white/5 text-muted-foreground hover:bg-primary hover:text-primary-foreground font-medium border-white/5 hover:border-primary"
                 }`}
               >
                 {!isAll && (
-                  <DynamicIcon
-                    name={item.icon}
-                    className={`w-4 h-4 ${isActive ? "" : "opacity-70"}`}
-                  />
+                  <motion.div
+                    whileHover={{ rotate: 15 }}
+                    transition={{ type: "spring", stiffness: 400, damping: 10 }}
+                  >
+                    <DynamicIcon
+                      name={item.icon}
+                      className={`w-4 h-4 ${isActive ? "" : "opacity-70"}`}
+                    />
+                  </motion.div>
                 )}
                 {item.name}
-              </button>
+              </motion.button>
             );
           })}
         </div>
 
         {/* Right gradient fade + arrow */}
         <div className="absolute right-0 top-0 bottom-0 z-20 flex items-center">
-          <div className="absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-slate-900 to-transparent pointer-events-none" />
+          <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-background via-background/80 to-transparent pointer-events-none" />
           <button
             onClick={() => scroll("right")}
-            className="relative mr-1 w-9 h-9 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-white/80 hover:bg-white/20 hover:text-white flex items-center justify-center transition-all duration-200 shadow-lg hover:scale-110"
+            className="relative mr-1 w-9 h-9 rounded-full bg-background/50 backdrop-blur-md border border-border/50 text-foreground/70 hover:bg-primary hover:text-primary-foreground hover:border-primary flex items-center justify-center transition-all duration-200 shadow-lg hover:scale-110 opacity-0 group-hover:opacity-100"
             aria-label="Scroll right"
           >
             <ChevronRight className="w-5 h-5" />

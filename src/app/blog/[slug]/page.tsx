@@ -9,9 +9,18 @@ import {
   IndianRupee,
   ArrowRight,
   Mountain,
+  Instagram,
+  Twitter,
+  Youtube,
 } from "lucide-react";
 
 import ClientTiptapViewer from "@/components/blog/ClientTiptapViewer";
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 export const revalidate = 60;
 
@@ -73,9 +82,12 @@ export default async function BlogArticlePage({ params }: Props) {
     notFound();
   }
 
+  const theme = blog.theme || "CLASSIC";
   const cover =
-    blog.experience?.images[0] ??
-    `https://picsum.photos/seed/${blog.id}/1200/600`;
+    blog?.coverImageUrl ||
+    blog?.experience?.images[0] ||
+    `https://picsum.photos/seed/${blog?.id}/1200/600`;
+  const socials = (blog?.authorSocials as any) || {};
 
   const publishDate = new Date(blog.updatedAt).toLocaleDateString("en-IN", {
     day: "numeric",
@@ -107,9 +119,21 @@ export default async function BlogArticlePage({ params }: Props) {
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 pt-8">
+      <div
+        className={cn(
+          "max-w-3xl mx-auto px-4 pt-8",
+          theme === "MODERN" && "max-w-5xl",
+          theme === "MINIMAL" && "max-w-2xl px-8",
+        )}
+      >
         {/* Meta */}
-        <div className="flex flex-wrap items-center gap-4 mb-8 pb-6 border-b border-border">
+        <div
+          className={cn(
+            "flex flex-wrap items-center gap-4 mb-8 pb-6 border-b border-border",
+            theme === "MODERN" && "mb-12 pb-8",
+            theme === "MINIMAL" && "border-none mb-4 pb-0 items-start flex-col",
+          )}
+        >
           {/* Author */}
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full overflow-hidden bg-primary/20 flex items-center justify-center font-bold text-primary">
@@ -128,11 +152,47 @@ export default async function BlogArticlePage({ params }: Props) {
               <p className="font-semibold text-foreground text-sm">
                 {blog.author.name}
               </p>
-              <p className="text-xs text-foreground/40">Adventure Traveller</p>
+              <div className="flex items-center gap-3 mt-1">
+                {socials.instagram && (
+                  <a
+                    href={socials.instagram}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-foreground/40 hover:text-primary transition-colors"
+                  >
+                    <Instagram className="w-3.5 h-3.5" />
+                  </a>
+                )}
+                {socials.twitter && (
+                  <a
+                    href={socials.twitter}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-foreground/40 hover:text-primary transition-colors"
+                  >
+                    <Twitter className="w-3.5 h-3.5" />
+                  </a>
+                )}
+                {socials.youtube && (
+                  <a
+                    href={socials.youtube}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-foreground/40 hover:text-primary transition-colors"
+                  >
+                    <Youtube className="w-3.5 h-3.5" />
+                  </a>
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 text-sm text-foreground/40 ml-auto">
+          <div
+            className={cn(
+              "flex items-center gap-1.5 text-sm text-foreground/40 ml-auto",
+              theme === "MINIMAL" && "ml-0 mt-2",
+            )}
+          >
             <CalendarDays className="w-3.5 h-3.5" />
             {publishDate}
           </div>
@@ -145,7 +205,13 @@ export default async function BlogArticlePage({ params }: Props) {
         </div>
 
         {/* Content */}
-        <div className="prose prose-sm md:prose dark:prose-invert max-w-none mb-12">
+        <div
+          className={cn(
+            "prose prose-sm md:prose dark:prose-invert max-w-none mb-12",
+            theme === "MODERN" && "md:prose-lg font-body leading-relaxed",
+            theme === "MINIMAL" && "md:prose-base font-serif antialiased",
+          )}
+        >
           <ClientTiptapViewer content={blog.content as object} />
         </div>
 

@@ -8,6 +8,8 @@ interface ScrollRevealProps {
   readonly className?: string;
   readonly delay?: number;
   readonly direction?: "up" | "down" | "left" | "right" | "none";
+  readonly variant?: "fade" | "blur" | "zoom";
+  readonly stagger?: boolean;
 }
 
 export default function ScrollReveal({
@@ -15,30 +17,51 @@ export default function ScrollReveal({
   className = "",
   delay = 0,
   direction = "up",
+  variant = "fade",
+  stagger = false,
 }: Readonly<ScrollRevealProps>) {
   const getInitial = () => {
+    let initial: any = { opacity: 0 };
+
     switch (direction) {
       case "up":
-        return { opacity: 0, y: 40 };
+        initial.y = 40;
+        break;
       case "down":
-        return { opacity: 0, y: -40 };
+        initial.y = -40;
+        break;
       case "left":
-        return { opacity: 0, x: 40 };
+        initial.x = 40;
+        break;
       case "right":
-        return { opacity: 0, x: -40 };
-      default:
-        return { opacity: 0 };
+        initial.x = -40;
+        break;
     }
-  };
 
-  const initial = getInitial();
+    if (variant === "blur") initial.filter = "blur(12px)";
+    if (variant === "zoom") initial.scale = 0.95;
+
+    return initial;
+  };
 
   return (
     <motion.div
-      initial={initial}
-      whileInView={{ opacity: 1, y: 0, x: 0 }}
+      initial={getInitial()}
+      whileInView={{
+        opacity: 1,
+        y: 0,
+        x: 0,
+        filter: "blur(0px)",
+        scale: 1,
+      }}
       viewport={{ once: true, amount: 0.1 }}
-      transition={{ duration: 0.7, delay, ease: "easeOut" }}
+      transition={{
+        duration: 0.8,
+        delay,
+        ease: [0.16, 1, 0.3, 1], // Exponential-style ease for premium feel
+        staggerChildren: stagger ? 0.1 : 0,
+        delayChildren: delay,
+      }}
       className={className}
     >
       {children}

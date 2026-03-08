@@ -6,6 +6,8 @@ import {
   ArrowRight,
   Mountain,
   MapPin,
+  Shield,
+  Zap,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -53,15 +55,12 @@ export default function Hero({
   slides = [],
 }: Readonly<{ slides?: HeroSlide[] }>) {
   const [currentIndex, setCurrentIndex] = useState(0);
-
   const activeSlides = slides.length > 0 ? slides : FALLBACK_SLIDES;
   const currentSlide = activeSlides[currentIndex];
 
   useEffect(() => {
     if (activeSlides.length <= 1) return;
 
-    // Check if the currently active slide is a video. If so, let it play naturally
-    // until it fires its 'onEnded' event instead of relying on the interval.
     const activeIsVideo = /\.(mp4|webm)$/i.test(
       activeSlides[currentIndex].videoUrl,
     );
@@ -69,7 +68,7 @@ export default function Hero({
 
     const timer = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % activeSlides.length);
-    }, 6000); // cycle every 6 seconds
+    }, 6000);
     return () => clearInterval(timer);
   }, [activeSlides.length, currentIndex]);
 
@@ -85,19 +84,38 @@ export default function Hero({
   const isVideo = /\.(mp4|webm)$/i.test(currentSlide.videoUrl);
 
   return (
-    <section className="relative h-screen w-full flex items-center justify-center overflow-hidden pt-16 bg-black group">
+    <section className="relative h-screen w-full flex items-end justify-center overflow-hidden pb-24 md:pb-32 bg-black group">
+      {/* Film Grain Overlay */}
+      <div className="absolute inset-0 z-[5] pointer-events-none opacity-[0.03]">
+        <svg
+          viewBox="0 0 200 200"
+          xmlns="http://www.w3.org/2000/svg"
+          className="w-full h-full"
+        >
+          <filter id="noiseFilter">
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency="0.65"
+              numOctaves="3"
+              stitchTiles="stitch"
+            />
+          </filter>
+          <rect width="100%" height="100%" filter="url(#noiseFilter)" />
+        </svg>
+      </div>
+
       {/* Background with Overlay */}
       <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black z-10" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/40 to-black z-10" />
 
-        <AnimatePresence mode="wait">
+        <AnimatePresence>
           <motion.div
             key={currentSlide.id + "-bg"}
-            initial={{ opacity: 0, scale: 1.15, filter: "blur(20px)" }}
-            animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-            exit={{ opacity: 0, scale: 1.05, filter: "blur(10px)" }}
-            transition={{ duration: 1.5, ease: "easeInOut" }}
-            className="absolute inset-0"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1, ease: "linear" }}
+            className="absolute -inset-x-[5vw] inset-y-0 w-[110vw]"
           >
             {isVideo ? (
               <video
@@ -106,10 +124,9 @@ export default function Hero({
                 playsInline
                 className="w-full h-full object-cover"
                 src={currentSlide.videoUrl}
-                onEnded={goToNext} // Move to next slide precisely when the video finishes
+                onEnded={goToNext}
               />
             ) : (
-              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={currentSlide.videoUrl}
                 alt={currentSlide.title}
@@ -120,43 +137,54 @@ export default function Hero({
         </AnimatePresence>
       </div>
 
+      {/* Navigation Arrows - Moved to bottom-right for premium UX and to avoid content clash */}
       {activeSlides.length > 1 && (
-        <>
+        <div className="absolute bottom-12 right-8 md:right-16 z-30 flex items-center gap-4">
           <button
             onClick={goToPrev}
-            className="absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-30 p-2 md:p-3 rounded-full bg-black/20 text-white/50 hover:bg-black/50 hover:text-white backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all"
+            className="p-3 rounded-full bg-white/5 text-white/50 hover:bg-primary hover:text-white backdrop-blur-md transition-all border border-white/10"
           >
-            <ChevronLeft className="w-6 h-6 md:w-8 md:h-8" />
+            <ChevronLeft className="w-6 h-6" />
           </button>
           <button
             onClick={goToNext}
-            className="absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-30 p-2 md:p-3 rounded-full bg-black/20 text-white/50 hover:bg-black/50 hover:text-white backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all"
+            className="p-3 rounded-full bg-white/5 text-white/50 hover:bg-primary hover:text-white backdrop-blur-md transition-all border border-white/10"
           >
-            <ChevronRight className="w-6 h-6 md:w-8 md:h-8" />
+            <ChevronRight className="w-6 h-6" />
           </button>
-        </>
+        </div>
       )}
 
-      {/* Content */}
-      <div className="relative z-20 max-w-7xl mx-auto px-4 text-center">
+      {/* Content with Mouse Parallax */}
+      <div className="relative z-20 max-w-7xl mx-auto px-4 w-full h-full flex flex-col justify-end pb-32">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentSlide.id + "-content"}
-            initial={{ opacity: 0, y: 40, filter: "blur(10px)" }}
-            animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-            exit={{ opacity: 0, y: -40, filter: "blur(10px)" }}
+            initial={{ opacity: 0, translateY: 60, filter: "blur(10px)" }}
+            animate={{
+              opacity: 1,
+              filter: "blur(0px)",
+              translateY: 0,
+            }}
+            exit={{ opacity: 0, translateY: -40, filter: "blur(10px)" }}
             transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
+            className="text-left"
           >
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 text-primary text-xs font-bold uppercase tracking-widest mb-6">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.4 }}
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold uppercase tracking-[0.2em] mb-4 backdrop-blur-sm"
+            >
               <Mountain className="w-3 h-3" />
-              Phase 2 Launching Now
-            </div>
+              Your Odyssey Awaits
+            </motion.div>
 
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-heading font-black text-white leading-[1.1] mb-8 whitespace-pre-line drop-shadow-lg">
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-heading font-black text-white leading-[1] mb-6 whitespace-pre-line tracking-tight drop-shadow-2xl max-w-4xl">
               {currentSlide.title.includes("Extraordinary") ? (
                 <>
                   Experience the <br />
-                  <span className="text-primary italic drop-shadow-md">
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-orange-400 to-primary italic font-serif">
                     Extraordinary
                   </span>
                 </>
@@ -165,49 +193,56 @@ export default function Hero({
               )}
             </h1>
 
-            <p className="max-w-xl mx-auto text-lg md:text-xl text-white/90 font-body mb-10 drop-shadow-md">
+            <p className="max-w-xl text-base md:text-lg text-white/80 font-body mb-8 leading-relaxed font-light">
               {currentSlide.subtitle}
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="flex flex-col sm:flex-row items-center justify-start gap-4">
               <Link
                 href={currentSlide.ctaLink || "/experiences"}
-                className="group bg-primary text-primary-foreground px-8 py-4 rounded-full text-lg font-bold flex items-center gap-2 hover:scale-105 transition-all shadow-xl shadow-primary/20"
+                className="group relative bg-primary text-primary-foreground px-8 py-4 rounded-full text-lg font-black flex items-center gap-2 hover:scale-105 transition-all shadow-[0_0_30px_rgba(var(--primary-rgb),0.3)]"
               >
-                Explore Adventures
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                <span className="relative z-10">Explore Adventures</span>
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform relative z-10" />
+                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-white/0 via-white/20 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
               </Link>
 
-              <button className="px-8 py-4 rounded-full text-white font-bold border border-white/30 hover:bg-white/10 backdrop-blur-sm transition-colors">
+              <button className="px-8 py-4 rounded-full text-white text-base font-bold border border-white/20 hover:bg-white/10 hover:border-white/40 backdrop-blur-md transition-all">
                 Our Story
               </button>
             </div>
 
-            <div className="mt-16 flex items-center justify-center gap-8 text-white/70 text-sm font-medium drop-shadow-md">
-              <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 text-primary" />
-                Pan-India Coverage
+            <div className="mt-12 flex flex-wrap items-center justify-start gap-x-8 gap-y-4 text-white/50 text-[10px] font-bold tracking-[0.2em] uppercase">
+              <div className="flex items-center gap-2 group/item">
+                <MapPin className="w-4 h-4 text-primary group-hover/item:scale-110 transition-transform" />
+                <span>Pan-India</span>
               </div>
-              <div className="w-1.5 h-1.5 bg-white/40 rounded-full" />
-              <div>Verified Leads</div>
-              <div className="w-1.5 h-1.5 bg-white/40 rounded-full" />
-              <div>Group Friendly</div>
+              <div className="w-1 h-1 bg-primary/40 rounded-full hidden md:block" />
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4 text-primary" />
+                <span>Verified Guides</span>
+              </div>
+              <div className="w-1 h-1 bg-primary/40 rounded-full hidden md:block" />
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-primary" />
+                <span>Live Support</span>
+              </div>
             </div>
           </motion.div>
         </AnimatePresence>
       </div>
 
-      {/* Slider Indicators fixed to the bottom of the screen */}
+      {/* Slider Indicators */}
       {activeSlides.length > 1 && (
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 z-30">
+        <div className="absolute bottom-12 left-8 md:left-16 flex items-center gap-4 z-30">
           {activeSlides.map((slide, idx) => (
             <button
               key={slide.id}
               onClick={() => setCurrentIndex(idx)}
-              className={`transition-all rounded-full ${
+              className={`transition-all duration-500 rounded-full ${
                 idx === currentIndex
-                  ? "w-8 h-2 bg-primary shadow-[0_0_10px_var(--primary)]"
-                  : "w-2 h-2 bg-white/30 hover:bg-white/60"
+                  ? "w-10 h-1 bg-primary"
+                  : "w-4 h-1 bg-white/20 hover:bg-white/50"
               }`}
             />
           ))}

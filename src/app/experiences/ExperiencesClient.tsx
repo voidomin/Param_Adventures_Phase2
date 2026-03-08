@@ -669,7 +669,7 @@ export default function ExperiencesClient({
           </motion.div>
         ) : (
           <motion.div
-            key={`${activeFilter}-${sortBy}`}
+            key={`${activeFilter}-${sortBy}-${searchQuery}-${selectedDifficulties.join(",")}-${minDays}-${maxDays}-${minPrice}-${maxPrice}-${hasSlots}`}
             variants={containerVariants}
             initial="hidden"
             animate="show"

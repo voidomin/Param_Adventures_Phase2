@@ -53,7 +53,8 @@ export default async function BlogListingPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {blogs.map((blog) => {
               const cover =
-                blog.coverImage?.originalUrl ??
+                blog.coverImageUrl ||
+                blog.coverImage?.originalUrl ||
                 `https://picsum.photos/seed/${blog.id}/800/500`;
 
               return (

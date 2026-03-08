@@ -1,5 +1,7 @@
 import Hero from "@/components/layout/Hero";
 import CategoryBar from "@/components/home/CategoryBar";
+import InfiniMarquee from "@/components/home/InfiniMarquee";
+import ImpactStats from "@/components/home/ImpactStats";
 import Testimonials from "@/components/home/Testimonials";
 import { prisma } from "@/lib/db";
 import ExperienceCard from "@/components/experiences/ExperienceCard";
@@ -17,7 +19,7 @@ export default async function Home() {
   });
 
   // Fetch featured experiences
-  const featuredExperiences = await prisma.experience.findMany({
+  const featuredExperiencesRaw = await prisma.experience.findMany({
     where: { isFeatured: true, status: "PUBLISHED" },
     include: {
       categories: { include: { category: true } },
@@ -27,7 +29,12 @@ export default async function Home() {
     orderBy: { createdAt: "desc" },
   });
 
-  // Fetch recent blogs
+  // Serialize Decimal and Date objects for Client Component compatibility
+  const featuredExperiences = featuredExperiencesRaw.map((exp) => ({
+    ...exp,
+    basePrice: Number(exp.basePrice),
+  }));
+
   const recentBlogs = await prisma.blog.findMany({
     where: { status: "PUBLISHED" },
     take: 10,
@@ -39,13 +46,81 @@ export default async function Home() {
     },
   });
 
+  // Fetch dynamic destinations for marquee
+  const uniqueLocationsInfo = await prisma.experience.findMany({
+    where: { status: "PUBLISHED", location: { not: "" } },
+    select: { location: true },
+    distinct: ["location"],
+  });
+  let marqueeDestinations = uniqueLocationsInfo.map((l) =>
+    l.location.toUpperCase(),
+  );
+  if (marqueeDestinations.length < 5) {
+    const fallbacks = [
+      "KASHMIR",
+      "EVEREST BASE CAMP",
+      "SPITI VALLEY",
+      "LEH LADAKH",
+      "KERALA",
+      "HIMALAYAS",
+    ];
+    marqueeDestinations = [...new Set([...marqueeDestinations, ...fallbacks])];
+  }
+
+  // Calculate dynamic impact stats
+  const confirmedBookings = await prisma.booking.findMany({
+    where: { bookingStatus: "CONFIRMED" },
+    select: {
+      participantCount: true,
+      experience: { select: { trekDistance: true } },
+    },
+  });
+
+  let totalAdventurers = 0;
+  let totalKmTrekked = 0;
+
+  confirmedBookings.forEach((b) => {
+    totalAdventurers += b.participantCount;
+    if (b.experience?.trekDistance) {
+      const distanceRegex = /(\d+)/;
+      const match = distanceRegex.exec(b.experience.trekDistance);
+      if (match) {
+        totalKmTrekked += Number.parseInt(match[1], 10) * b.participantCount;
+      }
+    }
+  });
+
+  // Use real data, with small fallbacks just in case the DB is completely empty for a new setup
+  const uniqueRoutesCount = await prisma.experience.count({
+    where: { status: "PUBLISHED" },
+  });
+  const reviewAgg = await prisma.experienceReview.aggregate({
+    _avg: { rating: true },
+  });
+
+  const dynamicStats = {
+    adventurers: totalAdventurers > 0 ? totalAdventurers : 120,
+    routes: uniqueRoutesCount > 0 ? uniqueRoutesCount : 15,
+    kmTrekked: totalKmTrekked > 0 ? totalKmTrekked : 450,
+    rating: reviewAgg._avg.rating
+      ? Number(reviewAgg._avg.rating.toFixed(1))
+      : 4.9,
+  };
+
   return (
     <main className="relative min-h-screen bg-background text-foreground">
+      {/* Global Background Glows */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute top-[20%] -left-[10%] w-[60%] h-[60%] bg-primary/5 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[20%] -right-[10%] w-[60%] h-[60%] bg-orange-500/5 rounded-full blur-[120px]" />
+      </div>
+
       <Hero slides={heroSlides} />
+      <InfiniMarquee destinations={marqueeDestinations} />
       <CategoryBar />
 
-      <div className="py-20 max-w-7xl mx-auto px-4">
-        <ScrollReveal>
+      <div className="pt-12 pb-24 px-4 md:px-12 lg:px-16 relative z-10">
+        <ScrollReveal variant="blur" stagger>
           <h2 className="text-4xl font-heading font-black text-foreground mb-4 text-center">
             Featured Experiences
           </h2>
@@ -79,10 +154,14 @@ export default async function Home() {
         )}
       </div>
 
+      <div className="relative py-12">
+        <ImpactStats dynamicData={dynamicStats} />
+      </div>
+
       {/* Featured Stories Section */}
-      <div className="py-20 bg-foreground/[0.02]">
-        <div className="max-w-7xl mx-auto px-4">
-          <ScrollReveal direction="left">
+      <div className="py-24 bg-foreground/[0.015] border-y border-white/[0.02] relative px-4 md:px-12 lg:px-16">
+        <div className="w-full">
+          <ScrollReveal direction="left" variant="blur">
             <div className="flex flex-col md:flex-row justify-between items-center md:items-end mb-12 gap-6">
               <div className="text-center md:text-left">
                 <h2 className="text-4xl font-heading font-black text-foreground mb-4">
@@ -187,7 +266,7 @@ export default async function Home() {
 
       <Testimonials />
 
-      <div className="py-20 max-w-7xl mx-auto px-4">
+      <div className="py-20 px-4 md:px-12 lg:px-16 relative z-10 font-heading">
         <ScrollReveal direction="up">
           <CustomTripForm />
         </ScrollReveal>
