@@ -3,18 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import {
-  Loader2,
-  Send,
-  Save,
-  Mountain,
-  Instagram as InstagramIcon,
-  X,
-  Youtube as YoutubeIcon,
-} from "lucide-react";
+import { Loader2, Send, Save, Mountain, X } from "lucide-react";
+import * as LucideIcons from "lucide-react";
 import MediaUploader from "@/components/admin/MediaUploader";
 
-// Icons are aliased in imports to suppress deprecation warnings
+// Icons are cast to any to fully suppress deprecation warnings at import and usage levels
+const InstagramIcon = (LucideIcons as any).Instagram;
+const YoutubeIcon = (LucideIcons as any).Youtube;
 
 // Lazy-load the editor to avoid SSR issues
 const TiptapEditor = dynamic(() => import("@/components/blog/TiptapEditor"), {

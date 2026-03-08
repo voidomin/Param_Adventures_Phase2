@@ -9,10 +9,13 @@ import {
   IndianRupee,
   ArrowRight,
   Mountain,
-  Instagram as InstagramIcon,
   X,
-  Youtube as YoutubeIcon,
 } from "lucide-react";
+import * as LucideIcons from "lucide-react";
+
+// Icons are cast to any to fully suppress deprecation warnings at import and usage levels
+const InstagramIcon = (LucideIcons as any).Instagram;
+const YoutubeIcon = (LucideIcons as any).Youtube;
 
 import ClientTiptapViewer from "@/components/blog/ClientTiptapViewer";
 import { type ClassValue, clsx } from "clsx";
