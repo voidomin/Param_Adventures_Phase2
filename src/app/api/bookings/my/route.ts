@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
       where: { userId: auth.userId, deletedAt: null },
       orderBy: { createdAt: "desc" },
       include: {
+        participants: true,
         experience: {
           select: {
             title: true,

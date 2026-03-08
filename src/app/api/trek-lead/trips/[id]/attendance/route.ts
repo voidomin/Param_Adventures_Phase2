@@ -26,7 +26,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     const { id: slotId } = await params;
     const userId = auth.userId;
     const body = await request.json();
-    const attendees: { bookingId: string; attended: boolean }[] =
+    const attendees: { participantId: string; attended: boolean }[] =
       body.attendees ?? [];
 
     // Must be assigned to this slot
@@ -75,11 +75,11 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       update: { attendees },
     });
 
-    // Update Booking.attended flag for each entry
+    // Update BookingParticipant.attended flag for each entry
     await Promise.all(
-      attendees.map(({ bookingId, attended }) =>
-        prisma.booking.update({
-          where: { id: bookingId },
+      attendees.map(({ participantId, attended }) =>
+        prisma.bookingParticipant.update({
+          where: { id: participantId },
           data: { attended },
         }),
       ),

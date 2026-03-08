@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { experienceId, slotId, participantCount } = body;
+    const { experienceId, slotId, participantCount, participants } = body;
 
     if (!experienceId || !slotId || !participantCount || participantCount < 1) {
       return NextResponse.json(
@@ -39,6 +39,17 @@ export async function POST(request: NextRequest) {
           error:
             "experienceId, slotId, and participantCount (≥1) are required.",
         },
+        { status: 400 },
+      );
+    }
+
+    if (
+      !participants ||
+      !Array.isArray(participants) ||
+      participants.length !== participantCount
+    ) {
+      return NextResponse.json(
+        { error: "Participant details must match the participant count." },
         { status: 400 },
       );
     }
@@ -82,6 +93,20 @@ export async function POST(request: NextRequest) {
           totalPrice,
           bookingStatus: "REQUESTED",
           paymentStatus: "PENDING",
+          participants: {
+            create: participants.map((p) => ({
+              isPrimary: p.isPrimary || false,
+              name: p.name,
+              email: p.email || null,
+              phoneNumber: p.phoneNumber || null,
+              gender: p.gender || null,
+              age: p.age ? Number(p.age) : null,
+              bloodGroup: p.bloodGroup || null,
+              emergencyContactName: p.emergencyContactName || null,
+              emergencyContactNumber: p.emergencyContactNumber || null,
+              emergencyRelationship: p.emergencyRelationship || null,
+            })),
+          },
         },
       });
 

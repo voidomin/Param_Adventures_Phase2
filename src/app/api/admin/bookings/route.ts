@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
       },
       orderBy: { createdAt: "desc" },
       include: {
+        participants: true,
         user: {
           select: { id: true, name: true, email: true, phoneNumber: true },
         },

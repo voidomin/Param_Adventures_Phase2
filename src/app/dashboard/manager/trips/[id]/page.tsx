@@ -32,6 +32,7 @@ interface TrekLead {
 interface Booking {
   id: string;
   participantCount: number;
+  participants: { id: string; name: string }[];
   user: { id: string; name: string; email: string; phoneNumber: string | null };
 }
 
@@ -521,8 +522,18 @@ export default function ManagerTripDetailPage() {
                     <td className="py-3 pr-4 text-foreground/60">
                       {booking.user.phoneNumber ?? "—"}
                     </td>
-                    <td className="py-3 text-right font-semibold text-foreground">
-                      {booking.participantCount}
+                    <td className="py-3 text-right">
+                      <div className="font-semibold text-foreground mb-1">
+                        {booking.participantCount}
+                      </div>
+                      {booking.participants &&
+                        booking.participants.length > 0 && (
+                          <div className="text-xs text-foreground/50 space-y-0.5 mt-1 border-t border-border/50 pt-1 inline-block">
+                            {booking.participants.map((p) => (
+                              <div key={p.id}>{p.name}</div>
+                            ))}
+                          </div>
+                        )}
                     </td>
                   </tr>
                 ))}

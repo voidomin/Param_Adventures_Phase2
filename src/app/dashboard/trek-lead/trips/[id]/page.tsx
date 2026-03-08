@@ -20,10 +20,19 @@ import {
   FlagOff,
 } from "lucide-react";
 
+interface Participant {
+  id: string;
+  name: string;
+  email: string | null;
+  phoneNumber: string | null;
+  attended: boolean;
+  isPrimary: boolean;
+}
+
 interface Booking {
   id: string;
   participantCount: number;
-  attended: boolean;
+  participants: Participant[];
   user: { id: string; name: string; email: string; phoneNumber: string | null };
 }
 
@@ -78,7 +87,7 @@ export default function TrekLeadTripDetailPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Attendance state — map of bookingId → attended
+  // Attendance state — map of participantId → attended
   const [attendance, setAttendance] = useState<Record<string, boolean>>({});
   const [isSavingAttendance, setIsSavingAttendance] = useState(false);
   const [attendanceSaved, setAttendanceSaved] = useState(false);
@@ -109,7 +118,9 @@ export default function TrekLeadTripDetailPage() {
       // Initialize attendance from existing booking data
       const initAttendance: Record<string, boolean> = {};
       data.slot.bookings.forEach((b: Booking) => {
-        initAttendance[b.id] = b.attended ?? false;
+        b.participants.forEach((p) => {
+          initAttendance[p.id] = p.attended ?? false;
+        });
       });
       setAttendance(initAttendance);
     } catch (e: unknown) {
@@ -123,8 +134,11 @@ export default function TrekLeadTripDetailPage() {
     fetchSlot();
   }, [fetchSlot]);
 
-  const toggleAttendance = (bookingId: string) =>
-    setAttendance((prev) => ({ ...prev, [bookingId]: !prev[bookingId] }));
+  const toggleAttendance = (participantId: string) =>
+    setAttendance((prev) => ({
+      ...prev,
+      [participantId]: !prev[participantId],
+    }));
 
   const saveAttendance = async () => {
     setIsSavingAttendance(true);
@@ -132,7 +146,7 @@ export default function TrekLeadTripDetailPage() {
     setAttendanceSaved(false);
     try {
       const attendees = Object.entries(attendance).map(
-        ([bookingId, attended]) => ({ bookingId, attended }),
+        ([participantId, attended]) => ({ participantId, attended }),
       );
       const res = await fetch(`/api/trek-lead/trips/${slotId}/attendance`, {
         method: "POST",
@@ -338,40 +352,42 @@ export default function TrekLeadTripDetailPage() {
           </div>
 
           <div className="space-y-2">
-            {slot.bookings.map((booking) => (
-              <button
-                key={booking.id}
-                onClick={() => canActToday && toggleAttendance(booking.id)}
-                disabled={!canActToday}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left ${
-                  attendance[booking.id]
-                    ? "bg-green-500/10 border-green-500/30"
-                    : "bg-foreground/5 border-border hover:border-primary/30"
-                } ${canActToday ? "cursor-pointer" : "cursor-default"}`}
-              >
-                <div className="flex items-center gap-3">
-                  {attendance[booking.id] ? (
-                    <CheckSquare className="w-5 h-5 text-green-400 shrink-0" />
-                  ) : (
-                    <Square className="w-5 h-5 text-foreground/30 shrink-0" />
-                  )}
-                  <div>
-                    <p className="text-sm font-semibold text-foreground">
-                      {booking.user.name}
-                    </p>
-                    <p className="text-xs text-foreground/50">
-                      {booking.user.email}
-                      {booking.user.phoneNumber
-                        ? ` · ${booking.user.phoneNumber}`
-                        : ""}
-                    </p>
+            {slot.bookings.flatMap((booking) =>
+              booking.participants.map((p) => (
+                <button
+                  key={p.id}
+                  onClick={() => canActToday && toggleAttendance(p.id)}
+                  disabled={!canActToday}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left ${
+                    attendance[p.id]
+                      ? "bg-green-500/10 border-green-500/30"
+                      : "bg-foreground/5 border-border hover:border-primary/30"
+                  } ${canActToday ? "cursor-pointer" : "cursor-default"}`}
+                >
+                  <div className="flex items-center gap-3">
+                    {attendance[p.id] ? (
+                      <CheckSquare className="w-5 h-5 text-green-400 shrink-0" />
+                    ) : (
+                      <Square className="w-5 h-5 text-foreground/30 shrink-0" />
+                    )}
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">
+                        {p.name}{" "}
+                        {p.isPrimary && (
+                          <span className="text-[10px] ml-1 uppercase text-primary border border-primary/20 bg-primary/10 px-1 rounded">
+                            Primary
+                          </span>
+                        )}
+                      </p>
+                      <p className="text-xs text-foreground/50">
+                        {p.email}
+                        {p.phoneNumber ? ` · ${p.phoneNumber}` : ""}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <span className="text-xs text-foreground/40 shrink-0 ml-4">
-                  {booking.participantCount} pax
-                </span>
-              </button>
-            ))}
+                </button>
+              )),
+            )}
           </div>
 
           {attendanceError && (

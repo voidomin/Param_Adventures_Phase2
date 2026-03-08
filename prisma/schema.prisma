@@ -264,7 +264,8 @@ model Booking {
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt
 
-  payments Payment[]
+  payments     Payment[]
+  participants BookingParticipant[]
 }
 
 model Payment {
@@ -280,6 +281,30 @@ model Payment {
   status            PaymentStatus   @default(PENDING)
   fullPayload       Json? // Raw gateway response
   createdAt         DateTime        @default(now())
+}
+
+model BookingParticipant {
+  id               String   @id @default(uuid())
+  bookingId        String
+  booking          Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  
+  isPrimary        Boolean  @default(false) // True if this participant is the person who made the booking
+
+  // Participant Data
+  name                   String
+  email                  String?
+  phoneNumber            String?
+  gender                 String?
+  age                    Int?
+  bloodGroup             String?
+  emergencyContactName   String?
+  emergencyContactNumber String?
+  emergencyRelationship  String?
+
+  attended         Boolean  @default(false)
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 // ─── OPERATIONS ──────────────────────────────────────────

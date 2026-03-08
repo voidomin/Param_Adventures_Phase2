@@ -53,6 +53,7 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
         bookings: {
           where: { bookingStatus: "CONFIRMED", deletedAt: null },
           include: {
+            participants: true,
             user: {
               select: {
                 id: true,

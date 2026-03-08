@@ -45,6 +45,7 @@ export async function GET(request: NextRequest) {
     const allBookings = await prisma.booking.findMany({
       where: { userId: payload.userId, deletedAt: null },
       include: {
+        participants: true,
         experience: {
           select: {
             id: true,

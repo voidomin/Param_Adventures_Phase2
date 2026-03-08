@@ -23,6 +23,7 @@ export async function GET(
         bookingStatus: "CONFIRMED",
       },
       include: {
+        participants: true,
         user: {
           select: {
             id: true,

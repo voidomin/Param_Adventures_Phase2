@@ -65,6 +65,11 @@ interface Booking {
   slot: { date: string; capacity: number } | null;
   canReview: boolean;
   payments: { status: string; amount: string; method: string | null }[];
+  participants: {
+    id: string;
+    name: string;
+    isPrimary: boolean;
+  }[];
 }
 
 function getBookingStatusIcon(status: string) {
@@ -174,6 +179,32 @@ function BookingCard({
             {booking.participantCount} pax
           </span>
         </div>
+
+        {booking.participants && booking.participants.length > 0 && (
+          <details className="mb-4 text-sm text-foreground/70 group cursor-pointer bg-foreground/5 rounded-lg p-2.5 transition-all text-left">
+            <summary className="font-semibold select-none flex items-center justify-between">
+              View Participants
+              <span className="text-xs text-primary group-open:hidden group-hover:underline">
+                Show
+              </span>
+              <span className="text-xs text-primary hidden group-open:inline group-hover:underline">
+                Hide
+              </span>
+            </summary>
+            <ul className="mt-2 space-y-1 list-disc list-inside text-xs pl-1 text-foreground/60 border-t border-border/50 pt-2">
+              {booking.participants.map((p) => (
+                <li key={p.id} className="truncate">
+                  {p.name}{" "}
+                  {p.isPrimary && (
+                    <span className="text-[10px] ml-1 uppercase text-primary border border-primary/20 bg-primary/10 px-1 rounded select-none">
+                      Primary
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1 text-xl font-black text-foreground">
@@ -598,6 +629,33 @@ export default function DashboardPage() {
                         {booking.participantCount} pax
                       </span>
                     </div>
+
+                    {booking.participants &&
+                      booking.participants.length > 0 && (
+                        <details className="mt-2 text-sm text-foreground/70 group cursor-pointer bg-foreground/5 rounded-lg p-2.5 transition-all inline-block min-w-[240px] max-w-sm">
+                          <summary className="font-semibold select-none flex items-center justify-between gap-6">
+                            View Participants
+                            <span className="text-xs text-primary group-open:hidden group-hover:underline">
+                              Show
+                            </span>
+                            <span className="text-xs text-primary hidden group-open:inline group-hover:underline">
+                              Hide
+                            </span>
+                          </summary>
+                          <ul className="mt-2 space-y-1 list-disc list-inside text-xs pl-1 text-foreground/60 border-t border-border/50 pt-2">
+                            {booking.participants.map((p) => (
+                              <li key={p.id} className="truncate">
+                                {p.name}{" "}
+                                {p.isPrimary && (
+                                  <span className="text-[10px] ml-1 uppercase text-primary border border-primary/20 bg-primary/10 px-1 rounded select-none">
+                                    Primary
+                                  </span>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
+                        </details>
+                      )}
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3">

@@ -191,7 +191,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto pt-24 pb-12 px-4">
+    <div className="max-w-4xl mx-auto pt-32 lg:pt-40 pb-12 px-4">
       <div className="mb-10">
         <h1 className="text-3xl font-heading font-black text-foreground">
           Account Settings
@@ -247,7 +247,7 @@ export default function SettingsPage() {
                     Phone Number <span className="text-primary">*</span>
                   </label>
                   <div className="flex items-center gap-0 border border-border rounded-xl bg-background overflow-hidden focus-within:border-primary focus-within:ring-1 focus-within:ring-primary shadow-sm transition-all">
-                    <div className="pl-4 pr-0.5 text-foreground/40 font-black select-none">
+                    <div className="pl-4 pr-1 text-foreground/40 font-black select-none">
                       +
                     </div>
                     <input
@@ -255,9 +255,11 @@ export default function SettingsPage() {
                       id="countryCode"
                       value={countryCode.replace("+", "")}
                       onChange={(e) =>
-                        setCountryCode(`+${e.target.value.replace(/\D/g, "")}`)
+                        setCountryCode(
+                          `+${e.target.value.replaceAll(/\D/g, "")}`,
+                        )
                       }
-                      className="w-12 py-3 bg-transparent font-bold text-foreground focus:outline-none"
+                      className="w-16 py-3 bg-transparent font-bold text-foreground focus:outline-none"
                       placeholder="91"
                       maxLength={4}
                     />
@@ -269,7 +271,7 @@ export default function SettingsPage() {
                       onChange={(e) => setPhone(e.target.value)}
                       required
                       placeholder="99999 99999"
-                      className="flex-1 py-3 bg-transparent focus:outline-none"
+                      className="flex-1 min-w-0 py-3 pr-4 bg-transparent focus:outline-none"
                     />
                   </div>
                 </div>
@@ -415,7 +417,7 @@ export default function SettingsPage() {
                     Contact Number
                   </label>
                   <div className="flex items-center gap-0 border border-border rounded-xl bg-background overflow-hidden focus-within:border-primary focus-within:ring-1 focus-within:ring-primary shadow-sm transition-all">
-                    <div className="pl-4 pr-0.5 text-foreground/40 font-black select-none">
+                    <div className="pl-4 pr-1 text-foreground/40 font-black select-none">
                       +
                     </div>
                     <input
@@ -424,10 +426,10 @@ export default function SettingsPage() {
                       value={ecCountryCode.replace("+", "")}
                       onChange={(e) =>
                         setEcCountryCode(
-                          `+${e.target.value.replace(/\D/g, "")}`,
+                          `+${e.target.value.replaceAll(/\D/g, "")}`,
                         )
                       }
-                      className="w-12 py-3 bg-transparent font-bold text-foreground focus:outline-none"
+                      className="w-16 py-3 bg-transparent font-bold text-foreground focus:outline-none"
                       placeholder="91"
                       maxLength={4}
                     />
@@ -438,7 +440,7 @@ export default function SettingsPage() {
                       value={ecPhone}
                       onChange={(e) => setEcPhone(e.target.value)}
                       placeholder="88888 88888"
-                      className="flex-1 py-3 bg-transparent focus:outline-none"
+                      className="flex-1 min-w-0 py-3 pr-4 bg-transparent focus:outline-none"
                     />
                   </div>
                 </div>
