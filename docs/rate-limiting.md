@@ -1,13 +1,11 @@
-# Rate Limiting
-
 ## Overview
 
-All `/api/*` routes are protected by an in-memory sliding window rate limiter, enforced via a Next.js middleware (`src/middleware.ts`).
+All `/api/*` routes are protected by an in-memory sliding window rate limiter, enforced via the Next.js proxy middleware (`src/proxy.ts`).
 
 ## Architecture
 
 ```
-Request → middleware.ts → findMatchingRule() → rateLimit() → Route Handler
+Request → proxy.ts → findMatchingRule() → rateLimit() → Route Handler
                               ↓                     ↓
                     rate-limit-config.ts      rate-limit.ts (in-memory store)
 ```
@@ -63,4 +61,4 @@ The current in-memory store works for a **single server** (e.g., one AWS instanc
 
 1. Install Upstash Redis: `npm install @upstash/redis`
 2. Replace the `Map`-based store in `rate-limit.ts` with Upstash's `Redis.incr()` + `Redis.expire()`.
-3. No changes needed in `middleware.ts` or `rate-limit-config.ts`.
+3. No changes needed in `proxy.ts` or `rate-limit-config.ts`.

@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { rateLimit } from "@/lib/rate-limit";
+import { findMatchingRule } from "@/lib/rate-limit-config";
 
 /**
  * Route protection middleware.
@@ -15,6 +17,44 @@ import type { NextRequest } from "next/server";
  */
 export default function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // ─── 1. Rate Limiting ──────────────────────────────────
+  const rule = findMatchingRule(pathname);
+  if (rule) {
+    const forwarded = request.headers.get("x-forwarded-for");
+    const realIp = request.headers.get("x-real-ip");
+    const ip = forwarded?.split(",")[0]?.trim() || realIp || "unknown";
+
+    const key = `${ip}:${rule.pathPrefix}`;
+    const rateLimitResult = rateLimit(key, rule.limit, rule.windowMs);
+
+    if (!rateLimitResult.success) {
+      const retryAfterSeconds = Math.ceil(
+        (rateLimitResult.resetAt - Date.now()) / 1000,
+      );
+
+      console.warn(
+        `[RATE_LIMIT] Blocked ${ip} on ${pathname} (${rule.label || rule.pathPrefix}). Retry after ${retryAfterSeconds}s`,
+      );
+
+      return NextResponse.json(
+        {
+          error: "Too many requests. Please try again later.",
+          retryAfter: retryAfterSeconds,
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(retryAfterSeconds),
+            "X-RateLimit-Limit": String(rateLimitResult.limit),
+            "X-RateLimit-Remaining": "0",
+          },
+        },
+      );
+    }
+    // Note: We'll attach rate limit headers to the final response if possible,
+    // but Next.js middleware returns allow us to pass headers to the next response.
+  }
 
   // ─── Always-public routes ──────────────────────────────
   const publicPaths = [
@@ -44,7 +84,17 @@ export default function proxy(request: NextRequest) {
   );
 
   if (isPublic) {
-    return NextResponse.next();
+    const response = NextResponse.next();
+    if (rule) {
+      const forwarded = request.headers.get("x-forwarded-for");
+      const realIp = request.headers.get("x-real-ip");
+      const ip = forwarded?.split(",")[0]?.trim() || realIp || "unknown";
+      const key = `${ip}:${rule.pathPrefix}`;
+      const result = rateLimit(key, rule.limit, rule.windowMs);
+      response.headers.set("X-RateLimit-Limit", String(result.limit));
+      response.headers.set("X-RateLimit-Remaining", String(result.remaining));
+    }
+    return response;
   }
 
   // ─── Static assets and Next.js internals — always pass ─
@@ -75,7 +125,21 @@ export default function proxy(request: NextRequest) {
   }
 
   // Token exists — let the route handler verify it
-  return NextResponse.next();
+  const response = NextResponse.next();
+
+  // Attach rate limit headers if a rule was matched
+  if (rule) {
+    const forwarded = request.headers.get("x-forwarded-for");
+    const realIp = request.headers.get("x-real-ip");
+    const ip = forwarded?.split(",")[0]?.trim() || realIp || "unknown";
+    const key = `${ip}:${rule.pathPrefix}`;
+    // Re-check just to get the result (or we could have stored it)
+    const result = rateLimit(key, rule.limit, rule.windowMs);
+    response.headers.set("X-RateLimit-Limit", String(result.limit));
+    response.headers.set("X-RateLimit-Remaining", String(result.remaining));
+  }
+
+  return response;
 }
 
 export const config = {
