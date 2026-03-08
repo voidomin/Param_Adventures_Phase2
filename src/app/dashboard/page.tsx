@@ -29,6 +29,12 @@ interface DashboardData {
     email: string;
     avatarUrl: string | null;
     phoneNumber: string | null;
+    gender?: string | null;
+    age?: number | null;
+    bloodGroup?: string | null;
+    emergencyContactName?: string | null;
+    emergencyContactNumber?: string | null;
+    emergencyRelationship?: string | null;
     createdAt: string;
     roleName: string;
   };
@@ -303,6 +309,10 @@ export default function DashboardPage() {
   }
 
   const { user, upcomingBookings, pastBookings, stats } = data;
+
+  // Profile completeness check
+  const isIncompleteProfile = !user.name || !user.phoneNumber || !user.gender;
+
   const currentAvatarUrl = avatarUrl ?? user.avatarUrl;
   const initials = user.name
     .split(" ")
@@ -317,8 +327,31 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-background pb-20">
+      {/* Profile Completion Warning */}
+      {isIncompleteProfile && (
+        <div className="sticky top-16 z-50 bg-orange-500 text-white px-4 py-3 shadow-xl animate-in slide-in-from-top duration-500">
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="bg-white/20 p-2 rounded-full">
+                <AlertCircle className="w-5 h-5 text-white" />
+              </div>
+              <p className="font-bold text-sm sm:text-base">
+                Your profile is incomplete! Complete it now to ensure a smooth
+                booking experience.
+              </p>
+            </div>
+            <Link
+              href="/dashboard/settings"
+              className="px-6 py-2 bg-white text-orange-600 font-bold rounded-full hover:bg-orange-50 transition-colors shadow-sm text-sm"
+            >
+              Complete Profile
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* Hero / Profile Header */}
-      <div className="relative pt-16 overflow-hidden">
+      <div className="relative pt-24 overflow-hidden">
         <div className="absolute inset-0 bg-linear-to-br from-primary/10 via-background to-background" />
         <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
         <div className="relative max-w-7xl mx-auto px-4 py-16">

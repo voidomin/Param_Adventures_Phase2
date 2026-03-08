@@ -19,6 +19,12 @@ interface User {
   role: string;
   phoneNumber?: string | null;
   avatarUrl?: string | null;
+  gender?: string | null;
+  age?: number | null;
+  bloodGroup?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactNumber?: string | null;
+  emergencyRelationship?: string | null;
   isVerified: boolean;
   permissions: string[];
 }

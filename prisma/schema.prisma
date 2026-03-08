@@ -124,6 +124,14 @@ model User {
   phoneNumber      String?
   avatarUrl   String?
 
+  // Profile Expansion
+  gender                  String?
+  age                     Int?
+  bloodGroup              String?
+  emergencyContactName    String?
+  emergencyContactNumber  String?
+  emergencyRelationship   String?
+
   roleId String
   role   Role   @relation(fields: [roleId], references: [id])
 
