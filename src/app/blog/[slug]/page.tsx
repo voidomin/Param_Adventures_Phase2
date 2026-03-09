@@ -1,3 +1,5 @@
+import { cookies } from "next/headers";
+import { verifyAccessToken } from "@/lib/auth";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
@@ -82,8 +84,11 @@ export default async function BlogArticlePage({ params }: Props) {
   });
 
   // Check authorization for preview
-  const auth = await authorizeRequest(req as any, "blog:moderate");
-  const isModerator = auth.authorized;
+  const cookieStore = await cookies();
+  const token = cookieStore.get("accessToken")?.value;
+  const payload = token ? verifyAccessToken(token) : null;
+  const isModerator =
+    payload?.roleName === "SUPER_ADMIN" || payload?.roleName === "ADMIN";
 
   if (
     !blog ||
