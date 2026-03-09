@@ -11,8 +11,6 @@ import {
   Loader2,
   CheckCircle2,
   AlertCircle,
-  ChevronLeft,
-  ChevronRight,
   ChevronDown,
   User,
   ChevronUp,
@@ -581,8 +579,9 @@ export default function BookingModal({
                   </div>
                   <div className="flex items-center gap-4">
                     {index === 0 && user && (
-                      <div
-                        className="flex items-center gap-2 cursor-pointer group/cb bg-primary/5 px-3 py-1.5 rounded-xl border border-primary/10 hover:border-primary/30 transition-all"
+                      <button
+                        type="button"
+                        className="flex items-center gap-2 cursor-pointer group/cb bg-primary/5 px-3 py-1.5 rounded-xl border border-primary/10 hover:border-primary/30 transition-all focus:outline-none focus:ring-1 focus:ring-primary/50"
                         onClick={(e) => {
                           e.stopPropagation();
                           setIncludeMyself(!includeMyself);
@@ -602,7 +601,7 @@ export default function BookingModal({
                         <span className="text-[10px] font-black uppercase tracking-widest text-primary/70 group-hover/cb:text-primary transition-colors select-none">
                           Include Myself
                         </span>
-                      </div>
+                      </button>
                     )}
                     <ChevronDown className="w-5 h-5 text-foreground/40 group-open:rotate-180 transition-transform shrink-0" />
                   </div>
