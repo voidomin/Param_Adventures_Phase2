@@ -13,81 +13,92 @@ export async function authorizeRequest(
   | { authorized: true; userId: string; roleName: string }
   | { authorized: false; response: NextResponse }
 > {
-  const authHeader = request.headers.get("authorization");
-  const cookieToken = request.cookies.get("accessToken")?.value;
-  const token = authHeader?.startsWith("Bearer ")
-    ? authHeader.split(" ")[1]
-    : cookieToken;
+  try {
+    const authHeader = request.headers.get("authorization");
+    const cookieToken = request.cookies.get("accessToken")?.value;
+    const token = authHeader?.startsWith("Bearer ")
+      ? authHeader.split(" ")[1]
+      : cookieToken;
 
-  if (!token) {
-    return {
-      authorized: false,
-      response: NextResponse.json(
-        { error: "Authentication required." },
-        { status: 401 },
-      ),
-    };
-  }
+    if (!token) {
+      return {
+        authorized: false,
+        response: NextResponse.json(
+          { error: "Authentication required." },
+          { status: 401 },
+        ),
+      };
+    }
 
-  const payload = verifyAccessToken(token);
-  if (!payload) {
-    return {
-      authorized: false,
-      response: NextResponse.json(
-        { error: "Invalid or expired token." },
-        { status: 401 },
-      ),
-    };
-  }
+    const payload = verifyAccessToken(token);
+    if (!payload) {
+      return {
+        authorized: false,
+        response: NextResponse.json(
+          { error: "Invalid or expired token." },
+          { status: 401 },
+        ),
+      };
+    }
 
-  // If a permission is required, check it
-  if (requiredPermission) {
-    const user = await prisma.user.findUnique({
-      where: { id: payload.userId },
-      include: {
-        role: {
-          include: {
-            permissions: {
-              include: { permission: true },
+    // If a permission is required, check it
+    if (requiredPermission) {
+      const user = await prisma.user.findUnique({
+        where: { id: payload.userId },
+        include: {
+          role: {
+            include: {
+              permissions: {
+                include: { permission: true },
+              },
             },
           },
         },
-      },
-    });
-
-    if (!user || user.deletedAt || user.status !== "ACTIVE") {
-      return {
-        authorized: false,
-        response: NextResponse.json(
-          { error: "User not found or inactive." },
-          { status: 403 },
-        ),
-      };
-    }
-
-    const hasPermission =
-      user.role.name === "SUPER_ADMIN" ||
-      user.role.permissions.some((rp) => {
-        if (Array.isArray(requiredPermission)) {
-          return requiredPermission.includes(rp.permission.key);
-        }
-        return rp.permission.key === requiredPermission;
       });
 
-    if (!hasPermission) {
-      return {
-        authorized: false,
-        response: NextResponse.json(
-          { error: "Insufficient permissions." },
-          { status: 403 },
-        ),
-      };
-    }
-  }
+      if (!user || user.deletedAt || user.status !== "ACTIVE") {
+        return {
+          authorized: false,
+          response: NextResponse.json(
+            { error: "User not found or inactive." },
+            { status: 403 },
+          ),
+        };
+      }
 
-  return {
-    authorized: true,
-    userId: payload.userId,
-    roleName: payload.roleName,
-  };
+      const hasPermission =
+        user.role.name === "SUPER_ADMIN" ||
+        user.role.permissions.some((rp) => {
+          if (Array.isArray(requiredPermission)) {
+            return requiredPermission.includes(rp.permission.key);
+          }
+          return rp.permission.key === requiredPermission;
+        });
+
+      if (!hasPermission) {
+        return {
+          authorized: false,
+          response: NextResponse.json(
+            { error: "Insufficient permissions." },
+            { status: 403 },
+          ),
+        };
+      }
+    }
+
+    return {
+      authorized: true,
+      userId: payload.userId,
+      roleName: payload.roleName,
+    };
+  } catch (error) {
+    console.error("Authorize request error:", error);
+    return {
+      authorized: false,
+      response: NextResponse.json(
+        { error: "Internal authorization error." },
+        { status: 500 },
+      ),
+    };
+  }
 }

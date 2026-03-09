@@ -189,9 +189,23 @@ async function uploadSingleFile(
     }),
   });
 
+  if (!presignRes.ok) {
+    const text = await presignRes.text();
+    console.error(
+      `Presign error (${presignRes.status}):`,
+      text.substring(0, 200),
+    );
+    try {
+      const data = JSON.parse(text);
+      throw new Error(data.error || `Server error: ${presignRes.status}`);
+    } catch {
+      throw new Error(
+        `Failed to get upload authorization (Status ${presignRes.status}).`,
+      );
+    }
+  }
+
   const uploadData = await presignRes.json();
-  if (!presignRes.ok)
-    throw new Error(uploadData.error || "Failed to get upload authorization");
 
   // 2. Direct Upload (Provider Specific)
   const uploadedUrl =
@@ -212,13 +226,25 @@ async function uploadSingleFile(
     }),
   });
 
-  const registerData = await registerRes.json();
   if (!registerRes.ok) {
-    throw new Error(
-      registerData.error || "Failed to register media in database",
+    const text = await registerRes.text();
+    console.error(
+      `Register error (${registerRes.status}):`,
+      text.substring(0, 200),
     );
+    try {
+      const data = JSON.parse(text);
+      throw new Error(
+        data.error || `Registration failed: ${registerRes.status}`,
+      );
+    } catch {
+      throw new Error(
+        `Failed to register media in database (Status ${registerRes.status}).`,
+      );
+    }
   }
 
+  const registerData = await registerRes.json();
   return uploadedUrl;
 }
 
