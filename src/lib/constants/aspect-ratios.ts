@@ -16,7 +16,7 @@ export const ASPECT_RATIOS = {
   GALLERY_IMAGE: 3 / 2,
 
   // Profiles / Icons (Square)
-  AVATAR: 1 / 1,
+  AVATAR: 1,
 } as const;
 
 // Helper to get Tailwind class equivalence (useful for React components)

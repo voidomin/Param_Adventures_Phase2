@@ -185,7 +185,7 @@ function BookingCard({
         {booking.participants && booking.participants.length > 0 && (
           <details className="mb-4 text-sm text-foreground/70 group cursor-pointer bg-foreground/5 rounded-lg p-2.5 transition-all text-left">
             <summary className="font-semibold select-none flex items-center justify-between">
-              View Participants
+              View Participants{" "}
               <span className="text-xs text-primary group-open:hidden group-hover:underline">
                 Show
               </span>
@@ -658,7 +658,7 @@ export default function DashboardPage() {
                       booking.participants.length > 0 && (
                         <details className="mt-2 text-sm text-foreground/70 group cursor-pointer bg-foreground/5 rounded-lg p-2.5 transition-all inline-block min-w-[240px] max-w-sm">
                           <summary className="font-semibold select-none flex items-center justify-between gap-6">
-                            View Participants
+                            View Participants{" "}
                             <span className="text-xs text-primary group-open:hidden group-hover:underline">
                               Show
                             </span>

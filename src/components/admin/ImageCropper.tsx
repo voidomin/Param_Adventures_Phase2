@@ -15,7 +15,9 @@ const createImage = (url: string): Promise<HTMLImageElement> =>
   new Promise((resolve, reject) => {
     const image = new Image();
     image.addEventListener("load", () => resolve(image));
-    image.addEventListener("error", (error) => reject(error));
+    image.addEventListener("error", () =>
+      reject(new Error("Failed to load image")),
+    );
     image.setAttribute("crossOrigin", "anonymous");
     image.src = url;
   });

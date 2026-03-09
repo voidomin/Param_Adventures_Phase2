@@ -234,7 +234,6 @@ export default function MediaUploader({
   const [error, setError] = useState<string | null>(null);
 
   // States for cropping
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -269,7 +268,6 @@ export default function MediaUploader({
 
     // If we have a single image and cropping is enabled
     if (shouldCrop && isImage && allFiles.length === 1) {
-      setPendingFile(primaryFile);
       const url = URL.createObjectURL(primaryFile);
       setCropImageUrl(url);
     } else {
@@ -301,7 +299,6 @@ export default function MediaUploader({
     // Revoke the temporary object URL
     if (cropImageUrl) URL.revokeObjectURL(cropImageUrl);
     setCropImageUrl(null);
-    setPendingFile(null);
 
     // Upload the cropped blob
     handleFiles([croppedBlob]);
@@ -310,7 +307,6 @@ export default function MediaUploader({
   const onCropCancel = () => {
     if (cropImageUrl) URL.revokeObjectURL(cropImageUrl);
     setCropImageUrl(null);
-    setPendingFile(null);
   };
 
   return (
