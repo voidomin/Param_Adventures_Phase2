@@ -33,7 +33,7 @@ export async function PATCH(
       },
     });
 
-    if (!slot || slot.experienceId !== id) {
+    if (slot?.experienceId !== id) {
       return NextResponse.json({ error: "Slot not found" }, { status: 404 });
     }
 
@@ -94,7 +94,7 @@ export async function DELETE(
       },
     });
 
-    if (!slot || slot.experienceId !== id) {
+    if (slot?.experienceId !== id) {
       return NextResponse.json({ error: "Slot not found" }, { status: 404 });
     }
 
