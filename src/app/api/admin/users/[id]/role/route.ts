@@ -91,21 +91,6 @@ export async function PATCH(
       );
     }
 
-    // ─── 2. SUPER_ADMIN Allowlist Check ───────────────────────
-    if (newRole === "SUPER_ADMIN") {
-      const allowedEmailsRaw = process.env.SUPER_ADMIN_ALLOWED_EMAILS || "";
-      const allowedEmails = allowedEmailsRaw
-        .split(",")
-        .map((e) => e.trim().toLowerCase());
-
-      if (!allowedEmails.includes(targetUser.email.toLowerCase())) {
-        return NextResponse.json(
-          { error: "User email is not in the SUPER_ADMIN allowlist." },
-          { status: 403 },
-        );
-      }
-    }
-
     // ─── 3. Update the Role ──────────────────────────────────
     const updatedUser = await prisma.user.update({
       where: { id: targetUserId },
