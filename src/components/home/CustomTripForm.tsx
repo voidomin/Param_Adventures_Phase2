@@ -126,6 +126,7 @@ export default function CustomTripForm() {
                   id="name"
                   name="name"
                   required
+                  suppressHydrationWarning
                   placeholder="John Doe"
                   className="w-full bg-background border border-border rounded-xl pl-12 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none font-medium text-foreground"
                 />
@@ -145,6 +146,7 @@ export default function CustomTripForm() {
                   id="email"
                   name="email"
                   required
+                  suppressHydrationWarning
                   placeholder="john@example.com"
                   className="w-full bg-background border border-border rounded-xl pl-12 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none font-medium text-foreground"
                 />
@@ -165,6 +167,7 @@ export default function CustomTripForm() {
                 id="phone"
                 name="phone"
                 required
+                suppressHydrationWarning
                 placeholder="+91 98765 43210"
                 className="w-full bg-background border border-border rounded-xl pl-12 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none font-medium text-foreground"
               />
@@ -193,6 +196,7 @@ export default function CustomTripForm() {
           <button
             type="submit"
             disabled={loading}
+            suppressHydrationWarning
             className="w-full bg-primary text-primary-foreground font-black py-4 rounded-xl flex items-center justify-center gap-2 hover:scale-[1.02] transition-transform shadow-xl shadow-primary/25 disabled:opacity-50 disabled:scale-100"
           >
             {loading ? (

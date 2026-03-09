@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { X, Image as ImageIcon } from "lucide-react";
 import MediaUploader from "./MediaUploader";
+import { ASPECT_RATIOS } from "@/lib/constants/aspect-ratios";
 
 interface HeroSlide {
   id: string;
@@ -127,6 +128,8 @@ export default function HeroForm({ slide, onClose, onSuccess }: HeroFormProps) {
               ) : (
                 <div className="space-y-3">
                   <MediaUploader
+                    shouldCrop={true}
+                    aspectRatio={ASPECT_RATIOS.HERO_BANNER}
                     onUploadSuccess={(urls) => {
                       if (urls && urls.length > 0) {
                         setVideoUrl(urls[0]);

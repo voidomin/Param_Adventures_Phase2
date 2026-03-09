@@ -65,7 +65,7 @@ export default function ExperienceCard({
         whileHover={{ y: -8, transition: { duration: 0.3 } }}
         className="flex flex-col h-full bg-card rounded-2xl border border-border overflow-hidden hover:border-primary/50 transition-all hover:shadow-2xl hover:shadow-primary/5 relative duration-300"
       >
-        <div className="relative h-64 w-full overflow-hidden bg-foreground/5">
+        <div className="relative aspect-[4/3] w-full overflow-hidden bg-foreground/5">
           {isVideo ? (
             <video
               src={primaryImage}

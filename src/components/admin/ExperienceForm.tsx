@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import MediaUploader from "./MediaUploader";
+import { ASPECT_RATIOS } from "@/lib/constants/aspect-ratios";
 
 interface Category {
   id: string;
@@ -479,6 +480,8 @@ export default function ExperienceForm({
             </p>
             <MediaUploader
               id="cover-image-upload"
+              shouldCrop={true}
+              aspectRatio={ASPECT_RATIOS.EXPERIENCE_COVER}
               onUploadSuccess={(urls) => {
                 if (urls && urls.length > 0) setCoverImage(urls[0]);
               }}
@@ -513,6 +516,8 @@ export default function ExperienceForm({
             </p>
             <MediaUploader
               id="card-image-upload"
+              shouldCrop={true}
+              aspectRatio={ASPECT_RATIOS.EXPERIENCE_CARD}
               onUploadSuccess={(urls) => {
                 if (urls && urls.length > 0) setCardImage(urls[0]);
               }}
@@ -548,6 +553,8 @@ export default function ExperienceForm({
 
             <MediaUploader
               id="gallery-images-upload"
+              shouldCrop={true}
+              aspectRatio={ASPECT_RATIOS.GALLERY_IMAGE}
               onUploadSuccess={(urls) => {
                 if (urls && urls.length > 0) {
                   setImages((prev) => [...prev, ...urls]);

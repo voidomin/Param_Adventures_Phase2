@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { Loader2, Send, Save, Mountain, X } from "lucide-react";
 import * as LucideIcons from "lucide-react";
 import MediaUploader from "@/components/admin/MediaUploader";
+import { ASPECT_RATIOS } from "@/lib/constants/aspect-ratios";
 
 // Icons are cast to any to fully suppress deprecation warnings at import and usage levels
 const InstagramIcon = (LucideIcons as any).Instagram;
@@ -267,6 +268,8 @@ export default function WriteBlogPage() {
               <MediaUploader
                 id="blog-cover-upload"
                 apiPrefix="/api/user/media"
+                shouldCrop={true}
+                aspectRatio={ASPECT_RATIOS.BLOG_CARD}
                 onUploadSuccess={(urls) => {
                   if (urls?.[0]) setCoverImageUrl(urls[0]);
                 }}

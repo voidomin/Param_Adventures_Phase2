@@ -1,17 +1,14 @@
-"use client";
-
 import { useState, useCallback } from "react";
 import { UploadCloud, Loader2 } from "lucide-react";
+import ImageCropper from "./ImageCropper";
 
+// ... [rest of the helper functions remain same until MediaUploader] ...
 async function uploadToCloudinaryDirect(
-  file: File,
+  file: File | Blob,
   uploadData: Record<string, any>,
   onProgress?: (percent: number) => void,
 ): Promise<string> {
-  // Cloudinary standard upload limit is 100MB.
-  // We only chunk if the file is larger than 100MB to preserve TCP throughput
-  // and prevent high-latency connection overheads from sequential HTTP requests.
-  const CHUNK_SIZE = 99 * 1024 * 1024; // 99MB chunk limit
+  const CHUNK_SIZE = 99 * 1024 * 1024;
   const totalSize = file.size;
 
   if (totalSize <= CHUNK_SIZE) {
@@ -55,7 +52,7 @@ async function uploadToCloudinaryDirect(
     });
   }
 
-  // Chunked Upload Logic - Use cryptographically secure UUID for Cloudinary chunks
+  // Chunked Upload Logic
   const uniqueId = crypto.randomUUID();
   let start = 0;
   let secureUrl = "";
@@ -65,13 +62,12 @@ async function uploadToCloudinaryDirect(
     const chunk = file.slice(start, end);
     const isLastChunk = end === totalSize;
 
-    // eslint-disable-next-line no-await-in-loop
     secureUrl = await new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       const formData = new FormData();
-      // Crucial: Pass the original filename. Without it, the browser sends "blob",
-      // forcing Cloudinary to synchronously probe the video format, causing huge delays.
-      formData.append("file", chunk, file.name);
+      // For blobs from cropper, we might not have a name, so use a default
+      const fileName = (file as File).name || "cropped-image.jpg";
+      formData.append("file", chunk, fileName);
       formData.append("api_key", uploadData.apiKey);
       formData.append("timestamp", uploadData.timestamp.toString());
       formData.append("signature", uploadData.signature);
@@ -103,7 +99,7 @@ async function uploadToCloudinaryDirect(
           const data = JSON.parse(xhr.responseText);
           if (xhr.status >= 200 && xhr.status < 300) {
             if (isLastChunk) resolve(data.secure_url);
-            else resolve(""); // Not finished yet
+            else resolve("");
           } else {
             reject(
               new Error(
@@ -113,11 +109,8 @@ async function uploadToCloudinaryDirect(
             );
           }
         } catch (e: any) {
-          console.error("Cloudinary chunk upload parse error:", e);
           reject(
-            new Error(
-              `Failed to parse Cloudinary response during chunked upload: ${e.message}`,
-            ),
+            new Error(`Failed to parse Cloudinary response: ${e.message}`),
           );
         }
       };
@@ -133,7 +126,7 @@ async function uploadToCloudinaryDirect(
 }
 
 async function uploadToS3Direct(
-  file: File,
+  file: File | Blob,
   uploadData: Record<string, any>,
   onProgress?: (percent: number) => void,
 ): Promise<string> {
@@ -166,9 +159,8 @@ async function uploadToS3Direct(
   });
 }
 
-// Module-level helper — uploads file via direct cloud flow with progress support
 async function uploadSingleFile(
-  file: File,
+  file: File | Blob,
   apiPrefix: string,
   onProgress?: (percent: number) => void,
 ): Promise<string> {
@@ -179,44 +171,31 @@ async function uploadSingleFile(
     throw new Error("Only images and videos are supported.");
   }
 
-  // 1. Get Presigned Data/URL
+  const fileName = (file as File).name || "upload";
   const presignRes = await fetch(`${apiPrefix}/presign`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      fileName: file.name,
+      fileName: fileName,
       contentType: file.type,
     }),
   });
 
   if (!presignRes.ok) {
-    const text = await presignRes.text();
-    console.error(
-      `Presign error (${presignRes.status}):`,
-      text.substring(0, 200),
+    throw new Error(
+      `Failed to get upload authorization (Status ${presignRes.status}).`,
     );
-    try {
-      const data = JSON.parse(text);
-      throw new Error(data.error || `Server error: ${presignRes.status}`);
-    } catch {
-      throw new Error(
-        `Failed to get upload authorization (Status ${presignRes.status}).`,
-      );
-    }
   }
 
   const uploadData = await presignRes.json();
 
-  // 2. Direct Upload (Provider Specific)
   const uploadedUrl =
     uploadData.provider === "cloudinary"
       ? await uploadToCloudinaryDirect(file, uploadData, onProgress)
       : await uploadToS3Direct(file, uploadData, onProgress);
 
-  // 100% progress before DB registration
   if (onProgress) onProgress(100);
 
-  // 3. Register Media in Database
   const registerRes = await fetch(`${apiPrefix}/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -227,21 +206,9 @@ async function uploadSingleFile(
   });
 
   if (!registerRes.ok) {
-    const text = await registerRes.text();
-    console.error(
-      `Register error (${registerRes.status}):`,
-      text.substring(0, 200),
+    throw new Error(
+      `Failed to register media in database (Status ${registerRes.status}).`,
     );
-    try {
-      const data = JSON.parse(text);
-      throw new Error(
-        data.error || `Registration failed: ${registerRes.status}`,
-      );
-    } catch {
-      throw new Error(
-        `Failed to register media in database (Status ${registerRes.status}).`,
-      );
-    }
   }
 
   await registerRes.json();
@@ -252,15 +219,23 @@ export default function MediaUploader({
   id = "media-upload",
   apiPrefix = "/api/admin/media",
   onUploadSuccess,
+  aspectRatio,
+  shouldCrop = false,
 }: Readonly<{
   id?: string;
   apiPrefix?: string;
   onUploadSuccess?: (urls?: string[]) => void;
+  aspectRatio?: number;
+  shouldCrop?: boolean;
 }>) {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+
+  // States for cropping
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -278,18 +253,31 @@ export default function MediaUploader({
     setIsDragging(false);
     const files = e.dataTransfer.files;
     if (files && files.length > 0) {
-      handleFiles(Array.from(files));
+      handleInitialFile(files[0], Array.from(files));
     }
   }, []);
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      handleFiles(Array.from(files));
+      handleInitialFile(files[0], Array.from(files));
     }
   };
 
-  const handleFiles = async (files: File[]) => {
+  const handleInitialFile = (primaryFile: File, allFiles: File[]) => {
+    const isImage = primaryFile.type.startsWith("image/");
+
+    // If we have a single image and cropping is enabled
+    if (shouldCrop && isImage && allFiles.length === 1) {
+      setPendingFile(primaryFile);
+      const url = URL.createObjectURL(primaryFile);
+      setCropImageUrl(url);
+    } else {
+      handleFiles(allFiles);
+    }
+  };
+
+  const handleFiles = async (files: (File | Blob)[]) => {
     setError(null);
     setIsUploading(true);
     setProgress(0);
@@ -302,7 +290,6 @@ export default function MediaUploader({
       }
       if (onUploadSuccess) onUploadSuccess(uploadedUrls);
     } catch (err: unknown) {
-      console.error(err);
       setError(err instanceof Error ? err.message : "Upload failed.");
     } finally {
       setIsUploading(false);
@@ -310,9 +297,24 @@ export default function MediaUploader({
     }
   };
 
+  const onCropComplete = (croppedBlob: Blob) => {
+    // Revoke the temporary object URL
+    if (cropImageUrl) URL.revokeObjectURL(cropImageUrl);
+    setCropImageUrl(null);
+    setPendingFile(null);
+
+    // Upload the cropped blob
+    handleFiles([croppedBlob]);
+  };
+
+  const onCropCancel = () => {
+    if (cropImageUrl) URL.revokeObjectURL(cropImageUrl);
+    setCropImageUrl(null);
+    setPendingFile(null);
+  };
+
   return (
     <div className="w-full">
-      {/* Native label wraps a hidden file input — natively interactive, no ARIA needed */}
       <label
         htmlFor={id}
         className={`relative border-2 border-dashed rounded-2xl p-10 text-center transition-colors block ${
@@ -328,7 +330,7 @@ export default function MediaUploader({
         <input
           type="file"
           id={id}
-          multiple
+          multiple={!shouldCrop}
           accept="image/*,video/*"
           className="hidden"
           onChange={handleFileInput}
@@ -360,7 +362,7 @@ export default function MediaUploader({
             </div>
             <div>
               <p className="text-foreground font-heading font-bold text-lg">
-                Drag &amp; drop files here
+                {shouldCrop ? "Upload & Crop" : "Drag & drop files here"}
               </p>
               <p className="text-sm text-foreground/60 mt-1">
                 or click to browse your computer
@@ -378,10 +380,16 @@ export default function MediaUploader({
           <p className="text-red-500 text-sm font-medium bg-red-500/10 p-3 rounded-lg border border-red-500/20">
             Error: {error}
           </p>
-          <p className="text-[10px] text-foreground/30 mt-1 px-1">
-            Try a smaller file or a different format if the problem persists.
-          </p>
         </div>
+      )}
+
+      {cropImageUrl && (
+        <ImageCropper
+          image={cropImageUrl}
+          aspectRatio={aspectRatio ?? 1}
+          onCropComplete={onCropComplete}
+          onCancel={onCropCancel}
+        />
       )}
     </div>
   );

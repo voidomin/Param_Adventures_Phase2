@@ -21,6 +21,8 @@ import {
   Pencil,
   PenLine,
 } from "lucide-react";
+import ImageCropper from "@/components/admin/ImageCropper";
+import { ASPECT_RATIOS } from "@/lib/constants/aspect-ratios";
 
 interface DashboardData {
   user: {
@@ -293,13 +295,29 @@ export default function DashboardPage() {
     fetchDashboard();
   }, [router]);
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [pendingAvatar, setPendingAvatar] = useState<File | null>(null);
+  const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
+
+  const handleAvatarInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.type.startsWith("image/")) {
+      setPendingAvatar(file);
+      setCropImageUrl(URL.createObjectURL(file));
+    }
+  };
+
+  const handleAvatarUpload = async (croppedBlob: Blob) => {
+    if (cropImageUrl) URL.revokeObjectURL(cropImageUrl);
+    setCropImageUrl(null);
+    setPendingAvatar(null);
+
     setIsUploadingAvatar(true);
     try {
       const form = new FormData();
-      form.append("file", file);
+      // Use original filename or default
+      const fileName = pendingAvatar?.name || "avatar.jpg";
+      form.append("file", croppedBlob, fileName);
       const res = await fetch("/api/user/avatar", {
         method: "POST",
         body: form,
@@ -311,6 +329,12 @@ export default function DashboardPage() {
     } finally {
       setIsUploadingAvatar(false);
     }
+  };
+
+  const onCropCancel = () => {
+    if (cropImageUrl) URL.revokeObjectURL(cropImageUrl);
+    setCropImageUrl(null);
+    setPendingAvatar(null);
   };
 
   if (isLoading) {
@@ -422,7 +446,7 @@ export default function DashboardPage() {
                 type="file"
                 accept="image/*"
                 className="hidden"
-                onChange={handleAvatarUpload}
+                onChange={handleAvatarInput}
               />
             </div>
 
@@ -681,6 +705,15 @@ export default function DashboardPage() {
           )}
         </section>
       </div>
+
+      {cropImageUrl && (
+        <ImageCropper
+          image={cropImageUrl}
+          aspectRatio={ASPECT_RATIOS.AVATAR}
+          onCropComplete={handleAvatarUpload}
+          onCancel={onCropCancel}
+        />
+      )}
     </div>
   );
 }
