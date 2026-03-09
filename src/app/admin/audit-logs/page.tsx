@@ -7,10 +7,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
-  User,
   Info,
   ChevronDown,
-  ChevronUp,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { useRouter } from "next/navigation";
@@ -72,7 +70,7 @@ export default function AuditLogsPage() {
     }
   }, [fetchLogs, user?.role]);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setPage(1);
     fetchLogs();

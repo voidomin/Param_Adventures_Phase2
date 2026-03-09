@@ -244,7 +244,7 @@ async function uploadSingleFile(
     }
   }
 
-  const registerData = await registerRes.json();
+  await registerRes.json();
   return uploadedUrl;
 }
 

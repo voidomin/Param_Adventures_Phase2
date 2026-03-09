@@ -186,31 +186,39 @@ export default function AdminUsersPage() {
                       {canAssignRoles && (
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end gap-3">
-                            {updatingUserId === user.id ? (
-                              <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                            ) : canModifyThisUser ? (
-                              <select
-                                disabled={updatingUserId === user.id}
-                                value={currentRoleId || ""}
-                                onChange={(e) =>
-                                  handleRoleChange(user.id, e.target.value)
-                                }
-                                className="bg-transparent border border-border rounded-lg text-sm px-3 py-1.5 focus:border-primary outline-none text-foreground w-40 disabled:opacity-50"
-                              >
-                                <option value="" disabled>
-                                  Select Role
-                                </option>
-                                {roles.map((r) => (
-                                  <option key={r.id} value={r.id}>
-                                    {r.name.replace("_", " ")}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : (
-                              <span className="text-xs text-foreground/30 italic">
-                                Read-only
-                              </span>
-                            )}
+                            {(() => {
+                              if (updatingUserId === user.id) {
+                                return (
+                                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                                );
+                              }
+                              if (canModifyThisUser) {
+                                return (
+                                  <select
+                                    disabled={updatingUserId === user.id}
+                                    value={currentRoleId || ""}
+                                    onChange={(e) =>
+                                      handleRoleChange(user.id, e.target.value)
+                                    }
+                                    className="bg-transparent border border-border rounded-lg text-sm px-3 py-1.5 focus:border-primary outline-none text-foreground w-40 disabled:opacity-50"
+                                  >
+                                    <option value="" disabled>
+                                      Select Role
+                                    </option>
+                                    {roles.map((r) => (
+                                      <option key={r.id} value={r.id}>
+                                        {r.name.replace("_", " ")}
+                                      </option>
+                                    ))}
+                                  </select>
+                                );
+                              }
+                              return (
+                                <span className="text-xs text-foreground/30 italic">
+                                  Read-only
+                                </span>
+                              );
+                            })()}
                           </div>
                         </td>
                       )}

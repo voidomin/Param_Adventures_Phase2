@@ -24,10 +24,13 @@ export async function GET(request: NextRequest) {
 
   try {
     const { searchParams } = request.nextUrl;
-    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+    const page = Math.max(
+      1,
+      Number.parseInt(searchParams.get("page") || "1", 10),
+    );
     const limit = Math.min(
       100,
-      Math.max(1, parseInt(searchParams.get("limit") || "25", 10)),
+      Math.max(1, Number.parseInt(searchParams.get("limit") || "25", 10)),
     );
     const action = searchParams.get("action") || undefined;
     const search = searchParams.get("search") || undefined;
