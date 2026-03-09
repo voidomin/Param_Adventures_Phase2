@@ -186,9 +186,17 @@ export default function AdminLayout({
 
         <div className="p-4 border-t border-border mt-auto">
           <div className="flex items-center gap-3 px-4 py-3 mb-2 rounded-xl bg-foreground/5">
-            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
-              {user.name.charAt(0)}
-            </div>
+            {user.avatarUrl ? (
+              <img
+                src={user.avatarUrl}
+                alt={user.name}
+                className="w-8 h-8 rounded-full object-cover border border-primary/20"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold shrink-0">
+                {user.name.charAt(0)}
+              </div>
+            )}
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-foreground truncate">
                 {user.name}

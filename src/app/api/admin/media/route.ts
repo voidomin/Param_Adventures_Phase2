@@ -12,8 +12,17 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    // Fetch images descending by creation date
+    // Fetch images uploaded by administrative roles only
     const images = await prisma.image.findMany({
+      where: {
+        uploadedBy: {
+          role: {
+            name: {
+              in: ["SUPER_ADMIN", "ADMIN", "TRIP_MANAGER"],
+            },
+          },
+        },
+      },
       orderBy: { createdAt: "desc" },
       include: {
         uploadedBy: { select: { name: true, email: true } },
