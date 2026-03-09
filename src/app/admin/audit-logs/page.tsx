@@ -70,7 +70,7 @@ export default function AuditLogsPage() {
     }
   }, [fetchLogs, user?.role]);
 
-  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSearch = (e: React.SyntheticEvent) => {
     e.preventDefault();
     setPage(1);
     fetchLogs();
@@ -80,7 +80,7 @@ export default function AuditLogsPage() {
     setExpandedLogId(expandedLogId === id ? null : id);
   };
 
-  if (!user || user.role !== "SUPER_ADMIN") {
+  if (user?.role !== "SUPER_ADMIN") {
     return (
       <div className="flex h-64 items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -133,149 +133,163 @@ export default function AuditLogsPage() {
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex h-64 items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      ) : logs.length === 0 ? (
-        <div className="bg-card border border-border rounded-2xl p-16 text-center text-foreground/50">
-          No logs found matching your criteria.
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="bg-card border border-border rounded-2xl overflow-hidden">
-            <table className="w-full text-left border-collapse">
-              <thead className="bg-foreground/[0.02] border-b border-border">
-                <tr className="text-xs font-bold text-foreground/50 uppercase tracking-widest">
-                  <th className="px-6 py-4">Action</th>
-                  <th className="px-6 py-4">Target Type</th>
-                  <th className="px-6 py-4">Timestamp</th>
-                  <th className="px-6 py-4 text-right">Details</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {logs.map((log) => (
-                  <Fragment key={log.id}>
-                    <tr
-                      className={`hover:bg-foreground/[0.01] transition-colors cursor-pointer ${expandedLogId === log.id ? "bg-foreground/[0.02]" : ""}`}
-                      onClick={() => toggleExpand(log.id)}
-                    >
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                            <Info className="h-4 w-4" />
-                          </div>
-                          <span className="font-bold text-sm text-foreground">
-                            {log.action.replaceAll("_", " ")}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-xs uppercase tracking-wider font-bold text-foreground/60 px-2 py-1 bg-foreground/5 rounded-md">
-                          {log.targetType}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-foreground/70">
-                          {new Date(log.timestamp).toLocaleString("en-IN", {
-                            dateStyle: "medium",
-                            timeStyle: "short",
-                          })}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        {expandedLogId === log.id ? (
-                          <ChevronDown className="h-4 w-4 ml-auto text-foreground/40 rotate-180 transition-transform" />
-                        ) : (
-                          <ChevronDown className="h-4 w-4 ml-auto text-foreground/40 transition-transform" />
-                        )}
-                      </td>
-                    </tr>
-                    {expandedLogId === log.id && (
-                      <tr className="bg-foreground/[0.02]">
-                        <td
-                          colSpan={4}
-                          className="px-6 py-6 border-t border-border/50"
-                        >
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="space-y-4">
-                              <h4 className="text-xs font-bold uppercase tracking-widest text-foreground/40">
-                                Context
-                              </h4>
-                              <div className="space-y-2">
-                                <div className="flex justify-between text-sm">
-                                  <span className="text-foreground/50">
-                                    Actor ID:
-                                  </span>
-                                  <span className="font-mono text-xs">
-                                    {log.actorId || "System"}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                  <span className="text-foreground/50">
-                                    Target ID:
-                                  </span>
-                                  <span className="font-mono text-xs">
-                                    {log.targetId || "N/A"}
-                                  </span>
-                                </div>
-                                <div className="flex justify-between text-sm">
-                                  <span className="text-foreground/50">
-                                    Log ID:
-                                  </span>
-                                  <span className="font-mono text-xs">
-                                    {log.id}
-                                  </span>
-                                </div>
-                              </div>
+      {(() => {
+        if (isLoading) {
+          return (
+            <div className="flex h-64 items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          );
+        }
+
+        if (logs.length === 0) {
+          return (
+            <div className="bg-card border border-border rounded-2xl p-16 text-center text-foreground/50">
+              No logs found matching your criteria.
+            </div>
+          );
+        }
+
+        return (
+          <div className="space-y-4">
+            <div className="bg-card border border-border rounded-2xl overflow-hidden">
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-foreground/[0.02] border-b border-border">
+                  <tr className="text-xs font-bold text-foreground/50 uppercase tracking-widest">
+                    <th className="px-6 py-4">Action</th>
+                    <th className="px-6 py-4 font-bold">Target Type</th>
+                    <th className="px-6 py-4 font-bold">Timestamp</th>
+                    <th className="px-6 py-4 text-right font-bold">Details</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {logs.map((log) => (
+                    <Fragment key={log.id}>
+                      <tr
+                        className={`hover:bg-foreground/[0.01] transition-colors cursor-pointer ${
+                          expandedLogId === log.id ? "bg-foreground/[0.02]" : ""
+                        }`}
+                        onClick={() => toggleExpand(log.id)}
+                      >
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                              <Info className="h-4 w-4" />
                             </div>
-                            <div className="space-y-4">
-                              <h4 className="text-xs font-bold uppercase tracking-widest text-foreground/40">
-                                Metadata
-                              </h4>
-                              <pre className="p-4 bg-background rounded-xl border border-border text-xs text-foreground/70 overflow-x-auto max-h-48 overflow-y-auto">
-                                {JSON.stringify(log.metadata, null, 2)}
-                              </pre>
-                            </div>
+                            <span className="font-bold text-sm text-foreground">
+                              {log.action.replaceAll("_", " ")}
+                            </span>
                           </div>
                         </td>
+                        <td className="px-6 py-4">
+                          <span className="text-xs uppercase tracking-wider font-bold text-foreground/60 px-2 py-1 bg-foreground/5 rounded-md">
+                            {log.targetType}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-foreground/70">
+                            {new Date(log.timestamp).toLocaleString("en-IN", {
+                              dateStyle: "medium",
+                              timeStyle: "short",
+                            })}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <ChevronDown
+                            className={`h-4 w-4 ml-auto text-foreground/40 transition-transform ${
+                              expandedLogId === log.id ? "rotate-180" : ""
+                            }`}
+                          />
+                        </td>
                       </tr>
-                    )}
-                  </Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      {expandedLogId === log.id && (
+                        <tr className="bg-foreground/[0.02]">
+                          <td
+                            colSpan={4}
+                            className="px-6 py-6 border-t border-border/50"
+                          >
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                              <div className="space-y-4">
+                                <h4 className="text-xs font-bold uppercase tracking-widest text-foreground/40">
+                                  Context
+                                </h4>
+                                <div className="space-y-2">
+                                  <div className="flex justify-between text-sm">
+                                    <span className="text-foreground/50">
+                                      Actor ID:
+                                    </span>
+                                    <span className="font-mono text-xs">
+                                      {log.actorId || "System"}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between text-sm">
+                                    <span className="text-foreground/50">
+                                      Target ID:
+                                    </span>
+                                    <span className="font-mono text-xs">
+                                      {log.targetId || "N/A"}
+                                    </span>
+                                  </div>
+                                  <div className="flex justify-between text-sm">
+                                    <span className="text-foreground/50">
+                                      Log ID:
+                                    </span>
+                                    <span className="font-mono text-xs">
+                                      {log.id}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="space-y-4">
+                                <h4 className="text-xs font-bold uppercase tracking-widest text-foreground/40">
+                                  Metadata
+                                </h4>
+                                <pre className="p-4 bg-background rounded-xl border border-border text-xs text-foreground/70 overflow-x-auto max-h-48 overflow-y-auto">
+                                  {JSON.stringify(log.metadata, null, 2)}
+                                </pre>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
 
-          <div className="flex items-center justify-between px-2">
-            <p className="text-sm text-foreground/50">
-              Showing{" "}
-              <span className="text-foreground font-medium">{logs.length}</span>{" "}
-              of <span className="text-foreground font-medium">{total}</span>{" "}
-              logs
-            </p>
-            <div className="flex items-center gap-2">
-              <button
-                disabled={page === 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="p-2 border border-border rounded-lg hover:bg-card disabled:opacity-30 transition-colors"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <div className="text-sm font-medium text-foreground px-4">
-                Page {page} of {totalPages}
+            <div className="flex items-center justify-between px-2">
+              <p className="text-sm text-foreground/50">
+                Showing{" "}
+                <span className="text-foreground font-medium">
+                  {logs.length}
+                </span>{" "}
+                of <span className="text-foreground font-medium">{total}</span>{" "}
+                logs
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={page === 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  className="p-2 border border-border rounded-lg hover:bg-card disabled:opacity-30 transition-colors"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <div className="text-sm font-medium text-foreground px-4">
+                  Page {page} of {totalPages}
+                </div>
+                <button
+                  disabled={page === totalPages}
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  className="p-2 border border-border rounded-lg hover:bg-card disabled:opacity-30 transition-colors"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
               </div>
-              <button
-                disabled={page === totalPages}
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                className="p-2 border border-border rounded-lg hover:bg-card disabled:opacity-30 transition-colors"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
