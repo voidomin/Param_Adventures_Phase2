@@ -2,6 +2,7 @@ import "dotenv/config";
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
+import bcrypt from "bcryptjs";
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
@@ -280,7 +281,7 @@ async function seed() {
     console.log(`   ✓ ${role.name}`);
   }
 
-  // 2. Upsert Permissions
+  // 3. Upsert Permissions
   console.log("\n🔑 Creating permissions...");
   for (const perm of PERMISSIONS) {
     await prisma.permission.upsert({
@@ -291,7 +292,7 @@ async function seed() {
     console.log(`   ✓ ${perm.key}`);
   }
 
-  // 3. Link Roles → Permissions
+  // 4. Link Roles → Permissions
   console.log("\n🔗 Linking role permissions...");
   for (const [roleName, permKeys] of Object.entries(ROLE_PERMISSIONS)) {
     const role = await prisma.role.findUnique({ where: { name: roleName } });
@@ -311,6 +312,35 @@ async function seed() {
       });
     }
     console.log(`   ✓ ${roleName} → ${permKeys.length} permissions`);
+  }
+
+  // 5. Bootstrap Super Admin (Optional)
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const adminPassword = process.env.ADMIN_PASSWORD;
+
+  if (adminEmail && adminPassword) {
+    console.log("\n👤 Bootstrapping Super Admin...");
+    const superAdminRole = await prisma.role.findUnique({
+      where: { name: "SUPER_ADMIN" },
+    });
+
+    if (superAdminRole) {
+      const hashedPassword = await bcrypt.hash(adminPassword, 10);
+      await prisma.user.upsert({
+        where: { email: adminEmail },
+        update: {
+          roleId: superAdminRole.id,
+        },
+        create: {
+          email: adminEmail,
+          password: hashedPassword,
+          name: "System Super Admin",
+          roleId: superAdminRole.id,
+          isVerified: true,
+        },
+      });
+      console.log(`   ✓ Super Admin created/updated: ${adminEmail}`);
+    }
   }
 
   console.log("\n✅ Seed complete!");

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Users, Loader2, ShieldAlert, CheckCircle2 } from "lucide-react";
+import { useAuth } from "@/lib/AuthContext";
 
 interface Role {
   id: string;
@@ -16,6 +17,7 @@ interface User {
 }
 
 export default function AdminUsersPage() {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -38,7 +40,6 @@ export default function AdminUsersPage() {
         }
         if (rolesRes.ok) {
           const json = await rolesRes.json();
-          // Exclude SUPER_ADMIN from dropdown visually if we want, or just let backend reject
           setRoles(json.roles || []);
         }
       } catch (error) {
@@ -87,6 +88,8 @@ export default function AdminUsersPage() {
       u.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       u.email.toLowerCase().includes(searchTerm.toLowerCase()),
   );
+
+  const canAssignRoles = roles.length > 0;
 
   return (
     <div>
@@ -141,9 +144,11 @@ export default function AdminUsersPage() {
                 <tr className="bg-foreground/[0.02] border-b border-border text-xs uppercase tracking-wider text-foreground/50">
                   <th className="px-6 py-4 font-semibold">User</th>
                   <th className="px-6 py-4 font-semibold">Current Role</th>
-                  <th className="px-6 py-4 font-semibold text-right">
-                    Assign Role
-                  </th>
+                  {canAssignRoles && (
+                    <th className="px-6 py-4 font-semibold text-right">
+                      Assign Role
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -152,6 +157,13 @@ export default function AdminUsersPage() {
                   const currentRoleId = roles.find(
                     (r) => r.name === currentRoleName,
                   )?.id;
+
+                  // RULE: Non-SUPER_ADMIN cannot modify a SUPER_ADMIN
+                  const isTargetSuperAdmin = currentRoleName === "SUPER_ADMIN";
+                  const canModifyThisUser =
+                    canAssignRoles &&
+                    (!isTargetSuperAdmin ||
+                      currentUser?.role === "SUPER_ADMIN");
 
                   return (
                     <tr
@@ -171,34 +183,37 @@ export default function AdminUsersPage() {
                           {currentRoleName.replace("_", " ")}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex items-center justify-end gap-3">
-                          {updatingUserId === user.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                          ) : (
-                            <select
-                              disabled={
-                                updatingUserId === user.id ||
-                                currentRoleName === "SUPER_ADMIN"
-                              }
-                              value={currentRoleId || ""}
-                              onChange={(e) =>
-                                handleRoleChange(user.id, e.target.value)
-                              }
-                              className="bg-transparent border border-border rounded-lg text-sm px-3 py-1.5 focus:border-primary outline-none text-foreground w-40 disabled:opacity-50"
-                            >
-                              <option value="" disabled>
-                                Select Role
-                              </option>
-                              {roles.map((r) => (
-                                <option key={r.id} value={r.id}>
-                                  {r.name.replace("_", " ")}
+                      {canAssignRoles && (
+                        <td className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-3">
+                            {updatingUserId === user.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                            ) : canModifyThisUser ? (
+                              <select
+                                disabled={updatingUserId === user.id}
+                                value={currentRoleId || ""}
+                                onChange={(e) =>
+                                  handleRoleChange(user.id, e.target.value)
+                                }
+                                className="bg-transparent border border-border rounded-lg text-sm px-3 py-1.5 focus:border-primary outline-none text-foreground w-40 disabled:opacity-50"
+                              >
+                                <option value="" disabled>
+                                  Select Role
                                 </option>
-                              ))}
-                            </select>
-                          )}
-                        </div>
-                      </td>
+                                {roles.map((r) => (
+                                  <option key={r.id} value={r.id}>
+                                    {r.name.replace("_", " ")}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span className="text-xs text-foreground/30 italic">
+                                Read-only
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}

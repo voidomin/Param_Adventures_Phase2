@@ -10,7 +10,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  // Requires "user:manage-roles" or ADMIN/SUPER_ADMIN
+  // Initial authorization check
   const auth = await authorizeRequest(request);
   if (!auth.authorized) return auth.response;
 
@@ -25,7 +25,7 @@ export async function PATCH(
       );
     }
 
-    // Check acting user's role
+    // Check acting user's current record
     const actingUser = await prisma.user.findUnique({
       where: { id: auth.userId },
       include: { role: true },
@@ -36,12 +36,12 @@ export async function PATCH(
       !["ADMIN", "SUPER_ADMIN", "TRIP_MANAGER"].includes(actingUser.role.name)
     ) {
       return NextResponse.json(
-        { error: "Unauthorized access: admin privileges required." },
+        { error: "Unauthorized access: elevated privileges required." },
         { status: 403 },
       );
     }
 
-    // Fetch the target user's current role
+    // Fetch the target user's current record
     const targetUser = await prisma.user.findUnique({
       where: { id: targetUserId },
       include: { role: true },
@@ -54,18 +54,7 @@ export async function PATCH(
       );
     }
 
-    // Protection: Only SUPER_ADMIN can modify another SUPER_ADMIN's role
-    if (
-      targetUser.role.name === "SUPER_ADMIN" &&
-      actingUser.role.name !== "SUPER_ADMIN"
-    ) {
-      return NextResponse.json(
-        { error: "Cannot modify a SUPER_ADMIN's role." },
-        { status: 403 },
-      );
-    }
-
-    // Protection: Normal admins cannot assign the SUPER_ADMIN role
+    // Fetch the target role details
     const targetRole = await prisma.role.findUnique({
       where: { id: roleId },
     });
@@ -74,17 +63,50 @@ export async function PATCH(
       return NextResponse.json({ error: "Role not found." }, { status: 404 });
     }
 
-    if (
-      targetRole.name === "SUPER_ADMIN" &&
-      actingUser.role.name !== "SUPER_ADMIN"
-    ) {
+    // ─── 1. Hierarchy Check ──────────────────────────────────
+    const actorRole = actingUser.role.name;
+    const newRole = targetRole.name;
+
+    // RULE: Only SUPER_ADMIN can assign the SUPER_ADMIN role
+    if (newRole === "SUPER_ADMIN" && actorRole !== "SUPER_ADMIN") {
       return NextResponse.json(
-        { error: "Cannot assign SUPER_ADMIN role." },
+        { error: "Only a SUPER_ADMIN can assign the SUPER_ADMIN role." },
         { status: 403 },
       );
     }
 
-    // Update the role
+    // RULE: TRIP_MANAGER can only assign the TREK_LEAD role
+    if (actorRole === "TRIP_MANAGER" && newRole !== "TREK_LEAD") {
+      return NextResponse.json(
+        { error: "TRIP_MANAGER can only assign the TREK_LEAD role." },
+        { status: 403 },
+      );
+    }
+
+    // RULE: Cannot modify a SUPER_ADMIN's role unless you are a SUPER_ADMIN
+    if (targetUser.role.name === "SUPER_ADMIN" && actorRole !== "SUPER_ADMIN") {
+      return NextResponse.json(
+        { error: "Cannot modify a SUPER_ADMIN's role." },
+        { status: 403 },
+      );
+    }
+
+    // ─── 2. SUPER_ADMIN Allowlist Check ───────────────────────
+    if (newRole === "SUPER_ADMIN") {
+      const allowedEmailsRaw = process.env.SUPER_ADMIN_ALLOWED_EMAILS || "";
+      const allowedEmails = allowedEmailsRaw
+        .split(",")
+        .map((e) => e.trim().toLowerCase());
+
+      if (!allowedEmails.includes(targetUser.email.toLowerCase())) {
+        return NextResponse.json(
+          { error: "User email is not in the SUPER_ADMIN allowlist." },
+          { status: 403 },
+        );
+      }
+    }
+
+    // ─── 3. Update the Role ──────────────────────────────────
     const updatedUser = await prisma.user.update({
       where: { id: targetUserId },
       data: { roleId },

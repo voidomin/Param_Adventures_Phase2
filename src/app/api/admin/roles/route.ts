@@ -3,37 +3,51 @@ import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 
 // GET /api/admin/roles
-// Fetch all system roles (excluding SUPER_ADMIN to prevent regular admins from over-privileging)
+// Fetch all system roles (filtered by the acting user's permissions)
 export async function GET(request: NextRequest) {
-  // Require high-level permission or just system:config / user:manage-roles
-  // We'll use "trip:moderate" or check for ADMIN role
   const auth = await authorizeRequest(request);
   if (!auth.authorized) return auth.response;
 
   try {
-    const userRole = await prisma.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { id: auth.userId },
       select: { role: { select: { name: true } } },
     });
 
     if (
-      !userRole ||
-      !["ADMIN", "SUPER_ADMIN", "TRIP_MANAGER"].includes(userRole.role.name)
+      !user ||
+      !["ADMIN", "SUPER_ADMIN", "TRIP_MANAGER"].includes(user.role.name)
     ) {
       return NextResponse.json(
-        { error: "Unauthorized access." },
+        { error: "Unauthorized access: admin privileges required." },
         { status: 403 },
       );
     }
 
-    // Exclude GUEST (removed) and SUPER_ADMIN (unless acting user is SUPER_ADMIN)
-    const excludedRoles = ["GUEST"];
-    if (userRole.role.name !== "SUPER_ADMIN") {
-      excludedRoles.push("SUPER_ADMIN");
+    const actorRole = user.role.name;
+
+    // ─── Filter Logic ────────────────────────────────────────
+    // These roles are always excluded from assignment (e.g. system internals)
+    const alwaysExcluded = ["GUEST", "USER"]; // USER is usually manually assigned but let's see
+
+    let whereClause: any = {
+      name: { notIn: [...alwaysExcluded] },
+    };
+
+    if (actorRole === "SUPER_ADMIN") {
+      // Sees everything except internal exclusions
+    } else if (actorRole === "ADMIN") {
+      // Sees everything EXCEPT SUPER_ADMIN
+      whereClause.name.notIn.push("SUPER_ADMIN");
+    } else if (actorRole === "TRIP_MANAGER") {
+      // Only sees TREK_LEAD (as requested: "electric manager can assign a trick lead")
+      whereClause = {
+        name: "TREK_LEAD",
+      };
     }
 
     const roles = await prisma.role.findMany({
-      where: { name: { notIn: excludedRoles } },
+      where: whereClause,
       orderBy: { name: "asc" },
       select: {
         id: true,

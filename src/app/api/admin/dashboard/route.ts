@@ -2,14 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 
-// GET /api/admin/dashboard
+// GET /api/admin/dashboard — SUPER_ADMIN only
 export async function GET(request: NextRequest) {
   const auth = await authorizeRequest(request);
   if (!auth.authorized) return auth.response;
 
-  if (!["ADMIN", "SUPER_ADMIN"].includes(auth.roleName)) {
+  if (auth.roleName !== "SUPER_ADMIN") {
     return NextResponse.json(
-      { error: "Unauthorized access: admin privileges required." },
+      { error: "Unauthorized access: SUPER_ADMIN only." },
       { status: 403 },
     );
   }
@@ -18,7 +18,6 @@ export async function GET(request: NextRequest) {
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
-    // 1. High-Level Metrics (Last 30 Days)
     const [revenueAgg, recentBookings, upcomingTripsCount] = await Promise.all([
       prisma.booking.aggregate({
         where: {
@@ -40,7 +39,6 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
-    // 2. Pending Actions
     const [pendingBlogs, pendingBookings] = await Promise.all([
       prisma.blog.count({
         where: { status: "PENDING_REVIEW" },
@@ -50,9 +48,9 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
-    // 3. Recent Activity Feed (from AuditLog)
+    // Fetch only the 5 most recent activity entries for a quick preview
     const recentActivity = await prisma.auditLog.findMany({
-      take: 20,
+      take: 5,
       orderBy: { timestamp: "desc" },
     });
 

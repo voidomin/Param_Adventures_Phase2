@@ -10,7 +10,9 @@ import {
   AlertCircle,
   Clock,
   User,
+  ArrowRight,
 } from "lucide-react";
+import Link from "next/link";
 
 interface AdminDashboardData {
   metrics: {
@@ -33,12 +35,36 @@ interface AdminDashboardData {
   }[];
 }
 
+import { useAuth } from "@/lib/AuthContext";
+
 export default function AdminDashboardPage() {
   const router = useRouter();
+  const { user, hasPermission } = useAuth();
   const [data, setData] = useState<AdminDashboardData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    if (!user) return;
+
+    // ─── 1. Role Check & Redirect ────────────────────────────
+    if (user.role !== "SUPER_ADMIN") {
+      // Find the first available fallback page
+      if (hasPermission("user:view-all")) {
+        router.push("/admin/users");
+      } else if (hasPermission("trip:manage-categories")) {
+        router.push("/admin/categories");
+      } else if (hasPermission("trip:create")) {
+        router.push("/admin/experiences");
+      } else if (hasPermission("ops:view-all-trips")) {
+        router.push("/admin/trips");
+      } else {
+        // Absolute fallback if they have some admin permission I didn't list
+        router.push("/dashboard");
+      }
+      return;
+    }
+
+    // ─── 2. Fetch Data (SUPER_ADMIN only) ────────────────────
     fetch("/api/admin/dashboard")
       .then((res) => {
         if (res.status === 401 || res.status === 403) {
@@ -52,7 +78,7 @@ export default function AdminDashboardPage() {
       })
       .catch((err) => console.error(err))
       .finally(() => setIsLoading(false));
-  }, [router]);
+  }, [router, user, hasPermission]);
 
   if (isLoading) {
     return (
@@ -145,11 +171,19 @@ export default function AdminDashboardPage() {
           </div>
         </div>
 
-        {/* Right Column: Activity Feed */}
+        {/* Right Column: Activity Feed (Preview) */}
         <div className="space-y-6 lg:col-span-8">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <Clock className="h-5 w-5 text-primary" /> Recent Activity
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold flex items-center gap-2">
+              <Clock className="h-5 w-5 text-primary" /> Recent Activity
+            </h2>
+            <Link
+              href="/admin/audit-logs"
+              className="text-sm text-primary hover:text-primary/80 flex items-center gap-1 font-medium transition-colors"
+            >
+              View Full Log <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
 
           {data.recentActivity.length === 0 ? (
             <div className="rounded-2xl border border-border bg-card p-8 text-center text-foreground/50">
@@ -165,9 +199,9 @@ export default function AdminDashboardPage() {
                   <div className="mt-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                     <User className="h-4 w-4" />
                   </div>
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-bold text-foreground">
+                  <div className="flex-1 space-y-1 min-w-0">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-bold text-foreground truncate">
                         {log.action.replaceAll("_", " ")}
                       </p>
                       <time className="text-xs text-foreground/50 whitespace-nowrap">
@@ -180,9 +214,13 @@ export default function AdminDashboardPage() {
                       </time>
                     </div>
                     <div className="text-xs text-foreground/70">
-                      Target:{" "}
-                      <span className="font-semibold">{log.targetType}</span>
-                      {log.targetId && ` (${log.targetId.slice(0, 8)}...)`}
+                      {log.targetType}
+                      {log.targetId && (
+                        <span className="text-foreground/40">
+                          {" "}
+                          · {log.targetId.slice(0, 8)}…
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

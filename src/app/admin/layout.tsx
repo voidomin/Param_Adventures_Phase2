@@ -17,6 +17,7 @@ import {
   ClipboardList,
   Star,
   Headset,
+  ScrollText,
 } from "lucide-react";
 
 export default function AdminLayout({
@@ -54,7 +55,18 @@ export default function AdminLayout({
   }
 
   const navItems = [
-    { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
+    {
+      name: "Dashboard",
+      href: "/admin",
+      icon: LayoutDashboard,
+      role: "SUPER_ADMIN",
+    },
+    {
+      name: "Audit Logs",
+      href: "/admin/audit-logs",
+      icon: ScrollText,
+      role: "SUPER_ADMIN",
+    },
     {
       name: "Categories",
       href: "/admin/categories",
@@ -120,6 +132,7 @@ export default function AdminLayout({
     href: string;
     icon: React.ElementType;
     permission?: string | string[];
+    role?: string;
   }[];
 
   return (
@@ -139,7 +152,10 @@ export default function AdminLayout({
 
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto mt-4">
           {navItems.map((item) => {
-            // Support single permission key or array of OR-checked keys
+            // Role-based guard (check user.role directly)
+            if (item.role && user.role !== item.role) return null;
+
+            // Permission-based guard
             if (item.permission) {
               const perms = Array.isArray(item.permission)
                 ? item.permission
