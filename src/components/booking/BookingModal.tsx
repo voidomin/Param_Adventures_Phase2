@@ -13,8 +13,11 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   User,
+  ChevronUp,
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Slot {
   id: string;
@@ -110,10 +113,9 @@ export default function BookingModal({
   const [participants, setParticipants] = useState(1);
   const [step, setStep] = useState<Step>("slots");
   const [errorMsg, setErrorMsg] = useState("");
-  const [slotPage, setSlotPage] = useState(0);
-  const SLOTS_PER_PAGE = 4;
-
   const [partInfo, setPartInfo] = useState<ParticipantDetails[]>([]);
+  const [includeMyself, setIncludeMyself] = useState(!!user);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
   const createParticipant = useCallback(
     (isPrimary: boolean): ParticipantDetails => {
@@ -169,19 +171,47 @@ export default function BookingModal({
 
   useEffect(() => {
     setPartInfo((prev) => {
-      if (prev.length === participants) return prev;
       const newArr = [...prev];
-      if (newArr.length < participants) {
-        const toAdd = participants - newArr.length;
-        for (let i = 0; i < toAdd; i++) {
-          newArr.push(createParticipant(newArr.length === 0));
+      if (newArr.length !== participants) {
+        if (newArr.length < participants) {
+          const toAdd = participants - newArr.length;
+          for (let i = 0; i < toAdd; i++) {
+            newArr.push(
+              createParticipant(newArr.length === 0 && includeMyself),
+            );
+          }
+        } else {
+          newArr.splice(participants);
         }
-      } else {
-        newArr.splice(participants);
       }
+
+      // Handle "Include Myself" toggle for the first participant
+      if (newArr.length > 0) {
+        if (includeMyself && !newArr[0].isPrimary) {
+          // Fill with user data
+          const primary = createParticipant(true);
+          newArr[0] = { ...newArr[0], ...primary, isPrimary: true };
+        } else if (!includeMyself && newArr[0].isPrimary) {
+          // Clear user data
+          newArr[0] = {
+            ...newArr[0],
+            isPrimary: false,
+            name: "",
+            email: "",
+            phoneNumber: "",
+            gender: "",
+            age: "",
+            bloodGroup: "",
+            emergencyContactName: "",
+            emergencyContactNumber: "",
+            emergencyRelationship: "",
+          };
+        }
+      }
+
       return newArr;
     });
-  }, [participants, createParticipant]);
+  }, [participants, createParticipant, includeMyself]);
 
   const updatePart = (
     index: number,
@@ -193,21 +223,15 @@ export default function BookingModal({
     setPartInfo(updated);
   };
 
-  const removePrimary = (index: number) => {
+  const copyEmergencyFromPrimary = (index: number) => {
+    if (index === 0 || partInfo.length < 1) return;
+    const primary = partInfo[0];
     const updated = [...partInfo];
     updated[index] = {
       ...updated[index],
-      isPrimary: false,
-      name: "",
-      email: "",
-      phoneNumber: "",
-      gender: "",
-      age: "",
-      bloodGroup: "",
-      emergencyContactName: "",
-      emergencyContactNumber: "",
-      emergencyRelationship: "",
-      pickupPoint: "",
+      emergencyContactName: primary.emergencyContactName,
+      emergencyContactNumber: primary.emergencyContactNumber,
+      emergencyRelationship: primary.emergencyRelationship,
     };
     setPartInfo(updated);
   };
@@ -231,11 +255,6 @@ export default function BookingModal({
   };
 
   const totalPrice = basePrice * participants;
-  const visibleSlots = slots.slice(
-    slotPage * SLOTS_PER_PAGE,
-    (slotPage + 1) * SLOTS_PER_PAGE,
-  );
-  const totalPages = Math.ceil(slots.length / SLOTS_PER_PAGE);
 
   async function handleProceedToPay() {
     setStep("processing");
@@ -362,133 +381,159 @@ export default function BookingModal({
             )}
 
             {!slotsLoading && slots.length > 0 && (
-              <>
-                <div className="space-y-3">
-                  {visibleSlots.map((slot) => {
-                    const isSelected = selectedSlot?.id === slot.id;
-                    return (
-                      <div
-                        key={slot.id}
-                        className={`w-full rounded-xl border transition-all overflow-hidden ${
-                          isSelected
-                            ? "border-primary bg-primary/5"
-                            : "border-border hover:border-foreground/30 bg-background"
-                        }`}
+              <div className="space-y-6">
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className="w-full flex items-center justify-between pl-4 pr-4 py-4 bg-card border border-border rounded-2xl outline-none focus:border-primary/50 transition-all font-bold text-left shadow-sm hover:bg-foreground/[0.02]"
+                  >
+                    <div className="flex items-center gap-3">
+                      <CalendarDays className="h-5 w-5 text-primary" />
+                      <span
+                        className={
+                          selectedSlot
+                            ? "text-foreground"
+                            : "text-foreground/40"
+                        }
                       >
+                        {selectedSlot
+                          ? formatDate(selectedSlot.date)
+                          : "Select an upcoming date"}
+                      </span>
+                    </div>
+                    {isDropdownOpen ? (
+                      <ChevronUp className="h-5 w-5 text-foreground/40" />
+                    ) : (
+                      <ChevronDown className="h-5 w-5 text-foreground/40" />
+                    )}
+                  </button>
+
+                  <AnimatePresence>
+                    {isDropdownOpen && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.3, ease: "easeInOut" }}
+                        className="overflow-hidden bg-card border border-border rounded-2xl mt-2 shadow-sm"
+                      >
+                        <div className="max-h-[300px] overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                          {slots.map((slot) => (
+                            <button
+                              key={slot.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedSlot(slot);
+                                setIsDropdownOpen(false);
+                              }}
+                              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all text-left ${
+                                selectedSlot?.id === slot.id
+                                  ? "bg-primary/10 border border-primary/20"
+                                  : "hover:bg-foreground/[0.03] border border-transparent"
+                              }`}
+                            >
+                              <div>
+                                <p
+                                  className={`font-bold text-sm ${
+                                    selectedSlot?.id === slot.id
+                                      ? "text-primary"
+                                      : "text-foreground"
+                                  }`}
+                                >
+                                  {formatDate(slot.date)}
+                                </p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-foreground/40 mt-0.5">
+                                  {slot.remainingCapacity} spots remaining
+                                </p>
+                              </div>
+                              {selectedSlot?.id === slot.id && (
+                                <CheckCircle2 className="h-4 w-4 text-primary" />
+                              )}
+                            </button>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {selectedSlot && (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center justify-between bg-foreground/[0.03] rounded-2xl p-4 border border-border/50">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                          <Users className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-foreground">
+                            Participants
+                          </p>
+                          <p className="text-xs text-foreground/50">
+                            How many people are joining?
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
                         <button
                           type="button"
-                          onClick={() => setSelectedSlot(slot)}
-                          className="w-full flex items-center justify-between p-4"
+                          onClick={() =>
+                            setParticipants((p) => Math.max(1, p - 1))
+                          }
+                          className="w-10 h-10 rounded-xl border border-border flex items-center justify-center hover:bg-foreground/5 font-bold text-foreground transition-colors disabled:opacity-20"
+                          disabled={participants === 1}
                         >
-                          <div className="flex items-center gap-3">
-                            <CalendarDays
-                              className={`w-5 h-5 ${isSelected ? "text-primary" : "text-foreground/40"}`}
-                            />
-                            <div className="text-left">
-                              <p className="font-semibold text-foreground text-sm">
-                                {formatDate(slot.date)}
-                              </p>
-                              <p className="text-xs text-foreground/50 mt-0.5">
-                                {slot.remainingCapacity} seat
-                                {slot.remainingCapacity === 1 ? "" : "s"}{" "}
-                                available
-                              </p>
-                            </div>
-                          </div>
-                          {isSelected && (
-                            <span className="w-5 h-5 rounded-full bg-primary flex items-center justify-center shrink-0">
-                              <CheckCircle2 className="w-3.5 h-3.5 text-primary-foreground" />
-                            </span>
-                          )}
+                          -
                         </button>
-
-                        {isSelected && (
-                          <div className="px-4 pb-4 pt-2 border-t border-primary/10">
-                            <div className="flex items-center justify-between bg-background rounded-lg p-3 border border-border/50">
-                              <div className="flex items-center gap-2">
-                                <Users className="w-4 h-4 text-foreground/50" />
-                                <span className="text-sm font-medium text-foreground">
-                                  Participants
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <button
-                                  onClick={() =>
-                                    setParticipants((p) => Math.max(1, p - 1))
-                                  }
-                                  className="w-8 h-8 rounded-md border border-border flex items-center justify-center hover:bg-foreground/5 font-bold text-foreground"
-                                >
-                                  -
-                                </button>
-                                <span className="w-6 text-center font-bold text-foreground">
-                                  {participants}
-                                </span>
-                                <button
-                                  onClick={() =>
-                                    setParticipants((p) =>
-                                      Math.min(
-                                        maxCapacity,
-                                        selectedSlot.remainingCapacity,
-                                        p + 1,
-                                      ),
-                                    )
-                                  }
-                                  className="w-8 h-8 rounded-md border border-border flex items-center justify-center hover:bg-foreground/5 font-bold text-foreground"
-                                >
-                                  +
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
+                        <span className="w-6 text-center text-lg font-black text-foreground">
+                          {participants}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setParticipants((p) =>
+                              Math.min(
+                                maxCapacity,
+                                selectedSlot.remainingCapacity,
+                                p + 1,
+                              ),
+                            )
+                          }
+                          className="w-10 h-10 rounded-xl border border-border flex items-center justify-center hover:bg-foreground/5 font-bold text-foreground transition-colors disabled:opacity-20"
+                          disabled={
+                            participants >= maxCapacity ||
+                            participants >= selectedSlot.remainingCapacity
+                          }
+                        >
+                          +
+                        </button>
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
 
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-center gap-2 mt-4">
-                    <button
-                      onClick={() => setSlotPage((p) => Math.max(0, p - 1))}
-                      disabled={slotPage === 0}
-                      className="p-1.5 rounded-lg border border-border hover:bg-foreground/5 disabled:opacity-30 transition-colors"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </button>
-                    <span className="text-xs text-foreground/50">
-                      {slotPage + 1} / {totalPages}
-                    </span>
-                    <button
-                      onClick={() =>
-                        setSlotPage((p) => Math.min(totalPages - 1, p + 1))
-                      }
-                      disabled={slotPage === totalPages - 1}
-                      className="p-1.5 rounded-lg border border-border hover:bg-foreground/5 disabled:opacity-30 transition-colors"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
+                    <div className="pt-2">
+                      <div className="flex items-center justify-between mb-4 px-1">
+                        <div>
+                          <p className="text-xs font-bold text-foreground/40 uppercase tracking-widest">
+                            Total Price
+                          </p>
+                          <p className="text-sm text-foreground/60 mt-0.5">
+                            ₹{basePrice.toLocaleString("en-IN")} ×{" "}
+                            {participants}
+                          </p>
+                        </div>
+                        <span className="text-2xl font-black text-primary">
+                          ₹{totalPrice.toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setStep("participants")}
+                        className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-black text-lg shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
+                      >
+                        Continue to Details
+                      </button>
+                    </div>
                   </div>
                 )}
-              </>
-            )}
-
-            {selectedSlot && (
-              <div className="mt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm text-foreground/60">
-                    ₹{basePrice.toLocaleString("en-IN")} × {participants} person
-                    {participants === 1 ? "" : "s"}
-                  </span>
-                  <span className="text-xl font-black text-primary">
-                    ₹{totalPrice.toLocaleString("en-IN")}
-                  </span>
-                </div>
-                <button
-                  onClick={() => setStep("participants")}
-                  className="w-full py-3.5 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 transition-colors"
-                >
-                  Continue to Details
-                </button>
               </div>
             )}
           </div>
@@ -521,7 +566,7 @@ export default function BookingModal({
                       </h4>
                       <div className="mt-1 text-xs text-foreground/60 flex flex-wrap gap-x-3 gap-y-1 items-center">
                         {p.name ? (
-                          <span className="font-medium text-foreground/80">
+                          <span className="font-bold text-foreground">
                             {p.name}
                           </span>
                         ) : (
@@ -529,31 +574,37 @@ export default function BookingModal({
                             Name Required
                           </span>
                         )}
-                        {p.email && <span>{p.email}</span>}
-                        {p.phoneNumber ? (
-                          <span>{p.phoneNumber}</span>
-                        ) : (
-                          <span className="text-red-400 italic">
-                            Phone Required
-                          </span>
-                        )}
+                        {p.email && <span>• {p.email}</span>}
+                        {p.phoneNumber && <span>• {p.phoneNumber}</span>}
                       </div>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    {p.isPrimary && (
-                      <button
-                        type="button"
+                    {index === 0 && user && (
+                      <div
+                        className="flex items-center gap-2 cursor-pointer group/cb bg-primary/5 px-3 py-1.5 rounded-xl border border-primary/10 hover:border-primary/30 transition-all"
                         onClick={(e) => {
-                          e.preventDefault();
-                          removePrimary(index);
+                          e.stopPropagation();
+                          setIncludeMyself(!includeMyself);
                         }}
-                        className="text-xs text-red-500 font-bold hover:underline"
                       >
-                        Remove Myself
-                      </button>
+                        <div
+                          className={`w-4 h-4 rounded border transition-all flex items-center justify-center ${
+                            includeMyself
+                              ? "bg-primary border-primary"
+                              : "border-foreground/20 bg-card"
+                          }`}
+                        >
+                          {includeMyself && (
+                            <CheckCircle2 className="w-3 h-3 text-primary-foreground" />
+                          )}
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-primary/70 group-hover/cb:text-primary transition-colors select-none">
+                          Include Myself
+                        </span>
+                      </div>
                     )}
-                    <ChevronRight className="w-5 h-5 text-foreground/40 group-open:rotate-90 transition-transform shrink-0" />
+                    <ChevronDown className="w-5 h-5 text-foreground/40 group-open:rotate-180 transition-transform shrink-0" />
                   </div>
                 </summary>
 
@@ -727,9 +778,20 @@ export default function BookingModal({
 
                     {/* Emergency Contact */}
                     <div className="md:col-span-2 space-y-4 mt-2 pt-4 border-t border-border/50">
-                      <h5 className="text-xs font-semibold text-foreground/50 uppercase tracking-widest flex items-center gap-1">
-                        Emergency Information
-                      </h5>
+                      <div className="flex items-center justify-between">
+                        <h5 className="text-xs font-black text-foreground/40 uppercase tracking-widest flex items-center gap-2">
+                          Emergency Information
+                        </h5>
+                        {index > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => copyEmergencyFromPrimary(index)}
+                            className="text-[10px] font-black uppercase tracking-tight text-primary hover:text-primary/80 bg-primary/5 px-2 py-1 rounded-md border border-primary/20 transition-all hover:scale-105 active:scale-95"
+                          >
+                            Same as Primary
+                          </button>
+                        )}
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label
