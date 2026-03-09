@@ -10,6 +10,8 @@ import {
   User,
   Mountain,
   Search,
+  Eye,
+  Trash2,
 } from "lucide-react";
 
 interface Blog {
@@ -148,6 +150,25 @@ export default function AdminBlogsPage() {
     setApprovingId(null);
   };
 
+  const handleDelete = async (id: string, title: string) => {
+    if (
+      !window.confirm(`Are you sure you want to delete the blog "${title}"?`)
+    ) {
+      return;
+    }
+
+    const res = await fetch(`/api/admin/blogs/${id}`, {
+      method: "DELETE",
+    });
+
+    if (res.ok) {
+      setBlogs((prev) => prev.filter((b) => b.id !== id));
+    } else {
+      const data = await res.json();
+      alert(data.error || "Failed to delete blog");
+    }
+  };
+
   const filtered = blogs.filter(
     (b) =>
       b.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -279,8 +300,17 @@ export default function AdminBlogsPage() {
                   </div>
                 </div>
 
+                <a
+                  href={`/blog/${blog.slug}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-1.5 px-4 py-2 border border-border rounded-xl text-sm font-bold text-foreground/60 hover:text-foreground hover:bg-foreground/5 transition-colors"
+                  title="Preview Blog"
+                >
+                  <Eye className="w-3.5 h-3.5" /> Preview
+                </a>
                 {blog.status === "PENDING_REVIEW" && (
-                  <div className="flex gap-2 flex-shrink-0">
+                  <div className="flex gap-2">
                     <button
                       onClick={() => handleApprove(blog.id)}
                       disabled={approvingId === blog.id}
@@ -301,6 +331,13 @@ export default function AdminBlogsPage() {
                     </button>
                   </div>
                 )}
+                <button
+                  onClick={() => handleDelete(blog.id, blog.title)}
+                  className="flex items-center gap-1.5 px-4 py-2 text-red-500/60 hover:text-red-500 hover:bg-red-500/5 rounded-xl text-sm font-bold transition-colors"
+                  title="Delete Blog"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Delete
+                </button>
               </div>
             ))}
           </div>

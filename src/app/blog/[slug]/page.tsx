@@ -81,7 +81,15 @@ export default async function BlogArticlePage({ params }: Props) {
     },
   });
 
-  if (!blog || blog.status !== "PUBLISHED" || blog.deletedAt) {
+  // Check authorization for preview
+  const auth = await authorizeRequest(req as any, "blog:moderate");
+  const isModerator = auth.authorized;
+
+  if (
+    !blog ||
+    (blog.status !== "PUBLISHED" && !isModerator) ||
+    blog.deletedAt
+  ) {
     notFound();
   }
 

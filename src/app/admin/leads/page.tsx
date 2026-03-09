@@ -1,6 +1,14 @@
 import { prisma } from "@/lib/db";
 import { format } from "date-fns";
-import { Users, Mail, Phone, FileText, CalendarDays } from "lucide-react";
+import {
+  Users,
+  Mail,
+  Phone,
+  FileText,
+  CalendarDays,
+  MessageSquare,
+} from "lucide-react";
+import LeadActions from "./LeadActions";
 
 function getStatusStyles(status: string) {
   switch (status) {
@@ -10,42 +18,85 @@ function getStatusStyles(status: string) {
       return "bg-yellow-500/10 text-yellow-500";
     case "CONVERTED":
       return "bg-green-500/10 text-green-500";
+    case "CLOSED":
+      return "bg-gray-500/10 text-gray-500";
+    case "DISCARDED":
+      return "bg-red-500/10 text-red-500";
     default:
       return "bg-foreground/10 text-foreground/60";
   }
 }
 
-export default async function AdminLeadsPage() {
-  // @ts-ignore - Prisma client needs restart to pick up CustomLead
+export default async function AdminLeadsPage({
+  searchParams,
+}: Readonly<{
+  searchParams: Promise<{ status?: string }>;
+}>) {
+  const resolvedSearchParams = await searchParams;
+  const showAll = resolvedSearchParams.status === "all";
+
+  // By default, filter out DISCARDED and CLOSED leads to keep the "front end" clean
+  // while keeping them in the DB.
   const leads = await prisma.customLead.findMany({
+    where: showAll
+      ? {}
+      : {
+          status: {
+            notIn: ["DISCARDED", "CLOSED"] as any,
+          },
+        },
     orderBy: { createdAt: "desc" },
   });
 
+  const totalLeads = await prisma.customLead.count();
+
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-heading font-black text-foreground">
-          Custom Trip Leads
-        </h1>
-        <p className="text-foreground/60 mt-2">
-          Manage incoming requests from the homepage.
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-heading font-black text-foreground uppercase tracking-tight">
+            Custom Trip Leads
+          </h1>
+          <p className="text-foreground/60 mt-2">
+            Manage incoming requests and record inquiry results.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <a
+            href="/admin/leads"
+            className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+              showAll
+                ? "bg-card border border-border text-foreground hover:bg-foreground/5"
+                : "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+            }`}
+          >
+            Active Leads
+          </a>
+          <a
+            href="/admin/leads?status=all"
+            className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+              showAll
+                ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                : "bg-card border border-border text-foreground hover:bg-foreground/5"
+            }`}
+          >
+            All Archive
+          </a>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-card border border-border p-6 rounded-2xl shadow-sm">
+        <div className="bg-card border border-border p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
           <h3 className="text-sm font-bold text-foreground/50 uppercase tracking-wider mb-2">
-            Total Leads
+            Inbox (Active)
           </h3>
           <p className="text-4xl font-black">{leads.length}</p>
         </div>
-        <div className="bg-card border border-border p-6 rounded-2xl shadow-sm">
+        <div className="bg-card border border-border p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
           <h3 className="text-sm font-bold text-foreground/50 uppercase tracking-wider mb-2">
-            New
+            Total Ever
           </h3>
-          <p className="text-4xl font-black text-primary">
-            {leads.filter((l: any) => l.status === "NEW").length}
-          </p>
+          <p className="text-4xl font-black text-primary">{totalLeads}</p>
         </div>
       </div>
 
@@ -56,18 +107,20 @@ export default async function AdminLeadsPage() {
               <tr className="bg-foreground/[0.02] border-b border-border text-sm text-foreground/60">
                 <th className="p-6 font-semibold">Contact Info</th>
                 <th className="p-6 font-semibold">Requirements</th>
-                <th className="p-6 font-semibold">Received</th>
+                <th className="p-6 font-semibold">Admin Notes</th>
                 <th className="p-6 font-semibold">Status</th>
+                <th className="p-6 font-semibold text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/50">
               {leads.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={4}
+                    colSpan={5}
                     className="p-10 text-center text-foreground/50"
                   >
-                    No leads found yet.
+                    No active leads found. Check the archive or wait for new
+                    requests.
                   </td>
                 </tr>
               ) : (
@@ -101,26 +154,46 @@ export default async function AdminLeadsPage() {
                       </div>
                     </td>
                     <td className="p-6 max-w-sm">
-                      <div className="text-sm text-foreground/80 flex items-start gap-2 line-clamp-3">
+                      <div className="text-sm text-foreground/80 flex items-start gap-2 mb-2">
                         <FileText className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                         <span className="leading-relaxed">
                           {lead.requirements}
                         </span>
                       </div>
-                    </td>
-                    <td className="p-6 text-sm text-foreground/60 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <CalendarDays className="w-4 h-4" />
-                        {format(new Date(lead.createdAt), "MMM d, yyyy")}
+                      <div className="flex items-center gap-2 text-[10px] text-foreground/40 uppercase font-black">
+                        <CalendarDays className="w-3 h-3" />
+                        Received{" "}
+                        {format(new Date(lead.createdAt), "MMM d, HH:mm")}
                       </div>
+                    </td>
+                    <td className="p-6 max-w-xs">
+                      {lead.adminNotes ? (
+                        <div className="text-sm text-foreground/70 flex items-start gap-2 bg-primary/5 p-3 rounded-xl border border-primary/10">
+                          <MessageSquare className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                          <span className="italic">"{lead.adminNotes}"</span>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-foreground/30 italic">
+                          No notes yet
+                        </span>
+                      )}
                     </td>
                     <td className="p-6">
                       <div
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${getStatusStyles(
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${getStatusStyles(
                           lead.status,
                         )}`}
                       >
                         {lead.status}
+                      </div>
+                    </td>
+                    <td className="p-6 text-right">
+                      <div className="flex justify-end">
+                        <LeadActions
+                          leadId={lead.id}
+                          currentStatus={lead.status}
+                          currentNotes={lead.adminNotes || ""}
+                        />
                       </div>
                     </td>
                   </tr>

@@ -79,6 +79,7 @@ enum LeadStatus {
   CONTACTED
   CONVERTED
   CLOSED
+  DISCARDED
 }
 
 // ─── RBAC ────────────────────────────────────────────────
@@ -437,6 +438,7 @@ model CustomLead {
   phone        String
   requirements String     @db.Text
   status       LeadStatus @default(NEW)
+  adminNotes   String?    @db.Text
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 }
