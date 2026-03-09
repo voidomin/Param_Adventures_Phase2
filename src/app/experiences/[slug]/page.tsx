@@ -23,6 +23,7 @@ import BookNowButton from "@/components/booking/BookNowButton";
 import ExperienceReviews from "@/components/experiences/ExperienceReviews";
 import SaveButton from "@/components/experiences/SaveButton";
 import SimilarTrips from "@/components/experiences/SimilarTrips";
+import ExperienceGallery from "@/components/experiences/ExperienceGallery";
 
 export const revalidate = 60;
 
@@ -351,39 +352,8 @@ export default async function ExperienceDetailPage({
             )}
 
           {/* Gallery */}
-          {experience.images.length > 1 && (
-            <section>
-              <h2 className="text-3xl font-heading font-bold mb-6 flex items-center gap-3">
-                <ImageIcon className="w-8 h-8 text-primary" />
-                Visual Gallery
-              </h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {experience.images.slice(1).map((url) => (
-                  <div
-                    key={url}
-                    className="aspect-square rounded-2xl overflow-hidden bg-muted relative group"
-                  >
-                    {/\.(mp4|webm)$/i.exec(url) ? (
-                      <video
-                        src={url}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                        muted
-                        loop
-                        autoPlay
-                        playsInline
-                      />
-                    ) : (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={url}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                        alt=""
-                      />
-                    )}
-                  </div>
-                ))}
-              </div>
-            </section>
+          {experience.images.length > 0 && (
+            <ExperienceGallery images={experience.images} />
           )}
 
           {/* FAQs */}
