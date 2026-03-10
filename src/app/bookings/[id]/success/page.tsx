@@ -2,8 +2,9 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { verifyAccessToken } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { CalendarDays, MapPin, Users, Download, MessageCircle, Phone, CreditCard, CheckCircle2, Mountain } from "lucide-react";
+import { CalendarDays, MapPin, Users, Download, MessageCircle, Phone, CreditCard, CheckCircle2, Mountain, PlaneLanding, PlaneTakeoff } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -120,20 +121,29 @@ export default async function BookingSuccessPage({
             
             {/* Adventure Summary */}
             <div className="bg-card border border-border shadow-sm rounded-2xl p-6 flex flex-col sm:flex-row gap-6">
-              <div className="w-full sm:w-48 xl:w-56 aspect-[4/3] sm:aspect-square shrink-0 rounded-xl overflow-hidden relative border border-border/50">
+              <Link 
+                href={`/experiences/${experience.slug}`}
+                className="w-full sm:w-48 xl:w-56 aspect-[4/3] sm:aspect-square shrink-0 rounded-xl overflow-hidden relative border border-border/50 group/img hover:border-primary/50 transition-colors"
+                title={`Back to ${experience.title}`}
+              >
                 {adventureImage ? (
                   <Image 
                     src={adventureImage} 
                     alt={experience.title}
                     fill
-                    className="object-cover"
+                    className="object-cover transition-transform duration-500 group-hover/img:scale-105"
                   />
                 ) : (
                   <div className="w-full h-full bg-muted flex items-center justify-center">
                     <Mountain className="w-8 h-8 text-muted-foreground/30" />
                   </div>
                 )}
-              </div>
+                <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 transition-colors flex items-center justify-center">
+                   <div className="bg-white/90 text-black px-3 py-1.5 rounded-full text-xs font-bold opacity-0 group-hover/img:opacity-100 transition-opacity shadow-lg">
+                      View Trip
+                   </div>
+                </div>
+              </Link>
               <div className="flex-1 space-y-4">
                 <h2 className="text-2xl font-bold tracking-tight text-foreground">
                   Your Adventure Summary
@@ -169,26 +179,55 @@ export default async function BookingSuccessPage({
               <div className="bg-muted/30 px-6 py-4 border-b border-border/50">
                 <h3 className="text-lg font-bold text-foreground">Guest Details</h3>
               </div>
-              <div className="p-6">
-                <div className="grid grid-cols-[120px_1fr] sm:grid-cols-[160px_1fr] gap-y-4 text-sm">
-                  <div className="font-bold text-foreground/70">Primary Contact</div>
-                  <div className="font-medium">{primaryContact?.name} ({primaryContact?.email || "No email"})</div>
-                  
-                  <div className="font-bold text-foreground/70">Total Guests</div>
-                  <div className="font-medium">{booking.participantCount} Adults</div>
-                  
-                  <div className="col-span-2 my-2 border-t border-border/50"></div>
-                  
-                  {participants.map((p, idx) => (
-                    <div key={p.id} className="col-span-2 grid grid-cols-[120px_1fr] sm:grid-cols-[160px_1fr] gap-4 py-2 hover:bg-muted/10 rounded-lg px-2 -mx-2 transition-colors">
-                      <div className="font-bold text-primary">Guest {idx + 1}: {p.name}</div>
-                      <div className="text-foreground/80">
-                        (Age {p.age || "N/A"}, Blood Group: {p.bloodGroup || "N/A"})
-                        {p.emergencyContactName && ` • Emergency: ${p.emergencyContactName} (${p.emergencyContactNumber})`}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <div className="p-0 overflow-x-auto">
+                <table className="w-full text-sm text-left">
+                  <thead className="text-xs font-black text-foreground/40 uppercase tracking-widest bg-muted/20 border-b border-border/50">
+                    <tr>
+                      <th className="px-6 py-4">Guest</th>
+                      <th className="px-6 py-4">Details</th>
+                      <th className="px-6 py-4">Pickup</th>
+                      <th className="px-6 py-4">Drop</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {participants.map((p, idx) => (
+                      <tr key={p.id} className="hover:bg-muted/10 transition-colors group">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${p.isPrimary ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground/40'}`}>
+                              {idx + 1}
+                            </div>
+                            <div className="font-bold text-foreground">
+                              {p.name}
+                              {p.isPrimary && (
+                                <span className="ml-2 text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded uppercase">Host</span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-foreground/70">
+                          <div className="flex flex-col gap-1">
+                            <span className="font-medium">Age: {p.age || "N/A"} • {p.gender || "Gender N/A"}</span>
+                            <span className="text-xs">Blood: {p.bloodGroup || "N/A"}</span>
+                            {p.phoneNumber && <span className="text-xs opacity-60">Tel: {p.phoneNumber}</span>}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                           <div className="flex items-center gap-2 text-foreground/80">
+                              <PlaneTakeoff className="w-4 h-4 text-primary shrink-0" />
+                              <span className="font-medium">{p.pickupPoint || "Meeting Point"}</span>
+                           </div>
+                        </td>
+                        <td className="px-6 py-4">
+                           <div className="flex items-center gap-2 text-foreground/80">
+                              <PlaneLanding className="w-4 h-4 text-primary shrink-0" />
+                              <span className="font-medium">{p.dropPoint || "Self/TBD"}</span>
+                           </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
 

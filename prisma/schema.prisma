@@ -198,6 +198,7 @@ model Experience {
   bestTimeToVisit    String?
   maxGroupSize       Int?
   pickupPoints       String[] @default([])
+  dropPoints         String[] @default([])
 
   deletedAt    DateTime?
   createdAt    DateTime         @default(now())
@@ -303,6 +304,7 @@ model BookingParticipant {
   emergencyContactNumber String?
   emergencyRelationship  String?
   pickupPoint            String?
+  dropPoint              String?
 
   attended         Boolean  @default(false)
 

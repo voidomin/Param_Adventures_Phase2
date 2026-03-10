@@ -429,6 +429,7 @@ export default async function ExperienceDetailPage({
               basePrice={Number(experience.basePrice)}
               maxCapacity={experience.capacity}
               pickupPoints={(experience as any).pickupPoints || []}
+              dropPoints={(experience as any).dropPoints || []}
             />
 
             <SimilarTrips

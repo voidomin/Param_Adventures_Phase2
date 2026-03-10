@@ -106,6 +106,7 @@ export async function POST(request: NextRequest) {
               emergencyContactNumber: p.emergencyContactNumber || null,
               emergencyRelationship: p.emergencyRelationship || null,
               pickupPoint: p.pickupPoint || null,
+              dropPoint: p.dropPoint || null,
             })),
           },
         },
@@ -157,7 +158,7 @@ export async function POST(request: NextRequest) {
       keyId: process.env.RAZORPAY_KEY_ID,
     });
   } catch (error) {
-    console.error("Booking creation error:", error);
+    console.error("Booking creation error detail:", error);
     return NextResponse.json(
       { error: "Failed to create booking." },
       { status: 500 },
