@@ -1,12 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/lib/AuthContext";
-
-import { Suspense } from "react";
 
 function LoginContent() {
   const router = useRouter();

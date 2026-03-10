@@ -6,26 +6,27 @@ import {
   generateRefreshToken,
 } from "@/lib/auth";
 import { sendWelcomeEmail } from "@/lib/email";
+import { z } from "zod";
+
+const registerSchema = z.object({
+  email: z.string().email({ message: "Invalid email format" }),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  name: z.string().min(1, "Name is required"),
+});
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password, name } = body;
-
+    
     // ─── Validation ──────────────────────────────────────
-    if (!email || !password || !name) {
+    const parseResult = registerSchema.safeParse(body);
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: "Email, password, and name are required." },
+        { error: parseResult.error.issues[0].message },
         { status: 400 },
       );
     }
-
-    if (password.length < 8) {
-      return NextResponse.json(
-        { error: "Password must be at least 8 characters." },
-        { status: 400 },
-      );
-    }
+    const { email, password, name } = parseResult.data;
 
     // ─── Check for existing user ─────────────────────────
     const existingUser = await prisma.user.findUnique({

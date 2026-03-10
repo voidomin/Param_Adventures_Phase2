@@ -5,19 +5,26 @@ import {
   generateAccessToken,
   generateRefreshToken,
 } from "@/lib/auth";
+import { z } from "zod";
+
+const loginSchema = z.object({
+  email: z.string().email({ message: "Invalid email format" }),
+  password: z.string().min(1, { message: "Password is required" }),
+});
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password } = body;
-
+    
     // ─── Validation ──────────────────────────────────────
-    if (!email || !password) {
+    const parseResult = loginSchema.safeParse(body);
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: "Email and password are required." },
+        { error: parseResult.error.issues[0].message },
         { status: 400 },
       );
     }
+    const { email, password } = parseResult.data;
 
     // ─── Find user ───────────────────────────────────────
     const user = await prisma.user.findUnique({

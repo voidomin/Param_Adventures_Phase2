@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Users, Loader2, ShieldAlert, CheckCircle2, Search, Filter, ChevronLeft, ChevronRight, UserCog, User as UserIcon, Star } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 
@@ -22,28 +22,57 @@ export default function AdminUsersPage() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Filtering & Pagination State
+  // Pagination & API State
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("ALL");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+  
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 1 });
+  const [stats, setStats] = useState({ total: 0, admins: 0, customers: 0, trekLeads: 0 });
 
   // Action State
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+      setCurrentPage(1); // reset to page 1 on new search
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Reset to page 1 on role filter change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [roleFilter]);
+
+  // Fetch Data
   useEffect(() => {
     async function fetchData() {
+      setIsLoading(true);
       try {
+        const queryParams = new URLSearchParams({
+          page: currentPage.toString(),
+          limit: itemsPerPage.toString(),
+        });
+        if (roleFilter !== "ALL") queryParams.append("role", roleFilter);
+        if (debouncedSearchTerm) queryParams.append("search", debouncedSearchTerm);
+
         const [usersRes, rolesRes] = await Promise.all([
-          fetch("/api/admin/users"),
+          fetch(`/api/admin/users?${queryParams.toString()}`),
           fetch("/api/admin/roles"),
         ]);
 
         if (usersRes.ok) {
           const json = await usersRes.json();
           setUsers(json.users || []);
+          if (json.pagination) setPagination(json.pagination);
+          if (json.stats) setStats(json.stats);
         }
         if (rolesRes.ok) {
           const json = await rolesRes.json();
@@ -57,7 +86,7 @@ export default function AdminUsersPage() {
       }
     }
     fetchData();
-  }, []);
+  }, [currentPage, roleFilter, debouncedSearchTerm]);
 
   const handleRoleChange = async (userId: string, newRoleId: string) => {
     setUpdatingUserId(userId);
@@ -89,37 +118,6 @@ export default function AdminUsersPage() {
       setUpdatingUserId(null);
     }
   };
-
-  // Derived Data & Filtering
-  const { filteredUsers, stats } = useMemo(() => {
-    const _stats = { total: users.length, admins: 0, customers: 0, trekLeads: 0 };
-    
-    const _filtered = users.filter((u) => {
-      // Build Stats
-      if (u.role.name === "ADMIN" || u.role.name === "SUPER_ADMIN") _stats.admins++;
-      else if (u.role.name === "CUSTOMER") _stats.customers++;
-      else if (u.role.name === "TREK_LEAD") _stats.trekLeads++;
-
-      // Filter Logic
-      const matchesSearch = u.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            u.email.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesRole = roleFilter === "ALL" || u.role.name === roleFilter;
-      
-      return matchesSearch && matchesRole;
-    });
-
-    return { filteredUsers: _filtered, stats: _stats };
-  }, [users, searchTerm, roleFilter]);
-
-  // Pagination Logic
-  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage) || 1;
-  const currentItems = filteredUsers.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
-  // Reset page when filters change
-  useEffect(() => setCurrentPage(1), [searchTerm, roleFilter]);
 
   const canAssignRoles = roles.length > 0;
 
@@ -212,14 +210,14 @@ export default function AdminUsersPage() {
           </div>
         )}
         
-        {!isLoading && filteredUsers.length === 0 && (
+        {!isLoading && users.length === 0 && (
           <div className="py-24 text-center text-foreground/50 flex flex-col items-center">
             <Users className="w-12 h-12 mb-4 opacity-50" />
             <p className="font-medium">No users found matching your filters.</p>
           </div>
         )}
         
-        {!isLoading && filteredUsers.length > 0 && (
+        {!isLoading && users.length > 0 && (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -230,7 +228,7 @@ export default function AdminUsersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {currentItems.map((user) => {
+                {users.map((user) => {
                   const currentRoleName = user.role.name;
                   const currentRoleId = roles.find((r) => r.name === currentRoleName)?.id;
                   const isTargetSuperAdmin = currentRoleName === "SUPER_ADMIN";
@@ -299,10 +297,10 @@ export default function AdminUsersPage() {
         )}
 
         {/* Pagination Controls */}
-        {!isLoading && filteredUsers.length > 0 && (
+        {!isLoading && users.length > 0 && (
           <div className="border-t border-border p-4 bg-foreground/[0.01] flex items-center justify-between text-sm text-foreground/60 font-medium rounded-b-2xl">
             <div>
-              Showing <span className="text-foreground">{((currentPage - 1) * itemsPerPage) + 1}</span> to <span className="text-foreground">{Math.min(currentPage * itemsPerPage, filteredUsers.length)}</span> of <span className="text-foreground">{filteredUsers.length}</span> users
+              Showing <span className="text-foreground">{((currentPage - 1) * itemsPerPage) + 1}</span> to <span className="text-foreground">{Math.min(currentPage * itemsPerPage, pagination.total)}</span> of <span className="text-foreground">{pagination.total}</span> users
             </div>
             
             <div className="flex items-center gap-2">
@@ -317,13 +315,13 @@ export default function AdminUsersPage() {
               </button>
               
               <div className="px-3 py-1.5 bg-background border border-border rounded-lg min-w-[3rem] text-center font-bold text-foreground">
-                {currentPage} / {totalPages}
+                {currentPage} / {pagination.totalPages}
               </div>
 
               <button
                 type="button"
-                disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage >= pagination.totalPages}
+                onClick={() => setCurrentPage(p => Math.min(pagination.totalPages, p + 1))}
                 className="p-1.5 rounded-lg border border-border bg-background hover:bg-foreground/5 disabled:opacity-30 disabled:hover:bg-background transition-colors"
                 aria-label="Next page"
               >

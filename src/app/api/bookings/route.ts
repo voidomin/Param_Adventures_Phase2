@@ -10,18 +10,65 @@ const razorpay = new Razorpay({
 });
 
 /**
- * POST /api/bookings — Create a booking and a Razorpay order in one step.
- *
- * Body: { experienceId, slotId, participantCount }
- *
- * Flow:
- * 1. Auth check
- * 2. Validate slot capacity
- * 3. Calculate total price  (basePrice × participantCount)
- * 4. Create Booking (REQUESTED) + Payment (PENDING) in a transaction
- * 5. Decrement slot.remainingCapacity
- * 6. Create Razorpay order and return order_id to the client
+ * POST /api/bookings
+ * 
+ * Create a new booking for a specific experience and slot.
+ * Body: { experienceId, slotId, participantCount, participants }
  */
+import { z } from "zod";
+
+const participantSchema = z.object({
+  isPrimary: z.boolean().optional(),
+  name: z.string().min(1, "Participant name is required"),
+  email: z.string().email({ message: "Invalid email format" }).optional().or(z.literal("")),
+  phoneNumber: z.string().optional().or(z.literal("")),
+  gender: z.string().optional().or(z.literal("")),
+  age: z.number().or(z.string()).optional().or(z.literal("")),
+  bloodGroup: z.string().optional().or(z.literal("")),
+  emergencyContactName: z.string().optional().or(z.literal("")),
+  emergencyContactNumber: z.string().optional().or(z.literal("")),
+  emergencyRelationship: z.string().optional().or(z.literal("")),
+  pickupPoint: z.string().optional().or(z.literal("")),
+  dropPoint: z.string().optional().or(z.literal("")),
+});
+
+const bookingSchema = z.object({
+  experienceId: z.string().min(1, "experienceId is required"),
+  slotId: z.string().min(1, "slotId is required"),
+  participantCount: z.number().int().min(1),
+  participants: z.array(participantSchema).min(1),
+}).refine(data => data.participants.length === data.participantCount, {
+  message: "Participant details must match the participant count.",
+  path: ["participants"]
+});
+
+// Helper to lower cognitive complexity
+async function calculateTaxes(totalPrice: number) {
+  let taxBreakdown: Record<string, unknown>[] = [];
+  let baseFare = totalPrice;
+
+  const settings = await prisma.platformSetting.findUnique({
+    where: { key: 'taxConfig' }
+  });
+  
+  if (settings?.value) {
+     try {
+        const config = JSON.parse(settings.value);
+        if (Array.isArray(config)) {
+           taxBreakdown = config.map((tax) => {
+              const amount = (totalPrice * (Number(tax.percentage) || 0)) / 100;
+              baseFare -= amount;
+              return { ...tax, amount };
+           });
+        }
+     } catch {
+        console.error("Failed to parse taxConfig during booking");
+     }
+  }
+
+  return { taxBreakdown, baseFare };
+}
+
 export async function POST(request: NextRequest) {
   // Any authenticated user can create a booking
   const auth = await authorizeRequest(request);
@@ -31,28 +78,15 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { experienceId, slotId, participantCount, participants } = body;
-
-    if (!experienceId || !slotId || !participantCount || participantCount < 1) {
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = bookingSchema.safeParse(body);
+    if (!parseResult.success) {
       return NextResponse.json(
-        {
-          error:
-            "experienceId, slotId, and participantCount (≥1) are required.",
-        },
+        { error: parseResult.error.issues[0].message },
         { status: 400 },
       );
     }
-
-    if (
-      !participants ||
-      !Array.isArray(participants) ||
-      participants.length !== participantCount
-    ) {
-      return NextResponse.json(
-        { error: "Participant details must match the participant count." },
-        { status: 400 },
-      );
-    }
+    const { experienceId, slotId, participantCount, participants } = parseResult.data;
 
     // Fetch experience and slot together
     const [experience, slot] = await Promise.all([
@@ -82,31 +116,7 @@ export async function POST(request: NextRequest) {
     const totalPrice = Number(experience.basePrice) * participantCount;
     const amountPaise = Math.round(totalPrice * 100); // Razorpay uses paise
 
-    // Reverse Calculate Taxes
-    const settings = await prisma.platformSetting.findUnique({
-      where: { key: 'taxConfig' }
-    });
-    
-    let taxBreakdown = [];
-    let baseFare = totalPrice;
-
-    if (settings && settings.value) {
-       try {
-          const config = JSON.parse(settings.value);
-          if (Array.isArray(config)) {
-             taxBreakdown = config.map((tax) => {
-                const amount = (totalPrice * (Number(tax.percentage) || 0)) / 100;
-                baseFare -= amount;
-                return {
-                   ...tax,
-                   amount
-                };
-             });
-          }
-       } catch(e) {
-          console.error("Failed to parse taxConfig during booking");
-       }
-    }
+    const { taxBreakdown, baseFare } = await calculateTaxes(totalPrice);
 
     // Create booking and decrement capacity atomically
     const booking = await prisma.$transaction(async (tx) => {
@@ -140,10 +150,14 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      await tx.slot.update({
-        where: { id: slotId },
+      const slotUpdate = await tx.slot.updateMany({
+        where: { id: slotId, remainingCapacity: { gte: participantCount } },
         data: { remainingCapacity: { decrement: participantCount } },
       });
+
+      if (slotUpdate.count === 0) {
+        throw new Error("OVERBOOKED");
+      }
 
       return newBooking;
     });
@@ -186,6 +200,12 @@ export async function POST(request: NextRequest) {
       keyId: process.env.RAZORPAY_KEY_ID,
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "OVERBOOKED") {
+      return NextResponse.json(
+        { error: "Sorry, those seats were just booked by someone else. Not enough capacity." },
+        { status: 409 },
+      );
+    }
     console.error("Booking creation error detail:", error);
     return NextResponse.json(
       { error: "Failed to create booking." },

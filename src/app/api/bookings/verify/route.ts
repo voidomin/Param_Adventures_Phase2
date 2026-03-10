@@ -76,7 +76,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Signature valid — confirm booking and payment
+    // Signature valid — check idempotency
+    const existingBooking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: { paymentStatus: true },
+    });
+
+    if (existingBooking?.paymentStatus === "PAID") {
+      return NextResponse.json({
+        success: true,
+        bookingId,
+        message: "Payment was already verified and booking confirmed.",
+      });
+    }
+
+    // Confirm booking and payment
     const [updatedBooking] = await prisma.$transaction([
       prisma.booking.update({
         where: { id: bookingId },

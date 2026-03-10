@@ -14,12 +14,13 @@ export async function GET(request: NextRequest) {
     const settings = await prisma.platformSetting.findMany();
     
     // Convert to a neat object
-    const map = settings.reduce((acc: Record<string, any>, current: any) => {
+    const map = settings.reduce((acc: Record<string, unknown>, current: { key: string; value: string }) => {
       try {
          // Attempt to parse JSON objects (like taxConfig)
          acc[current.key] = JSON.parse(current.value);
-      } catch (e) {
+      } catch {
          // Fallback to string
+         console.warn(`Could not parse JSON for setting ${current.key}, returning as string`);
          acc[current.key] = current.value;
       }
       return acc;
