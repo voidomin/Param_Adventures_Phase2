@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Mail, Phone, MapPin, Instagram, Youtube, Twitter, Facebook, Linkedin } from "lucide-react";
+import { Mail, Phone, MapPin, InstagramIcon, YoutubeIcon, X, FacebookIcon, LinkedinIcon } from "lucide-react";
 
 export default function Footer() {
   const pathname = usePathname();
@@ -52,7 +52,7 @@ export default function Footer() {
                 className="w-10 h-10 rounded-full bg-foreground/5 flex items-center justify-center text-foreground/60 hover:bg-primary/10 hover:text-primary transition-colors"
                 title="Facebook"
               >
-                <Facebook className="w-4 h-4" />
+                <FacebookIcon className="w-4 h-4" />
               </a>
               <a
                 href="https://www.instagram.com/param.adventures?igsh=MXUzc25yYTN5NXRmZw%3D%3D&utm_source=qr"
@@ -61,7 +61,7 @@ export default function Footer() {
                 className="w-10 h-10 rounded-full bg-foreground/5 flex items-center justify-center text-foreground/60 hover:bg-primary/10 hover:text-primary transition-colors"
                 title="Instagram"
               >
-                <Instagram className="w-4 h-4" />
+                <InstagramIcon className="w-4 h-4" />
               </a>
               <a
                 href="https://www.youtube.com/@ParamAdventures"
@@ -70,7 +70,7 @@ export default function Footer() {
                 className="w-10 h-10 rounded-full bg-foreground/5 flex items-center justify-center text-foreground/60 hover:bg-primary/10 hover:text-primary transition-colors"
                 title="YouTube"
               >
-                <Youtube className="w-4 h-4" />
+                <YoutubeIcon className="w-4 h-4" />
               </a>
               <a
                 href="https://x.com/Adventures49054"
@@ -79,7 +79,7 @@ export default function Footer() {
                 className="w-10 h-10 rounded-full bg-foreground/5 flex items-center justify-center text-foreground/60 hover:bg-primary/10 hover:text-primary transition-colors"
                 title="X (Twitter)"
               >
-                <Twitter className="w-4 h-4" />
+                <X className="w-4 h-4" />
               </a>
               <a
                 href="https://www.linkedin.com/in/param-adventures-936248397/"
@@ -88,7 +88,7 @@ export default function Footer() {
                 className="w-10 h-10 rounded-full bg-foreground/5 flex items-center justify-center text-foreground/60 hover:bg-primary/10 hover:text-primary transition-colors"
                 title="LinkedIn"
               >
-                <Linkedin className="w-4 h-4" />
+                <LinkedinIcon className="w-4 h-4" />
               </a>
             </div>
           </div>
