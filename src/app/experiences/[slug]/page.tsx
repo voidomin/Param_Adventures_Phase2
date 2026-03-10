@@ -10,7 +10,6 @@ import {
   Mountain,
   Check,
   CalendarDays,
-  Image as ImageIcon,
   Info,
   Shield,
   X,
@@ -18,6 +17,8 @@ import {
   Baby,
   Backpack,
   ChevronDown,
+  Utensils,
+  Tent,
 } from "lucide-react";
 import BookNowButton from "@/components/booking/BookNowButton";
 import ExperienceReviews from "@/components/experiences/ExperienceReviews";
@@ -275,6 +276,28 @@ export default async function ExperienceDetailPage({
                             <p className="text-foreground/70 leading-relaxed whitespace-pre-line border-t border-border/10 pt-4">
                               {dayItem.description}
                             </p>
+                            {(dayItem.meals || dayItem.accommodation) && (
+                              <div className="mt-4 pt-4 border-t border-border/10 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                                {dayItem.meals && (Array.isArray(dayItem.meals) ? dayItem.meals.length > 0 : true) && (
+                                  <div className="flex items-start gap-2 text-foreground/80 bg-background/50 p-3 rounded-xl border border-border/30">
+                                    <Utensils className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                                    <span>
+                                      <strong className="block text-xs uppercase tracking-wider text-foreground/50 mb-0.5">Meals Included</strong>
+                                      {Array.isArray(dayItem.meals) ? dayItem.meals.join(", ") : dayItem.meals}
+                                    </span>
+                                  </div>
+                                )}
+                                {dayItem.accommodation && (
+                                  <div className="flex items-start gap-2 text-foreground/80 bg-background/50 p-3 rounded-xl border border-border/30">
+                                    <Tent className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                                    <span>
+                                      <strong className="block text-xs uppercase tracking-wider text-foreground/50 mb-0.5">Accommodation</strong>
+                                      {dayItem.accommodation}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </details>
                       </div>

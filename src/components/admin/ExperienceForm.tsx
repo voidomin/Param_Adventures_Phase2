@@ -24,7 +24,11 @@ interface ItineraryDay {
   _id?: string;
   title: string;
   description: string;
+  meals?: string[];
+  accommodation?: string;
 }
+
+const MEAL_OPTIONS = ["Breakfast", "Lunch", "Dinner", "Snacks"];
 
 export default function ExperienceForm({
   initialData = null,
@@ -177,7 +181,7 @@ export default function ExperienceForm({
   const handleItineraryChange = (
     index: number,
     field: keyof ItineraryDay,
-    value: string,
+    value: string | string[],
   ) => {
     setItinerary((prev) => {
       const updated = [...prev];
@@ -455,7 +459,7 @@ export default function ExperienceForm({
                     onChange={(e) =>
                       handleItineraryChange(ix, "title", e.target.value)
                     }
-                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:border-primary/50 font-bold"
                     placeholder={`Day ${ix + 1} Title (e.g. Arrival in Kathmandu)`}
                     required
                   />
@@ -469,6 +473,48 @@ export default function ExperienceForm({
                     placeholder="Day description..."
                     required
                   />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-border/50">
+                    <div>
+                      <label className="block text-xs font-semibold text-foreground/60 mb-2">Meals Included</label>
+                      <div className="flex gap-2 flex-wrap">
+                        {MEAL_OPTIONS.map(meal => {
+                          const currentMeals = Array.isArray(day.meals) ? day.meals : [];
+                          const isSelected = currentMeals.includes(meal);
+                          return (
+                            <button
+                              key={meal}
+                              type="button"
+                              onClick={() => {
+                                const newMeals = isSelected 
+                                  ? currentMeals.filter(m => m !== meal)
+                                  : [...currentMeals, meal];
+                                handleItineraryChange(ix, "meals", newMeals);
+                              }}
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+                                isSelected 
+                                  ? "bg-primary text-primary-foreground border-primary shadow-sm" 
+                                  : "bg-background text-foreground/60 border-border hover:border-primary/50 hover:text-foreground"
+                              }`}
+                            >
+                              {meal}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-foreground/60 mb-2">Accommodation (Optional)</label>
+                      <input
+                        type="text"
+                        value={day.accommodation || ""}
+                        onChange={(e) =>
+                          handleItineraryChange(ix, "accommodation", e.target.value)
+                        }
+                        className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                        placeholder="e.g. Alpine Tent"
+                      />
+                    </div>
+                  </div>
                 </div>
                 <button
                   type="button"
