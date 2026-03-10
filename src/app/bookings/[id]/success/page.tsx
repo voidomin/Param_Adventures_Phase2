@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { CalendarDays, MapPin, Users, Download, MessageCircle, Phone, CreditCard, CheckCircle2, Mountain } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import DownloadInvoiceBtn from "@/components/booking/DownloadInvoiceBtn";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -78,8 +79,11 @@ export default async function BookingSuccessPage({
   // We'll calculate a mock breakdown based on totalPrice for display purposes, 
   // or just show total if we don't have taxes/fees separated in DB.
   const totalPaid = Number(booking.totalPrice) || 0;
-  const baseFare = totalPaid * 0.9;
-  const taxes = totalPaid * 0.1;
+  const baseFare = Number((booking as any).baseFare) || totalPaid;
+
+  const taxItems = Array.isArray((booking as any).taxBreakdown) 
+    ? (booking as any).taxBreakdown as unknown as { name: string, percentage: number, amount: number }[]
+    : [];
 
   // Leads
   const trekLeads = slot?.assignments?.map((a) => a.trekLead) || [];
@@ -288,12 +292,20 @@ export default async function BookingSuccessPage({
               <div className="p-6 sm:w-1/2 space-y-3 text-sm">
                 <div className="flex justify-between items-center py-1">
                   <span className="text-foreground/60">Base Fare</span>
-                  <span className="font-semibold text-foreground">₹{baseFare.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
+                  <span className="font-semibold text-foreground">₹{baseFare.toLocaleString("en-IN")}</span>
                 </div>
-                <div className="flex justify-between items-center py-1">
-                  <span className="text-foreground/60">Taxes & Fees (10%)</span>
-                  <span className="font-semibold text-foreground">₹{taxes.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
-                </div>
+                {taxItems.map((tax, idx) => (
+                  <div key={`${tax.name}-${idx}`} className="flex justify-between items-center py-1">
+                    <span className="text-foreground/60">{tax.name} ({tax.percentage}%)</span>
+                    <span className="font-semibold text-foreground">₹{(Number(tax.amount) || 0).toLocaleString("en-IN")}</span>
+                  </div>
+                ))}
+                {taxItems.length === 0 && (
+                   <div className="flex justify-between items-center py-1">
+                    <span className="text-foreground/60">Taxes & Fees</span>
+                    <span className="font-semibold text-foreground">₹{(totalPaid - baseFare).toLocaleString("en-IN")}</span>
+                  </div>
+                )}
                 <div className="border-t border-border/50 my-1"></div>
                 <div className="flex justify-between items-center py-1">
                   <span className="text-foreground/60">Method</span>
@@ -330,10 +342,7 @@ export default async function BookingSuccessPage({
                   <span>Download Gear List</span>
                   <Download className="w-4 h-4" />
                 </button>
-                <button className="w-full flex items-center justify-between px-4 py-3 bg-foreground/5 text-foreground hover:bg-foreground/10 transition-colors rounded-xl font-semibold border border-transparent hover:border-border">
-                  <span>Liability Waiver (Draft)</span>
-                  <Download className="w-4 h-4" />
-                </button>
+                <DownloadInvoiceBtn bookingId={booking.id} />
               </div>
             </div>
 

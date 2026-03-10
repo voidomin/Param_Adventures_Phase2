@@ -82,6 +82,32 @@ export async function POST(request: NextRequest) {
     const totalPrice = Number(experience.basePrice) * participantCount;
     const amountPaise = Math.round(totalPrice * 100); // Razorpay uses paise
 
+    // Reverse Calculate Taxes
+    const settings = await prisma.platformSetting.findUnique({
+      where: { key: 'taxConfig' }
+    });
+    
+    let taxBreakdown = [];
+    let baseFare = totalPrice;
+
+    if (settings && settings.value) {
+       try {
+          const config = JSON.parse(settings.value);
+          if (Array.isArray(config)) {
+             taxBreakdown = config.map((tax) => {
+                const amount = (totalPrice * (Number(tax.percentage) || 0)) / 100;
+                baseFare -= amount;
+                return {
+                   ...tax,
+                   amount
+                };
+             });
+          }
+       } catch(e) {
+          console.error("Failed to parse taxConfig during booking");
+       }
+    }
+
     // Create booking and decrement capacity atomically
     const booking = await prisma.$transaction(async (tx) => {
       const newBooking = await tx.booking.create({
@@ -91,6 +117,8 @@ export async function POST(request: NextRequest) {
           slotId,
           participantCount,
           totalPrice,
+          baseFare,
+          taxBreakdown,
           bookingStatus: "REQUESTED",
           paymentStatus: "PENDING",
           participants: {

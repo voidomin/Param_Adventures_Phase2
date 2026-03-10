@@ -9,6 +9,7 @@ import {
   Image as ImageIcon,
   Save,
   ArrowLeft,
+  Info,
 } from "lucide-react";
 import Link from "next/link";
 import MediaUploader from "./MediaUploader";
@@ -36,6 +37,7 @@ export default function ExperienceForm({
   const [categories, setCategories] = useState<Category[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [taxes, setTaxes] = useState<{ id: string; name: string; percentage: number }[]>([]);
 
   // Form State
   const [title, setTitle] = useState(initialData?.title || "");
@@ -148,7 +150,22 @@ export default function ExperienceForm({
         console.error("Failed to load categories:", err);
       }
     };
+    
+    // Fetch Taxes
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch("/api/admin/settings");
+        const data = await res.json();
+        if (data.settings && Array.isArray(data.settings.taxConfig)) {
+          setTaxes(data.settings.taxConfig);
+        }
+      } catch (err) {
+        console.error("Failed to load settings:", err);
+      }
+    };
+
     fetchCats();
+    fetchSettings();
   }, []);
 
   const toggleCategory = (id: string) => {
@@ -950,7 +967,7 @@ export default function ExperienceForm({
                 htmlFor="price"
                 className="block text-sm font-medium text-foreground/80 mb-1"
               >
-                Base Price (₹)
+                Total Gross Price (₹)
               </label>
               <input
                 id="price"
@@ -958,9 +975,34 @@ export default function ExperienceForm({
                 min="0"
                 required
                 value={basePrice}
-                onChange={(e) => setBasePrice(e.target.value)}
-                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50 text-xl font-semibold"
+                onChange={(e) => setBasePrice(Number(e.target.value))}
+                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50 text-xl font-semibold mb-2"
               />
+              {basePrice > 0 && (
+                <div className="bg-primary/5 rounded-lg p-3 text-xs text-foreground/80 border border-primary/20 space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold text-primary mb-1">
+                    <Info className="w-3.5 h-3.5" />
+                    <span>Live Revenue Breakdown (per seat)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Gross Total:</span>
+                    <span>₹{Number(basePrice).toFixed(2)}</span>
+                  </div>
+                  {taxes.map((tax) => {
+                     const amount = (basePrice * tax.percentage) / 100;
+                     return (
+                        <div key={tax.id} className="flex justify-between text-red-500/80">
+                           <span>{tax.name} ({tax.percentage}%):</span>
+                           <span>- ₹{amount.toFixed(2)}</span>
+                        </div>
+                     );
+                  })}
+                  <div className="flex justify-between font-bold pt-1 border-t border-primary/10 mt-1 text-green-500">
+                    <span>Net Base Revenue:</span>
+                    <span>₹{(basePrice - taxes.reduce((acc, tax) => acc + ((basePrice * tax.percentage) / 100), 0)).toFixed(2)}</span>
+                  </div>
+                </div>
+              )}
             </div>
             <div>
               <label
