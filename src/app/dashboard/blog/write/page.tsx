@@ -279,7 +279,7 @@ export default function WriteBlogPage() {
                 shouldCrop={true}
                 aspectRatio={ASPECT_RATIOS.BLOG_CARD}
                 onUploadSuccess={(urls?: string[]) => {
-                  if (urls && urls[0]) setCoverImageUrl(urls[0]);
+                  if (urls?.[0]) setCoverImageUrl(urls[0]);
                 }}
               />
             )}
