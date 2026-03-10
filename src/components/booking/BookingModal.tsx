@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import {
   X,
@@ -102,6 +103,7 @@ export default function BookingModal({
 }: Readonly<BookingModalProps>) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  const router = useRouter();
 
   const { user } = useAuth();
 
@@ -308,7 +310,7 @@ export default function BookingModal({
             });
             const verifyData = await verifyRes.json();
             if (!verifyRes.ok) throw new Error(verifyData.error);
-            setStep("success");
+            router.push(`/bookings/${bId}/success`);
           } catch (err: unknown) {
             setErrorMsg(
               err instanceof Error
