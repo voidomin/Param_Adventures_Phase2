@@ -106,6 +106,7 @@ export default function ImageCropper({
             </h2>
           </div>
           <button
+            type="button"
             onClick={onCancel}
             className="p-2 text-foreground/50 hover:text-foreground hover:bg-foreground/5 rounded-full transition-colors"
           >
@@ -146,12 +147,14 @@ export default function ImageCropper({
 
           <div className="flex justify-end gap-3">
             <button
+              type="button"
               onClick={onCancel}
               className="px-6 py-2.5 rounded-full font-bold text-foreground/70 hover:bg-foreground/10 transition-colors"
             >
               Cancel
             </button>
             <button
+              type="button"
               onClick={handleDone}
               className="bg-primary text-primary-foreground px-8 py-2.5 rounded-full font-bold flex items-center gap-2 hover:scale-105 transition-transform shadow-lg shadow-primary/25"
             >

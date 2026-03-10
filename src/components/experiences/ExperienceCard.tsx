@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Clock, MapPin, Users, IndianRupee } from "lucide-react";
 import { motion } from "framer-motion";
 import SaveButton from "./SaveButton";
+import { getPlainTextFromJSON } from "@/lib/utils/rich-text";
 
 interface Category {
   category: {
@@ -18,7 +19,7 @@ interface ExperienceCardProps {
     id: string;
     title: string;
     slug: string;
-    description: string;
+    description: any;
     durationDays: number;
     location: string;
     basePrice: number;
@@ -132,7 +133,9 @@ export default function ExperienceCard({
             {experience.title}
           </h3>
           <p className="text-foreground/70 text-sm line-clamp-2 mb-6 flex-1">
-            {experience.description}
+            {typeof experience.description === 'string' 
+              ? experience.description 
+              : getPlainTextFromJSON(experience.description)}
           </p>
 
           <div className="flex items-center justify-between pt-4 border-t border-border mt-auto">

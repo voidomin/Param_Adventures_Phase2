@@ -1,3 +1,4 @@
+/* eslint-disable max-nested-callbacks */
 "use client";
 
 import { useState, useEffect } from "react";
@@ -14,6 +15,7 @@ import {
 import Link from "next/link";
 import MediaUploader from "./MediaUploader";
 import { ASPECT_RATIOS } from "@/lib/constants/aspect-ratios";
+import TiptapEditor from "../blog/TiptapEditor";
 
 interface Category {
   id: string;
@@ -30,6 +32,36 @@ interface ItineraryDay {
 
 const MEAL_OPTIONS = ["Breakfast", "Lunch", "Dinner", "Snacks"];
 
+function MealButtons({ 
+  meals, 
+  onToggle 
+}: Readonly<{ 
+  meals: string[]; 
+  onToggle: (meal: string) => void 
+}>) {
+  return (
+    <div className="flex gap-2 flex-wrap">
+      {MEAL_OPTIONS.map(meal => {
+        const isSelected = meals.includes(meal);
+        return (
+          <button
+            key={meal}
+            type="button"
+            onClick={() => onToggle(meal)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
+              isSelected 
+                ? "bg-primary text-primary-foreground border-primary shadow-sm" 
+                : "bg-background text-foreground/60 border-border hover:border-primary/50 hover:text-foreground"
+            }`}
+          >
+            {meal}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function ExperienceForm({
   initialData = null,
 }: Readonly<{
@@ -45,8 +77,8 @@ export default function ExperienceForm({
 
   // Form State
   const [title, setTitle] = useState(initialData?.title || "");
-  const [description, setDescription] = useState(
-    initialData?.description || "",
+  const [description, setDescription] = useState<any>(
+    initialData?.description || {},
   );
   const [basePrice, setBasePrice] = useState(initialData?.basePrice || 0);
   const [capacity, setCapacity] = useState(initialData?.capacity || 10);
@@ -142,6 +174,26 @@ export default function ExperienceForm({
   const [maxGroupSize, setMaxGroupSize] = useState(
     initialData?.maxGroupSize || "",
   );
+
+  // Comprehensive Metadata
+  const [highlights, setHighlights] = useState<{ id: string; text: string }[]>(
+    (initialData?.highlights || []).map((text: string) => ({
+      id: crypto.randomUUID(),
+      text,
+    })),
+  );
+  const [vibeTags, setVibeTags] = useState<{ id: string; text: string }[]>(
+    (initialData?.vibeTags || []).map((text: string) => ({
+      id: crypto.randomUUID(),
+      text,
+    })),
+  );
+  const [networkConnectivity, setNetworkConnectivity] = useState(initialData?.networkConnectivity || "");
+  const [lastAtm, setLastAtm] = useState(initialData?.lastAtm || "");
+  const [fitnessRequirement, setFitnessRequirement] = useState(initialData?.fitnessRequirement || "");
+  const [ageRange, setAgeRange] = useState(initialData?.ageRange || "");
+  const [meetingTime, setMeetingTime] = useState(initialData?.meetingTime || "");
+  const [dropoffTime, setDropoffTime] = useState(initialData?.dropoffTime || "");
 
   useEffect(() => {
     // Fetch available categories
@@ -305,6 +357,14 @@ export default function ExperienceForm({
       trekDistance,
       bestTimeToVisit,
       maxGroupSize: maxGroupSize ? Number(maxGroupSize) : null,
+      highlights: highlights.map((item) => item.text).filter((item) => item.trim() !== ""),
+      networkConnectivity,
+      lastAtm,
+      fitnessRequirement,
+      ageRange,
+      meetingTime,
+      dropoffTime,
+      vibeTags: vibeTags.map((item) => item.text).filter((item) => item.trim() !== ""),
     };
 
     try {
@@ -393,13 +453,9 @@ export default function ExperienceForm({
               >
                 Description
               </label>
-              <textarea
-                id="desc"
-                required
-                rows={5}
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
+              <TiptapEditor
+                content={description}
+                onChange={setDescription}
                 placeholder="Describe the experience..."
               />
             </div>
@@ -475,36 +531,33 @@ export default function ExperienceForm({
                   />
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-border/50">
                     <div>
-                      <label className="block text-xs font-semibold text-foreground/60 mb-2">Meals Included</label>
-                      <div className="flex gap-2 flex-wrap">
-                        {MEAL_OPTIONS.map(meal => {
-                          const currentMeals = Array.isArray(day.meals) ? day.meals : [];
-                          const isSelected = currentMeals.includes(meal);
-                          return (
-                            <button
-                              key={meal}
-                              type="button"
-                              onClick={() => {
-                                const newMeals = isSelected 
-                                  ? currentMeals.filter(m => m !== meal)
-                                  : [...currentMeals, meal];
-                                handleItineraryChange(ix, "meals", newMeals);
-                              }}
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
-                                isSelected 
-                                  ? "bg-primary text-primary-foreground border-primary shadow-sm" 
-                                  : "bg-background text-foreground/60 border-border hover:border-primary/50 hover:text-foreground"
-                              }`}
-                            >
-                              {meal}
-                            </button>
-                          );
-                        })}
-                      </div>
+                      <span className="block text-xs font-semibold text-foreground/60 mb-2">
+                        Meals Included
+                      </span>
+                      <MealButtons
+                        meals={Array.isArray(day.meals)
+                          ? day.meals
+                          : []}
+                        onToggle={(meal) => {
+                          const currentMeals = Array.isArray(day.meals)
+                            ? day.meals
+                            : [];
+                          const nextMeals = currentMeals.includes(meal)
+                            ? currentMeals.filter((m) => m !== meal)
+                            : [...currentMeals, meal];
+                          handleItineraryChange(ix, "meals", nextMeals);
+                        }}
+                      />
                     </div>
                     <div>
-                      <label className="block text-xs font-semibold text-foreground/60 mb-2">Accommodation (Optional)</label>
+                      <label
+                        htmlFor={`accommodation-${ix}`}
+                        className="block text-xs font-semibold text-foreground/60 mb-2"
+                      >
+                        Accommodation (Optional)
+                      </label>
                       <input
+                        id={`accommodation-${ix}`}
                         type="text"
                         value={day.accommodation || ""}
                         onChange={(e) =>
@@ -898,75 +951,56 @@ export default function ExperienceForm({
 
         {/* Sidebar Settings (Right Column) */}
         <div className="space-y-6">
+
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+            <div className="border-b border-border pb-2">
+              <h2 className="text-xl font-bold text-foreground">Trip Highlights</h2>
+              <p className="text-sm text-foreground/60">Punchy selling points shown at the top of the page</p>
+            </div>
+            <div className="space-y-3">
+              {highlights.map((item) => (
+                <div key={item.id} className="flex gap-2">
+                  <input type="text" value={item.text} onChange={(e) => handleStringArrayChange(setHighlights, item.id, e.target.value)} className="flex-1 bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50" placeholder="e.g. Stargazing at 14,000ft" />
+                  <button type="button" onClick={() => removeStringArrayItem(setHighlights, item.id)} className="p-2 text-foreground/50 hover:text-red-500 transition-colors" > <Trash2 className="w-5 h-5" /> </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => addStringArrayItem(setHighlights)}
+                className="w-full py-2.5 border-2 border-dashed border-border rounded-xl text-foreground/60 hover:text-foreground hover:border-foreground/30 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+              >
+                <Plus className="w-4 h-4" /> Add Highlight
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+            <div className="border-b border-border pb-2">
+              <h2 className="text-xl font-bold text-foreground">Vibe Tags / Suitable For</h2>
+              <p className="text-sm text-foreground/60">Badges near the title (e.g. Solo-Safe, Family Friendly)</p>
+            </div>
+            <div className="space-y-3">
+              {vibeTags.map((item) => (
+                <div key={item.id} className="flex gap-2">
+                  <input type="text" value={item.text} onChange={(e) => handleStringArrayChange(setVibeTags, item.id, e.target.value)} className="flex-1 bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50" placeholder="e.g. Solo-Female Friendly" />
+                  <button type="button" onClick={() => removeStringArrayItem(setVibeTags, item.id)} className="p-2 text-foreground/50 hover:text-red-500 transition-colors" > <Trash2 className="w-5 h-5" /> </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => addStringArrayItem(setVibeTags)}
+                className="w-full py-2.5 border-2 border-dashed border-border rounded-xl text-foreground/60 hover:text-foreground hover:border-foreground/30 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+              >
+                <Plus className="w-4 h-4" /> Add Vibe Tag
+              </button>
+            </div>
+          </div>
+
           <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
             <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
-              Trek Specifications
+              Group Size & Age Limits
             </h2>
-            <div>
-              <label
-                htmlFor="meetingPoint"
-                className="block text-sm font-medium text-foreground/80 mb-1"
-              >
-                Meeting Point
-              </label>
-              <input
-                id="meetingPoint"
-                type="text"
-                value={meetingPoint}
-                onChange={(e) => setMeetingPoint(e.target.value)}
-                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
-                placeholder="e.g. Dehradun Railway Station"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="maxAltitude"
-                className="block text-sm font-medium text-foreground/80 mb-1"
-              >
-                Max Altitude
-              </label>
-              <input
-                id="maxAltitude"
-                type="text"
-                value={maxAltitude}
-                onChange={(e) => setMaxAltitude(e.target.value)}
-                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
-                placeholder="e.g. 14,000 ft"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="trekDistance"
-                className="block text-sm font-medium text-foreground/80 mb-1"
-              >
-                Trek Distance
-              </label>
-              <input
-                id="trekDistance"
-                type="text"
-                value={trekDistance}
-                onChange={(e) => setTrekDistance(e.target.value)}
-                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
-                placeholder="e.g. 45 km"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="bestTime"
-                className="block text-sm font-medium text-foreground/80 mb-1"
-              >
-                Best Time To Visit
-              </label>
-              <input
-                id="bestTime"
-                type="text"
-                value={bestTimeToVisit}
-                onChange={(e) => setBestTimeToVisit(e.target.value)}
-                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
-                placeholder="e.g. Sep - Dec"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div>
                 <label
                   htmlFor="minAge"
@@ -1000,6 +1034,54 @@ export default function ExperienceForm({
                   className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
                   placeholder="e.g. 15"
                 />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+            <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
+              Trek Specifications & Logistics
+            </h2>
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label htmlFor="meetingPoint" className="block text-sm font-medium text-foreground/80 mb-1">Meeting Point</label>
+                <input id="meetingPoint" type="text" value={meetingPoint} onChange={(e) => setMeetingPoint(e.target.value)} className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50" placeholder="e.g. Dehradun" />
+              </div>
+              <div>
+                <label htmlFor="meetingTime" className="block text-sm font-medium text-foreground/80 mb-1">Meeting Time</label>
+                <input id="meetingTime" type="text" value={meetingTime} onChange={(e) => setMeetingTime(e.target.value)} className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50" placeholder="e.g. 6:00 AM" />
+              </div>
+              <div>
+                <label htmlFor="maxAltitude" className="block text-sm font-medium text-foreground/80 mb-1">Max Altitude</label>
+                <input id="maxAltitude" type="text" value={maxAltitude} onChange={(e) => setMaxAltitude(e.target.value)} className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50" placeholder="e.g. 14,000 ft" />
+              </div>
+              <div>
+                <label htmlFor="trekDistance" className="block text-sm font-medium text-foreground/80 mb-1">Trek Distance</label>
+                <input id="trekDistance" type="text" value={trekDistance} onChange={(e) => setTrekDistance(e.target.value)} className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50" placeholder="e.g. 45 km" />
+              </div>
+              <div>
+                <label htmlFor="dropoffTime" className="block text-sm font-medium text-foreground/80 mb-1">Drop-off Time</label>
+                <input id="dropoffTime" type="text" value={dropoffTime} onChange={(e) => setDropoffTime(e.target.value)} className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50" placeholder="e.g. 8:00 PM (Day 6)" />
+              </div>
+              <div>
+                <label htmlFor="bestTimeToVisit" className="block text-sm font-medium text-foreground/80 mb-1">Best Season</label>
+                <input id="bestTimeToVisit" type="text" value={bestTimeToVisit} onChange={(e) => setBestTimeToVisit(e.target.value)} className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50" placeholder="e.g. Sep - Nov" />
+              </div>
+              <div>
+                <label htmlFor="networkConnectivity" className="block text-sm font-medium text-foreground/80 mb-1">Network Connectivity</label>
+                <input id="networkConnectivity" type="text" value={networkConnectivity} onChange={(e) => setNetworkConnectivity(e.target.value)} className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50" placeholder="e.g. Jio/Airtel till basecamp" />
+              </div>
+              <div>
+                <label htmlFor="lastAtm" className="block text-sm font-medium text-foreground/80 mb-1">Last ATM</label>
+                <input id="lastAtm" type="text" value={lastAtm} onChange={(e) => setLastAtm(e.target.value)} className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50" placeholder="e.g. Joshimath" />
+              </div>
+              <div>
+                <label htmlFor="fitnessRequirement" className="block text-sm font-medium text-foreground/80 mb-1">Fitness Requirement</label>
+                <input id="fitnessRequirement" type="text" value={fitnessRequirement} onChange={(e) => setFitnessRequirement(e.target.value)} className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50" placeholder="e.g. Jog 5km in 35m" />
+              </div>
+              <div>
+                <label htmlFor="ageRange" className="block text-sm font-medium text-foreground/80 mb-1">Age Range</label>
+                <input id="ageRange" type="text" value={ageRange} onChange={(e) => setAgeRange(e.target.value)} className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50" placeholder="e.g. 12-60 Years" />
               </div>
             </div>
           </div>

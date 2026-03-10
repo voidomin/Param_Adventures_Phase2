@@ -170,7 +170,7 @@ model Experience {
   id           String           @id @default(uuid())
   title        String
   slug         String           @unique
-  description  String           @db.Text
+  description  Json             @default("{}")
   itinerary    Json
   basePrice    Decimal          @db.Decimal(10, 2)
   durationDays Int              @default(1)
@@ -199,6 +199,16 @@ model Experience {
   maxGroupSize       Int?
   pickupPoints       String[] @default([])
   dropPoints         String[] @default([])
+
+  // Comprehensive Metadata
+  highlights          String[] @default([])
+  networkConnectivity String?
+  lastAtm             String?
+  fitnessRequirement  String?
+  ageRange            String?
+  meetingTime         String?
+  dropoffTime         String?
+  vibeTags            String[] @default([])
 
   deletedAt    DateTime?
   createdAt    DateTime         @default(now())

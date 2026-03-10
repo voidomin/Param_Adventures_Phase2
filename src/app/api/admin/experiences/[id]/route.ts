@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+// Trigger TS Re-check
 import { authorizeRequest } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
 
@@ -86,6 +87,14 @@ export async function PUT(
       bestTimeToVisit,
       maxGroupSize,
       pickupPoints,
+      highlights,
+      networkConnectivity,
+      lastAtm,
+      fitnessRequirement,
+      ageRange,
+      meetingTime,
+      dropoffTime,
+      vibeTags,
     } = body;
 
     // Handle slug update if title changed
@@ -143,6 +152,14 @@ export async function PUT(
           trekDistance,
           bestTimeToVisit,
           maxGroupSize,
+          highlights: highlights || [],
+          networkConnectivity,
+          lastAtm,
+          fitnessRequirement,
+          ageRange,
+          meetingTime,
+          dropoffTime,
+          vibeTags: vibeTags || [],
           categories:
             categoryIds === undefined
               ? undefined

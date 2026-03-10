@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+// Trigger TS Re-check
 import { authorizeRequest } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
 import { ExperienceStatus, Difficulty } from "@prisma/client";
@@ -62,6 +63,14 @@ export async function POST(request: NextRequest) {
       bestTimeToVisit,
       maxGroupSize,
       pickupPoints,
+      highlights,
+      networkConnectivity,
+      lastAtm,
+      fitnessRequirement,
+      ageRange,
+      meetingTime,
+      dropoffTime,
+      vibeTags,
     } = body;
 
     // Validate essential fields
@@ -119,6 +128,14 @@ export async function POST(request: NextRequest) {
         trekDistance,
         bestTimeToVisit,
         maxGroupSize,
+        highlights: highlights || [],
+        networkConnectivity,
+        lastAtm,
+        fitnessRequirement,
+        ageRange,
+        meetingTime,
+        dropoffTime,
+        vibeTags: vibeTags || [],
         categories: categoryIds
           ? {
               create: categoryIds.map((catId: string) => ({
