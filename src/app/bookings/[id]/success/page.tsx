@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { verifyAccessToken } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { CalendarDays, MapPin, Users, Download, MessageCircle, Phone, CreditCard, CheckCircle2, Mountain, PlaneLanding, PlaneTakeoff } from "lucide-react";
+import { CalendarDays, MapPin, Users, Download, MessageCircle, Phone, CreditCard, CheckCircle2, Mountain } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -10,13 +10,13 @@ type Props = { params: Promise<{ id: string }> };
 
 export default async function BookingSuccessPage({
   params,
-}: Props) {
+}: Readonly<Props>) {
   const { id } = await params;
   const cookieStore = await cookies();
   const token = cookieStore.get("accessToken")?.value;
   const payload = token ? verifyAccessToken(token) : null;
 
-  if (!payload || !payload.userId) {
+  if (!payload?.userId) {
     redirect("/login");
   }
 
@@ -52,7 +52,6 @@ export default async function BookingSuccessPage({
   }
 
   const { experience, slot, participants, payments } = booking;
-  const primaryContact = participants.find((p) => p.isPrimary) || participants[0];
   const payment = payments[0]; // the most recent one
 
   // Dates
@@ -361,7 +360,7 @@ export default async function BookingSuccessPage({
                         <div className="font-bold text-foreground truncate">{lead.name}</div>
                         <div className="flex items-center gap-3 mt-1.5">
                            {lead.phoneNumber && (
-                             <a href={`https://wa.me/${lead.phoneNumber.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-xs font-semibold text-green-600 bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50 px-2 py-1 rounded-md transition-colors">
+                             <a href={`https://wa.me/${lead.phoneNumber.replaceAll(/\D/g,'')}`} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-xs font-semibold text-green-600 bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50 px-2 py-1 rounded-md transition-colors">
                                <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
                              </a>
                            )}
