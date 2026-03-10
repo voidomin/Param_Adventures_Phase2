@@ -147,16 +147,17 @@ export default function AdminLayout({
   return (
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
       {/* Mobile Header */}
-      <header className="md:hidden h-16 bg-background border-b border-border flex items-center justify-between px-4 sticky top-0 z-50">
+      <header className="md:hidden h-16 bg-background border-b border-border flex items-center justify-between px-4 fixed top-0 left-0 right-0 z-50">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="p-2 text-foreground/70 hover:bg-foreground/5 rounded-lg"
+            className="p-2 text-foreground/70 hover:bg-foreground/5 rounded-lg transition-colors"
+            aria-label={isSidebarOpen ? "Close menu" : "Open menu"}
           >
             {isSidebarOpen ? (
-              <CloseIcon className="w-6 h-6" />
+              <CloseIcon className="w-6 h-6 animate-in fade-in zoom-in duration-200" />
             ) : (
-              <Menu className="w-6 h-6" />
+              <Menu className="w-6 h-6 animate-in fade-in zoom-in duration-200" />
             )}
           </button>
           <span className="font-heading font-black text-lg">
@@ -165,7 +166,7 @@ export default function AdminLayout({
         </div>
         <Link
           href="/"
-          className="flex items-center gap-1.5 text-xs font-bold text-primary px-3 py-1.5 bg-primary/10 rounded-full"
+          className="flex items-center gap-1.5 text-xs font-bold text-primary px-3 py-1.5 bg-primary/10 rounded-full hover:bg-primary/20 transition-colors"
         >
           <ArrowLeft className="w-3.5 h-3.5" /> Back to Site
         </Link>
@@ -173,23 +174,16 @@ export default function AdminLayout({
 
       {/* Backdrop for mobile */}
       {isSidebarOpen && (
-        <div
-          role="button"
-          tabIndex={0}
-          aria-label="Close sidebar"
-          className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm transition-opacity"
+        <button
+          className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm transition-opacity w-full h-full cursor-default border-none outline-none"
           onClick={() => setIsSidebarOpen(false)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              setIsSidebarOpen(false);
-            }
-          }}
+          aria-label="Close sidebar"
         />
       )}
 
       {/* Sidebar */}
       <aside
-        className={`w-64 bg-background border-r border-border fixed h-full z-40 flex flex-col transition-transform duration-300 transform ${
+        className={`w-64 bg-background border-r border-border fixed inset-y-0 left-0 z-40 flex flex-col transition-transform duration-300 ease-in-out ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         } md:translate-x-0`}
       >
@@ -279,7 +273,7 @@ export default function AdminLayout({
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 md:ml-64 relative">
+      <div className="flex-1 md:ml-64 relative pt-16 md:pt-0">
         <div className="p-6 md:p-10 max-w-7xl mx-auto">{children}</div>
       </div>
     </div>
