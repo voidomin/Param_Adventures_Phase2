@@ -5,11 +5,12 @@ import { prisma } from "@/lib/db";
 import { CalendarDays, MapPin, Users, Download, MessageCircle, Phone, CreditCard, CheckCircle2, Mountain } from "lucide-react";
 import Image from "next/image";
 
+type Props = { params: Promise<{ id: string }> };
+
 export default async function BookingSuccessPage({
   params,
-}: {
-  params: { id: string };
-}) {
+}: Props) {
+  const { id } = await params;
   const cookieStore = await cookies();
   const token = cookieStore.get("accessToken")?.value;
   const payload = token ? verifyAccessToken(token) : null;
@@ -19,7 +20,7 @@ export default async function BookingSuccessPage({
   }
 
   const booking = await prisma.booking.findUnique({
-    where: { id: params.id },
+    where: { id },
     include: {
       experience: true,
       slot: {
@@ -83,6 +84,8 @@ export default async function BookingSuccessPage({
   // Leads
   const trekLeads = slot?.assignments?.map((a) => a.trekLead) || [];
 
+  const adventureImage = experience.cardImage || experience.coverImage || experience.images?.[0];
+
   return (
     <main className="min-h-screen bg-background/50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto space-y-6">
@@ -118,9 +121,9 @@ export default async function BookingSuccessPage({
             {/* Adventure Summary */}
             <div className="bg-card border border-border shadow-sm rounded-2xl p-6 flex flex-col sm:flex-row gap-6">
               <div className="w-full sm:w-48 xl:w-56 aspect-[4/3] sm:aspect-square shrink-0 rounded-xl overflow-hidden relative border border-border/50">
-                {experience.images?.[0] ? (
+                {adventureImage ? (
                   <Image 
-                    src={experience.images[0]} 
+                    src={adventureImage} 
                     alt={experience.title}
                     fill
                     className="object-cover"

@@ -214,6 +214,12 @@ function BookingCard({
             {Number(booking.totalPrice).toLocaleString("en-IN")}
           </div>
           <div className="flex items-center gap-3">
+            <Link
+              href={`/bookings/${booking.id}/success`}
+              className="flex items-center gap-1.5 text-sm bg-foreground/5 text-foreground px-3 py-1.5 rounded-lg font-bold hover:bg-foreground/10 transition-all"
+            >
+              Booking Details
+            </Link>
             {!isUpcoming && booking.canReview && (
               <Link
                 href={`/experiences/${booking.experience.slug}`}
