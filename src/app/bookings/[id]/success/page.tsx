@@ -2,10 +2,11 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { verifyAccessToken } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { CalendarDays, MapPin, Users, Download, MessageCircle, Phone, CreditCard, CheckCircle2, Mountain } from "lucide-react";
+import { CalendarDays, MapPin, Users, MessageCircle, Phone, CreditCard, CheckCircle2, Mountain } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import DownloadInvoiceBtn from "@/components/booking/DownloadInvoiceBtn";
+import DownloadItineraryBtn from "@/components/experiences/DownloadItineraryBtn";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -334,14 +335,7 @@ export default async function BookingSuccessPage({
                 <h3 className="text-base font-bold text-foreground">Next Steps & Preparation</h3>
               </div>
               <div className="p-5 space-y-3">
-                <button className="w-full flex items-center justify-between px-4 py-3 bg-primary/10 text-primary hover:bg-primary/15 transition-colors rounded-xl font-semibold border border-primary/20">
-                  <span>Download Full Itinerary</span>
-                  <Download className="w-4 h-4" />
-                </button>
-                <button className="w-full flex items-center justify-between px-4 py-3 bg-foreground/5 text-foreground hover:bg-foreground/10 transition-colors rounded-xl font-semibold border border-transparent hover:border-border">
-                  <span>Download Gear List</span>
-                  <Download className="w-4 h-4" />
-                </button>
+                <DownloadItineraryBtn slug={experience.slug} variant="success" />
                 <DownloadInvoiceBtn bookingId={booking.id} />
               </div>
             </div>

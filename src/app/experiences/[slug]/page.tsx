@@ -34,6 +34,7 @@ import MobileBookingBar from "@/components/booking/MobileBookingBar";
 import ExperienceStickyNav from "@/components/experiences/ExperienceStickyNav";
 import DifficultyMeter from "@/components/experiences/DifficultyMeter";
 import RichTextRenderer from "@/components/blog/RichTextRenderer";
+import DownloadItineraryBtn from "@/components/experiences/DownloadItineraryBtn";
 
 export const revalidate = 60;
 
@@ -584,6 +585,8 @@ export default async function ExperienceDetailPage({
               currentExperienceId={experience.id}
               categoryIds={experience.categories.map((c: any) => c.category.id)}
             />
+
+            <DownloadItineraryBtn slug={experience.slug} />
           </div>
         </div>
       </div>
