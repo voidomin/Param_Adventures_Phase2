@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/lib/AuthContext";
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Compass,
@@ -18,6 +18,9 @@ import {
   Star,
   Headset,
   ScrollText,
+  Menu,
+  X as CloseIcon,
+  ArrowLeft,
 } from "lucide-react";
 
 export default function AdminLayout({
@@ -28,6 +31,7 @@ export default function AdminLayout({
   const { user, isLoading, hasPermission, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     if (!isLoading) {
@@ -45,6 +49,11 @@ export default function AdminLayout({
       }
     }
   }, [user, isLoading, hasPermission, router]);
+
+  // Close sidebar on navigation change (mobile)
+  useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [pathname]);
 
   if (isLoading || !user) {
     return (
@@ -136,10 +145,55 @@ export default function AdminLayout({
   }[];
 
   return (
-    <div className="min-h-screen bg-background flex">
+    <div className="min-h-screen bg-background flex flex-col md:flex-row">
+      {/* Mobile Header */}
+      <header className="md:hidden h-16 bg-background border-b border-border flex items-center justify-between px-4 sticky top-0 z-50">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="p-2 text-foreground/70 hover:bg-foreground/5 rounded-lg"
+          >
+            {isSidebarOpen ? (
+              <CloseIcon className="w-6 h-6" />
+            ) : (
+              <Menu className="w-6 h-6" />
+            )}
+          </button>
+          <span className="font-heading font-black text-lg">
+            <span className="text-primary">PARAM</span> Admin
+          </span>
+        </div>
+        <Link
+          href="/"
+          className="flex items-center gap-1.5 text-xs font-bold text-primary px-3 py-1.5 bg-primary/10 rounded-full"
+        >
+          <ArrowLeft className="w-3.5 h-3.5" /> Back to Site
+        </Link>
+      </header>
+
+      {/* Backdrop for mobile */}
+      {isSidebarOpen && (
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="Close sidebar"
+          className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm transition-opacity"
+          onClick={() => setIsSidebarOpen(false)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              setIsSidebarOpen(false);
+            }
+          }}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="w-64 bg-background border-r border-border fixed h-full z-40 hidden md:flex flex-col">
-        <div className="p-6">
+      <aside
+        className={`w-64 bg-background border-r border-border fixed h-full z-40 flex flex-col transition-transform duration-300 transform ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        } md:translate-x-0`}
+      >
+        <div className="p-6 hidden md:block">
           <Link href="/" className="flex items-center gap-2">
             <span className="text-xl font-heading font-bold text-primary">
               PARAM
@@ -150,7 +204,12 @@ export default function AdminLayout({
           </Link>
         </div>
 
-        <nav className="flex-1 px-4 space-y-1 overflow-y-auto mt-4">
+        <nav className="flex-1 px-4 space-y-1 overflow-y-auto mt-4 md:mt-0">
+          <div className="md:hidden mb-4 pb-4 border-b border-border/50">
+            <p className="px-4 text-[10px] font-bold text-foreground/40 uppercase tracking-widest">
+              Navigation
+            </p>
+          </div>
           {navItems.map((item) => {
             // Role-based guard (check user.role directly)
             if (item.role && user.role !== item.role) return null;
