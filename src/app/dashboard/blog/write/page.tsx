@@ -17,6 +17,9 @@ const YoutubeSVG = () => (
   </svg>
 );
 
+import MediaUploader from "@/components/admin/MediaUploader";
+import { ASPECT_RATIOS } from "@/lib/constants/aspect-ratios";
+
 // Lazy-load the editor to avoid SSR issues
 const TiptapEditor = dynamic(() => import("@/components/blog/TiptapEditor"), {
   ssr: false,
@@ -275,8 +278,8 @@ export default function WriteBlogPage() {
                 apiPrefix="/api/user/media"
                 shouldCrop={true}
                 aspectRatio={ASPECT_RATIOS.BLOG_CARD}
-                onUploadSuccess={(urls) => {
-                  if (urls?.[0]) setCoverImageUrl(urls[0]);
+                onUploadSuccess={(urls?: string[]) => {
+                  if (urls && urls[0]) setCoverImageUrl(urls[0]);
                 }}
               />
             )}
