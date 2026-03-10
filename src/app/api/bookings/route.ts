@@ -42,9 +42,11 @@ const bookingSchema = z.object({
   path: ["participants"]
 });
 
+import { Prisma } from "@prisma/client";
+
 // Helper to lower cognitive complexity
 async function calculateTaxes(totalPrice: number) {
-  let taxBreakdown: Record<string, unknown>[] = [];
+  let taxBreakdown: Prisma.InputJsonValue = [];
   let baseFare = totalPrice;
 
   const settings = await prisma.platformSetting.findUnique({
@@ -163,42 +165,59 @@ export async function POST(request: NextRequest) {
     });
 
     // Create Razorpay order
-    const order = await razorpay.orders.create({
-      amount: amountPaise,
-      currency: "INR",
-      receipt: booking.id,
-      notes: {
-        bookingId: booking.id,
-        experienceId,
-        userId,
-      },
-    });
-
-    // Store the Razorpay order ID in a pending payment record
-    await prisma.payment.create({
-      data: {
-        bookingId: booking.id,
-        provider: "RAZORPAY",
-        providerOrderId: order.id,
-        amount: totalPrice,
+    try {
+      const order = await razorpay.orders.create({
+        amount: amountPaise,
         currency: "INR",
-        status: "PENDING",
-      },
-    });
+        receipt: booking.id,
+        notes: {
+          bookingId: booking.id,
+          experienceId,
+          userId,
+        },
+      });
 
-    await logActivity("BOOKING_REQUESTED", userId, "Booking", booking.id, {
-      experienceId,
-      slotId,
-      participantCount,
-    });
+      // Store the Razorpay order ID in a pending payment record
+      await prisma.payment.create({
+        data: {
+          bookingId: booking.id,
+          provider: "RAZORPAY",
+          providerOrderId: order.id,
+          amount: totalPrice,
+          currency: "INR",
+          status: "PENDING",
+        },
+      });
 
-    return NextResponse.json({
-      bookingId: booking.id,
-      orderId: order.id,
-      amount: amountPaise,
-      currency: "INR",
-      keyId: process.env.RAZORPAY_KEY_ID,
-    });
+      await logActivity("BOOKING_REQUESTED", userId, "Booking", booking.id, {
+        experienceId,
+        slotId,
+        participantCount,
+      });
+
+      return NextResponse.json({
+        bookingId: booking.id,
+        orderId: order.id,
+        amount: amountPaise,
+        currency: "INR",
+        keyId: process.env.RAZORPAY_KEY_ID,
+      });
+    } catch (razorpayError) {
+      // Revert the booking and capacity atomically if Razorpay fails
+      await prisma.$transaction(async (rollbackTx) => {
+        await rollbackTx.booking.delete({ where: { id: booking.id } });
+        await rollbackTx.slot.update({
+          where: { id: slotId },
+          data: { remainingCapacity: { increment: participantCount } },
+        });
+      });
+
+      console.error("Razorpay order creation failed, booking rolled back:", razorpayError);
+      return NextResponse.json(
+        { error: "Payment gateway unavailable. Please try again." },
+        { status: 502 },
+      );
+    }
   } catch (error) {
     if (error instanceof Error && error.message === "OVERBOOKED") {
       return NextResponse.json(
