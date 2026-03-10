@@ -163,8 +163,9 @@ export default function AdminSettingsPage() {
               {taxConfig.map((item, index) => (
                  <div key={item.id} className="flex gap-4 items-end">
                     <div className="flex-1">
-                       <label className="block text-sm font-semibold text-foreground/70 mb-2">Deductible Name</label>
+                       <label htmlFor={`tax-name-${item.id}`} className="block text-sm font-semibold text-foreground/70 mb-2">Deductible Name</label>
                        <input 
+                          id={`tax-name-${item.id}`}
                           type="text" 
                           placeholder="e.g. CGST or Environment Fee" 
                           value={item.name} 
@@ -173,14 +174,15 @@ export default function AdminSettingsPage() {
                        />
                     </div>
                     <div className="w-48">
-                       <label className="block text-sm font-semibold text-foreground/70 mb-2">Percentage</label>
+                       <label htmlFor={`tax-perc-${item.id}`} className="block text-sm font-semibold text-foreground/70 mb-2">Percentage</label>
                        <div className="relative">
                           <input 
+                             id={`tax-perc-${item.id}`}
                              type="number" 
                              step="0.01" 
                              min="0"
                              value={item.percentage} 
-                             onChange={(e) => updateTaxItem(item.id, "percentage", parseFloat(e.target.value) || 0)} 
+                             onChange={(e) => updateTaxItem(item.id, "percentage", Number.parseFloat(e.target.value) || 0)} 
                              className="w-full bg-background border border-border rounded-xl px-4 py-3 pr-8 focus:outline-none focus:border-primary" 
                           />
                           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-foreground/50 font-bold">%</span>
@@ -212,28 +214,28 @@ export default function AdminSettingsPage() {
            </h2>
            <div className="space-y-6">
               <div>
-                 <label className="block text-sm font-semibold text-foreground/70 mb-2">Company Name</label>
-                 <input type="text" name="companyName" value={settings.companyName} onChange={handleChange} className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary" />
+                 <label htmlFor="companyName" className="block text-sm font-semibold text-foreground/70 mb-2">Company Name</label>
+                 <input id="companyName" type="text" name="companyName" value={settings.companyName} onChange={handleChange} className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary" />
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
-                  <label className="block text-sm font-semibold text-foreground/70 mb-2">GSTIN</label>
-                  <input type="text" name="gstNumber" value={settings.gstNumber} onChange={handleChange} className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary uppercase" />
+                  <label htmlFor="gstNumber" className="block text-sm font-semibold text-foreground/70 mb-2">GSTIN</label>
+                  <input id="gstNumber" type="text" name="gstNumber" value={settings.gstNumber} onChange={handleChange} className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary uppercase" />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-foreground/70 mb-2">PAN</label>
-                  <input type="text" name="panNumber" value={settings.panNumber} onChange={handleChange} className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary uppercase" />
+                  <label htmlFor="panNumber" className="block text-sm font-semibold text-foreground/70 mb-2">PAN</label>
+                  <input id="panNumber" type="text" name="panNumber" value={settings.panNumber} onChange={handleChange} className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary uppercase" />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-foreground/70 mb-2">State Code (e.g., 05 for UK)</label>
-                  <input type="text" name="stateCode" value={settings.stateCode} onChange={handleChange} className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary" />
+                  <label htmlFor="stateCode" className="block text-sm font-semibold text-foreground/70 mb-2">State Code (e.g., 05 for UK)</label>
+                  <input id="stateCode" type="text" name="stateCode" value={settings.stateCode} onChange={handleChange} className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary" />
                 </div>
               </div>
 
               <div>
-                 <label className="block text-sm font-semibold text-foreground/70 mb-2">Company Address</label>
-                 <textarea name="companyAddress" value={settings.companyAddress} onChange={handleChange} rows={3} className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary resize-none"></textarea>
+                 <label htmlFor="companyAddress" className="block text-sm font-semibold text-foreground/70 mb-2">Company Address</label>
+                 <textarea id="companyAddress" name="companyAddress" value={settings.companyAddress} onChange={handleChange} rows={3} className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary resize-none"></textarea>
               </div>
            </div>
         </div>
