@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { url, type } = await request.json();
+    const { url, type, hash } = await request.json();
 
     if (!url || !type) {
       return NextResponse.json(
@@ -25,12 +25,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // If hash provided, check for existing duplicate first
+    if (hash) {
+      const existing = await prisma.image.findFirst({
+        where: { fileHash: hash },
+        select: { id: true, originalUrl: true, type: true },
+      });
+      if (existing) {
+        return NextResponse.json({
+          id: existing.id,
+          url: existing.originalUrl,
+          type: existing.type,
+        });
+      }
+    }
+
     // Save to Database
     const media = await prisma.image.create({
       data: {
         originalUrl: url,
         type: type === "VIDEO" ? "VIDEO" : "IMAGE",
         uploadedById: auth.userId,
+        fileHash: hash || null,
       },
     });
 

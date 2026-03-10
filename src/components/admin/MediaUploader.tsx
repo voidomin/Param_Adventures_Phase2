@@ -159,6 +159,16 @@ async function uploadToS3Direct(
   });
 }
 
+/**
+ * Compute SHA-256 hash of a file/blob using the Web Crypto API.
+ */
+async function computeFileHash(file: File | Blob): Promise<string> {
+  const buffer = await file.arrayBuffer();
+  const hashBuffer = await crypto.subtle.digest("SHA-256", buffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 async function uploadSingleFile(
   file: File | Blob,
   apiPrefix: string,
@@ -171,6 +181,31 @@ async function uploadSingleFile(
     throw new Error("Only images and videos are supported.");
   }
 
+  // 1. Compute file hash for deduplication
+  const fileHash = await computeFileHash(file);
+
+  // 2. Check if this file already exists (dedup check)
+  try {
+    const dupRes = await fetch(`${apiPrefix}/check-duplicate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hash: fileHash }),
+    });
+
+    if (dupRes.ok) {
+      const dupData = await dupRes.json();
+      if (dupData.exists) {
+        if (onProgress) onProgress(100);
+        console.log("Dedup: reusing existing upload", dupData.url);
+        return dupData.url;
+      }
+    }
+  } catch {
+    // If dedup check fails, continue with normal upload
+    console.warn("Dedup check failed, proceeding with upload");
+  }
+
+  // 3. Normal upload flow (no duplicate found)
   const fileName = (file as File).name || "upload";
   const presignRes = await fetch(`${apiPrefix}/presign`, {
     method: "POST",
@@ -196,12 +231,14 @@ async function uploadSingleFile(
 
   if (onProgress) onProgress(100);
 
+  // 4. Register with hash so future uploads can be deduped
   const registerRes = await fetch(`${apiPrefix}/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       url: uploadedUrl,
       type: isVideo ? "VIDEO" : "IMAGE",
+      hash: fileHash,
     }),
   });
 

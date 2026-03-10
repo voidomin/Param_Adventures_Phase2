@@ -378,6 +378,7 @@ model Blog {
 model Image {
   id           String    @id @default(uuid())
   originalUrl  String // Full-size S3 / Cloudinary URL
+  fileHash     String?   @unique // SHA-256 content hash for dedup
   mediumUrl    String? // Optimized for display
   thumbUrl     String? // Thumbnail
   type         MediaType @default(IMAGE)

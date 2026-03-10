@@ -12,10 +12,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid token" }, { status: 401 });
 
     const body = await request.json();
-    const { url, type } = body;
+    const { url, type, hash } = body;
 
     if (!url) {
       return NextResponse.json({ error: "Missing url" }, { status: 400 });
+    }
+
+    // If hash provided, check for existing duplicate first
+    if (hash) {
+      const existing = await prisma.image.findFirst({
+        where: { fileHash: hash },
+        select: { id: true, originalUrl: true, type: true },
+      });
+      if (existing) {
+        return NextResponse.json({ image: existing }, { status: 200 });
+      }
     }
 
     const image = await prisma.image.create({
@@ -23,6 +34,7 @@ export async function POST(request: NextRequest) {
         originalUrl: url,
         type: type === "VIDEO" ? "VIDEO" : "IMAGE",
         uploadedById: payload.userId,
+        fileHash: hash || null,
       },
     });
 

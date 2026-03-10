@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { authorizeRequest } from "@/lib/api-auth";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { prisma } from "@/lib/db";
+import { createHash } from "crypto";
 
 /**
  * POST /api/admin/media/upload
  * Accepts multipart/form-data with a "file" field.
- * Uploads to Cloudinary and saves the URL to the Media table.
+ * Computes SHA-256 hash for dedup, uploads to Cloudinary, and saves to DB.
  */
 export async function POST(request: NextRequest) {
   const auth = await authorizeRequest(request, [
@@ -39,6 +40,24 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
+    // Compute SHA-256 hash for dedup
+    const fileHash = createHash("sha256").update(buffer).digest("hex");
+
+    // Check for existing file with same hash
+    const existing = await prisma.image.findFirst({
+      where: { fileHash },
+      select: { id: true, originalUrl: true, type: true },
+    });
+
+    if (existing) {
+      return NextResponse.json({
+        id: existing.id,
+        url: existing.originalUrl,
+        type: existing.type,
+        deduplicated: true,
+      });
+    }
+
     // Upload to Cloudinary
     const folder = isVideo
       ? "param-adventures/videos"
@@ -48,12 +67,13 @@ export async function POST(request: NextRequest) {
       resource_type: isVideo ? "video" : "image",
     });
 
-    // Save to Image table (Prisma model name is "image")
+    // Save to Image table with hash
     const image = await prisma.image.create({
       data: {
         originalUrl: result.secure_url,
         type: isVideo ? "VIDEO" : "IMAGE",
         uploadedById: auth.userId,
+        fileHash,
       },
     });
 
