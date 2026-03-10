@@ -20,7 +20,7 @@ import { z } from "zod";
 const participantSchema = z.object({
   isPrimary: z.boolean().optional(),
   name: z.string().min(1, "Participant name is required"),
-  email: z.string().email({ message: "Invalid email format" }).optional().or(z.literal("")),
+  email: z.email({ message: "Invalid email format" }).optional().or(z.literal("")),
   phoneNumber: z.string().optional().or(z.literal("")),
   gender: z.string().optional().or(z.literal("")),
   age: z.number().or(z.string()).optional().or(z.literal("")),
@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
         { status: 404 },
       );
     }
-    if (!slot || slot.experienceId !== experienceId) {
+    if (slot?.experienceId !== experienceId) {
       return NextResponse.json(
         { error: "Slot not found for this experience." },
         { status: 404 },

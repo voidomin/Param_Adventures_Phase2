@@ -9,9 +9,9 @@ import { sendWelcomeEmail } from "@/lib/email";
 import { z } from "zod";
 
 const registerSchema = z.object({
-  email: z.string().email({ message: "Invalid email format" }),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  name: z.string().min(1, "Name is required"),
+  email: z.email({ message: "Invalid email format" }),
+  password: z.string().min(8, { message: "Password must be at least 8 characters" }),
+  name: z.string().min(1, { message: "Name is required" }),
 });
 
 export async function POST(request: NextRequest) {
