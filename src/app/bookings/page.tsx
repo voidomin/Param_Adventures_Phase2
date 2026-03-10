@@ -365,7 +365,7 @@ export default function BookingsPage() {
                           Participants: <strong>{b.participantCount}</strong>
                         </p>
 
-                        <div className="mt-auto pt-4 border-t border-border flex justify-between items-center">
+                        <div className="mt-auto pt-4 border-t border-border flex flex-col sm:flex-row justify-between items-center gap-2">
                           {(() => {
                             if (activeTab === "pending") {
                               return (
@@ -384,21 +384,37 @@ export default function BookingsPage() {
                             }
                             if (activeTab === "past") {
                               return (
-                                <Link
-                                  href={`/experiences/${b.experience.slug}`}
-                                  className="w-full text-center py-2.5 bg-foreground/5 hover:bg-foreground/10 text-foreground font-bold rounded-xl transition"
-                                >
-                                  Write a Review
-                                </Link>
+                                <>
+                                  <Link
+                                    href={`/bookings/${b.id}/success`}
+                                    className="w-full text-center py-2.5 bg-foreground/5 hover:bg-foreground/10 text-foreground font-bold rounded-xl transition"
+                                  >
+                                    Booking Details
+                                  </Link>
+                                  <Link
+                                    href={`/experiences/${b.experience.slug}`}
+                                    className="w-full text-center py-2.5 bg-primary/10 hover:bg-primary/20 text-primary font-bold rounded-xl transition"
+                                  >
+                                    Write a Review
+                                  </Link>
+                                </>
                               );
                             }
                             return (
-                              <Link
-                                href={`/experiences/${b.experience.slug}`}
-                                className="w-full text-center py-2.5 bg-primary/10 hover:bg-primary hover:text-primary-foreground text-primary font-bold rounded-xl transition"
-                              >
-                                View Details
-                              </Link>
+                              <>
+                                <Link
+                                  href={`/bookings/${b.id}/success`}
+                                  className="w-full text-center py-2.5 bg-foreground/5 hover:bg-foreground/10 text-foreground font-bold rounded-xl transition"
+                                >
+                                  Booking Details
+                                </Link>
+                                <Link
+                                  href={`/experiences/${b.experience.slug}`}
+                                  className="w-full text-center py-2.5 bg-primary/10 hover:bg-primary hover:text-primary-foreground text-primary font-bold rounded-xl transition"
+                                >
+                                  View Details
+                                </Link>
+                              </>
                             );
                           })()}
                         </div>
