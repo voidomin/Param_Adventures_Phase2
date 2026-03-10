@@ -45,19 +45,32 @@ export async function GET(request: NextRequest) {
             },
           },
         },
-        _count: {
+        bookings: {
+          where: {
+            bookingStatus: "CONFIRMED",
+          },
           select: {
-            bookings: {
-              where: {
-                bookingStatus: "CONFIRMED",
-              },
-            },
+            participantCount: true,
           },
         },
       },
     });
 
-    return NextResponse.json({ trips: upcomingSlots });
+    const transformedSlots = upcomingSlots.map((slot) => {
+      const confirmedParticipants = slot.bookings.reduce(
+        (sum, booking) => sum + booking.participantCount,
+        0,
+      );
+      
+      // Remove the full bookings array to keep the payload clean if not needed
+      const { bookings, ...slotInfo } = slot;
+      return {
+        ...slotInfo,
+        confirmedParticipants,
+      };
+    });
+
+    return NextResponse.json({ trips: transformedSlots });
   } catch (error) {
     console.error("Fetch upcoming trips error:", error);
     return NextResponse.json(

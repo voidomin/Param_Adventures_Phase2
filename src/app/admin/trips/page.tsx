@@ -42,7 +42,7 @@ interface TripSlot {
   manager: { id: string; name: string; email: string } | null;
   experience: { title: string; location: string };
   assignments: TripAssignment[];
-  _count: { bookings: number };
+  confirmedParticipants: number;
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -157,7 +157,7 @@ export default function AdminTripsPage() {
         <div className="grid gap-4">
           {trips.map((trip) => {
             const fillPct = Math.round(
-              (trip._count.bookings / trip.capacity) * 100,
+              (trip.confirmedParticipants / trip.capacity) * 100,
             );
             const statusColor =
               STATUS_COLORS[trip.status] ?? STATUS_COLORS.UPCOMING;
@@ -193,7 +193,7 @@ export default function AdminTripsPage() {
                       <div className="flex items-center gap-3">
                         <div className="flex items-center gap-1.5">
                           <Users className="w-4 h-4" />
-                          {trip._count.bookings} / {trip.capacity} Confirmed
+                          {trip.confirmedParticipants} / {trip.capacity} Confirmed Guests
                         </div>
                         <div className="w-16 h-1.5 bg-foreground/10 rounded-full overflow-hidden shrink-0">
                           <div
