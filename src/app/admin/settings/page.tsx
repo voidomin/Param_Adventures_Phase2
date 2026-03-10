@@ -30,7 +30,7 @@ export default function AdminSettingsPage() {
 
   useEffect(() => {
     if (!isLoading) {
-      if (!user || user.role !== "SUPER_ADMIN") {
+      if (user?.role !== "SUPER_ADMIN") {
         router.push("/admin");
       }
     }
@@ -118,7 +118,7 @@ export default function AdminSettingsPage() {
   }
 
   // Double check if somehow reaching here without valid state
-  if (!user || user.role !== "SUPER_ADMIN") return null;
+  if (user?.role !== "SUPER_ADMIN") return null;
 
   return (
     <div className="max-w-4xl pb-24">

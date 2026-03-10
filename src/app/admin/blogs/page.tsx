@@ -152,7 +152,7 @@ export default function AdminBlogsPage() {
 
   const handleDelete = async (id: string, title: string) => {
     if (
-      !window.confirm(`Are you sure you want to delete the blog "${title}"?`)
+      !globalThis.confirm(`Are you sure you want to delete the blog "${title}"?`)
     ) {
       return;
     }
