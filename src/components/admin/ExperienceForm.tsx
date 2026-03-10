@@ -11,6 +11,8 @@ import {
   Save,
   ArrowLeft,
   Info,
+  Download,
+  Upload,
 } from "lucide-react";
 import Link from "next/link";
 import MediaUploader from "./MediaUploader";
@@ -391,6 +393,226 @@ export default function ExperienceForm({
     }
   };
 
+  const applyBasicData = (data: any) => {
+    if (data.title) setTitle(data.title);
+    if (data.description && Object.keys(data.description).length > 0) setDescription(data.description);
+    if (data.basePrice !== undefined) setBasePrice(data.basePrice);
+    if (data.capacity !== undefined) setCapacity(data.capacity);
+    if (data.durationDays !== undefined) setDurationDays(data.durationDays);
+    if (data.location) setLocation(data.location);
+    if (data.difficulty) setDifficulty(data.difficulty);
+    if (data.status) setStatus(data.status);
+    if (data.isFeatured !== undefined) setIsFeatured(data.isFeatured);
+    if (data.coverImage) setCoverImage(data.coverImage);
+    if (data.cardImage) setCardImage(data.cardImage);
+    if (data.images) setImages(data.images);
+    if (data.categories) setSelectedCategories(data.categories);
+  };
+
+  const applyListData = (data: any) => {
+    if (data.itinerary) setItinerary(data.itinerary.map((d: any) => ({ ...d, _id: crypto.randomUUID() })));
+    const mapToObj = (arr: any[]) => arr?.map((text: string) => ({ id: crypto.randomUUID(), text })) || [];
+    if (data.inclusions) setInclusions(mapToObj(data.inclusions));
+    if (data.exclusions) setExclusions(mapToObj(data.exclusions));
+    if (data.thingsToCarry) setThingsToCarry(mapToObj(data.thingsToCarry));
+    if (data.highlights) setHighlights(mapToObj(data.highlights));
+    if (data.vibeTags) setVibeTags(mapToObj(data.vibeTags));
+    if (data.pickupPoints) setPickupPoints(mapToObj(data.pickupPoints));
+    if (data.faqs) setFaqs(data.faqs.map((f: any) => ({ ...f, id: crypto.randomUUID() })));
+  };
+
+  const applyLogisticsData = (data: any) => {
+    if (data.cancellationPolicy !== undefined) setCancellationPolicy(data.cancellationPolicy);
+    if (data.meetingPoint !== undefined) setMeetingPoint(data.meetingPoint);
+    if (data.minAge !== undefined) setMinAge(data.minAge);
+    if (data.maxAltitude !== undefined) setMaxAltitude(data.maxAltitude);
+    if (data.trekDistance !== undefined) setTrekDistance(data.trekDistance);
+    if (data.bestTimeToVisit !== undefined) setBestTimeToVisit(data.bestTimeToVisit);
+    if (data.maxGroupSize !== undefined) setMaxGroupSize(data.maxGroupSize);
+    if (data.networkConnectivity !== undefined) setNetworkConnectivity(data.networkConnectivity);
+    if (data.lastAtm !== undefined) setLastAtm(data.lastAtm);
+    if (data.fitnessRequirement !== undefined) setFitnessRequirement(data.fitnessRequirement);
+    if (data.ageRange !== undefined) setAgeRange(data.ageRange);
+    if (data.meetingTime !== undefined) setMeetingTime(data.meetingTime);
+    if (data.dropoffTime !== undefined) setDropoffTime(data.dropoffTime);
+  };
+
+  const applyImportedData = (data: any) => {
+    applyBasicData(data);
+    applyListData(data);
+    applyLogisticsData(data);
+  };
+
+  const currentPayload = () => ({
+    title, description, basePrice, capacity, durationDays, location, difficulty, status, isFeatured,
+    coverImage, cardImage, images, itinerary, categories: selectedCategories,
+    inclusions: inclusions.map((i) => i.text), exclusions: exclusions.map((i) => i.text),
+    thingsToCarry: thingsToCarry.map((i) => i.text), pickupPoints: pickupPoints.map((i) => i.text),
+    faqs, cancellationPolicy, meetingPoint, minAge, maxAltitude, trekDistance, bestTimeToVisit, maxGroupSize,
+    highlights: highlights.map((i) => i.text), networkConnectivity, lastAtm, fitnessRequirement, ageRange, meetingTime, dropoffTime,
+    vibeTags: vibeTags.map((i) => i.text),
+  });
+
+  const getExportFilename = () => `${title ? title.toLowerCase().replaceAll(/\s+/g, '-') : 'trip'}-export`;
+
+  const handleExportJSON = () => {
+    const dataStr = JSON.stringify(currentPayload(), null, 2);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${getExportFilename()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportJSON = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      applyImportedData(data);
+      setError("");
+    } catch {
+      setError("Invalid JSON file uploaded.");
+    }
+    e.target.value = "";
+  };
+
+  const parseExcelBasicInfo = (imported: any, wb: any, XLSX: any) => {
+    if (wb.Sheets["Basic Info"]) {
+      const basicInfo = XLSX.utils.sheet_to_json(wb.Sheets["Basic Info"]);
+      basicInfo.forEach((row: any) => {
+        if (row.Key && row.Value !== undefined) imported[row.Key] = row.Value;
+      });
+    }
+  };
+
+  const parseExcelItinerary = (imported: any, wb: any, XLSX: any) => {
+    if (wb.Sheets["Itinerary"]) {
+      const itinRows = XLSX.utils.sheet_to_json(wb.Sheets["Itinerary"]);
+      imported.itinerary = itinRows.map((row: any) => ({
+        title: row.Title || "",
+        description: row.Description || "",
+        meals: (typeof row.Meals === 'string') ? row.Meals.split(",").map((m: string) => m.trim()).filter(Boolean) : [],
+        accommodation: row.Accommodation || ""
+      }));
+    }
+  };
+
+  const parseExcelFaqs = (imported: any, wb: any, XLSX: any) => {
+    if (wb.Sheets["FAQs"]) {
+      const faqRows = XLSX.utils.sheet_to_json(wb.Sheets["FAQs"]);
+      imported.faqs = faqRows.map((row: any) => ({
+        question: row.Question || "",
+        answer: row.Answer || ""
+      }));
+    }
+  };
+
+  const parseExcelLists = (imported: any, wb: any, XLSX: any) => {
+    if (wb.Sheets["Lists"]) {
+      const listRows = XLSX.utils.sheet_to_json(wb.Sheets["Lists"]);
+      imported.inclusions = listRows.map((r: any) => r.Inclusions).filter(Boolean);
+      imported.exclusions = listRows.map((r: any) => r.Exclusions).filter(Boolean);
+      imported.thingsToCarry = listRows.map((r: any) => r.ThingsToCarry).filter(Boolean);
+      imported.highlights = listRows.map((r: any) => r.Highlights).filter(Boolean);
+      imported.vibeTags = listRows.map((r: any) => r.VibeTags).filter(Boolean);
+      imported.pickupPoints = listRows.map((r: any) => r.PickupPoints).filter(Boolean);
+    }
+  };
+
+  const handleExportExcel = () => {
+    import("xlsx").then((XLSX) => {
+      const basicInfoData = [
+        { Key: "title", Value: title },
+        { Key: "basePrice", Value: basePrice },
+        { Key: "capacity", Value: capacity },
+        { Key: "durationDays", Value: durationDays },
+        { Key: "location", Value: location },
+        { Key: "difficulty", Value: difficulty },
+        { Key: "status", Value: status },
+        { Key: "minAge", Value: minAge },
+        { Key: "maxAltitude", Value: maxAltitude },
+        { Key: "trekDistance", Value: trekDistance },
+        { Key: "bestTimeToVisit", Value: bestTimeToVisit },
+        { Key: "maxGroupSize", Value: maxGroupSize },
+        { Key: "networkConnectivity", Value: networkConnectivity },
+        { Key: "lastAtm", Value: lastAtm },
+        { Key: "fitnessRequirement", Value: fitnessRequirement },
+        { Key: "ageRange", Value: ageRange },
+        { Key: "meetingTime", Value: meetingTime },
+        { Key: "dropoffTime", Value: dropoffTime },
+        { Key: "meetingPoint", Value: meetingPoint },
+        { Key: "cancellationPolicy", Value: cancellationPolicy }
+      ];
+      
+      const itineraryData = itinerary.map((d, i) => ({
+        Day: i + 1,
+        Title: d.title,
+        Description: d.description,
+        Meals: d.meals?.join(", ") || "",
+        Accommodation: d.accommodation || ""
+      }));
+
+      const faqsData = faqs.map(f => ({
+        Question: f.question,
+        Answer: f.answer
+      }));
+
+      const maxLen = Math.max(inclusions.length, exclusions.length, thingsToCarry.length, highlights.length, vibeTags.length, pickupPoints.length);
+      const listsData = [];
+      for (let i = 0; i < maxLen; i++) {
+        listsData.push({
+          Inclusions: inclusions[i]?.text || "",
+          Exclusions: exclusions[i]?.text || "",
+          ThingsToCarry: thingsToCarry[i]?.text || "",
+          Highlights: highlights[i]?.text || "",
+          VibeTags: vibeTags[i]?.text || "",
+          PickupPoints: pickupPoints[i]?.text || "",
+        });
+      }
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(basicInfoData), "Basic Info");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(itineraryData), "Itinerary");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(faqsData), "FAQs");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(listsData), "Lists");
+
+      XLSX.writeFile(wb, `${getExportFilename()}.xlsx`);
+    });
+  };
+
+  const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    try {
+      const XLSX = await import("xlsx");
+      const buffer = await file.arrayBuffer();
+      const data = new Uint8Array(buffer);
+      const wb = XLSX.read(data, { type: 'array' });
+      
+      const imported: any = {};
+      parseExcelBasicInfo(imported, wb, XLSX);
+      parseExcelItinerary(imported, wb, XLSX);
+      parseExcelFaqs(imported, wb, XLSX);
+      parseExcelLists(imported, wb, XLSX);
+      
+      applyImportedData(imported);
+      setError("");
+    } catch (err) {
+      setError("Failed to parse Excel file. Ensure it follows the export template structure.");
+      console.error(err);
+    }
+    e.target.value = "";
+  };
+  
+  const [showImportOptions, setShowImportOptions] = useState(false);
+  const [showExportOptions, setShowExportOptions] = useState(false);
+
+
   return (
     <form onSubmit={handleSubmit} className="max-w-4xl pb-24">
       <div className="flex items-center justify-between mb-8">
@@ -405,14 +627,73 @@ export default function ExperienceForm({
             {isEditing ? "Edit Trip" : "Create New Trip"}
           </h1>
         </div>
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="bg-primary text-primary-foreground px-6 py-2.5 rounded-full font-bold flex items-center gap-2 hover:scale-105 transition-transform disabled:opacity-50 disabled:hover:scale-100 shadow-lg shadow-primary/25"
-        >
-          <Save className="w-4 h-4" />
-          {isSubmitting ? "Saving..." : "Save Trip"}
-        </button>
+        <div className="flex items-center gap-3 relative">
+          
+          {/* Import Dropdown */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowImportOptions(!showImportOptions)}
+              className="bg-secondary text-secondary-foreground hover:bg-secondary/80 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-colors border border-border"
+            >
+              <Upload className="w-4 h-4" />
+              Import Data
+            </button>
+            {showImportOptions && (
+              <div className="absolute top-full right-0 mt-2 w-48 bg-card border border-border rounded-xl shadow-lg shadow-black/10 overflow-hidden z-10 flex flex-col p-1">
+                <label className="px-4 py-2.5 hover:bg-foreground/5 cursor-pointer text-sm font-medium transition-colors text-foreground flex items-center gap-2 rounded-lg">
+                  <input type="file" accept=".json" className="hidden" onChange={(e) => { handleImportJSON(e); setShowImportOptions(false); }} />
+                  <span>Import JSON</span>
+                </label>
+                <label className="px-4 py-2.5 hover:bg-foreground/5 cursor-pointer text-sm font-medium transition-colors text-foreground flex items-center gap-2 rounded-lg">
+                  <input type="file" accept=".xlsx" className="hidden" onChange={(e) => { handleImportExcel(e); setShowImportOptions(false); }} />
+                  <span>Import Excel (.xlsx)</span>
+                </label>
+              </div>
+            )}
+            {showImportOptions && <button type="button" aria-label="Close menu" className="fixed inset-0 z-0 w-full h-full cursor-default border-none bg-transparent" onClick={() => setShowImportOptions(false)} />}
+          </div>
+
+          {/* Export Dropdown */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowExportOptions(!showExportOptions)}
+              className="bg-secondary text-secondary-foreground hover:bg-secondary/80 px-4 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-colors border border-border"
+            >
+              <Download className="w-4 h-4" />
+              Export Data
+            </button>
+            {showExportOptions && (
+              <div className="absolute top-full right-0 mt-2 w-48 bg-card border border-border rounded-xl shadow-lg shadow-black/10 overflow-hidden z-10 flex flex-col p-1">
+                <button
+                  type="button"
+                  onClick={() => { handleExportJSON(); setShowExportOptions(false); }}
+                  className="px-4 py-2.5 hover:bg-foreground/5 text-left text-sm font-medium transition-colors text-foreground flex items-center gap-2 rounded-lg"
+                >
+                  Export JSON
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { handleExportExcel(); setShowExportOptions(false); }}
+                  className="px-4 py-2.5 hover:bg-foreground/5 text-left text-sm font-medium transition-colors text-foreground flex items-center gap-2 rounded-lg"
+                >
+                  Export Excel (.xlsx)
+                </button>
+              </div>
+            )}
+            {showExportOptions && <button type="button" aria-label="Close menu" className="fixed inset-0 z-0 w-full h-full cursor-default border-none bg-transparent" onClick={() => setShowExportOptions(false)} />}
+          </div>
+
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="bg-primary text-primary-foreground px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:scale-105 transition-transform disabled:opacity-50 disabled:hover:scale-100 shadow-lg shadow-primary/25"
+          >
+            <Save className="w-4 h-4" />
+            {isSubmitting ? "Saving..." : "Save Trip"}
+          </button>
+        </div>
       </div>
 
       {error && (
