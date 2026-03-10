@@ -760,44 +760,19 @@ export default function BookingModal({
                             htmlFor={`pickup-${index}`}
                             className="block text-xs font-bold text-foreground/60 mb-1"
                           >
-                            Pickup Location
+                            Pickup & Drop Point
                           </label>
                           <select
                             id={`pickup-${index}`}
                             value={p.pickupPoint}
-                            onChange={(e) =>
-                              updatePart(index, "pickupPoint", e.target.value)
-                            }
+                            onChange={(e) => {
+                              updatePart(index, "pickupPoint", e.target.value);
+                              updatePart(index, "dropPoint", e.target.value);
+                            }}
                             className="w-full px-3 py-2 bg-card border border-border rounded-lg outline-none appearance-none"
                           >
-                            <option value="">Select Pickup (Optional)</option>
+                            <option value="">Select Location (Optional)</option>
                             {pickupPoints.map((loc) => (
-                              <option key={loc} value={loc}>
-                                {loc}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      )}
-
-                      {dropPoints && dropPoints.length > 0 && (
-                        <div className="mt-4">
-                          <label
-                            htmlFor={`drop-${index}`}
-                            className="block text-xs font-bold text-foreground/60 mb-1"
-                          >
-                            Drop Location
-                          </label>
-                          <select
-                            id={`drop-${index}`}
-                            value={p.dropPoint}
-                            onChange={(e) =>
-                              updatePart(index, "dropPoint", e.target.value)
-                            }
-                            className="w-full px-3 py-2 bg-card border border-border rounded-lg outline-none appearance-none"
-                          >
-                            <option value="">Select Drop (Optional)</option>
-                            {dropPoints.map((loc) => (
                               <option key={loc} value={loc}>
                                 {loc}
                               </option>

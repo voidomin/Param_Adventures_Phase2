@@ -89,7 +89,7 @@ export default async function BookingSuccessPage({
 
   return (
     <main className="min-h-screen bg-background/50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-5xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-6">
         {/* Header Banner */}
         <div className="bg-linear-to-r from-green-900 via-green-800 to-green-900 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6 shadow-xl border border-green-800/50 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-20 -mt-20" />
@@ -179,55 +179,103 @@ export default async function BookingSuccessPage({
               <div className="bg-muted/30 px-6 py-4 border-b border-border/50">
                 <h3 className="text-lg font-bold text-foreground">Guest Details</h3>
               </div>
-              <div className="p-0 overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead className="text-xs font-black text-foreground/40 uppercase tracking-widest bg-muted/20 border-b border-border/50">
-                    <tr>
-                      <th className="px-6 py-4">Guest</th>
-                      <th className="px-6 py-4">Details</th>
-                      <th className="px-6 py-4">Pickup</th>
-                      <th className="px-6 py-4">Drop</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/50">
-                    {participants.map((p, idx) => (
-                      <tr key={p.id} className="hover:bg-muted/10 transition-colors group">
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${p.isPrimary ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground/40'}`}>
-                              {idx + 1}
-                            </div>
-                            <div className="font-bold text-foreground">
-                              {p.name}
-                              {p.isPrimary && (
-                                <span className="ml-2 text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded uppercase">Host</span>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-foreground/70">
-                          <div className="flex flex-col gap-1">
-                            <span className="font-medium">Age: {p.age || "N/A"} • {p.gender || "Gender N/A"}</span>
-                            <span className="text-xs">Blood: {p.bloodGroup || "N/A"}</span>
-                            {p.phoneNumber && <span className="text-xs opacity-60">Tel: {p.phoneNumber}</span>}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                           <div className="flex items-center gap-2 text-foreground/80">
-                              <PlaneTakeoff className="w-4 h-4 text-primary shrink-0" />
-                              <span className="font-medium">{p.pickupPoint || "Meeting Point"}</span>
-                           </div>
-                        </td>
-                        <td className="px-6 py-4">
-                           <div className="flex items-center gap-2 text-foreground/80">
-                              <PlaneLanding className="w-4 h-4 text-primary shrink-0" />
-                              <span className="font-medium">{p.dropPoint || "Self/TBD"}</span>
-                           </div>
-                        </td>
+              <div className="p-0">
+                {/* Desktop Table - Hidden on smaller screens */}
+                <div className="hidden xl:block overflow-x-auto">
+                  <table className="w-full text-sm text-left border-collapse">
+                    <thead className="text-[10px] font-black text-foreground/40 uppercase tracking-widest bg-muted/20 border-b border-border/50">
+                      <tr>
+                        <th className="px-6 py-4">Guest</th>
+                        <th className="px-6 py-4">Email Address</th>
+                        <th className="px-6 py-4">Phone Number</th>
+                        <th className="px-6 py-4">Personal Details</th>
+                        <th className="px-6 py-4 whitespace-nowrap">Pickup & Drop</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-border/50">
+                      {participants.map((p, idx) => (
+                        <tr key={p.id} className="hover:bg-muted/10 transition-colors group">
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${p.isPrimary ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground/40'}`}>
+                                {idx + 1}
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="font-bold text-foreground">{p.name}</span>
+                                {p.isPrimary && (
+                                  <span className="w-fit text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded uppercase font-black tracking-tighter mt-1">Primary Host</span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-foreground/80 font-medium">
+                            {p.email || "—"}
+                          </td>
+                          <td className="px-6 py-4 text-foreground/80 font-medium">
+                            {p.phoneNumber || "—"}
+                          </td>
+                          <td className="px-6 py-4 text-foreground/70">
+                            <div className="flex flex-wrap gap-x-3 gap-y-1">
+                              <span className="font-medium">Age: {p.age || "—"}</span>
+                              <span className="opacity-40">•</span>
+                              <span className="font-medium">{p.gender || "—"}</span>
+                              <span className="opacity-40">•</span>
+                              <span className="font-medium">Blood: {p.bloodGroup || "—"}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                             <div className="flex items-center gap-2 text-foreground/80">
+                                <MapPin className="w-4 h-4 text-primary shrink-0" />
+                                <span className="font-medium">{p.pickupPoint || "Meeting Point"}</span>
+                             </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Mobile/Tablet Cards - Better for vertical stacking without scroll */}
+                <div className="xl:hidden divide-y divide-border/50">
+                  {participants.map((p, idx) => (
+                    <div key={p.id} className="p-6 space-y-4 hover:bg-muted/5 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${p.isPrimary ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground/40'}`}>
+                            {idx + 1}
+                          </div>
+                          <div>
+                            <span className="font-bold text-lg text-foreground block">{p.name}</span>
+                            {p.isPrimary && (
+                              <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded uppercase font-black tracking-wider">Primary Host</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest block">Contact Information</span>
+                          <div className="text-foreground/80 font-semibold">{p.email || "No email"}</div>
+                          <div className="text-foreground/80 font-semibold">{p.phoneNumber || "No phone"}</div>
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest block">Personal Details</span>
+                          <div className="text-foreground/70 font-medium">
+                            {p.age ? `Age: ${p.age}` : "Age: —"} • {p.gender || "—"} • Blood: {p.bloodGroup || "—"}
+                          </div>
+                        </div>
+                        <div className="md:col-span-2 pt-2">
+                           <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest block mb-2">Logistics</span>
+                           <div className="flex items-center gap-2 bg-muted/40 p-3 rounded-xl border border-border/50">
+                              <MapPin className="w-5 h-5 text-primary shrink-0" />
+                              <span className="font-bold text-foreground">{p.pickupPoint || "Assigned by Trip Manager"}</span>
+                           </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
