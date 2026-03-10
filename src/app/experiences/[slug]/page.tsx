@@ -24,6 +24,7 @@ import ExperienceReviews from "@/components/experiences/ExperienceReviews";
 import SaveButton from "@/components/experiences/SaveButton";
 import SimilarTrips from "@/components/experiences/SimilarTrips";
 import ExperienceGallery from "@/components/experiences/ExperienceGallery";
+import MobileBookingBar from "@/components/booking/MobileBookingBar";
 
 export const revalidate = 60;
 
@@ -439,6 +440,16 @@ export default async function ExperienceDetailPage({
           </div>
         </div>
       </div>
+
+      <MobileBookingBar
+        experienceId={experience.id}
+        experienceTitle={experience.title}
+        experienceSlug={experience.slug}
+        basePrice={Number(experience.basePrice)}
+        maxCapacity={experience.capacity}
+        pickupPoints={(experience as any).pickupPoints || []}
+        dropPoints={(experience as any).dropPoints || []}
+      />
     </div>
   );
 }
