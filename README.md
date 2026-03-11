@@ -30,7 +30,7 @@ Param Adventures is a mobile-first, full-stack experiential events platform. It 
 
 ### 1. Environment Variables
 
-Create a `.env` file referencing `.env.example`. You will need PostgreSQL credentials, a secret key, Razorpay keys, Resend keys, and Cloudinary keys.
+Create a `.env` file referencing `.env.example`. You will need PostgreSQL credentials, JWT secret, Razorpay keys, Resend API key, Cloudinary keys, and AWS S3 credentials.
 
 ### 2. Install & Run
 
@@ -41,23 +41,26 @@ npm run dev
 
 ### 3. Database & Seeding
 
-Ensure you seed the database to generate the 7 required Roles and 25 Permissions necessary for the app to function.
+Ensure you seed the database to generate the 6 required Roles and 26 Permissions necessary for the app to function.
 
 ```bash
-npx prisma db push
-npx prisma generate
-npm run seed
+npx prisma migrate deploy
+npx prisma db seed
 ```
+
+> **📘 For full deployment instructions**, see [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
 
 ## 🔐 Roles & Access Control
 
 The application is governed by a strict Role-Based Access Control (RBAC) system. The seed script creates the following base roles:
 
-- `SUPER_ADMIN`, `ADMIN` (Full dashboard access)
-- `TRIP_MANAGER` (Approves completed treks and handles scheduling)
-- `TREK_LEAD` (Manages D-Day operations via the mobile trip interface)
-- `BLOGGER` (Writes content that requires admin approval)
-- `UPLOADER` (Restricted access to the S3 Media upload endpoints)
-- `REGISTERED_USER` (Default public user role)
+| Role              | Permissions | Description                                     |
+| ----------------- | :---------: | ----------------------------------------------- |
+| `SUPER_ADMIN`     |     26      | Full system access including config and audit    |
+| `ADMIN`           |     17      | Day-to-day platform management                   |
+| `TRIP_MANAGER`    |      5      | Trip operations and Trek Lead assignments        |
+| `TREK_LEAD`       |      6      | Ground operations via mobile trip interface      |
+| `MEDIA_UPLOADER`  |      4      | Experience drafts and S3 media uploads           |
+| `REGISTERED_USER` |      4      | Default role — browse, book, blog                |
 
 > **Documentation:** Please refer to the `/docs` folder for an in-depth reading of the PRD, the architecture, and the database schema.

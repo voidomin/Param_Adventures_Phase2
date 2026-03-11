@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { TableSkeleton } from "@/components/admin/TableSkeleton";
+import { ManualVerifyModal } from "@/components/admin/ManualVerifyModal";
 
 
 type BookingStatus = "REQUESTED" | "CONFIRMED" | "CANCELLED";
@@ -80,6 +81,7 @@ export default function AdminBookingsPage() {
     "ALL",
   );
   const [search, setSearch] = useState("");
+  const [selectedBooking, setSelectedBooking] = useState<{ id: string; amount: number } | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -159,6 +161,7 @@ export default function AdminBookingsPage() {
                   "Status",
                   "Payment",
                   "Booked On",
+                  "",
                 ].map((h) => (
                   <th
                     key={h}
@@ -224,6 +227,18 @@ export default function AdminBookingsPage() {
                   </td>
                   <td className="px-5 py-4 text-xs text-foreground/50 whitespace-nowrap">
                     {formatDate(b.createdAt)}
+                  </td>
+                  <td className="px-5 py-4 text-right">
+                    {b.bookingStatus === "REQUESTED" && b.paymentStatus !== "PAID" && (
+                      <button
+                        onClick={() => setSelectedBooking({ id: b.id, amount: Number(b.totalPrice) })}
+                        className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all flex items-center gap-1.5 text-xs font-bold"
+                        title="Approve Manual Payment"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Approve Manual
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -322,6 +337,23 @@ export default function AdminBookingsPage() {
       </div>
 
       {renderTableContent()}
+
+      {selectedBooking && (
+        <ManualVerifyModal
+          bookingId={selectedBooking.id}
+          bookingAmount={selectedBooking.amount}
+          isOpen={!!selectedBooking}
+          onClose={() => setSelectedBooking(null)}
+          onSuccess={() => {
+            // Refresh bookings
+            const params = new URLSearchParams();
+            if (statusFilter !== "ALL") params.set("status", statusFilter);
+            fetch(`/api/admin/bookings?${params}`)
+              .then((r) => r.json())
+              .then((d) => setBookings(d.bookings || []));
+          }}
+        />
+      )}
     </div>
   );
 }

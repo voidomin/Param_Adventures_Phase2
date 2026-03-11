@@ -142,12 +142,14 @@ export default function Hero({
         <div className="absolute bottom-12 right-8 md:right-16 z-30 flex items-center gap-4">
           <button
             onClick={goToPrev}
+            suppressHydrationWarning
             className="p-3 rounded-full bg-white/5 text-white/50 hover:bg-primary hover:text-white backdrop-blur-md transition-all border border-white/10"
           >
             <ChevronLeft className="w-6 h-6" />
           </button>
           <button
             onClick={goToNext}
+            suppressHydrationWarning
             className="p-3 rounded-full bg-white/5 text-white/50 hover:bg-primary hover:text-white backdrop-blur-md transition-all border border-white/10"
           >
             <ChevronRight className="w-6 h-6" />
@@ -207,7 +209,10 @@ export default function Hero({
                 <div className="absolute inset-0 rounded-full bg-gradient-to-r from-white/0 via-white/20 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
               </Link>
 
-              <button className="px-8 py-4 rounded-full text-white text-base font-bold border border-white/20 hover:bg-white/10 hover:border-white/40 backdrop-blur-md transition-all">
+              <button
+                suppressHydrationWarning
+                className="px-8 py-4 rounded-full text-white text-base font-bold border border-white/20 hover:bg-white/10 hover:border-white/40 backdrop-blur-md transition-all"
+              >
                 Our Story
               </button>
             </div>

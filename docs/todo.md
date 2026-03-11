@@ -98,8 +98,13 @@ Based on the final deep-dive architectural audit, these critical gaps need addre
 
 - [x] **Global API Input Validation (Zod):** Implemented Zod schemas across mutation API routes.
 - [x] **Next.js Cache Invalidation Flow:** Added `revalidatePath` and `revalidateTag` to mutations.
+- [x] **UI Loading Skeletons:** Implemented "shimmer" loading states across all admin tables and card views.
 - [x] **Server-Side HTML Sanitization (XSS Prevention):** Implemented `sanitize-html` for rich text.
 - [x] **JWT Token Invalidation Strategy:** Implemented `tokenVersion` and updated login/verify flows.
-- [ ] **Booking Cancellation Flow & Refunds:** Currently, no endpoint exists for a normal user to cancel a paid booking, automatically trigger a Razorpay refund, and restore slot capacity. This needs a dedicated endpoint and business logic.
-- [x] **Cookie Security / CSRF:** Set tokens to `httpOnly: true` and `SameSite: 'strict'`.
-- [x] **Atomic Webhook Idempotency:** Improved Razorpay verification logic to be atomically idempotent using status filters and error catching.
+- [ ] **Booking Cancellation Flow & Refunds:** Currently, no endpoint exists for a normal user to cancel a paid booking, automatically trigger a Razorpay refund, and restore slot capacity. Awaiting final client business logic for charges and flow.
+- [ ] **Manual Payment Acceptance:** Implement a flow for manual payments (bank transfer/UP/QR) when digital gateways are unavailable.
+  - [ ] User can fill booking details and select "Manual Payment".
+  - [ ] Admin dashboard interface to approve manual payments.
+  - [ ] Support for uploading/storing payment receipts or confirmation documents.
+- [ ] **Brand Identity: Our Story Page:** Design and implement the "Our Story" page to communicate brand values.
+- [ ] **Admin Dashboard Refactor:** Final audit of the dashboard layout to determine key metrics and data visualizations for admins.
