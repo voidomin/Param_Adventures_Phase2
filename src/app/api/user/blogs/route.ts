@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   const token = request.cookies.get("accessToken")?.value;
   if (!token)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const payload = verifyAccessToken(token);
+  const payload = await verifyAccessToken(token);
   if (!payload)
     return NextResponse.json({ error: "Invalid token." }, { status: 401 });
 
@@ -25,6 +25,31 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ blogs });
 }
 
+import { z } from "zod";
+
+const blogCreateSchema = z.object({
+  experienceId: z.string().min(1, "experienceId is required"),
+  title: z.string().min(1, "title is required").max(120),
+  coverImageUrl: z
+    .string()
+    .refine(
+      (val: string) => {
+        if (!val) return true;
+        try {
+          new URL(val);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      { message: "Invalid cover image URL" },
+    )
+    .optional()
+    .nullable(),
+  theme: z.enum(["CLASSIC", "MODERN", "MINIMAL"]).optional(),
+  authorSocials: z.any().optional(), // JSON
+});
+
 /**
  * POST /api/user/blogs — create a new blog draft
  * Gate: user must have a CONFIRMED booking for the experience
@@ -36,19 +61,27 @@ export async function POST(request: NextRequest) {
     const token = request.cookies.get("accessToken")?.value;
     if (!token)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const payload = verifyAccessToken(token);
+    const payload = await verifyAccessToken(token);
     if (!payload)
       return NextResponse.json({ error: "Invalid token." }, { status: 401 });
 
     const body = await request.json();
-    const { experienceId, title, coverImageUrl, theme, authorSocials } = body;
 
-    if (!experienceId || !title?.trim()) {
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = blogCreateSchema.safeParse(body);
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: "experienceId and title are required." },
+        { error: parseResult.error.issues[0].message },
         { status: 400 },
       );
     }
+    const {
+      experienceId,
+      title,
+      coverImageUrl,
+      theme,
+      authorSocials,
+    } = parseResult.data;
 
     // Gate: must have a CONFIRMED booking AND the trip must be completed (slot date in the past)
     const now = new Date();

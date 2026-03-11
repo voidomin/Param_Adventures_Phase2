@@ -3,6 +3,11 @@ import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
 import { sendTripCompletedEmail } from "@/lib/email";
+import { z } from "zod";
+
+const tripCompleteSchema = z.object({
+  managerNote: z.string().max(2000, "Note is too long").optional().nullable(),
+});
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -28,7 +33,16 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     const { id: slotId } = await params;
     const userId = auth.userId;
     const body = await request.json();
-    const managerNote: string = (body.managerNote ?? "").trim();
+
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = tripCompleteSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: parseResult.error.issues[0].message },
+        { status: 400 },
+      );
+    }
+    const managerNote = parseResult.data.managerNote?.trim() || "";
 
     const slot = await prisma.slot.findUnique({
       where: { id: slotId },

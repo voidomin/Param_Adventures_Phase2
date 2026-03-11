@@ -44,6 +44,12 @@ export async function GET(request: NextRequest) {
   }
 }
 
+import { z } from "zod";
+
+const wishlistSchema = z.object({
+  experienceId: z.string().min(1, "experienceId is required."),
+});
+
 /**
  * POST /api/wishlist
  * Saves an experience for the current user.
@@ -55,14 +61,16 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { experienceId } = body;
 
-    if (!experienceId) {
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = wishlistSchema.safeParse(body);
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: "experienceId is required." },
+        { error: parseResult.error.issues[0].message },
         { status: 400 },
       );
     }
+    const { experienceId } = parseResult.data;
 
     // Check if experience exists and is published
     const experience = await prisma.experience.findUnique({

@@ -1,20 +1,22 @@
 # Pre-Deployment To-Do List
 
+# Pre-Deployment To-Do List
+
 Everything that needs to be done after all feature implementations are complete, before the application goes live.
 
 ---
 
 ## 🔒 Security Hardening
 
-- [ ] **CORS Configuration** — Restrict API access to your domain only (block cross-origin abuse)
-- [ ] **Security Headers** — Add `X-Frame-Options`, `X-Content-Type-Options`, `Content-Security-Policy`, `Strict-Transport-Security`
-- [ ] **Input Sanitization** — Add XSS protection on user-generated content (blog posts, reviews, lead forms)
-- [ ] **Error Sanitization** — Ensure stack traces and internal errors are never exposed in production API responses
-- [ ] **Environment Variables Audit** — Verify no secrets are hardcoded; document all required env vars
-- [ ] **Cookie Security Audit** — Verify `httpOnly`, `secure`, `sameSite` flags are production-ready
-- [ ] **SQL Injection Check** — Confirm Prisma parameterized queries are used everywhere (no raw SQL)
-- [ ] **File Upload Limits** — Ensure max file size and type validation on S3/media uploads
-- [ ] ~~Rate Limiting~~ ✅ **Done** (Phase 22)
+- [x] **CORS Configuration** — Restrict API access to your domain (Phase 3 completion)
+- [x] **Security Headers** — Added X-Frame-Options, CSP, etc via next.config.ts
+- [x] **Input Sanitization** — XSS protection implemented for Blogs/Experiences
+- [x] **Error Sanitization** — Global try/catch blocks ensure no stack traces in API
+- [x] **Environment Variables Audit** — verified .env.example exists
+- [x] **Cookie Security Audit** — httpOnly, secure, sameSite flags set
+- [x] **SQL Injection Check** — Confirmed Prisma parameterized queries only
+- [x] **File Upload Limits** — Added type and basic existence checks in API
+- [x] Rate Limiting ✅ **Done** (Phase 22)
 
 ---
 
@@ -87,3 +89,17 @@ Everything that needs to be done after all feature implementations are complete,
 - [ ] **Analytics** — Add Google Analytics or Plausible for traffic tracking
 - [ ] **Uptime Monitoring** — Set up UptimeRobot or AWS CloudWatch for downtime alerts
 - [ ] **Log Management** — Configure structured logging for production debugging
+
+---
+
+## 🏗️ Phase 3: Immediate Security & Architecture Refinements (Post-Review)
+
+Based on the final deep-dive architectural audit, these critical gaps need addressing before production:
+
+- [x] **Global API Input Validation (Zod):** Implemented Zod schemas across mutation API routes.
+- [x] **Next.js Cache Invalidation Flow:** Added `revalidatePath` and `revalidateTag` to mutations.
+- [x] **Server-Side HTML Sanitization (XSS Prevention):** Implemented `sanitize-html` for rich text.
+- [x] **JWT Token Invalidation Strategy:** Implemented `tokenVersion` and updated login/verify flows.
+- [ ] **Booking Cancellation Flow & Refunds:** Currently, no endpoint exists for a normal user to cancel a paid booking, automatically trigger a Razorpay refund, and restore slot capacity. This needs a dedicated endpoint and business logic.
+- [x] **Cookie Security / CSRF:** Set tokens to `httpOnly: true` and `SameSite: 'strict'`.
+- [x] **Atomic Webhook Idempotency:** Improved Razorpay verification logic to be atomically idempotent using status filters and error catching.

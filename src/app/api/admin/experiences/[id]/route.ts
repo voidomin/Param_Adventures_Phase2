@@ -4,6 +4,7 @@ import { authorizeRequest } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
 
 import { generateSlug } from "@/lib/slugify";
+import { revalidatePath } from "next/cache";
 
 // GET /api/admin/experiences/[id]
 export async function GET(
@@ -40,6 +41,89 @@ export async function GET(
   }
 }
 
+import { z } from "zod";
+
+const updateExperienceSchema = z.object({
+  title: z.string().min(1).max(100).optional(),
+  description: z.any().optional(), // JSON
+  basePrice: z.number().min(0).optional(),
+  capacity: z.number().int().min(1).optional(),
+  durationDays: z.number().int().min(1).optional(),
+  location: z.string().optional(),
+  difficulty: z.enum(["EASY", "MODERATE", "HARD", "EXTREME"]).optional(),
+  status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).optional(),
+  isFeatured: z.boolean().optional(),
+  coverImage: z
+    .string()
+    .refine(
+      (val: string) => {
+        if (!val) return true;
+        try {
+          new URL(val);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      { message: "Invalid cover image URL" },
+    )
+    .optional()
+    .nullable(),
+  cardImage: z
+    .string()
+    .refine(
+      (val) => {
+        if (!val) return true;
+        try {
+          new URL(val);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      { message: "Invalid card image URL" },
+    )
+    .optional()
+    .nullable(),
+  images: z
+    .array(
+      z.string().refine(
+        (val) => {
+          try {
+            new URL(val);
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        { message: "Invalid image URL" },
+      ),
+    )
+    .optional(),
+  itinerary: z.any().optional(), // JSON
+  categoryIds: z.array(z.string()).optional(),
+  inclusions: z.any().optional(),
+  exclusions: z.any().optional(),
+  thingsToCarry: z.any().optional(),
+  faqs: z.any().optional(),
+  cancellationPolicy: z.string().optional().nullable(),
+  meetingPoint: z.string().optional().nullable(),
+  minAge: z.number().int().optional().nullable(),
+  maxAltitude: z.string().optional().nullable(),
+  trekDistance: z.string().optional().nullable(),
+  bestTimeToVisit: z.string().optional().nullable(),
+  maxGroupSize: z.number().int().optional().nullable(),
+  pickupPoints: z.array(z.string()).optional(),
+  highlights: z.array(z.string()).optional(),
+  networkConnectivity: z.string().optional().nullable(),
+  lastAtm: z.string().optional().nullable(),
+  fitnessRequirement: z.string().optional().nullable(),
+  ageRange: z.string().optional().nullable(),
+  meetingTime: z.string().optional().nullable(),
+  dropoffTime: z.string().optional().nullable(),
+  vibeTags: z.array(z.string()).optional(),
+});
+
 // PUT /api/admin/experiences/[id]
 export async function PUT(
   request: NextRequest,
@@ -51,15 +135,16 @@ export async function PUT(
   const { id } = await params;
 
   try {
-    const existingExp = await prisma.experience.findUnique({ where: { id } });
-    if (!existingExp) {
+    const body = await request.json();
+
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = updateExperienceSchema.safeParse(body);
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: "Experience not found" },
-        { status: 404 },
+        { error: parseResult.error.issues[0].message },
+        { status: 400 },
       );
     }
-
-    const body = await request.json();
     const {
       title,
       description,
@@ -95,7 +180,15 @@ export async function PUT(
       meetingTime,
       dropoffTime,
       vibeTags,
-    } = body;
+    } = parseResult.data;
+
+    const existingExp = await prisma.experience.findUnique({ where: { id } });
+    if (!existingExp) {
+      return NextResponse.json(
+        { error: "Experience not found" },
+        { status: 404 },
+      );
+    }
 
     // Handle slug update if title changed
     let newSlug = existingExp.slug;
@@ -175,6 +268,8 @@ export async function PUT(
       });
     });
 
+    revalidatePath("/", "layout");
+
     return NextResponse.json({
       message: "Experience updated successfully",
       experience: updatedExperience,
@@ -219,10 +314,12 @@ export async function DELETE(
         where: { id },
         data: { deletedAt: new Date() },
       });
+      revalidatePath("/", "layout");
       return NextResponse.json({ message: "Experience soft-deleted" });
     } else {
       // Hard Delete
       await prisma.experience.delete({ where: { id } });
+      revalidatePath("/", "layout");
       return NextResponse.json({ message: "Experience permanently deleted" });
     }
   } catch (err: unknown) {

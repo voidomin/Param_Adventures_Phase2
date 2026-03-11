@@ -36,6 +36,12 @@ export async function GET(request: NextRequest) {
   }
 }
 
+import { z } from "zod";
+
+const settingsUpdateSchema = z.object({
+  settings: z.record(z.string(), z.any()),
+});
+
 /**
  * PUT /api/admin/settings
  * Update one or more platform settings
@@ -46,11 +52,16 @@ export async function PUT(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { settings } = body; // Array of {key, value, description} or Record<string, string>
 
-    if (!settings || typeof settings !== "object") {
-      return NextResponse.json({ error: "Invalid settings payload" }, { status: 400 });
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = settingsUpdateSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: "Invalid settings payload" },
+        { status: 400 },
+      );
     }
+    const { settings } = parseResult.data;
 
     // Process as Key-Value object
     const promises = Object.entries(settings).map(([key, value]) => {

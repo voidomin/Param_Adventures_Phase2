@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { verifyAccessToken } from "@/lib/auth";
 import { uploadToCloudinary } from "@/lib/cloudinary";
+import { z } from "zod";
 
 /**
  * POST /api/user/avatar — Upload avatar directly to Cloudinary
@@ -13,7 +15,7 @@ export async function POST(request: NextRequest) {
   if (!accessToken) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const payload = verifyAccessToken(accessToken);
+  const payload = await verifyAccessToken(accessToken);
   if (!payload) {
     return NextResponse.json({ error: "Invalid token." }, { status: 401 });
   }
@@ -49,6 +51,8 @@ export async function POST(request: NextRequest) {
       select: { id: true, avatarUrl: true },
     });
 
+    revalidatePath("/", "layout");
+
     return NextResponse.json({
       success: true,
       avatarUrl: updated.avatarUrl,
@@ -62,6 +66,17 @@ export async function POST(request: NextRequest) {
   }
 }
 
+const avatarPatchSchema = z.object({
+  avatarUrl: z.string().refine((val) => {
+    try {
+      new URL(val);
+      return true;
+    } catch {
+      return false;
+    }
+  }, { message: "Invalid avatar URL" }),
+});
+
 /**
  * PATCH /api/user/avatar — Save a pre-existing avatarUrl to the user record
  */
@@ -70,22 +85,31 @@ export async function PATCH(request: NextRequest) {
   if (!accessToken) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const payload = verifyAccessToken(accessToken);
+  const payload = await verifyAccessToken(accessToken);
   if (!payload) {
     return NextResponse.json({ error: "Invalid token." }, { status: 401 });
   }
 
   try {
-    const { avatarUrl } = await request.json();
-    if (!avatarUrl || typeof avatarUrl !== "string") {
-      return NextResponse.json({ error: "Missing avatarUrl" }, { status: 400 });
+    const body = await request.json();
+
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = avatarPatchSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: parseResult.error.issues[0].message },
+        { status: 400 },
+      );
     }
+    const { avatarUrl } = parseResult.data;
 
     const updated = await prisma.user.update({
       where: { id: payload.userId },
       data: { avatarUrl },
       select: { id: true, avatarUrl: true },
     });
+
+    revalidatePath("/", "layout");
 
     return NextResponse.json({ success: true, avatarUrl: updated.avatarUrl });
   } catch (error) {

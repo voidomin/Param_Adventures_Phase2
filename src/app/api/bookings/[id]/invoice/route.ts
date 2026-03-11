@@ -16,7 +16,7 @@ export async function GET(
     // Auth Check
     const token = request.cookies.get("accessToken")?.value;
     if (!token) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const payload = verifyAccessToken(token);
+    const payload = await verifyAccessToken(token);
     if (!payload?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const booking = await prisma.booking.findUnique({

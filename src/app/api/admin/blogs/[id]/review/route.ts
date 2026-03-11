@@ -1,8 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 
 type Params = { params: Promise<{ id: string }> };
+
+import { z } from "zod";
+
+const blogReviewSchema = z.object({
+  action: z.enum(["approve", "reject"]),
+  rejectionReason: z.string().optional().nullable(),
+}).refine(data => data.action !== "reject" || (data.rejectionReason && data.rejectionReason.trim().length > 0), {
+  message: "A rejection reason is required when rejecting a blog.",
+  path: ["rejectionReason"],
+});
 
 /**
  * POST /api/admin/blogs/[id]/review
@@ -27,30 +38,35 @@ export async function POST(request: NextRequest, { params }: Params) {
     );
   }
 
-  const body = await request.json();
-  const { action, rejectionReason } = body;
+  try {
+    const body = await request.json();
 
-  if (action !== "approve" && action !== "reject") {
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = blogReviewSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: parseResult.error.issues[0].message },
+        { status: 400 },
+      );
+    }
+    const { action, rejectionReason } = parseResult.data;
+
+    const updated = await prisma.blog.update({
+      where: { id },
+      data:
+        action === "approve"
+          ? { status: "PUBLISHED", rejectionReason: null }
+          : { status: "DRAFT", rejectionReason: rejectionReason?.trim() || "Rejected by admin" },
+    });
+
+    revalidatePath("/", "layout");
+
+    return NextResponse.json({ blog: updated });
+  } catch (error) {
+    console.error("POST /api/admin/blogs/[id]/review error:", error);
     return NextResponse.json(
-      { error: "action must be 'approve' or 'reject'." },
-      { status: 400 },
+      { error: "Internal Server Error" },
+      { status: 500 },
     );
   }
-
-  if (action === "reject" && !rejectionReason?.trim()) {
-    return NextResponse.json(
-      { error: "A rejection reason is required when rejecting a blog." },
-      { status: 400 },
-    );
-  }
-
-  const updated = await prisma.blog.update({
-    where: { id },
-    data:
-      action === "approve"
-        ? { status: "PUBLISHED", rejectionReason: null }
-        : { status: "DRAFT", rejectionReason: rejectionReason.trim() },
-  });
-
-  return NextResponse.json({ blog: updated });
 }

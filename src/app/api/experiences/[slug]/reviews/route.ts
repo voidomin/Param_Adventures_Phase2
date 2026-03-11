@@ -99,6 +99,13 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
   }
 }
 
+import { z } from "zod";
+
+const reviewSchema = z.object({
+  rating: z.number().int().min(1).max(5),
+  reviewText: z.string().min(10, "Review must be at least 10 characters long").max(1000),
+});
+
 export async function POST(request: NextRequest, { params }: RouteContext) {
   const auth = await authorizeRequest(request);
   if (!auth.authorized) return auth.response;
@@ -108,21 +115,15 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     const userId = auth.userId;
     const body = await request.json();
 
-    const rating = Number.parseInt(body.rating);
-    const reviewText = (body.reviewText || "").trim();
-
-    if (Number.isNaN(rating) || rating < 1 || rating > 5) {
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = reviewSchema.safeParse(body);
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: "Rating must be between 1 and 5" },
+        { error: parseResult.error.issues[0].message },
         { status: 400 },
       );
     }
-    if (!reviewText || reviewText.length < 10) {
-      return NextResponse.json(
-        { error: "Review must be at least 10 characters long" },
-        { status: 400 },
-      );
-    }
+    const { rating, reviewText } = parseResult.data;
 
     const experience = await prisma.experience.findUnique({
       where: { slug },

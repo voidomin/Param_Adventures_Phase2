@@ -2,6 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { authorizeRequest } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
 
+import { z } from "zod";
+
+const mediaRegisterSchema = z.object({
+  url: z.string().refine((val) => {
+    try {
+      new URL(val);
+      return true;
+    } catch {
+      return false;
+    }
+  }, { message: "url must be a valid URL" }),
+  type: z.enum(["IMAGE", "VIDEO"]),
+  hash: z.string().optional().nullable(),
+});
+
 /**
  * POST /api/admin/media/register
  * Used to save media metadata (URL, type) after a direct browser-to-cloud upload.
@@ -16,14 +31,17 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { url, type, hash } = await request.json();
+    const body = await request.json();
 
-    if (!url || !type) {
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = mediaRegisterSchema.safeParse(body);
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: "Missing url or type" },
+        { error: parseResult.error.issues[0].message },
         { status: 400 },
       );
     }
+    const { url, type, hash } = parseResult.data;
 
     // If hash provided, check for existing duplicate first
     if (hash) {

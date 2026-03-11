@@ -58,8 +58,8 @@ export async function POST(request: NextRequest) {
     }
 
     // ─── Generate tokens ─────────────────────────────────
-    const accessToken = generateAccessToken(user.id, user.role.name);
-    const refreshToken = generateRefreshToken(user.id);
+    const accessToken = generateAccessToken(user.id, user.role.name, user.tokenVersion);
+    const refreshToken = generateRefreshToken(user.id, user.tokenVersion);
 
     // ─── Response with refresh cookie ────────────────────
     const response = NextResponse.json({
@@ -73,9 +73,9 @@ export async function POST(request: NextRequest) {
     });
 
     response.cookies.set("accessToken", accessToken, {
-      httpOnly: false,
+      httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "strict",
       path: "/",
       maxAge: 60 * 60, // 1 hour
     });
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
     response.cookies.set("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "strict",
       path: "/",
       maxAge: 7 * 24 * 60 * 60,
     });

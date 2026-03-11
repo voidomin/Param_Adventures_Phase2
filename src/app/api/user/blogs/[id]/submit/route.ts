@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { verifyAccessToken } from "@/lib/auth";
 
@@ -14,7 +15,7 @@ export async function POST(request: NextRequest, { params }: Params) {
   const token = request.cookies.get("accessToken")?.value;
   if (!token)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const payload = verifyAccessToken(token);
+  const payload = await verifyAccessToken(token);
   if (!payload)
     return NextResponse.json({ error: "Invalid token." }, { status: 401 });
 
@@ -50,6 +51,8 @@ export async function POST(request: NextRequest, { params }: Params) {
     where: { id },
     data: { status: "PENDING_REVIEW", rejectionReason: null },
   });
+
+  revalidatePath("/", "layout");
 
   return NextResponse.json({ blog: updated });
 }

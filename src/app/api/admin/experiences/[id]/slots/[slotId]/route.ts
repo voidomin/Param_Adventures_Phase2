@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 
+import { z } from "zod";
+
+const updateSlotSchema = z.object({
+  date: z.string().datetime({ offset: true }).or(z.string().refine(val => !isNaN(Date.parse(val)), "Invalid date format")).optional(),
+  capacity: z.number().int().min(1, "Capacity must be at least 1").optional(),
+}).refine(data => data.date !== undefined || data.capacity !== undefined, {
+  message: "Date or capacity must be provided.",
+});
+
 // PATCH /api/admin/experiences/[id]/slots/[slotId]
 export async function PATCH(
   request: NextRequest,
@@ -13,14 +22,16 @@ export async function PATCH(
   try {
     const { id, slotId } = await params;
     const body = await request.json();
-    const { date, capacity } = body;
 
-    if (!date && typeof capacity !== "number") {
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = updateSlotSchema.safeParse(body);
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: "Date or capacity must be provided." },
+        { error: parseResult.error.issues[0].message },
         { status: 400 },
       );
     }
+    const { date, capacity } = parseResult.data;
 
     const slot = await prisma.slot.findUnique({
       where: { id: slotId },

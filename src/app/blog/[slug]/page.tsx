@@ -93,7 +93,7 @@ export default async function BlogArticlePage({ params }: Props) {
   // Check authorization for preview
   const cookieStore = await cookies();
   const token = cookieStore.get("accessToken")?.value;
-  const payload = token ? verifyAccessToken(token) : null;
+  const payload = token ? await verifyAccessToken(token) : null;
   const isModerator =
     payload?.roleName === "SUPER_ADMIN" || payload?.roleName === "ADMIN";
 

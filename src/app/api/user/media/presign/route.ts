@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAccessToken } from "@/lib/auth";
 import { generatePresignedUrl } from "@/lib/s3";
+import { z } from "zod";
+
+const presignSchema = z.object({
+  fileName: z.string().min(1, "fileName is required"),
+  contentType: z.string().min(1, "contentType is required"),
+});
 
 /**
  * POST /api/user/media/presign
@@ -16,7 +22,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const payload = verifyAccessToken(token);
+    const payload = await verifyAccessToken(token);
     if (!payload) {
       return NextResponse.json(
         { error: "Invalid or expired token." },
@@ -25,14 +31,16 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { fileName, contentType } = body;
 
-    if (!fileName || !contentType) {
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = presignSchema.safeParse(body);
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: "Missing fileName or contentType" },
+        { error: parseResult.error.issues[0].message },
         { status: 400 },
       );
     }
+    const { fileName, contentType } = parseResult.data;
 
     // Priority 1: Cloudinary (Direct Upload)
     if (process.env.CLOUDINARY_API_KEY) {

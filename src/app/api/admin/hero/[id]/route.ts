@@ -1,4 +1,5 @@
 import { NextResponse, NextRequest } from "next/server";
+import { revalidatePath } from "next/cache";
 import { authorizeRequest } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
 
@@ -34,6 +35,31 @@ export async function GET(
   }
 }
 
+import { z } from "zod";
+
+const updateHeroSlideSchema = z.object({
+  title: z.string().min(1).max(100).optional(),
+  subtitle: z.string().optional().nullable(),
+  videoUrl: z
+    .string()
+    .refine(
+      (val: string) => {
+        if (!val) return true;
+        try {
+          new URL(val);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      { message: "Invalid video URL" },
+    )
+    .optional(),
+  ctaLink: z.string().optional().nullable(),
+  isActive: z.boolean().optional(),
+  order: z.number().int().optional(),
+});
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -50,8 +76,15 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
 
-    // Support update order via a special list reorder route, or standard form update
-    const { title, subtitle, videoUrl, ctaLink, isActive, order } = body;
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = updateHeroSlideSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: parseResult.error.issues[0].message },
+        { status: 400 },
+      );
+    }
+    const { title, subtitle, videoUrl, ctaLink, isActive, order } = parseResult.data;
 
     const updatedSlide = await prisma.heroSlide.update({
       where: { id },
@@ -64,6 +97,8 @@ export async function PUT(
         ...(order !== undefined && { order }),
       },
     });
+
+    revalidatePath("/", "layout");
 
     return NextResponse.json(updatedSlide);
   } catch (error: unknown) {
@@ -93,6 +128,8 @@ export async function DELETE(
     await prisma.heroSlide.delete({
       where: { id },
     });
+
+    revalidatePath("/", "layout");
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {

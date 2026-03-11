@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { prisma } from "@/lib/db";
 
 const JWT_SECRET = process.env.JWT_SECRET || "fallback-dev-secret";
 const JWT_EXPIRY = process.env.JWT_EXPIRY || "1h";
@@ -25,18 +26,20 @@ export async function verifyPassword(
 export interface TokenPayload {
   userId: string;
   roleName: string;
+  tokenVersion: number;
 }
 
 export interface RefreshPayload {
   userId: string;
   type: "refresh";
+  tokenVersion: number;
 }
 
 /**
  * Generate a short-lived access token (default: 15 minutes).
  */
-export function generateAccessToken(userId: string, roleName: string): string {
-  return jwt.sign({ userId, roleName } satisfies TokenPayload, JWT_SECRET, {
+export function generateAccessToken(userId: string, roleName: string, tokenVersion: number): string {
+  return jwt.sign({ userId, roleName, tokenVersion } satisfies TokenPayload, JWT_SECRET, {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expiresIn: JWT_EXPIRY as any,
   });
@@ -45,23 +48,34 @@ export function generateAccessToken(userId: string, roleName: string): string {
 /**
  * Generate a long-lived refresh token (default: 7 days).
  */
-export function generateRefreshToken(userId: string): string {
+export function generateRefreshToken(userId: string, tokenVersion: number): string {
   return jwt.sign(
-    { userId, type: "refresh" } satisfies RefreshPayload,
+    { userId, type: "refresh", tokenVersion } satisfies RefreshPayload,
     JWT_SECRET,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     { expiresIn: REFRESH_TOKEN_EXPIRY as any },
   );
 }
 
+
 /**
- * Verify and decode an access token.
- * Returns the payload or null if invalid/expired.
+ * Verify and decode an access token, checking the database for tokenVersion validity.
+ * Returns the payload or null if invalid/expired/revoked.
  */
-export function verifyAccessToken(token: string): TokenPayload | null {
+export async function verifyAccessToken(token: string): Promise<TokenPayload | null> {
   try {
     const decoded = jwt.verify(token, JWT_SECRET) as TokenPayload;
-    if (!decoded.userId || !decoded.roleName) return null;
+    if (!decoded.userId || !decoded.roleName || decoded.tokenVersion === undefined) return null;
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: { status: true, tokenVersion: true, deletedAt: true },
+    });
+
+    if (!user || user.deletedAt || user.status !== "ACTIVE" || user.tokenVersion !== decoded.tokenVersion) {
+      return null;
+    }
+
     return decoded;
   } catch {
     return null;

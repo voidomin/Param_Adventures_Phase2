@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 
@@ -39,6 +40,13 @@ export async function GET(request: NextRequest) {
   }
 }
 
+import { z } from "zod";
+
+const categorySchema = z.object({
+  name: z.string().min(1, "Category name is required").max(50),
+  icon: z.string().optional().nullable(),
+});
+
 /**
  * POST /api/admin/categories — Create a new category
  */
@@ -48,14 +56,16 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, icon } = body;
 
-    if (!name || typeof name !== "string" || name.trim().length === 0) {
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = categorySchema.safeParse(body);
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: "Category name is required." },
+        { error: parseResult.error.issues[0].message },
         { status: 400 },
       );
     }
+    const { name, icon } = parseResult.data;
 
     // Generate slug from name
     const slug = name
@@ -80,6 +90,8 @@ export async function POST(request: NextRequest) {
         icon: icon || null,
       },
     });
+
+    revalidatePath("/", "layout");
 
     return NextResponse.json({ category }, { status: 201 });
   } catch (error) {

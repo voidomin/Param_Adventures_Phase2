@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
+import { z } from "zod";
+
+const vendorContactSchema = z.object({
+  label: z.string().min(1, "Label is required"),
+  value: z.string().min(1, "Value is required"),
+});
+
+const tripUpdateSchema = z.object({
+  vendorContacts: z.array(vendorContactSchema).optional().nullable(),
+});
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -96,7 +106,16 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     const { id: slotId } = await params;
     const userId = auth.userId;
     const body = await request.json();
-    const { vendorContacts } = body;
+
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = tripUpdateSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: parseResult.error.issues[0].message },
+        { status: 400 },
+      );
+    }
+    const { vendorContacts } = parseResult.data;
 
     // Verify this manager owns the slot
     const slot = await prisma.slot.findUnique({
@@ -123,7 +142,9 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
     const updated = await prisma.slot.update({
       where: { id: slotId },
-      data: { vendorContacts },
+      data: { 
+        vendorContacts: (vendorContacts ?? []) as any 
+      },
     });
 
     return NextResponse.json({ slot: updated });

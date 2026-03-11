@@ -1,13 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { verifyAccessToken } from "@/lib/auth";
+import { sanitizeEditorContent } from "@/lib/sanitize";
+import { z } from "zod";
 
 type Params = { params: Promise<{ id: string }> };
+
+const blogUpdateSchema = z.object({
+  title: z.string().min(1).max(120).optional(),
+  content: z.any().optional(), // JSON
+  coverImageUrl: z
+    .string()
+    .refine(
+      (val: string) => {
+        if (!val) return true;
+        try {
+          new URL(val);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      { message: "Invalid cover image URL" },
+    )
+    .optional()
+    .nullable(),
+  authorSocials: z.any().optional(), // JSON
+  theme: z.enum(["CLASSIC", "MODERN", "MINIMAL"]).optional(),
+});
 
 async function getAuthedBlog(request: NextRequest, id: string) {
   const token = request.cookies.get("accessToken")?.value;
   if (!token) return { error: "Unauthorized", status: 401 };
-  const payload = verifyAccessToken(token);
+  const payload = await verifyAccessToken(token);
   if (!payload) return { error: "Invalid token.", status: 401 };
 
   const blog = await prisma.blog.findUnique({ where: { id } });
@@ -42,23 +68,45 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     );
   }
 
-  const body = await request.json();
-  const { title, content, coverImageUrl, authorSocials, theme } = body;
+  try {
+    const body = await request.json();
 
-  const updated = await prisma.blog.update({
-    where: { id },
-    data: {
-      ...(title ? { title: title.trim() } : {}),
-      ...(content === undefined ? {} : { content }),
-      ...(coverImageUrl === undefined
-        ? {}
-        : { coverImageUrl: coverImageUrl || null }),
-      ...(authorSocials === undefined ? {} : { authorSocials }),
-      ...(theme === undefined ? {} : { theme }),
-    },
-  });
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = blogUpdateSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: parseResult.error.issues[0].message },
+        { status: 400 },
+      );
+    }
+    const { title, content, coverImageUrl, authorSocials, theme } = parseResult.data;
 
-  return NextResponse.json({ blog: updated });
+    const sanitizedContent =
+      content === undefined ? undefined : sanitizeEditorContent(content);
+
+    const updated = await prisma.blog.update({
+      where: { id },
+      data: {
+        ...(title ? { title: title.trim() } : {}),
+        ...(sanitizedContent === undefined ? {} : { content: sanitizedContent }),
+        ...(coverImageUrl === undefined
+          ? {}
+          : { coverImageUrl: coverImageUrl || null }),
+        ...(authorSocials === undefined ? {} : { authorSocials }),
+        ...(theme === undefined ? {} : { theme }),
+      },
+    });
+
+    revalidatePath("/", "layout");
+
+    return NextResponse.json({ blog: updated });
+  } catch (error) {
+    console.error("PATCH /api/user/blogs/[id] error:", error);
+    return NextResponse.json(
+      { error: "Internal Server Error" },
+      { status: 500 },
+    );
+  }
 }
 
 /**
@@ -78,6 +126,8 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     where: { id },
     data: { deletedAt: new Date() },
   });
+
+  revalidatePath("/", "layout");
 
   return NextResponse.json({ success: true });
 }

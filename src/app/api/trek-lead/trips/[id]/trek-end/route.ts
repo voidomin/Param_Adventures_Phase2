@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
+import { z } from "zod";
+
+const trekEndSchema = z.object({
+  trekLeadNote: z.string().max(2000, "Note is too long").optional(),
+});
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -26,7 +31,16 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     const { id: slotId } = await params;
     const userId = auth.userId;
     const body = await request.json();
-    const trekLeadNote: string = (body.trekLeadNote ?? "").trim();
+
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = trekEndSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: parseResult.error.issues[0].message },
+        { status: 400 },
+      );
+    }
+    const trekLeadNote = parseResult.data.trekLeadNote?.trim() || "No notes provided";
 
     // Must be assigned to this slot
     const assignment = await prisma.tripAssignment.findUnique({

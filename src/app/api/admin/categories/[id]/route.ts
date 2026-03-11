@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
+
+import { z } from "zod";
+
+const updateCategorySchema = z.object({
+  name: z.string().min(1).max(50).optional(),
+  icon: z.string().nullable().optional(),
+  isActive: z.boolean().optional(),
+});
 
 /**
  * PUT /api/admin/categories/[id] — Update a category
@@ -17,7 +26,16 @@ export async function PUT(request: NextRequest, context: RouteContext) {
 
   try {
     const body = await request.json();
-    const { name, isActive, icon } = body;
+
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = updateCategorySchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: parseResult.error.issues[0].message },
+        { status: 400 },
+      );
+    }
+    const { name, isActive, icon } = parseResult.data;
 
     const existing = await prisma.category.findUnique({ where: { id } });
     if (!existing) {
@@ -68,6 +86,8 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       data,
     });
 
+    revalidatePath("/", "layout");
+
     return NextResponse.json({ category });
   } catch (error) {
     console.error("Error updating category:", error);
@@ -110,6 +130,8 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     }
 
     await prisma.category.delete({ where: { id } });
+
+    revalidatePath("/", "layout");
 
     return NextResponse.json({ message: "Category deleted." });
   } catch (error) {

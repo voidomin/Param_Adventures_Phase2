@@ -1,7 +1,36 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { verifyAccessToken } from "@/lib/auth";
 import { cookies } from "next/headers";
+import { z } from "zod";
+
+const profileSchema = z.object({
+  name: z.string().min(1, "Full Name is required").max(100),
+  phoneNumber: z.string().min(1, "Phone Number is required").max(20),
+  avatarUrl: z
+    .string()
+    .refine(
+      (val: string) => {
+        if (!val) return true;
+        try {
+          new URL(val);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      { message: "Invalid avatar URL" },
+    )
+    .optional()
+    .nullable(),
+  gender: z.string().min(1, "Gender is required").max(20),
+  age: z.number().int().min(1).max(120).optional().nullable(),
+  bloodGroup: z.string().optional().nullable(),
+  emergencyContactName: z.string().optional().nullable(),
+  emergencyContactNumber: z.string().optional().nullable(),
+  emergencyRelationship: z.string().optional().nullable(),
+});
 
 export async function PATCH(request: Request) {
   try {
@@ -12,12 +41,21 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const payload = verifyAccessToken(token);
+    const payload = await verifyAccessToken(token);
     if (!payload) {
       return NextResponse.json({ error: "Invalid token" }, { status: 401 });
     }
 
     const body = await request.json();
+
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = profileSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: parseResult.error.issues[0].message },
+        { status: 400 },
+      );
+    }
     const {
       name,
       phoneNumber,
@@ -28,33 +66,9 @@ export async function PATCH(request: Request) {
       emergencyContactName,
       emergencyContactNumber,
       emergencyRelationship,
-    } = body;
+    } = parseResult.data;
 
-    // Validate inputs
-    // Enforcing: name, phoneNumber, and gender as compulsory
-    if (!name || name.trim().length === 0) {
-      return NextResponse.json(
-        { error: "Full Name is required" },
-        { status: 400 },
-      );
-    }
-    if (!phoneNumber || phoneNumber.trim().length === 0) {
-      return NextResponse.json(
-        { error: "Phone Number is required" },
-        { status: 400 },
-      );
-    }
-    if (!gender || gender.trim().length === 0) {
-      return NextResponse.json(
-        { error: "Gender is required" },
-        { status: 400 },
-      );
-    }
-
-    if (
-      emergencyContactNumber &&
-      emergencyContactNumber.trim() === phoneNumber.trim()
-    ) {
+    if (emergencyContactNumber?.trim() === phoneNumber.trim()) {
       return NextResponse.json(
         { error: "Emergency contact number cannot be your own phone number." },
         { status: 400 },
@@ -89,6 +103,8 @@ export async function PATCH(request: Request) {
         role: true,
       },
     });
+
+    revalidatePath("/", "layout");
 
     return NextResponse.json(
       { message: "Profile updated successfully", user: updatedUser },

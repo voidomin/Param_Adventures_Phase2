@@ -4,6 +4,12 @@ import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
 import { sendRoleAssignedEmail } from "@/lib/email";
 
+import { z } from "zod";
+
+const roleUpdateSchema = z.object({
+  roleId: z.string().min(1, "roleId is required"),
+});
+
 // PATCH /api/admin/users/[id]/role
 // Updates a user's role.
 export async function PATCH(
@@ -16,14 +22,17 @@ export async function PATCH(
 
   try {
     const { id: targetUserId } = await params;
-    const { roleId } = await request.json();
+    const body = await request.json();
 
-    if (!roleId) {
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = roleUpdateSchema.safeParse(body);
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: "roleId is required" },
+        { error: parseResult.error.issues[0].message },
         { status: 400 },
       );
     }
+    const { roleId } = parseResult.data;
 
     // Check acting user's current record
     const actingUser = await prisma.user.findUnique({

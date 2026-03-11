@@ -30,7 +30,7 @@ export async function authorizeRequest(
       };
     }
 
-    const payload = verifyAccessToken(token);
+    const payload = await verifyAccessToken(token);
     if (!payload) {
       return {
         authorized: false,
@@ -41,30 +41,43 @@ export async function authorizeRequest(
       };
     }
 
-    // If a permission is required, check it
-    if (requiredPermission) {
-      const user = await prisma.user.findUnique({
-        where: { id: payload.userId },
-        include: {
-          role: {
-            include: {
-              permissions: {
-                include: { permission: true },
-              },
+    // Always fetch the user to check tokenVersion and active status
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      include: {
+        role: {
+          include: {
+            permissions: {
+              include: { permission: true },
             },
           },
         },
-      });
+      },
+    });
 
-      if (!user || user.deletedAt || user.status !== "ACTIVE") {
-        return {
-          authorized: false,
-          response: NextResponse.json(
-            { error: "User not found or inactive." },
-            { status: 403 },
-          ),
-        };
-      }
+    if (!user || user.deletedAt || user.status !== "ACTIVE") {
+      return {
+        authorized: false,
+        response: NextResponse.json(
+          { error: "User not found or inactive." },
+          { status: 403 },
+        ),
+      };
+    }
+
+    // Compare token versions to detect revoked sessions
+    if (user.tokenVersion !== payload.tokenVersion) {
+      return {
+        authorized: false,
+        response: NextResponse.json(
+          { error: "Session expired. Please log in again." },
+          { status: 401 },
+        ),
+      };
+    }
+
+    // If a permission is required, check it
+    if (requiredPermission) {
 
       const hasPermission =
         user.role.name === "SUPER_ADMIN" ||

@@ -39,6 +39,23 @@ export async function GET(request: NextRequest) {
   }
 }
 
+import { z } from "zod";
+
+const mediaCreateSchema = z.object({
+  originalUrl: z.string().refine(
+    (val) => {
+      try {
+        new URL(val);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    { message: "originalUrl must be a valid URL" },
+  ),
+  type: z.enum(["IMAGE", "VIDEO"]).optional().default("IMAGE"),
+});
+
 export async function POST(request: NextRequest) {
   try {
     const auth = await authorizeRequest(request, [
@@ -50,14 +67,16 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { originalUrl, type = "IMAGE" } = body;
 
-    if (!originalUrl) {
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = mediaCreateSchema.safeParse(body);
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: "Missing originalUrl required field" },
+        { error: parseResult.error.issues[0].message },
         { status: 400 },
       );
     }
+    const { originalUrl, type } = parseResult.data;
 
     const image = await prisma.image.create({
       data: {

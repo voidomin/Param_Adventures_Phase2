@@ -35,6 +35,13 @@ export async function GET(
   }
 }
 
+import { z } from "zod";
+
+const slotSchema = z.object({
+  date: z.string().datetime({ offset: true }).or(z.string().refine(val => !isNaN(Date.parse(val)), "Invalid date format")),
+  capacity: z.number().int().min(1, "Capacity must be at least 1"),
+});
+
 // POST /api/admin/experiences/[id]/slots - Create a new slot
 export async function POST(
   request: NextRequest,
@@ -45,14 +52,17 @@ export async function POST(
 
   try {
     const { id } = await params;
-    const { date, capacity } = await request.json();
+    const body = await request.json();
 
-    if (!date || !capacity || capacity < 1) {
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = slotSchema.safeParse(body);
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: "Valid date and capacity (>0) are required." },
+        { error: parseResult.error.issues[0].message },
         { status: 400 },
       );
     }
+    const { date, capacity } = parseResult.data;
 
     const experience = await prisma.experience.findUnique({
       where: { id },

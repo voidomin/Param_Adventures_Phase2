@@ -1,4 +1,5 @@
 import { NextResponse, NextRequest } from "next/server";
+import { revalidatePath } from "next/cache";
 import { authorizeRequest } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
 
@@ -26,6 +27,26 @@ export async function GET(request: NextRequest) {
   }
 }
 
+import { z } from "zod";
+
+const heroSlideSchema = z.object({
+  title: z.string().min(1, "Title is required").max(100),
+  subtitle: z.string().optional().nullable(),
+  videoUrl: z.string().refine(
+    (val) => {
+      try {
+        new URL(val);
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    { message: "Invalid video URL" },
+  ),
+  ctaLink: z.string().optional().nullable(),
+  isActive: z.boolean().optional(),
+});
+
 export async function POST(request: NextRequest) {
   try {
     const auth = await authorizeRequest(request, [
@@ -37,14 +58,16 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { title, subtitle, videoUrl, ctaLink, isActive } = body;
 
-    if (!title || !videoUrl) {
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = heroSlideSchema.safeParse(body);
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: "Missing required fields" },
+        { error: parseResult.error.issues[0].message },
         { status: 400 },
       );
     }
+    const { title, subtitle, videoUrl, ctaLink, isActive } = parseResult.data;
 
     // Determine the next order index
     const lastSlide = await prisma.heroSlide.findFirst({
@@ -62,6 +85,8 @@ export async function POST(request: NextRequest) {
         order,
       },
     });
+
+    revalidatePath("/", "layout");
 
     return NextResponse.json(slide, { status: 201 });
   } catch (error: unknown) {

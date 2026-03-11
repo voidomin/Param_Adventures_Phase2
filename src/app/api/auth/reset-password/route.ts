@@ -1,26 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
+import { z } from "zod";
+
+const resetPasswordSchema = z.object({
+  token: z.string().min(1, "Token is required"),
+  password: z.string().min(8, "Password must be at least 8 characters long"),
+});
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { token, password } = body;
 
     // ─── Validation ──────────────────────────────────────
-    if (!token || !password) {
+    const parseResult = resetPasswordSchema.safeParse(body);
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: "Token and new password are required." },
+        { error: parseResult.error.issues[0].message },
         { status: 400 },
       );
     }
-
-    if (password.length < 8) {
-      return NextResponse.json(
-        { error: "Password must be at least 8 characters long." },
-        { status: 400 },
-      );
-    }
+    const { token, password } = parseResult.data;
 
     // ─── Verification ────────────────────────────────────
     // Find the user with this token where the token hasn't expired yet
@@ -49,7 +49,8 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         resetToken: null,
         resetTokenExpiry: null,
-      },
+        tokenVersion: { increment: 1 },
+      } as any,
     });
 
     return NextResponse.json(

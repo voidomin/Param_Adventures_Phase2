@@ -16,7 +16,7 @@ export default async function BookingSuccessPage({
   const { id } = await params;
   const cookieStore = await cookies();
   const token = cookieStore.get("accessToken")?.value;
-  const payload = token ? verifyAccessToken(token) : null;
+  const payload = token ? await verifyAccessToken(token) : null;
 
   if (!payload?.userId) {
     redirect("/login");

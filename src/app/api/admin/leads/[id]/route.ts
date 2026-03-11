@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
+import { z } from "zod";
+
+const leadUpdateSchema = z.object({
+  status: z.enum(["NEW", "CONTACTED", "INTERESTED", "CONVERTED", "CLOSED"]),
+  adminNotes: z.string().optional().nullable(),
+});
 
 export async function PATCH(
   req: NextRequest,
@@ -15,7 +21,17 @@ export async function PATCH(
       return auth.response;
     }
 
-    const { status, adminNotes } = await req.json();
+    const body = await req.json();
+
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = leadUpdateSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: parseResult.error.issues[0].message },
+        { status: 400 },
+      );
+    }
+    const { status, adminNotes } = parseResult.data;
 
     const lead = await prisma.customLead.update({
       where: { id },

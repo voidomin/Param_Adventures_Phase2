@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { authorizeRequest } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
 
+import { z } from "zod";
+
+const duplicateCheckSchema = z.object({
+  hash: z.string().min(1, "hash is required"),
+});
+
 /**
  * POST /api/admin/media/check-duplicate
  * Checks if a file with the given SHA-256 hash already exists.
@@ -17,14 +23,17 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { hash } = await request.json();
+    const body = await request.json();
 
-    if (!hash || typeof hash !== "string") {
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = duplicateCheckSchema.safeParse(body);
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: "Missing or invalid hash" },
+        { error: parseResult.error.issues[0].message },
         { status: 400 },
       );
     }
+    const { hash } = parseResult.data;
 
     const existing = await prisma.image.findFirst({
       where: { fileHash: hash },

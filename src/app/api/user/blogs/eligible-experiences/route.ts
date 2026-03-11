@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   const token = request.cookies.get("accessToken")?.value;
   if (!token)
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const payload = verifyAccessToken(token);
+  const payload = await verifyAccessToken(token);
   if (!payload)
     return NextResponse.json({ error: "Invalid token." }, { status: 401 });
 

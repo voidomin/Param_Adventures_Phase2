@@ -1,10 +1,18 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 
-type RouteContext = { params: Promise<{ id: string }> };
+import { z } from "zod";
+
+const updateReviewSchema = z.object({
+  isFeaturedHome: z.boolean().optional(),
+  isFeaturedExperience: z.boolean().optional(),
+}).refine(data => data.isFeaturedHome !== undefined || data.isFeaturedExperience !== undefined, {
+  message: "Provide isFeaturedHome or isFeaturedExperience.",
+});
 
 /**
  * PATCH /api/admin/reviews/[id]
@@ -27,20 +35,23 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
     const { id } = await params;
     const body = await request.json();
 
-    const updateData: Prisma.ExperienceReviewUpdateInput = {};
-
-    if (typeof body.isFeaturedHome === "boolean") {
-      updateData.isFeaturedHome = body.isFeaturedHome;
-    }
-    if (typeof body.isFeaturedExperience === "boolean") {
-      updateData.isFeaturedExperience = body.isFeaturedExperience;
-    }
-
-    if (Object.keys(updateData).length === 0) {
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = updateReviewSchema.safeParse(body);
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: "Provide isFeaturedHome or isFeaturedExperience." },
+        { error: parseResult.error.issues[0].message },
         { status: 400 },
       );
+    }
+    const { isFeaturedHome, isFeaturedExperience } = parseResult.data;
+
+    const updateData: Prisma.ExperienceReviewUpdateInput = {};
+
+    if (isFeaturedHome !== undefined) {
+      updateData.isFeaturedHome = isFeaturedHome;
+    }
+    if (isFeaturedExperience !== undefined) {
+      updateData.isFeaturedExperience = isFeaturedExperience;
     }
 
     const review = await prisma.experienceReview.update({
@@ -51,6 +62,8 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
         experience: { select: { title: true, slug: true } },
       },
     });
+
+    revalidatePath("/", "layout");
 
     return NextResponse.json({ review });
   } catch (error) {

@@ -4,18 +4,23 @@ import { verifyAccessToken } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   try {
-    // ─── Extract token from Authorization header ─────────
+    // ─── Extract token from Authorization header or Cookie ─────────
     const authHeader = request.headers.get("authorization");
+    let token = "";
 
-    if (!authHeader?.startsWith("Bearer ")) {
+    if (authHeader?.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1];
+    } else {
+      token = request.cookies.get("accessToken")?.value || "";
+    }
+
+    if (!token) {
       return NextResponse.json(
         { error: "No access token provided." },
         { status: 401 },
       );
     }
-
-    const token = authHeader.split(" ")[1];
-    const payload = verifyAccessToken(token);
+    const payload = await verifyAccessToken(token);
 
     if (!payload) {
       return NextResponse.json(

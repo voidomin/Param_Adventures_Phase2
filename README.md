@@ -11,6 +11,8 @@ Param Adventures is a mobile-first, full-stack experiential events platform. It 
 - **Payments:** Razorpay
 - **Media Storage:** AWS S3 & Cloudinary
 - **Emails:** Resend & React Email
+- **Validation:** Zod (Strict API Input Validation)
+- **Security:** Content Sanitization (XSS protection), Security Headers (CSP, X-Frame-Options), and Idempotent transactions.
 
 ## 📂 Project Structure
 

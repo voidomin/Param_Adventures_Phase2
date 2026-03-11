@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
+import { z } from "zod";
+
+const managerAssignSchema = z.object({
+  managerId: z.string().min(1, "managerId is required."),
+});
+
+const trekLeadAssignSchema = z.object({
+  userId: z.string().min(1, "userId is required to assign a trek lead."),
+});
 
 /**
  * PATCH /api/admin/trips/[id]/assign
@@ -16,14 +25,17 @@ export async function PATCH(
 
   try {
     const { id: slotId } = await params;
-    const { managerId } = await request.json();
+    const body = await request.json();
 
-    if (!managerId) {
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = managerAssignSchema.safeParse(body);
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: "managerId is required." },
+        { error: parseResult.error.issues[0].message },
         { status: 400 },
       );
     }
+    const { managerId } = parseResult.data;
 
     // Verify user exists and has Trip Manager role
     const user = await prisma.user.findUnique({
@@ -105,14 +117,17 @@ export async function POST(
 
   try {
     const { id: slotId } = await params;
-    const { userId } = await request.json();
+    const body = await request.json();
 
-    if (!userId) {
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = trekLeadAssignSchema.safeParse(body);
+    if (!parseResult.success) {
       return NextResponse.json(
-        { error: "userId is required to assign a trek lead." },
+        { error: parseResult.error.issues[0].message },
         { status: 400 },
       );
     }
+    const { userId } = parseResult.data;
 
     // Check permission: admin OR assigned manager
     const allowed = await canModifySlot(auth.userId, slotId);

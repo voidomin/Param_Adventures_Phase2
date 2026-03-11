@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 // Trigger TS Re-check
 import { authorizeRequest } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
@@ -30,6 +31,88 @@ export async function GET(request: NextRequest) {
   }
 }
 
+import { z } from "zod";
+
+const experienceSchema = z.object({
+  title: z.string().min(1, "Title is required").max(100),
+  description: z.any(), // JSON
+  basePrice: z.number().min(0),
+  capacity: z.number().int().min(1),
+  durationDays: z.number().int().min(1).optional(),
+  location: z.string().optional(),
+  difficulty: z.enum(["EASY", "MODERATE", "HARD", "EXTREME"]).optional(),
+  isFeatured: z.boolean().optional(),
+  coverImage: z
+    .string()
+    .refine(
+      (val) => {
+        if (!val) return true;
+        try {
+          new URL(val);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      { message: "Invalid cover image URL" },
+    )
+    .optional()
+    .nullable(),
+  cardImage: z
+    .string()
+    .refine(
+      (val) => {
+        if (!val) return true;
+        try {
+          new URL(val);
+          return true;
+        } catch {
+          return false;
+        }
+      },
+      { message: "Invalid card image URL" },
+    )
+    .optional()
+    .nullable(),
+  images: z
+    .array(
+      z.string().refine(
+        (val) => {
+          try {
+            new URL(val);
+            return true;
+          } catch {
+            return false;
+          }
+        },
+        { message: "Invalid image URL" },
+      ),
+    )
+    .optional(),
+  itinerary: z.any().optional(), // JSON
+  categoryIds: z.array(z.string()).optional(),
+  inclusions: z.any().optional(),
+  exclusions: z.any().optional(),
+  thingsToCarry: z.any().optional(),
+  faqs: z.any().optional(),
+  cancellationPolicy: z.string().optional().nullable(),
+  meetingPoint: z.string().optional().nullable(),
+  minAge: z.number().int().optional().nullable(),
+  maxAltitude: z.string().optional().nullable(),
+  trekDistance: z.string().optional().nullable(),
+  bestTimeToVisit: z.string().optional().nullable(),
+  maxGroupSize: z.number().int().optional().nullable(),
+  pickupPoints: z.array(z.string()).optional(),
+  highlights: z.array(z.string()).optional(),
+  networkConnectivity: z.string().optional().nullable(),
+  lastAtm: z.string().optional().nullable(),
+  fitnessRequirement: z.string().optional().nullable(),
+  ageRange: z.string().optional().nullable(),
+  meetingTime: z.string().optional().nullable(),
+  dropoffTime: z.string().optional().nullable(),
+  vibeTags: z.array(z.string()).optional(),
+});
+
 // POST /api/admin/experiences
 export async function POST(request: NextRequest) {
   const result = await authorizeRequest(request, "trip:create");
@@ -37,6 +120,15 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
+
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = experienceSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: parseResult.error.issues[0].message },
+        { status: 400 },
+      );
+    }
     const {
       title,
       description,
@@ -71,23 +163,7 @@ export async function POST(request: NextRequest) {
       meetingTime,
       dropoffTime,
       vibeTags,
-    } = body;
-
-    // Validate essential fields
-    if (
-      !title ||
-      !description ||
-      basePrice === undefined ||
-      capacity === undefined
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Missing required fields (title, description, basePrice, capacity)",
-        },
-        { status: 400 },
-      );
-    }
+    } = parseResult.data;
 
     // Generate unique slug
     let baseSlug = generateSlug(title);
@@ -148,6 +224,8 @@ export async function POST(request: NextRequest) {
         categories: { include: { category: true } },
       },
     });
+
+    revalidatePath("/", "layout");
 
     return NextResponse.json(
       { message: "Experience created successfully", experience: newExperience },

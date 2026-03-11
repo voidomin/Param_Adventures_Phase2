@@ -56,17 +56,8 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
 
   // Fetch the current user on mount
   const fetchUser = useCallback(async () => {
-    const token = getCookie("accessToken");
-    if (!token) {
-      setUser(null);
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      const res = await fetch("/api/auth/me", {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch("/api/auth/me");
 
       if (res.ok) {
         const data = await res.json();

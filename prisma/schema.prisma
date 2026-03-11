@@ -138,6 +138,7 @@ model User {
 
   isVerified Boolean    @default(false)
   status     UserStatus @default(ACTIVE)
+  tokenVersion Int @default(0)
   googleId   String?    @unique
 
   deletedAt DateTime?

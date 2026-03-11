@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import Razorpay from "razorpay";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
@@ -195,6 +196,9 @@ export async function POST(request: NextRequest) {
         participantCount,
       });
 
+      // Clear layout cache so the decreased capacity is immediately visible to others
+      revalidatePath("/", "layout");
+
       return NextResponse.json({
         bookingId: booking.id,
         orderId: order.id,
@@ -211,6 +215,9 @@ export async function POST(request: NextRequest) {
           data: { remainingCapacity: { increment: participantCount } },
         });
       });
+
+      // Clear cache again to restore the capacity back to the public view
+      revalidatePath("/", "layout");
 
       console.error("Razorpay order creation failed, booking rolled back:", razorpayError);
       return NextResponse.json(

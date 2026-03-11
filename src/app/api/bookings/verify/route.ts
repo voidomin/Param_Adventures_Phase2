@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import crypto from "node:crypto";
 import { prisma } from "@/lib/db";
 import { sendBookingConfirmation } from "@/lib/email";
@@ -30,6 +31,15 @@ async function sendBookingConfirmationEmail(bookingId: string) {
   });
 }
 
+import { z } from "zod";
+
+const verifySchema = z.object({
+  razorpay_order_id: z.string().min(1, "razorpay_order_id is required"),
+  razorpay_payment_id: z.string().min(1, "razorpay_payment_id is required"),
+  razorpay_signature: z.string().min(1, "razorpay_signature is required"),
+  bookingId: z.string().min(1, "bookingId is required"),
+});
+
 /**
  * POST /api/bookings/verify — Verify Razorpay payment signature.
  *
@@ -39,24 +49,21 @@ async function sendBookingConfirmationEmail(bookingId: string) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+
+    // ─── Validation ──────────────────────────────────────
+    const parseResult = verifySchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: parseResult.error.issues[0].message },
+        { status: 400 },
+      );
+    }
     const {
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
       bookingId,
-    } = body;
-
-    if (
-      !razorpay_order_id ||
-      !razorpay_payment_id ||
-      !razorpay_signature ||
-      !bookingId
-    ) {
-      return NextResponse.json(
-        { error: "Missing required payment fields." },
-        { status: 400 },
-      );
-    }
+    } = parseResult.data;
 
     // Verify HMAC signature
     const expectedSignature = crypto
@@ -91,39 +98,54 @@ export async function POST(request: NextRequest) {
     }
 
     // Confirm booking and payment
-    const [updatedBooking] = await prisma.$transaction([
-      prisma.booking.update({
-        where: { id: bookingId },
-        data: { bookingStatus: "CONFIRMED", paymentStatus: "PAID" },
-      }),
-      prisma.payment.updateMany({
-        where: { providerOrderId: razorpay_order_id },
-        data: {
-          status: "PAID",
-          providerPaymentId: razorpay_payment_id,
-          fullPayload: body,
-        },
-      }),
-    ]);
+    try {
+      const [updatedBooking] = await prisma.$transaction([
+        prisma.booking.update({
+          where: { id: bookingId, paymentStatus: { not: "PAID" } },
+          data: { bookingStatus: "CONFIRMED", paymentStatus: "PAID" },
+        }),
+        prisma.payment.updateMany({
+          where: { providerOrderId: razorpay_order_id, status: { not: "PAID" } },
+          data: {
+            status: "PAID",
+            providerPaymentId: razorpay_payment_id,
+            fullPayload: body,
+          },
+        }),
+      ]);
 
-    await logActivity(
-      "BOOKING_CONFIRMED",
-      updatedBooking.userId,
-      "Booking",
-      bookingId,
-      { paymentId: razorpay_payment_id },
-    );
+      await logActivity(
+        "BOOKING_CONFIRMED",
+        updatedBooking.userId,
+        "Booking",
+        bookingId,
+        { paymentId: razorpay_payment_id },
+      );
 
-    // Send confirmation email (fire-and-forget — don't block the response)
-    sendBookingConfirmationEmail(bookingId).catch((err) =>
-      console.error("Background email error:", err),
-    );
+      // Revalidate entire layout to refresh slot capacities and admin dashboards
+      revalidatePath("/", "layout");
 
-    return NextResponse.json({
-      success: true,
-      bookingId,
-      message: "Payment verified and booking confirmed.",
-    });
+      // Send confirmation email (fire-and-forget — don't block the response)
+      sendBookingConfirmationEmail(bookingId).catch((err) =>
+        console.error("Background email error:", err),
+      );
+
+      return NextResponse.json({
+        success: true,
+        bookingId,
+        message: "Payment verified and booking confirmed.",
+      });
+    } catch (txError: any) {
+      // If the record was not found, it's likely already paid (idempotency)
+      if (txError.code === 'P2025') {
+        return NextResponse.json({
+          success: true,
+          bookingId,
+          message: "Payment was already verified and booking confirmed.",
+        });
+      }
+      throw txError;
+    }
   } catch (error) {
     console.error("Payment verification error:", error);
     return NextResponse.json(

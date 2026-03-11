@@ -41,6 +41,7 @@
     "react-dom": "19.2.3",
     "react-easy-crop": "^5.5.6",
     "resend": "^6.9.3",
+    "sanitize-html": "^2.17.1",
     "tailwind-merge": "^3.5.0",
     "xlsx": "^0.18.5",
     "zod": "^4.3.6"
@@ -54,6 +55,7 @@
     "@types/pg": "^8.18.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/sanitize-html": "^2.16.1",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "react-email": "^5.2.9",
