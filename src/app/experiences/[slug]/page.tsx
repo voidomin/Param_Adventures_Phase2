@@ -35,6 +35,7 @@ import ExperienceStickyNav from "@/components/experiences/ExperienceStickyNav";
 import DifficultyMeter from "@/components/experiences/DifficultyMeter";
 import RichTextRenderer from "@/components/blog/RichTextRenderer";
 import DownloadItineraryBtn from "@/components/experiences/DownloadItineraryBtn";
+import ShareButton from "@/components/ui/ShareButton";
 
 export const revalidate = 60;
 
@@ -73,10 +74,16 @@ export async function generateMetadata({
   return {
     title: experience.title,
     description: finalDescription,
+    keywords: [experience.title, experience.location || "", "trekking", "adventure", "Param Adventures"],
+    alternates: {
+      canonical: `/experiences/${slug}`,
+    },
     openGraph: {
       title: experience.title,
       description: finalDescription,
       images: [{ url: ogImage, alt: experience.title }],
+      type: "website",
+      siteName: "Param Adventures",
     },
     twitter: {
       card: "summary_large_image",
@@ -85,6 +92,44 @@ export async function generateMetadata({
       images: [ogImage],
     },
   };
+}
+
+type ExperienceJsonLdProps = {
+  experience: any;
+  url: string;
+  description: string;
+};
+
+function ExperienceJsonLd({ experience, url, description }: Readonly<ExperienceJsonLdProps>) {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": experience.title,
+    "description": description,
+    "image": experience.coverImage || experience.images[0],
+    "offers": {
+      "@type": "Offer",
+      "price": experience.basePrice,
+      "priceCurrency": "INR",
+      "availability": "https://schema.org/InStock",
+      "url": url
+    },
+    "brand": {
+      "@type": "Brand",
+      "name": "Param Adventures"
+    },
+    "location": {
+      "@type": "Place",
+      "name": experience.location
+    }
+  };
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+    />
+  );
 }
 
 // Helper components to reduce page complexity
@@ -322,6 +367,12 @@ export default async function ExperienceDetailPage({
     notFound();
   }
 
+  const description = (experience.description && typeof experience.description === 'object')
+    ? getPlainTextFromJSON(experience.description)
+    : String(experience.description || "");
+
+  const finalDescription = description || `Explore ${experience.title} in ${experience.location || "India"} with Param Adventures.`;
+
   const primaryMedia =
     experience.coverImage ||
     experience.images[0] ||
@@ -330,6 +381,11 @@ export default async function ExperienceDetailPage({
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-20">
+      <ExperienceJsonLd 
+        experience={experience} 
+        url={`${process.env.NEXT_PUBLIC_APP_URL || ''}/experiences/${slug}`}
+        description={finalDescription}
+      />
       {/* Hero Section */}
       <section className="relative h-[60vh] md:h-[70vh] w-full mt-16">
         <div className="absolute inset-0 z-0 bg-black">
@@ -339,6 +395,11 @@ export default async function ExperienceDetailPage({
           <SaveButton
             experienceId={experience.id}
             className="top-6 right-6 md:top-8 md:right-8 z-30 scale-125"
+          />
+          <ShareButton
+            title={experience.title}
+            className="top-6 right-20 md:top-8 md:right-24 z-30 scale-125"
+            variant="outline"
           />
           {isVideo ? (
             <video

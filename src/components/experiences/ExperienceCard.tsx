@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Clock, MapPin, Users, IndianRupee } from "lucide-react";
 import { motion } from "framer-motion";
 import SaveButton from "./SaveButton";
+import ShareButton from "../ui/ShareButton";
 import { getPlainTextFromJSON } from "@/lib/utils/rich-text";
 
 interface Category {
@@ -125,6 +126,12 @@ export default function ExperienceCard({
           <SaveButton
             experienceId={experience.id}
             className="top-16 right-4 z-20"
+          />
+          <ShareButton
+            title={experience.title}
+            url={`${globalThis.window === undefined ? '' : globalThis.window.location.origin}/experiences/${experience.slug}`}
+            className="top-28 right-4 z-20"
+            variant="outline"
           />
         </div>
 
