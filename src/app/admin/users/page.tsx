@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { Users, Loader2, ShieldAlert, CheckCircle2, Search, Filter, ChevronLeft, ChevronRight, UserCog, User as UserIcon, Star } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
+import { TableSkeleton } from "@/components/admin/TableSkeleton";
+
 
 interface Role {
   id: string;
@@ -205,9 +207,7 @@ export default function AdminUsersPage() {
       {/* Main Table Content */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden flex flex-col pt-1">
         {isLoading && (
-          <div className="flex justify-center py-24">
-            <Loader2 className="w-10 h-10 text-primary animate-spin" />
-          </div>
+          <TableSkeleton columns={3} rows={itemsPerPage} />
         )}
         
         {!isLoading && users.length === 0 && (

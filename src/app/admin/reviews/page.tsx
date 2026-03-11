@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Quote,
 } from "lucide-react";
+import { TableSkeleton } from "@/components/admin/TableSkeleton";
 
 interface AdminReview {
   id: string;
@@ -172,11 +173,7 @@ export default function AdminReviewsPage() {
   let mainContent;
 
   if (isLoading) {
-    mainContent = (
-      <div className="flex justify-center py-16">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
+    mainContent = <TableSkeleton columns={6} rows={10} />;
   } else if (filtered.length === 0) {
     mainContent = (
       <div className="py-16 text-center text-foreground/40">

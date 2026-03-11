@@ -13,6 +13,8 @@ import {
   XCircle,
   CalendarDays,
 } from "lucide-react";
+import { ExperienceSkeleton } from "@/components/admin/ExperienceSkeleton";
+
 
 interface Category {
   id: string;
@@ -146,11 +148,7 @@ export default function AdminExperiencesPage() {
         </Link>
       </div>
 
-      {isLoading && (
-        <div className="flex justify-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        </div>
-      )}
+      {isLoading && <ExperienceSkeleton />}
       {!isLoading && experiences.length === 0 && (
         <div className="bg-card border border-border rounded-2xl p-12 text-center text-foreground/60">
           <MapPin className="w-12 h-12 mx-auto mb-4 opacity-50 text-foreground/50" />

@@ -13,6 +13,8 @@ import {
   Eye,
   Trash2,
 } from "lucide-react";
+import { TableSkeleton } from "@/components/admin/TableSkeleton";
+
 
 interface Blog {
   id: string;
@@ -253,11 +255,7 @@ export default function AdminBlogsPage() {
         </div>
 
         {/* Table */}
-        {isLoading && (
-          <div className="flex justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
-        )}
+        {isLoading && <TableSkeleton columns={3} rows={5} />}
 
         {!isLoading && filtered.length === 0 && (
           <div className="text-center py-20 border border-dashed border-border rounded-2xl">

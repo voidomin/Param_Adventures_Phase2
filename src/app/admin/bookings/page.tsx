@@ -12,6 +12,8 @@ import {
   Filter,
 } from "lucide-react";
 import Link from "next/link";
+import { TableSkeleton } from "@/components/admin/TableSkeleton";
+
 
 type BookingStatus = "REQUESTED" | "CONFIRMED" | "CANCELLED";
 type PaymentStatus = "PENDING" | "PAID" | "FAILED";
@@ -132,11 +134,7 @@ export default function AdminBookingsPage() {
 
   function renderTableContent() {
     if (isLoading) {
-      return (
-        <div className="flex justify-center py-20">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary" />
-        </div>
-      );
+      return <TableSkeleton columns={8} rows={10} />;
     }
     if (filtered.length === 0) {
       return (

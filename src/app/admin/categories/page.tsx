@@ -28,6 +28,8 @@ import {
   Heart,
   Shield,
 } from "lucide-react";
+import { TableSkeleton } from "@/components/admin/TableSkeleton";
+
 
 // Curated list of available icons admins can choose from
 const AVAILABLE_ICONS: {
@@ -217,9 +219,7 @@ export default function AdminCategoriesPage() {
       </div>
 
       {isLoading ? (
-        <div className="flex justify-center py-20">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-        </div>
+        <TableSkeleton columns={6} rows={8} />
       ) : (
         <div className="bg-white/5 backdrop-blur-md border border-white/10 rounded-2xl overflow-hidden shadow-xl">
           <div className="overflow-x-auto">

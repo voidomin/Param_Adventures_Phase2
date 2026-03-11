@@ -10,6 +10,8 @@ import {
   Info,
   ChevronDown,
 } from "lucide-react";
+import { TableSkeleton } from "@/components/admin/TableSkeleton";
+
 import { useAuth } from "@/lib/AuthContext";
 import { useRouter } from "next/navigation";
 
@@ -135,11 +137,7 @@ export default function AuditLogsPage() {
 
       {(() => {
         if (isLoading) {
-          return (
-            <div className="flex h-64 items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          );
+          return <TableSkeleton columns={4} rows={10} />;
         }
 
         if (logs.length === 0) {
