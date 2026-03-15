@@ -38,7 +38,7 @@ export async function GET(
 import { z } from "zod";
 
 const slotSchema = z.object({
-  date: z.string().datetime().or(z.string().refine(val => !Number.isNaN(Date.parse(val)), "Invalid date format")),
+  date: z.iso.datetime().or(z.string().refine(val => !Number.isNaN(Date.parse(val)), "Invalid date format")),
   capacity: z.number().int().min(1, "Capacity must be at least 1"),
 });
 

@@ -5,7 +5,7 @@ import { authorizeRequest } from "@/lib/api-auth";
 import { z } from "zod";
 
 const updateSlotSchema = z.object({
-  date: z.string().datetime().or(z.string().refine(val => !Number.isNaN(Date.parse(val)), "Invalid date format")).optional(),
+  date: z.iso.datetime().or(z.string().refine(val => !Number.isNaN(Date.parse(val)), "Invalid date format")).optional(),
   capacity: z.number().int().min(1, "Capacity must be at least 1").optional(),
 }).refine(data => data.date !== undefined || data.capacity !== undefined, {
   message: "Date or capacity must be provided.",

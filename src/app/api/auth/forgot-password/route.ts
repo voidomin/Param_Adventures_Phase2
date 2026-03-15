@@ -4,7 +4,7 @@ import crypto from "node:crypto";
 import { z } from "zod";
 
 const forgotPasswordSchema = z.object({
-  email: z.string().email({ message: "Invalid email address" }),
+  email: z.email("Invalid email address"),
 });
 
 export async function POST(request: NextRequest) {
