@@ -41,7 +41,7 @@ export async function PATCH(request: Request) {
       where: { id: payload.userId },
     });
 
-    if (!user || !user.password) {
+    if (!user?.password) {
       return NextResponse.json(
         { error: "User not found or no password set" },
         { status: 404 },
