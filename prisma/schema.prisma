@@ -468,3 +468,19 @@ model PlatformSetting {
   description String?
   updatedAt   DateTime @updatedAt
 }
+
+// ─── OUR STORY / ABOUT ──────────────────────────────────────
+
+model StoryBlock {
+  id        String   @id @default(uuid())
+  type      String   // "hero", "milestone", "value", "team", "cta"
+  title     String
+  subtitle  String?  @db.Text
+  body      String?  @db.Text
+  imageUrl  String?
+  stat      String?  // e.g. "500+" or "2019"
+  order     Int
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

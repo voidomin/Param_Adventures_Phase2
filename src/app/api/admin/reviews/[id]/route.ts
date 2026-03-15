@@ -19,7 +19,10 @@ const updateReviewSchema = z.object({
  * Toggles isFeaturedHome or isFeaturedExperience on a review.
  * Body: { isFeaturedHome?: boolean; isFeaturedExperience?: boolean }
  */
-export async function PATCH(request: NextRequest, { params }: RouteContext) {
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   const auth = await authorizeRequest(request);
   if (!auth.authorized) return auth.response;
 

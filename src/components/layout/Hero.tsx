@@ -209,12 +209,12 @@ export default function Hero({
                 <div className="absolute inset-0 rounded-full bg-gradient-to-r from-white/0 via-white/20 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
               </Link>
 
-              <button
-                suppressHydrationWarning
+              <Link
+                href="/our-story"
                 className="px-8 py-4 rounded-full text-white text-base font-bold border border-white/20 hover:bg-white/10 hover:border-white/40 backdrop-blur-md transition-all"
               >
                 Our Story
-              </button>
+              </Link>
             </div>
 
             <div className="mt-12 flex flex-wrap items-center justify-start gap-x-8 gap-y-4 text-white/50 text-[10px] font-bold tracking-[0.2em] uppercase">

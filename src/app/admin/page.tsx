@@ -10,16 +10,22 @@ import {
   AlertCircle,
   Clock,
   User,
+  Users,
   ArrowRight,
   Settings,
+  Compass,
 } from "lucide-react";
 import Link from "next/link";
+import { useAuth } from "@/lib/AuthContext";
+import DashboardCharts from "@/components/admin/DashboardCharts";
 
 interface AdminDashboardData {
   metrics: {
     totalRevenue30d: number;
     activeBookings30d: number;
     upcomingTrips: number;
+    totalUsers: number;
+    totalExperiences: number;
   };
   pendingActions: {
     blogs: number;
@@ -34,9 +40,13 @@ interface AdminDashboardData {
     timestamp: string;
     metadata: Record<string, any> | null;
   }[];
+  charts: {
+    revenueByMonth: { month: string; revenue: number }[];
+    bookingsByStatus: { status: string; count: number; color: string }[];
+    topExperiences: { name: string; bookings: number }[];
+    userGrowth: { month: string; users: number }[];
+  };
 }
-
-import { useAuth } from "@/lib/AuthContext";
 
 export default function AdminDashboardPage() {
   const router = useRouter();
@@ -47,9 +57,7 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     if (!user) return;
 
-    // ─── 1. Role Check & Redirect ────────────────────────────
     if (user.role !== "SUPER_ADMIN") {
-      // Find the first available fallback page
       if (hasPermission("user:view-all")) {
         router.push("/admin/users");
       } else if (hasPermission("trip:manage-categories")) {
@@ -59,13 +67,11 @@ export default function AdminDashboardPage() {
       } else if (hasPermission("ops:view-all-trips")) {
         router.push("/admin/trips");
       } else {
-        // Absolute fallback if they have some admin permission I didn't list
         router.push("/dashboard");
       }
       return;
     }
 
-    // ─── 2. Fetch Data (SUPER_ADMIN only) ────────────────────
     fetch("/api/admin/dashboard")
       .then((res) => {
         if (res.status === 401 || res.status === 403) {
@@ -107,36 +113,61 @@ export default function AdminDashboardPage() {
         </p>
       </div>
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <div className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-6 shadow-sm">
-          <div className="flex items-center gap-2 text-sm font-semibold text-foreground/60 uppercase tracking-wider">
-            <TrendingUp className="h-4 w-4 text-primary" /> Revenue (30d)
+      {/* ── Metrics Row ─────────────────────────────────── */}
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+        <div className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <div className="flex items-center gap-2 text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+            <TrendingUp className="h-4 w-4 text-primary" /> Revenue
           </div>
-          <div className="text-3xl font-black text-foreground">
+          <div className="text-2xl font-black text-foreground">
             ₹{data.metrics.totalRevenue30d.toLocaleString("en-IN")}
           </div>
+          <span className="text-xs text-foreground/40">Last 30 days</span>
         </div>
-        <div className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-6 shadow-sm">
-          <div className="flex items-center gap-2 text-sm font-semibold text-foreground/60 uppercase tracking-wider">
-            <Ticket className="h-4 w-4 text-blue-500" /> Bookings (30d)
+        <div className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <div className="flex items-center gap-2 text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+            <Ticket className="h-4 w-4 text-blue-500" /> Bookings
           </div>
-          <div className="text-3xl font-black text-foreground">
+          <div className="text-2xl font-black text-foreground">
             {data.metrics.activeBookings30d.toLocaleString("en-IN")}
           </div>
+          <span className="text-xs text-foreground/40">Last 30 days</span>
         </div>
-        <div className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-6 shadow-sm">
-          <div className="flex items-center gap-2 text-sm font-semibold text-foreground/60 uppercase tracking-wider">
-            <Map className="h-4 w-4 text-green-500" /> Upcoming Trips
+        <div className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <div className="flex items-center gap-2 text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+            <Map className="h-4 w-4 text-green-500" /> Upcoming
           </div>
-          <div className="text-3xl font-black text-foreground">
+          <div className="text-2xl font-black text-foreground">
             {data.metrics.upcomingTrips.toLocaleString("en-IN")}
           </div>
+          <span className="text-xs text-foreground/40">Scheduled trips</span>
+        </div>
+        <div className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <div className="flex items-center gap-2 text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+            <Users className="h-4 w-4 text-purple-500" /> Users
+          </div>
+          <div className="text-2xl font-black text-foreground">
+            {data.metrics.totalUsers.toLocaleString("en-IN")}
+          </div>
+          <span className="text-xs text-foreground/40">Total registered</span>
+        </div>
+        <div className="flex flex-col gap-2 rounded-2xl border border-border bg-card p-5 shadow-sm">
+          <div className="flex items-center gap-2 text-xs font-semibold text-foreground/60 uppercase tracking-wider">
+            <Compass className="h-4 w-4 text-orange-500" /> Experiences
+          </div>
+          <div className="text-2xl font-black text-foreground">
+            {data.metrics.totalExperiences}
+          </div>
+          <span className="text-xs text-foreground/40">Published</span>
         </div>
       </div>
 
+      {/* ── Charts ──────────────────────────────────────── */}
+      <DashboardCharts charts={data.charts} />
+
+      {/* ── Actions & Activity Row ─────────────────────── */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-        {/* Left Column: Alerts & Actions */}
+        {/* Left: Alerts */}
         <div className="space-y-6 lg:col-span-4">
           <h2 className="text-xl font-bold flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-orange-500" /> Action Required
@@ -185,11 +216,10 @@ export default function AdminDashboardPage() {
                 </div>
               </button>
             )}
-
           </div>
         </div>
 
-        {/* Right Column: Activity Feed (Preview) */}
+        {/* Right: Activity Feed */}
         <div className="space-y-6 lg:col-span-8">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold flex items-center gap-2">

@@ -13,6 +13,7 @@ import {
   Tags,
   Image as ImageIcon,
   MonitorPlay,
+  BookOpen,
   PenLine,
   ClipboardList,
   Star,
@@ -98,6 +99,12 @@ export default function AdminLayout({
       name: "Hero Slider",
       href: "/admin/hero",
       icon: MonitorPlay,
+      permission: "trip:create",
+    },
+    {
+      name: "Our Story",
+      href: "/admin/story",
+      icon: BookOpen,
       permission: "trip:create",
     },
     {

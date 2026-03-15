@@ -125,7 +125,7 @@ export async function POST(
       {
         transactionId,
         amount: amountPaid,
-        verifiedBy: auth.user.name,
+        verifiedBy: auth.userId,
       }
     );
 

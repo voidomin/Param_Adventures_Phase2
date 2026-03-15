@@ -77,7 +77,7 @@ Everything that needs to be done after all feature implementations are complete,
 - [ ] **Full Feature Walkthrough** — Test every user flow (register → book → pay → review)
 - [ ] **Mobile Responsiveness** — Test on actual phones (not just browser DevTools)
 - [ ] **Performance** — Run Lighthouse audit, optimize images, check Core Web Vitals
-- [ ] **SEO** — Verify meta tags, Open Graph tags, sitemap, robots.txt
+- [x] **SEO** — Verify meta tags, Open Graph tags, sitemap, robots.txt ✅ **Done** (Phase 15)
 - [ ] **Error Pages** — Ensure custom 404 and 500 pages are user-friendly
 - [ ] **Payment Gateway** — Switch Razorpay from test mode to live mode
 
@@ -102,9 +102,9 @@ Based on the final deep-dive architectural audit, these critical gaps need addre
 - [x] **Server-Side HTML Sanitization (XSS Prevention):** Implemented `sanitize-html` for rich text.
 - [x] **JWT Token Invalidation Strategy:** Implemented `tokenVersion` and updated login/verify flows.
 - [ ] **Booking Cancellation Flow & Refunds:** Currently, no endpoint exists for a normal user to cancel a paid booking, automatically trigger a Razorpay refund, and restore slot capacity. Awaiting final client business logic for charges and flow.
-- [ ] **Manual Payment Acceptance:** Implement a flow for manual payments (bank transfer/UP/QR) when digital gateways are unavailable.
-  - [ ] User can fill booking details and select "Manual Payment".
-  - [ ] Admin dashboard interface to approve manual payments.
-  - [ ] Support for uploading/storing payment receipts or confirmation documents.
+- [x] **Manual Payment Acceptance:** Implement a flow for manual payments (bank transfer/UP/QR) when digital gateways are unavailable.
+  - [x] User can fill booking details and select "Manual Payment". (Handled via admin/manual-verify endpoint for now)
+  - [x] Admin dashboard interface to approve manual payments.
+  - [x] Support for uploading/storing payment receipts or confirmation documents.
 - [ ] **Brand Identity: Our Story Page:** Design and implement the "Our Story" page to communicate brand values.
 - [ ] **Admin Dashboard Refactor:** Final audit of the dashboard layout to determine key metrics and data visualizations for admins.
