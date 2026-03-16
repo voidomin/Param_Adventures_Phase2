@@ -185,20 +185,16 @@ async function seedHeroSlides() {
 
 // ─── MAIN ─────────────────────────────────────────────────
 
-async function main() {
-  try {
-    await seedRolesAndPermissions();
-    await seedCategories();
-    await seedAdmin();
-    await seedHeroSlides();
-    console.log("\n🚀 Seeding completed successfully!");
-  } catch (err) {
-    console.error("\n❌ Seeding failed:", err);
-    process.exit(1);
-  } finally {
-    await prisma.$disconnect();
-    await pool.end();
-  }
+try {
+  await seedRolesAndPermissions();
+  await seedCategories();
+  await seedAdmin();
+  await seedHeroSlides();
+  console.log("\n🚀 Seeding completed successfully!");
+} catch (err) {
+  console.error("\n❌ Seeding failed:", err);
+  process.exit(1);
+} finally {
+  await prisma.$disconnect();
+  await pool.end();
 }
-
-main();
