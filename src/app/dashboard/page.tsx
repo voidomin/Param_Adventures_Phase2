@@ -387,7 +387,7 @@ export default function DashboardPage() {
   });
 
   return (
-    <div className="min-h-screen pt-24 pb-12 px-4 md:px-8">
+    <div className="min-h-screen pt-16 pb-12 px-4 md:px-8">
       {/* Profile Completion Warning */}
       {isIncompleteProfile && (
         <div className="sticky top-16 z-50 bg-orange-500 text-white px-4 py-3 shadow-xl animate-in slide-in-from-top duration-500">
@@ -412,7 +412,7 @@ export default function DashboardPage() {
       )}
 
       {/* Hero / Profile Header */}
-      <div className="relative pt-24 overflow-hidden">
+      <div className="relative pt-16 overflow-hidden">
         <div className="absolute inset-0 bg-linear-to-br from-primary/10 via-background to-background" />
         <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
         <div className="relative max-w-7xl mx-auto px-4 py-16">

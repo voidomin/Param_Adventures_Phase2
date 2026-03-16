@@ -157,9 +157,13 @@ export default function Hero({
         </div>
       )}
 
-      {/* Content with Mouse Parallax */}
-      <div className="relative z-20 max-w-7xl mx-auto px-4 w-full h-full flex flex-col justify-end pb-32">
-        <AnimatePresence mode="wait">
+      {/* Content Container with Navbar Safe Zone */}
+      <div className="relative z-20 max-w-7xl mx-auto px-4 w-full h-full flex flex-col">
+        {/* Safe zone for fixed navbar */}
+        <div className="h-24 md:h-32 lg:h-40 shrink-0" />
+
+        <div className="flex-1 flex flex-col justify-end pb-32">
+          <AnimatePresence mode="wait">
           <motion.div
             key={currentSlide.id + "-content"}
             initial={{ opacity: 0, translateY: 60, filter: "blur(10px)" }}
@@ -236,6 +240,7 @@ export default function Hero({
           </motion.div>
         </AnimatePresence>
       </div>
+    </div>
 
       {/* Slider Indicators */}
       {activeSlides.length > 1 && (
@@ -243,6 +248,7 @@ export default function Hero({
           {activeSlides.map((slide, idx) => (
             <button
               key={slide.id}
+              suppressHydrationWarning
               onClick={() => setCurrentIndex(idx)}
               className={`transition-all duration-500 rounded-full ${
                 idx === currentIndex

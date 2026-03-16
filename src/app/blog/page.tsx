@@ -17,12 +17,12 @@ export default async function BlogListingPage() {
   });
 
   return (
-    <div className="min-h-screen bg-background text-foreground pt-24 pb-20">
+    <div className="min-h-screen bg-background text-foreground pb-20">
       {/* Hero */}
-      <div className="relative pt-16 overflow-hidden">
+      <div className="relative pt-0 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-background" />
         <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-        <div className="relative max-w-7xl mx-auto px-4 py-20 text-center">
+        <div className="relative max-w-7xl mx-auto px-4 py-32 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 border border-primary/20 rounded-full text-primary text-sm font-bold mb-6">
             <PenLine className="w-3.5 h-3.5" /> Adventure Stories
           </div>

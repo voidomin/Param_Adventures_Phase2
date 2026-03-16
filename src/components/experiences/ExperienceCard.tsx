@@ -123,16 +123,18 @@ export default function ExperienceCard({
             </div>
           </div>
 
-          <SaveButton
-            experienceId={experience.id}
-            className="top-16 right-4 z-20"
-          />
-          <ShareButton
-            title={experience.title}
-            url={`${globalThis.window === undefined ? '' : globalThis.window.location.origin}/experiences/${experience.slug}`}
-            className="top-28 right-4 z-20"
-            variant="outline"
-          />
+          <div className="absolute top-16 right-4 z-30 flex flex-col gap-3">
+            <SaveButton
+              experienceId={experience.id}
+              className="relative" // Reset to relative since parent is absolute
+            />
+            <ShareButton
+              title={experience.title}
+              url={`/experiences/${experience.slug}`}
+              className="relative"
+              variant="outline"
+            />
+          </div>
         </div>
 
         <div className="p-6 flex flex-col flex-1">

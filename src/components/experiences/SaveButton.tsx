@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Heart } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 interface SaveButtonProps {
   experienceId: string;
@@ -96,8 +97,13 @@ export default function SaveButton({
     <button
       onClick={toggleSave}
       disabled={isLoading}
+      suppressHydrationWarning
       aria-label={isSaved ? "Remove from wishlist" : "Save to wishlist"}
-      className={`absolute top-4 right-4 p-2 rounded-full backdrop-blur-md bg-black/20 hover:bg-black/40 transition-all active:scale-95 group ${className}`}
+      className={cn(
+        "flex items-center justify-center w-10 h-10 aspect-square rounded-full backdrop-blur-md transition-all active:scale-95 group",
+        "bg-background/10 border border-border/40 hover:bg-foreground/10 shadow-xl ring-1 ring-border/10",
+        className
+      )}
     >
       <Heart
         size={size}

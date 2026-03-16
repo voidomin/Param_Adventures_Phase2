@@ -22,7 +22,7 @@ import {
   Wifi,
   Banknote,
   Activity,
-  CarFront
+  CarFront,
 } from "lucide-react";
 import { getPlainTextFromJSON } from "@/lib/utils/rich-text";
 import BookNowButton from "@/components/booking/BookNowButton";
@@ -65,16 +65,25 @@ export async function generateMetadata({
     experience.images?.[0] ||
     "/param-logo.png";
 
-  const description = (experience.description && typeof experience.description === 'object')
-    ? getPlainTextFromJSON(experience.description)
-    : String(experience.description || "");
+  const description =
+    experience.description && typeof experience.description === "object"
+      ? getPlainTextFromJSON(experience.description)
+      : String(experience.description || "");
 
-  const finalDescription = description || `Explore ${experience.title} in ${experience.location || "India"} with Param Adventures.`;
+  const finalDescription =
+    description ||
+    `Explore ${experience.title} in ${experience.location || "India"} with Param Adventures.`;
 
   return {
     title: experience.title,
     description: finalDescription,
-    keywords: [experience.title, experience.location || "", "trekking", "adventure", "Param Adventures"],
+    keywords: [
+      experience.title,
+      experience.location || "",
+      "trekking",
+      "adventure",
+      "Param Adventures",
+    ],
     alternates: {
       canonical: `/experiences/${slug}`,
     },
@@ -100,28 +109,32 @@ type ExperienceJsonLdProps = {
   description: string;
 };
 
-function ExperienceJsonLd({ experience, url, description }: Readonly<ExperienceJsonLdProps>) {
+function ExperienceJsonLd({
+  experience,
+  url,
+  description,
+}: Readonly<ExperienceJsonLdProps>) {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
-    "name": experience.title,
-    "description": description,
-    "image": experience.coverImage || experience.images[0],
-    "offers": {
+    name: experience.title,
+    description: description,
+    image: experience.coverImage || experience.images[0],
+    offers: {
       "@type": "Offer",
-      "price": experience.basePrice,
-      "priceCurrency": "INR",
-      "availability": "https://schema.org/InStock",
-      "url": url
+      price: experience.basePrice,
+      priceCurrency: "INR",
+      availability: "https://schema.org/InStock",
+      url: url,
     },
-    "brand": {
+    brand: {
       "@type": "Brand",
-      "name": "Param Adventures"
+      name: "Param Adventures",
     },
-    "location": {
+    location: {
       "@type": "Place",
-      "name": experience.location
-    }
+      name: experience.location,
+    },
   };
 
   return (
@@ -157,12 +170,14 @@ function HeroTags({ experience }: Readonly<{ experience: any }>) {
       </div>
       {experience.maxGroupSize && (
         <span className="bg-background text-foreground px-4 py-1.5 rounded-full text-sm font-bold border border-border shadow-sm flex items-center gap-1.5 snap-start whitespace-nowrap">
-          <Users className="w-4 h-4 text-primary" /> Max Group: {experience.maxGroupSize}
+          <Users className="w-4 h-4 text-primary" /> Max Group:{" "}
+          {experience.maxGroupSize}
         </span>
       )}
       {(experience.minAge || experience.ageRange) && (
         <span className="bg-background text-foreground px-4 py-1.5 rounded-full text-sm font-bold border border-border shadow-sm flex items-center gap-1.5 snap-start whitespace-nowrap">
-          <Baby className="w-4 h-4 text-primary" /> Age: {experience.minAge || experience.ageRange}+
+          <Baby className="w-4 h-4 text-primary" /> Age:{" "}
+          {experience.minAge || experience.ageRange}+
         </span>
       )}
     </div>
@@ -170,16 +185,28 @@ function HeroTags({ experience }: Readonly<{ experience: any }>) {
 }
 
 function EssentialLogistics({ experience }: Readonly<{ experience: any }>) {
-  if (!experience.networkConnectivity && !experience.lastAtm && !experience.fitnessRequirement && !experience.ageRange && !experience.meetingTime && !experience.dropoffTime) return null;
-  
+  if (
+    !experience.networkConnectivity &&
+    !experience.lastAtm &&
+    !experience.fitnessRequirement &&
+    !experience.ageRange &&
+    !experience.meetingTime &&
+    !experience.dropoffTime
+  )
+    return null;
+
   return (
     <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {experience.networkConnectivity && (
         <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors">
           <Wifi className="w-5 h-5 text-primary" />
           <div>
-            <p className="text-xs text-foreground/60 font-medium">Network/Wifi</p>
-            <p className="font-bold text-sm leading-tight">{experience.networkConnectivity}</p>
+            <p className="text-xs text-foreground/60 font-medium">
+              Network/Wifi
+            </p>
+            <p className="font-bold text-sm leading-tight">
+              {experience.networkConnectivity}
+            </p>
           </div>
         </div>
       )}
@@ -188,7 +215,9 @@ function EssentialLogistics({ experience }: Readonly<{ experience: any }>) {
           <Banknote className="w-5 h-5 text-primary" />
           <div>
             <p className="text-xs text-foreground/60 font-medium">Last ATM</p>
-            <p className="font-bold text-sm leading-tight">{experience.lastAtm}</p>
+            <p className="font-bold text-sm leading-tight">
+              {experience.lastAtm}
+            </p>
           </div>
         </div>
       )}
@@ -197,7 +226,9 @@ function EssentialLogistics({ experience }: Readonly<{ experience: any }>) {
           <Activity className="w-5 h-5 text-primary" />
           <div>
             <p className="text-xs text-foreground/60 font-medium">Fitness</p>
-            <p className="font-bold text-sm leading-tight">{experience.fitnessRequirement}</p>
+            <p className="font-bold text-sm leading-tight">
+              {experience.fitnessRequirement}
+            </p>
           </div>
         </div>
       )}
@@ -206,7 +237,9 @@ function EssentialLogistics({ experience }: Readonly<{ experience: any }>) {
           <Users className="w-5 h-5 text-primary" />
           <div>
             <p className="text-xs text-foreground/60 font-medium">Age Range</p>
-            <p className="font-bold text-sm leading-tight">{experience.ageRange}</p>
+            <p className="font-bold text-sm leading-tight">
+              {experience.ageRange}
+            </p>
           </div>
         </div>
       )}
@@ -214,8 +247,12 @@ function EssentialLogistics({ experience }: Readonly<{ experience: any }>) {
         <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors col-span-2">
           <CarFront className="w-5 h-5 text-primary" />
           <div>
-            <p className="text-xs text-foreground/60 font-medium">Meeting Point & Time</p>
-            <p className="font-bold text-sm leading-tight">{experience.meetingPoint} &bull; {experience.meetingTime}</p>
+            <p className="text-xs text-foreground/60 font-medium">
+              Meeting Point & Time
+            </p>
+            <p className="font-bold text-sm leading-tight">
+              {experience.meetingPoint} &bull; {experience.meetingTime}
+            </p>
           </div>
         </div>
       )}
@@ -223,8 +260,12 @@ function EssentialLogistics({ experience }: Readonly<{ experience: any }>) {
         <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors col-span-2">
           <MapPin className="w-5 h-5 text-primary" />
           <div>
-            <p className="text-xs text-foreground/60 font-medium">Drop-off Time</p>
-            <p className="font-bold text-sm leading-tight">{experience.meetingPoint} &bull; {experience.dropoffTime}</p>
+            <p className="text-xs text-foreground/60 font-medium">
+              Drop-off Time
+            </p>
+            <p className="font-bold text-sm leading-tight">
+              {experience.meetingPoint} &bull; {experience.dropoffTime}
+            </p>
           </div>
         </div>
       )}
@@ -234,7 +275,7 @@ function EssentialLogistics({ experience }: Readonly<{ experience: any }>) {
 
 function ItinerarySection({ itinerary }: Readonly<{ itinerary: any }>) {
   if (!Array.isArray(itinerary) || itinerary.length === 0) return null;
-  
+
   return (
     <section id="itinerary" className="scroll-mt-32">
       <h2 className="text-3xl font-heading font-bold mb-8 flex items-center gap-3">
@@ -272,20 +313,29 @@ function ItinerarySection({ itinerary }: Readonly<{ itinerary: any }>) {
                 </p>
                 {(dayItem.meals || dayItem.accommodation) && (
                   <div className="mt-4 pt-4 border-t border-border/10 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                    {dayItem.meals && (Array.isArray(dayItem.meals) ? dayItem.meals.length > 0 : true) && (
-                      <div className="flex items-start gap-2 text-foreground/80 bg-background/50 p-3 rounded-xl border border-border/30">
-                        <Utensils className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                        <span>
-                          <strong className="block text-xs uppercase tracking-wider text-foreground/50 mb-0.5">Meals Included</strong>
-                          {Array.isArray(dayItem.meals) ? dayItem.meals.join(", ") : dayItem.meals}
-                        </span>
-                      </div>
-                    )}
+                    {dayItem.meals &&
+                      (Array.isArray(dayItem.meals)
+                        ? dayItem.meals.length > 0
+                        : true) && (
+                        <div className="flex items-start gap-2 text-foreground/80 bg-background/50 p-3 rounded-xl border border-border/30">
+                          <Utensils className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                          <span>
+                            <strong className="block text-xs uppercase tracking-wider text-foreground/50 mb-0.5">
+                              Meals Included
+                            </strong>
+                            {Array.isArray(dayItem.meals)
+                              ? dayItem.meals.join(", ")
+                              : dayItem.meals}
+                          </span>
+                        </div>
+                      )}
                     {dayItem.accommodation && (
                       <div className="flex items-start gap-2 text-foreground/80 bg-background/50 p-3 rounded-xl border border-border/30">
                         <Tent className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                         <span>
-                          <strong className="block text-xs uppercase tracking-wider text-foreground/50 mb-0.5">Accommodation</strong>
+                          <strong className="block text-xs uppercase tracking-wider text-foreground/50 mb-0.5">
+                            Accommodation
+                          </strong>
                           {dayItem.accommodation}
                         </span>
                       </div>
@@ -310,11 +360,14 @@ function InclusionsExclusions({
 }>) {
   const hasInclusions = Array.isArray(inclusions) && inclusions.length > 0;
   const hasExclusions = Array.isArray(exclusions) && exclusions.length > 0;
-  
+
   if (!hasInclusions && !hasExclusions) return null;
-  
+
   return (
-    <section id="inclusions" className="grid grid-cols-1 md:grid-cols-2 gap-8 scroll-mt-32">
+    <section
+      id="inclusions"
+      className="grid grid-cols-1 md:grid-cols-2 gap-8 scroll-mt-32"
+    >
       {hasInclusions && (
         <div className="bg-green-500/5 border border-green-500/20 rounded-3xl p-8">
           <h3 className="text-2xl font-bold mb-6 flex items-center gap-2 text-green-500/90">
@@ -322,7 +375,10 @@ function InclusionsExclusions({
           </h3>
           <ul className="space-y-4">
             {inclusions.map((item: string) => (
-              <li key={item} className="flex items-start gap-3 text-foreground/80">
+              <li
+                key={item}
+                className="flex items-start gap-3 text-foreground/80"
+              >
                 <Check className="w-5 h-5 text-green-500 shrink-0 mt-0.5" />
                 <span className="leading-relaxed">{item}</span>
               </li>
@@ -337,7 +393,10 @@ function InclusionsExclusions({
           </h3>
           <ul className="space-y-4">
             {exclusions.map((item: string) => (
-              <li key={item} className="flex items-start gap-3 text-foreground/80">
+              <li
+                key={item}
+                className="flex items-start gap-3 text-foreground/80"
+              >
                 <X className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
                 <span className="leading-relaxed">{item}</span>
               </li>
@@ -356,22 +415,25 @@ export default async function ExperienceDetailPage({
 }>) {
   const { slug } = await params;
 
-  const experience = await prisma.experience.findUnique({
+  const experience = (await prisma.experience.findUnique({
     where: { slug },
     include: {
       categories: { include: { category: true } },
     },
-  }) as any;
+  })) as any;
 
   if (experience?.status !== "PUBLISHED") {
     notFound();
   }
 
-  const description = (experience.description && typeof experience.description === 'object')
-    ? getPlainTextFromJSON(experience.description)
-    : String(experience.description || "");
+  const description =
+    experience.description && typeof experience.description === "object"
+      ? getPlainTextFromJSON(experience.description)
+      : String(experience.description || "");
 
-  const finalDescription = description || `Explore ${experience.title} in ${experience.location || "India"} with Param Adventures.`;
+  const finalDescription =
+    description ||
+    `Explore ${experience.title} in ${experience.location || "India"} with Param Adventures.`;
 
   const primaryMedia =
     experience.coverImage ||
@@ -381,26 +443,14 @@ export default async function ExperienceDetailPage({
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-20">
-      <ExperienceJsonLd 
-        experience={experience} 
-        url={`${process.env.NEXT_PUBLIC_APP_URL || ''}/experiences/${slug}`}
+      <ExperienceJsonLd
+        experience={experience}
+        url={`${process.env.NEXT_PUBLIC_APP_URL || ""}/experiences/${slug}`}
         description={finalDescription}
       />
       {/* Hero Section */}
-      <section className="relative h-[60vh] md:h-[70vh] w-full mt-16">
+      <section className="relative h-[65vh] md:h-[75vh] lg:h-[80vh] w-full mt-0">
         <div className="absolute inset-0 z-0 bg-black">
-          <div className="absolute inset-0 bg-black/40 z-10" />
-          <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-10" />
-
-          <SaveButton
-            experienceId={experience.id}
-            className="top-6 right-6 md:top-8 md:right-8 z-30 scale-125"
-          />
-          <ShareButton
-            title={experience.title}
-            className="top-6 right-20 md:top-8 md:right-24 z-30 scale-125"
-            variant="outline"
-          />
           {isVideo ? (
             <video
               src={primaryMedia}
@@ -418,10 +468,31 @@ export default async function ExperienceDetailPage({
               className="w-full h-full object-cover"
             />
           )}
+
+          <div className="absolute inset-0 bg-black/40 z-10" />
+          <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-10" />
+
         </div>
 
-        <div className="relative z-20 h-full max-w-7xl mx-auto px-4 flex flex-col justify-end pb-12">
-          <h1 className="text-4xl md:text-5xl lg:text-7xl font-heading font-black text-white leading-tight drop-shadow-2xl max-w-4xl">
+        {/* Action Buttons - Standardized positioning */}
+        <div className="absolute top-24 right-6 md:top-28 md:right-8 z-40 flex items-center gap-3">
+          <SaveButton
+            experienceId={experience.id}
+            className="scale-110"
+          />
+          <ShareButton
+            title={experience.title}
+            className="scale-110"
+            variant="outline"
+          />
+        </div>
+
+        <div className="relative z-20 h-full max-w-7xl mx-auto px-4 flex flex-col">
+          {/* Safe zone for fixed navbar */}
+          <div className="h-24 md:h-32 lg:h-40 shrink-0" />
+
+          <div className="flex-1 flex flex-col justify-end pb-12">
+            <h1 className="text-4xl md:text-5xl lg:text-7xl font-heading font-black text-white leading-tight drop-shadow-2xl max-w-4xl">
             {experience.title}
           </h1>
           <div className="flex flex-wrap items-center gap-6 mt-6 text-white font-medium text-lg drop-shadow-md">
@@ -429,10 +500,12 @@ export default async function ExperienceDetailPage({
               <MapPin className="w-5 h-5 text-primary" /> {experience.location}
             </div>
             <div className="flex items-center gap-2">
-              <Clock className="w-5 h-5 text-primary" /> {experience.durationDays} Days /{" "}
+              <Clock className="w-5 h-5 text-primary" />{" "}
+              {experience.durationDays} Days /{" "}
               {experience.durationDays > 1 ? experience.durationDays - 1 : 0}{" "}
               Nights
             </div>
+          </div>
           </div>
         </div>
       </section>
@@ -441,15 +514,32 @@ export default async function ExperienceDetailPage({
       <div className="max-w-7xl mx-auto px-4 mt-12 grid grid-cols-1 lg:grid-cols-3 gap-12">
         {/* Left Column - Details */}
         <div className="lg:col-span-2 space-y-16 min-w-0">
-          <ExperienceStickyNav sections={[
-            { id: "about", label: "About" },
-            ...(Array.isArray(experience.itinerary) && experience.itinerary.length > 0 ? [{ id: "itinerary", label: "Itinerary" }] : []),
-            ...((Array.isArray(experience.inclusions) && experience.inclusions.length > 0) || (Array.isArray(experience.exclusions) && experience.exclusions.length > 0) ? [{ id: "inclusions", label: "Inclusions" }] : []),
-            ...(Array.isArray(experience.thingsToCarry) && experience.thingsToCarry.length > 0 ? [{ id: "things-to-carry", label: "Things to Carry" }] : []),
-            ...(experience.images?.length > 0 ? [{ id: "gallery", label: "Gallery" }] : []),
-            ...(Array.isArray(experience.faqs) && experience.faqs.length > 0 ? [{ id: "faqs", label: "FAQs" }] : []),
-            { id: "reviews", label: "Reviews" }
-          ]} />
+          <ExperienceStickyNav
+            sections={[
+              { id: "about", label: "About" },
+              ...(Array.isArray(experience.itinerary) &&
+              experience.itinerary.length > 0
+                ? [{ id: "itinerary", label: "Itinerary" }]
+                : []),
+              ...((Array.isArray(experience.inclusions) &&
+                experience.inclusions.length > 0) ||
+              (Array.isArray(experience.exclusions) &&
+                experience.exclusions.length > 0)
+                ? [{ id: "inclusions", label: "Inclusions" }]
+                : []),
+              ...(Array.isArray(experience.thingsToCarry) &&
+              experience.thingsToCarry.length > 0
+                ? [{ id: "things-to-carry", label: "Things to Carry" }]
+                : []),
+              ...(experience.images?.length > 0
+                ? [{ id: "gallery", label: "Gallery" }]
+                : []),
+              ...(Array.isArray(experience.faqs) && experience.faqs.length > 0
+                ? [{ id: "faqs", label: "FAQs" }]
+                : []),
+              { id: "reviews", label: "Reviews" },
+            ]}
+          />
 
           {/* About */}
           <section id="about" className="scroll-mt-32">
@@ -460,13 +550,18 @@ export default async function ExperienceDetailPage({
             </h2>
             {experience.highlights?.length > 0 && (
               <div className="mb-6 space-y-3 bg-primary/5 border border-primary/20 p-6 rounded-2xl">
-                <h3 className="font-bold text-lg text-foreground mb-4">Trip Highlights</h3>
+                <h3 className="font-bold text-lg text-foreground mb-4">
+                  Trip Highlights
+                </h3>
                 <ul className="space-y-3">
                   {experience.highlights.map((item: string, i: number) => (
-                     <li key={`highlight-${i}-${item.substring(0, 10)}`} className="flex items-start gap-3 text-foreground/80 font-medium">
-                       <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" />
-                       <span>{item}</span>
-                     </li>
+                    <li
+                      key={`highlight-${i}-${item.substring(0, 10)}`}
+                      className="flex items-start gap-3 text-foreground/80 font-medium"
+                    >
+                      <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                      <span>{item}</span>
+                    </li>
                   ))}
                 </ul>
               </div>
@@ -533,12 +628,18 @@ export default async function ExperienceDetailPage({
 
           <ItinerarySection itinerary={experience.itinerary} />
 
-          <InclusionsExclusions inclusions={experience.inclusions} exclusions={experience.exclusions} />
+          <InclusionsExclusions
+            inclusions={experience.inclusions}
+            exclusions={experience.exclusions}
+          />
 
           {/* Things to Carry */}
           {Array.isArray(experience.thingsToCarry) &&
             experience.thingsToCarry.length > 0 && (
-              <section id="things-to-carry" className="bg-card border border-border rounded-3xl p-8 shadow-sm scroll-mt-32">
+              <section
+                id="things-to-carry"
+                className="bg-card border border-border rounded-3xl p-8 shadow-sm scroll-mt-32"
+              >
                 <h2 className="text-3xl font-heading font-bold mb-6 flex items-center gap-3">
                   <Backpack className="w-8 h-8 text-primary" />
                   Things to Carry
@@ -578,7 +679,7 @@ export default async function ExperienceDetailPage({
                   experience.faqs as { question: string; answer: string }[]
                 ).map((faq, ix) => (
                   <details
-                    key={faq.question}
+                    key={`${ix}-${faq.question}`}
                     className="group bg-card border border-border rounded-2xl overflow-hidden [&_summary::-webkit-details-marker]:hidden"
                   >
                     <summary className="flex items-center justify-between gap-4 p-6 cursor-pointer font-bold text-lg select-none hover:bg-foreground/5 transition-colors list-none [&::-webkit-details-marker]:hidden">
@@ -607,7 +708,10 @@ export default async function ExperienceDetailPage({
           )}
 
           {/* User Reviews */}
-          <section id="reviews" className="pt-8 border-t border-border scroll-mt-32">
+          <section
+            id="reviews"
+            className="pt-8 border-t border-border scroll-mt-32"
+          >
             <ExperienceReviews slug={experience.slug} />
           </section>
         </div>

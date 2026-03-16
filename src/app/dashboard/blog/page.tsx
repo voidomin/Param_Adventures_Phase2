@@ -91,8 +91,8 @@ export default function UserBlogsPage() {
   };
 
   return (
-    <div className="min-h-screen pt-24 pb-12 px-4 md:px-8">
-      <div className="max-w-4xl mx-auto px-4 pt-28">
+    <div className="min-h-screen pt-16 pb-12 px-4 md:px-8">
+      <div className="max-w-4xl mx-auto px-4 pt-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-10">
           <div>
