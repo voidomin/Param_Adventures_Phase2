@@ -42,53 +42,9 @@ const experienceSchema = z.object({
   location: z.string().optional(),
   difficulty: z.enum(["EASY", "MODERATE", "HARD", "EXTREME"]).optional(),
   isFeatured: z.boolean().optional(),
-  coverImage: z
-    .string()
-    .refine(
-      (val) => {
-        if (!val) return true;
-        try {
-          new URL(val);
-          return true;
-        } catch {
-          return false;
-        }
-      },
-      { message: "Invalid cover image URL" },
-    )
-    .optional()
-    .nullable(),
-  cardImage: z
-    .string()
-    .refine(
-      (val) => {
-        if (!val) return true;
-        try {
-          new URL(val);
-          return true;
-        } catch {
-          return false;
-        }
-      },
-      { message: "Invalid card image URL" },
-    )
-    .optional()
-    .nullable(),
-  images: z
-    .array(
-      z.string().refine(
-        (val) => {
-          try {
-            new URL(val);
-            return true;
-          } catch {
-            return false;
-          }
-        },
-        { message: "Invalid image URL" },
-      ),
-    )
-    .optional(),
+  coverImage: z.string().url("Invalid cover image URL").optional().nullable(),
+  cardImage: z.string().url("Invalid card image URL").optional().nullable(),
+  images: z.array(z.string().url("Invalid image URL")).optional(),
   itinerary: z.any().optional(), // JSON
   categoryIds: z.array(z.string()).optional(),
   inclusions: z.any().optional(),
