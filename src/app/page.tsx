@@ -193,28 +193,19 @@ export default async function Home() {
                       href={`/blog/${blog.slug}`}
                       className="group bg-card rounded-3xl border border-border flex flex-col h-full overflow-hidden hover:shadow-2xl hover:shadow-primary/5 hover:border-primary/50 transition-all"
                     >
-                      {blog.coverImage && (
-                        <div className="relative h-48 w-full overflow-hidden shrink-0">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={
-                              blog.coverImage.mediumUrl ||
-                              blog.coverImage.originalUrl
-                            }
-                            alt={blog.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                          />
+                      <div className="p-8 flex flex-col flex-1">
+                        <div className="min-h-[1.5rem] mb-3">
+                          {blog.experience && (
+                            <span className="text-primary text-xs font-bold uppercase tracking-wider">
+                              {blog.experience.title}
+                            </span>
+                          )}
                         </div>
-                      )}
-                      <div className="p-6 flex flex-col flex-1">
-                        {blog.experience && (
-                          <span className="text-primary text-xs font-bold uppercase tracking-wider mb-2">
-                            {blog.experience.title}
-                          </span>
-                        )}
-                        <h3 className="text-xl font-bold font-heading mb-4 group-hover:text-primary transition-colors line-clamp-2">
-                          {blog.title}
-                        </h3>
+                        <div className="min-h-[4.5rem] mb-6">
+                          <h3 className="text-xl md:text-2xl font-bold font-heading group-hover:text-primary transition-colors line-clamp-2 leading-tight">
+                            {blog.title}
+                          </h3>
+                        </div>
 
                         <div className="mt-auto pt-4 border-t border-border flex justify-between items-center text-sm">
                           <div className="flex items-center gap-2">
