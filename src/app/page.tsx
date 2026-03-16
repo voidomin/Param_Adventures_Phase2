@@ -137,7 +137,7 @@ export default async function Home() {
               {featuredExperiences.map((exp: any) => (
                 <div
                   key={exp.id}
-                  className="w-[85vw] sm:w-[350px] md:w-[400px] shrink-0 snap-start"
+                  className="w-[85vw] sm:w-[350px] md:w-[400px] shrink-0 snap-start h-full flex flex-col"
                 >
                   <ExperienceCard experience={exp} />
                 </div>

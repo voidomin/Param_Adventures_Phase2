@@ -54,7 +54,7 @@ export default function Carousel({
       <div
         ref={scrollRef}
         onScroll={checkScroll}
-        className="flex overflow-x-auto gap-6 sm:gap-8 pb-8 pt-4 -mx-4 px-4 sm:mx-0 sm:px-0 snap-x snap-mandatory hide-scrollbar"
+        className="flex items-stretch overflow-x-auto gap-6 sm:gap-8 pb-8 pt-4 -mx-4 px-4 sm:mx-0 sm:px-0 snap-x snap-mandatory hide-scrollbar"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         <style
