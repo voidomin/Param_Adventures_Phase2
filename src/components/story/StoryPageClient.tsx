@@ -287,7 +287,7 @@ export default function StoryPageClient({
   const ctaBlock = blocks.find((b) => b.type === "cta");
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="relative min-h-screen bg-background text-foreground">
       {/* Background glows */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-[30%] -left-[15%] w-[50%] h-[50%] bg-primary/3 rounded-full blur-[150px]" />

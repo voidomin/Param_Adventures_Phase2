@@ -76,6 +76,7 @@ export default function proxy(request: NextRequest) {
     "/api/experiences",
     "/api/blog",
     "/blog",
+    "/our-story",
   ];
 
   // Check exact match or prefix match for public paths

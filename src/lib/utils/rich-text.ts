@@ -1,5 +1,17 @@
 export function getPlainTextFromJSON(json: any): string {
-  if (!json?.content) return "";
+  if (!json) return "";
+  
+  // Handle string content
+  if (typeof json === "string") return json.trim();
+
+  // Handle { html: "..." } format from seed data
+  if (json.html && typeof json.html === "string") {
+    // Basic HTML stripping for preview
+    return json.html.replaceAll(/<[^>]*>/g, " ").replaceAll(/\s+/g, " ").trim();
+  }
+
+  // Handle Tiptap JSON format
+  if (!json.content || !Array.isArray(json.content)) return "";
   
   let text = "";
   

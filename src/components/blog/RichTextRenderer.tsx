@@ -1,6 +1,7 @@
 "use client";
 
 import { useEditor, EditorContent } from "@tiptap/react";
+import { useEffect } from "react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Youtube from "@tiptap/extension-youtube";
@@ -12,6 +13,10 @@ interface RichTextRendererProps {
 export default function RichTextRenderer({
   content,
 }: Readonly<RichTextRendererProps>) {
+  // Normalize content for Tiptap
+  // Tiptap expects either a string (HTML) or a JSON object (Prosemirror document)
+  const normalizedContent = (content as any)?.html ?? content;
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -23,10 +28,17 @@ export default function RichTextRenderer({
         },
       }),
     ],
-    content,
+    content: normalizedContent,
     editable: false,
     immediatelyRender: false,
   });
+
+  // Keep editor content in sync with props
+  useEffect(() => {
+    if (editor && normalizedContent) {
+      editor.commands.setContent(normalizedContent);
+    }
+  }, [editor, normalizedContent]);
 
   if (!editor) return null;
 
