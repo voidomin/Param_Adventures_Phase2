@@ -40,9 +40,10 @@ export async function GET(request: NextRequest) {
       ]);
 
     // ─── Pending Actions ──────────────────────────────────
-    const [pendingBlogs, pendingBookings] = await Promise.all([
+    const [pendingBlogs, pendingBookings, pendingLeads] = await Promise.all([
       prisma.blog.count({ where: { status: "PENDING_REVIEW" } }),
       prisma.booking.count({ where: { bookingStatus: "REQUESTED" } }),
+      prisma.customLead.count({ where: { status: "NEW" } }),
     ]);
 
     // ─── Recent Activity ──────────────────────────────────
@@ -146,6 +147,8 @@ export async function GET(request: NextRequest) {
     const totalExperiences = await prisma.experience.count({
       where: { status: "PUBLISHED" },
     });
+    const totalReviews = await prisma.experienceReview.count();
+    const totalSaves = await prisma.savedExperience.count();
 
     return NextResponse.json({
       metrics: {
@@ -154,10 +157,13 @@ export async function GET(request: NextRequest) {
         upcomingTrips: upcomingTripsCount,
         totalUsers,
         totalExperiences,
+        totalReviews,
+        totalSaves,
       },
       pendingActions: {
         blogs: pendingBlogs,
         bookings: pendingBookings,
+        leads: pendingLeads,
       },
       recentActivity,
       charts: {

@@ -1,4 +1,4 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 import { render } from "@react-email/render";
 import BookingConfirmedEmail from "@/components/emails/BookingConfirmedEmail";
 import BookingCancelledEmail from "@/components/emails/BookingCancelledEmail";
@@ -6,9 +6,21 @@ import WelcomeEmail from "@/components/emails/WelcomeEmail";
 import RoleAssignedEmail from "@/components/emails/RoleAssignedEmail";
 import TripCompletedEmail from "@/components/emails/TripCompletedEmail";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// ─── SMTP CONFIGURATION ──────────────────────────────────
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || "smtp.zoho.in",
+  port: parseInt(process.env.SMTP_PORT || "465"),
+  secure: parseInt(process.env.SMTP_PORT || "465") === 465, // true for 465, false for other ports
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+});
 
-const FROM_EMAIL = "Param Adventures <onboarding@resend.dev>";
+const FROM_EMAIL = process.env.SMTP_FROM || "Param Adventures <hello@paramadventures.in>";
+
+// check if we are ready to send
+const isReady = !!(process.env.SMTP_USER && process.env.SMTP_PASS);
 
 // ─── TYPES ─────────────────────────────────────────────
 
@@ -49,92 +61,87 @@ interface TripCompletedData {
 
 // ─── SENDERS ───────────────────────────────────────────
 
+async function sendEmail({ to, subject, html }: { to: string; subject: string; html: string }) {
+  if (!isReady) {
+    console.warn("⚠️ SMTP credentials not configured. Logging email to console.");
+    console.log(`To: ${to}\nSubject: ${subject}\n--- Content --- \n${html.substring(0, 200)}...\n---`);
+    return;
+  }
+
+  try {
+    const info = await transporter.sendMail({
+      from: FROM_EMAIL,
+      to,
+      subject,
+      html,
+    });
+    console.log(`✅ Email sent: ${info.messageId} to ${to}`);
+  } catch (err) {
+    console.error(`❌ Failed to send email to ${to}:`, err);
+  }
+}
+
 export async function sendBookingConfirmation(data: BookingEmailData) {
   try {
     const html = await render(BookingConfirmedEmail(data));
-
-    const { error } = await resend.emails.send({
-      from: FROM_EMAIL,
+    await sendEmail({
       to: data.userEmail,
       subject: `Booking Confirmed — ${data.experienceTitle}`,
       html,
     });
-
-    if (error) console.error("Failed to send booking confirmation:", error);
-    else console.log(`✅ Booking confirmation sent to ${data.userEmail}`);
   } catch (err) {
-    console.error("Email send error:", err);
+    console.error("Email layout error:", err);
   }
 }
 
 export async function sendBookingCancellation(data: BookingCancelledData) {
   try {
     const html = await render(BookingCancelledEmail(data));
-
-    const { error } = await resend.emails.send({
-      from: FROM_EMAIL,
+    await sendEmail({
       to: data.userEmail,
       subject: `Booking Cancelled — ${data.experienceTitle}`,
       html,
     });
-
-    if (error) console.error("Failed to send cancellation email:", error);
-    else console.log(`📧 Cancellation email sent to ${data.userEmail}`);
   } catch (err) {
-    console.error("Email send error:", err);
+    console.error("Email layout error:", err);
   }
 }
 
 export async function sendWelcomeEmail(data: WelcomeEmailData) {
   try {
     const html = await render(WelcomeEmail(data));
-
-    const { error } = await resend.emails.send({
-      from: FROM_EMAIL,
+    await sendEmail({
       to: data.userEmail,
       subject: "Welcome to Param Adventures! 🏔️",
       html,
     });
-
-    if (error) console.error("Failed to send welcome email:", error);
-    else console.log(`🎉 Welcome email sent to ${data.userEmail}`);
   } catch (err) {
-    console.error("Email send error:", err);
+    console.error("Email layout error:", err);
   }
 }
 
 export async function sendRoleAssignedEmail(data: RoleAssignedData) {
   try {
     const html = await render(RoleAssignedEmail(data));
-
-    const { error } = await resend.emails.send({
-      from: FROM_EMAIL,
+    await sendEmail({
       to: data.userEmail,
       subject: `Role Updated: ${data.roleName.replaceAll("_", " ")}`,
       html,
     });
-
-    if (error) console.error("Failed to send role assigned email:", error);
-    else console.log(`🛡️ Role assignment email sent to ${data.userEmail}`);
   } catch (err) {
-    console.error("Email send error:", err);
+    console.error("Email layout error:", err);
   }
 }
 
 export async function sendTripCompletedEmail(data: TripCompletedData) {
   try {
     const html = await render(TripCompletedEmail(data));
-
-    const { error } = await resend.emails.send({
-      from: FROM_EMAIL,
+    await sendEmail({
       to: data.userEmail,
       subject: `Hope you enjoyed ${data.experienceTitle}! 🏔️`,
       html,
     });
-
-    if (error) console.error("Failed to send trip completed email:", error);
-    else console.log(`🏕️ Trip completed email sent to ${data.userEmail}`);
   } catch (err) {
-    console.error("Email send error:", err);
+    console.error("Email layout error:", err);
   }
 }
