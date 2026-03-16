@@ -138,10 +138,12 @@ export default function ExperienceCard({
         </div>
 
         <div className="p-6 flex flex-col flex-1">
-          <h3 className="text-xl font-bold font-heading text-foreground mb-2 group-hover:text-primary transition-colors line-clamp-2">
-            {experience.title}
-          </h3>
-          <p className="text-foreground/70 text-sm line-clamp-2 mb-6 flex-1">
+          <div className="min-h-[3.5rem] mb-2">
+            <h3 className="text-xl font-bold font-heading text-foreground group-hover:text-primary transition-colors line-clamp-2">
+              {experience.title}
+            </h3>
+          </div>
+          <p className="text-foreground/70 text-sm line-clamp-2 mb-6 flex-1 min-h-[3rem]">
             {typeof experience.description === 'string' 
               ? experience.description 
               : getPlainTextFromJSON(experience.description)}
