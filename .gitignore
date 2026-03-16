@@ -45,3 +45,6 @@ next-env.d.ts
 
 # Phase 1 reference (local only)
 /reference/
+
+# Database Backups
+*.sql
