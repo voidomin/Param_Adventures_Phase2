@@ -195,12 +195,23 @@ export default function Footer() {
               </li>
               <li className="flex items-center gap-3">
                 <Mail className="w-5 h-5 text-primary shrink-0" />
-                <a
-                  href="mailto:hello@paramadventures.com"
-                  className="hover:text-primary transition-colors"
-                >
-                  hello@paramadventures.com
-                </a>
+                <div className="flex flex-col gap-1">
+                  <a
+                    href="mailto:info@paramadventures.in"
+                    className="hover:text-primary transition-colors"
+                  >
+                    info@paramadventures.in
+                  </a>
+                  <span className="text-[10px] uppercase tracking-wider text-foreground/40 font-bold">
+                    For Bug Reports:{" "}
+                    <a
+                      href="mailto:dev@paramadventures.in"
+                      className="text-primary/60 hover:text-primary transition-colors"
+                    >
+                      dev@paramadventures.in
+                    </a>
+                  </span>
+                </div>
               </li>
             </ul>
           </div>

@@ -94,7 +94,7 @@ export async function GET(
         name: companyInfo.companyName || "Param Adventures",
         address: companyInfo.companyAddress || "",
         phone: companyInfo.companyPhone || "+91 98765 43210",
-        email: companyInfo.companyEmail || "hello@paramadventures.com",
+        email: companyInfo.companyEmail || "booking@paramadventures.in",
         website: "www.paramadventures.com",
       },
     });

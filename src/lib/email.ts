@@ -17,7 +17,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-const FROM_EMAIL = process.env.SMTP_FROM || "Param Adventures <hello@paramadventures.in>";
+const FROM_EMAIL = process.env.SMTP_FROM || "Param Adventures <booking@paramadventures.in>";
 
 // check if we are ready to send
 const isReady = !!(process.env.SMTP_USER && process.env.SMTP_PASS);
