@@ -89,13 +89,14 @@ export default function StoryBlockForm({
     }
   };
 
-    const buttonContent = loading ? (
-      <Loader2 className="w-5 h-5 animate-spin" />
-    ) : isEditing ? (
-      "Save Changes"
-    ) : (
-      "Create Block"
-    );
+    let buttonContent;
+    if (loading) {
+      buttonContent = <Loader2 className="w-5 h-5 animate-spin" />;
+    } else if (isEditing) {
+      buttonContent = "Save Changes";
+    } else {
+      buttonContent = "Create Block";
+    }
 
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">

@@ -9,7 +9,7 @@ const storyBlockSchema = z.object({
   title: z.string().min(1, "Title is required").max(200),
   subtitle: z.string().max(500).optional().nullable(),
   body: z.string().max(2000).optional().nullable(),
-  imageUrl: z.string().url().optional().nullable(),
+  imageUrl: z.url().optional().nullable(),
   stat: z.string().max(50).optional().nullable(),
   order: z.number().int().min(0),
   isActive: z.boolean().optional(),
