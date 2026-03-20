@@ -124,5 +124,5 @@ export default async function OurStoryPage() {
     blocks = FALLBACK_BLOCKS as typeof blocks;
   }
 
-  return <StoryPageClient blocks={JSON.parse(JSON.stringify(blocks))} />;
+  return <StoryPageClient blocks={structuredClone(blocks)} />;
 }

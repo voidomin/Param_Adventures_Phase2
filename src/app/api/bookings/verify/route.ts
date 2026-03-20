@@ -18,7 +18,7 @@ async function sendBookingConfirmationEmail(bookingId: string) {
     },
   });
 
-  if (!booking || !booking.slot) return;
+  if (!booking?.slot) return;
 
   await sendBookingConfirmation({
     userName: booking.user.name,
@@ -65,9 +65,19 @@ export async function POST(request: NextRequest) {
       bookingId,
     } = parseResult.data;
 
+    // ─── Verification ────────────────────────────────────
+    const secret = process.env.RAZORPAY_KEY_SECRET;
+    if (!secret) {
+      console.error("RAZORPAY_KEY_SECRET is not defined");
+      return NextResponse.json(
+        { error: "Server configuration error" },
+        { status: 500 },
+      );
+    }
+
     // Verify HMAC signature
     const expectedSignature = crypto
-      .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET!)
+      .createHmac("sha256", secret)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest("hex");
 

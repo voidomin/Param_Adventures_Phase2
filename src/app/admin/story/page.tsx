@@ -163,7 +163,7 @@ export default function AdminStoryPage() {
           <div
             key={block.id}
             className={`bg-card border border-border rounded-xl p-4 flex flex-col md:flex-row gap-4 items-center transition-colors hover:border-foreground/30 ${
-              !block.isActive ? "opacity-50" : ""
+              block.isActive ? "" : "opacity-50"
             }`}
           >
             {/* Type badge */}
