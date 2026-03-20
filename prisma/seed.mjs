@@ -130,8 +130,16 @@ async function seedCategories() {
 
 async function seedAdmin() {
   console.log("👤 Seeding initial super admin...");
-  const adminEmail = process.env.ADMIN_EMAIL || "superadmin@paramadventures.in";
-  const rawPassword = process.env.ADMIN_PASSWORD || "Admin@1234";
+  
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const rawPassword = process.env.ADMIN_PASSWORD;
+
+  if (!adminEmail || !rawPassword) {
+    console.error("❌ ERROR: ADMIN_EMAIL or ADMIN_PASSWORD not found in environment.");
+    console.error("   Please set these variables in your .env file to create the initial admin.");
+    process.exit(1);
+  }
+
   const hash = await bcrypt.hash(rawPassword, 10);
 
   const superAdminRole = await prisma.role.findUnique({ where: { name: "SUPER_ADMIN" } });
