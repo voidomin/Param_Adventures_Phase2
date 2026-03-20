@@ -6,8 +6,24 @@ export function getPlainTextFromJSON(json: any): string {
 
   // Handle { html: "..." } format from seed data
   if (json.html && typeof json.html === "string") {
-    // Basic HTML stripping for preview
-    return json.html.replaceAll(/<[^>]*>/g, " ").replaceAll(/\s+/g, " ").trim();
+    // ReDoS-safe linear-time HTML stripping (O(n))
+    let result = "";
+    let insideTag = false;
+    const html = json.html;
+    
+    for (const char of html) {
+      if (char === "<") {
+        insideTag = true;
+      } else if (char === ">") {
+        insideTag = false;
+        result += " "; // Replace tag with space to prevent word merging
+      } else if (!insideTag) {
+        result += char;
+      }
+    }
+    
+    // Normalize whitespace safely
+    return result.replaceAll(/\s+/g, " ").trim();
   }
 
   // Handle Tiptap JSON format
