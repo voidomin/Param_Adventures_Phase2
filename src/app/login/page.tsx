@@ -3,8 +3,10 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
+import { motion } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
+import AuthLayout, { itemVariants } from "@/components/auth/AuthLayout";
+import { Eye, EyeOff, ArrowRight } from "lucide-react";
 
 function LoginContent() {
   const router = useRouter();
@@ -13,6 +15,7 @@ function LoginContent() {
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -33,105 +36,118 @@ function LoginContent() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-4">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="flex justify-center mb-8">
-          <Link href="/" className="flex items-center gap-3">
-            <Image
-              src="/param-logo.png"
-              alt="Param Adventures"
-              width={48}
-              height={48}
-              className="rounded-lg"
-            />
-            <span className="text-2xl font-heading font-bold text-white">
-              PARAM Adventures
-            </span>
-          </Link>
-        </div>
+    <AuthLayout
+      heading="Welcome Back"
+      subheading="Sign in to continue your adventure"
+      backgroundImage="/auth-login-bg.png"
+      imageHeading={"Welcome Back\nTo The Trail"}
+      imageSubheading="Pick up where you left off — your next summit is waiting."
+    >
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-red-500/10 border border-red-500/20 rounded-xl p-3 mb-5"
+        >
+          <p className="text-red-400 text-sm text-center">{error}</p>
+        </motion.div>
+      )}
 
-        {/* Card */}
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
-          <h1 className="text-2xl font-heading font-bold text-white text-center mb-2">
-            Welcome Back
-          </h1>
-          <p className="text-slate-400 text-center mb-8 text-sm">
-            Sign in to continue your adventure
-          </p>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <motion.div variants={itemVariants}>
+          <label
+            htmlFor="login-email"
+            className="block text-xs font-medium text-white/60 mb-1.5 uppercase tracking-wider"
+          >
+            Email
+          </label>
+          <input
+            id="login-email"
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all duration-300"
+            placeholder="you@example.com"
+          />
+        </motion.div>
 
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 mb-6">
-              <p className="text-red-400 text-sm text-center">{error}</p>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-slate-300 mb-1.5"
-              >
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all"
-                placeholder="you@example.com"
-              />
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label
-                  htmlFor="password"
-                  className="block text-sm font-medium text-slate-300"
-                >
-                  Password
-                </label>
-                <Link
-                  href="/forgot-password"
-                  className="text-xs text-amber-400 hover:text-amber-300 transition-colors"
-                >
-                  Forgot password?
-                </Link>
-              </div>
-              <input
-                id="password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all"
-                placeholder="••••••••"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full py-3 px-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-amber-500/25"
+        <motion.div variants={itemVariants}>
+          <div className="flex items-center justify-between mb-1.5">
+            <label
+              htmlFor="login-password"
+              className="block text-xs font-medium text-white/60 uppercase tracking-wider"
             >
-              {isSubmitting ? "Signing in..." : "Sign In"}
-            </button>
-          </form>
-
-          <p className="text-slate-400 text-sm text-center mt-6">
-            Don&apos;t have an account?{" "}
+              Password
+            </label>
             <Link
-              href="/register"
-              className="text-amber-400 hover:text-amber-300 font-medium transition-colors"
+              href="/forgot-password"
+              className="text-xs text-amber-400/80 hover:text-amber-300 transition-colors"
             >
-              Create one
+              Forgot password?
             </Link>
-          </p>
-        </div>
-      </div>
-    </div>
+          </div>
+          <div className="relative">
+            <input
+              id="login-password"
+              type={showPassword ? "text" : "password"}
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 pr-11 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all duration-300"
+              placeholder="••••••••"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
+        </motion.div>
+
+        <motion.div variants={itemVariants} className="pt-1">
+          <motion.button
+            type="submit"
+            disabled={isSubmitting}
+            className="group relative w-full py-3.5 px-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-amber-500/20 hover:shadow-xl hover:shadow-amber-500/30 overflow-hidden"
+            whileHover={{ y: -2 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <span className="relative z-10 flex items-center justify-center gap-2">
+              {isSubmitting ? "Signing in..." : "Sign In"}
+              {!isSubmitting && (
+                <motion.span
+                  animate={{ x: [0, 4, 0] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                >
+                  <ArrowRight className="w-4 h-4" />
+                </motion.span>
+              )}
+            </span>
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-r from-amber-600 to-orange-600"
+              initial={{ opacity: 0 }}
+              whileHover={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            />
+          </motion.button>
+        </motion.div>
+      </form>
+
+      <motion.div variants={itemVariants} className="mt-6 text-center">
+        <p className="text-white/40 text-sm">
+          Don&apos;t have an account?{" "}
+          <Link
+            href="/register"
+            className="text-amber-400 hover:text-amber-300 font-medium transition-colors"
+          >
+            Create one
+          </Link>
+        </p>
+      </motion.div>
+    </AuthLayout>
   );
 }
 

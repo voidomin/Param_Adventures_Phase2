@@ -3,8 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
+import { motion } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
+import AuthLayout, { itemVariants } from "@/components/auth/AuthLayout";
+import PasswordStrength from "@/components/auth/PasswordStrength";
+import { Eye, EyeOff, ArrowRight } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -14,6 +17,8 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -44,140 +49,177 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-4">
-      <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="flex justify-center mb-8">
-          <Link href="/" className="flex items-center gap-3">
-            <Image
-              src="/param-logo.png"
-              alt="Param Adventures"
-              width={48}
-              height={48}
-              className="rounded-lg"
+    <AuthLayout
+      heading="Create Account"
+      subheading="Join the adventure community"
+      backgroundImage="/auth-register-bg.png"
+      imageHeading={"Begin Your\nJourney Today"}
+      imageSubheading="Create an account and start exploring curated treks across India."
+      compact
+    >
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-red-500/10 border border-red-500/20 rounded-xl p-2.5 mb-4"
+        >
+          <p className="text-red-400 text-sm text-center">{error}</p>
+        </motion.div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-3.5">
+        {/* Name + Email in a row on desktop */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          <motion.div variants={itemVariants}>
+            <label
+              htmlFor="register-name"
+              className="block text-xs font-medium text-white/60 mb-1 uppercase tracking-wider"
+            >
+              Full Name
+            </label>
+            <input
+              id="register-name"
+              type="text"
+              required
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all duration-300"
+              placeholder="Your name"
             />
-            <span className="text-2xl font-heading font-bold text-white">
-              PARAM Adventures
-            </span>
-          </Link>
+          </motion.div>
+
+          <motion.div variants={itemVariants}>
+            <label
+              htmlFor="register-email"
+              className="block text-xs font-medium text-white/60 mb-1 uppercase tracking-wider"
+            >
+              Email
+            </label>
+            <input
+              id="register-email"
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all duration-300"
+              placeholder="you@example.com"
+            />
+          </motion.div>
         </div>
 
-        {/* Card */}
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl p-8 shadow-2xl">
-          <h1 className="text-2xl font-heading font-bold text-white text-center mb-2">
-            Create Account
-          </h1>
-          <p className="text-slate-400 text-center mb-8 text-sm">
-            Join the adventure community
-          </p>
-
-          {error && (
-            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 mb-6">
-              <p className="text-red-400 text-sm text-center">{error}</p>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label
-                htmlFor="name"
-                className="block text-sm font-medium text-slate-300 mb-1.5"
-              >
-                Full Name
-              </label>
-              <input
-                id="name"
-                type="text"
-                required
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all"
-                placeholder="Your full name"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-slate-300 mb-1.5"
-              >
-                Email
-              </label>
-              <input
-                id="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all"
-                placeholder="you@example.com"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-slate-300 mb-1.5"
-              >
-                Password
-              </label>
-              <input
-                id="password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all"
-                placeholder="Min. 8 characters"
-              />
-            </div>
-
-            <div>
-              <label
-                htmlFor="confirmPassword"
-                className="block text-sm font-medium text-slate-300 mb-1.5"
-              >
-                Confirm Password
-              </label>
-              <input
-                id="confirmPassword"
-                type="password"
-                required
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500/50 transition-all"
-                placeholder="••••••••"
-              />
-            </div>
-
+        <motion.div variants={itemVariants}>
+          <label
+            htmlFor="register-password"
+            className="block text-xs font-medium text-white/60 mb-1 uppercase tracking-wider"
+          >
+            Password
+          </label>
+          <div className="relative">
+            <input
+              id="register-password"
+              type={showPassword ? "text" : "password"}
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-3.5 py-2.5 pr-10 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all duration-300"
+              placeholder="Min. 8 characters"
+            />
             <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full py-3 px-4 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-semibold rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-amber-500/25"
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
             >
-              {isSubmitting ? "Creating account..." : "Create Account"}
+              {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
             </button>
-          </form>
-
-          <div className="mt-6 flex flex-col items-center gap-2">
-            <p className="text-slate-400 text-sm text-center">
-              Already have an account?{" "}
-              <Link
-                href="/login"
-                className="text-amber-400 hover:text-amber-300 font-medium transition-colors"
-              >
-                Sign in
-              </Link>
-            </p>
-            <Link
-              href="/forgot-password"
-              className="text-xs text-slate-500 hover:text-slate-400 transition-colors"
-            >
-              Forgot your password?
-            </Link>
           </div>
-        </div>
-      </div>
-    </div>
+          <PasswordStrength password={password} />
+        </motion.div>
+
+        <motion.div variants={itemVariants}>
+          <label
+            htmlFor="register-confirm"
+            className="block text-xs font-medium text-white/60 mb-1 uppercase tracking-wider"
+          >
+            Confirm Password
+          </label>
+          <div className="relative">
+            <input
+              id="register-confirm"
+              type={showConfirm ? "text" : "password"}
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className="w-full px-3.5 py-2.5 pr-10 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all duration-300"
+              placeholder="••••••••"
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirm(!showConfirm)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+            >
+              {showConfirm ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+            </button>
+          </div>
+          {confirmPassword && password !== confirmPassword && (
+            <motion.p
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-red-400 text-xs mt-1"
+            >
+              Passwords do not match
+            </motion.p>
+          )}
+        </motion.div>
+
+        <motion.div variants={itemVariants} className="pt-1">
+          <motion.button
+            type="submit"
+            disabled={isSubmitting}
+            className="group relative w-full py-3 px-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-amber-500/20 hover:shadow-xl hover:shadow-amber-500/30 overflow-hidden"
+            whileHover={{ y: -2 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            <span className="relative z-10 flex items-center justify-center gap-2">
+              {isSubmitting ? "Creating account..." : "Create Account"}
+              {!isSubmitting && (
+                <motion.span
+                  animate={{ x: [0, 4, 0] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                >
+                  <ArrowRight className="w-4 h-4" />
+                </motion.span>
+              )}
+            </span>
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-r from-amber-600 to-orange-600"
+              initial={{ opacity: 0 }}
+              whileHover={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            />
+          </motion.button>
+        </motion.div>
+      </form>
+
+      <motion.div
+        variants={itemVariants}
+        className="mt-4 flex flex-col items-center gap-1.5"
+      >
+        <p className="text-white/40 text-sm">
+          Already have an account?{" "}
+          <Link
+            href="/login"
+            className="text-amber-400 hover:text-amber-300 font-medium transition-colors"
+          >
+            Sign in
+          </Link>
+        </p>
+        <Link
+          href="/forgot-password"
+          className="text-xs text-white/25 hover:text-white/40 transition-colors"
+        >
+          Forgot your password?
+        </Link>
+      </motion.div>
+    </AuthLayout>
   );
 }
