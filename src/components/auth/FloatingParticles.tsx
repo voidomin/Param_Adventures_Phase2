@@ -30,18 +30,24 @@ export default function FloatingParticles() {
       canvas.height = canvas.offsetHeight;
     };
 
+    const secureRandom = () => {
+      const array = new Uint32Array(1);
+      window.crypto.getRandomValues(array);
+      return array[0] / 4294967296;
+    };
+
     const createParticles = () => {
       particles = [];
       const count = Math.floor((canvas.width * canvas.height) / 15000);
       for (let i = 0; i < count; i++) {
         particles.push({
-          x: Math.random() * canvas.width,
-          y: Math.random() * canvas.height,
-          size: Math.random() * 2 + 0.5,
-          speedX: (Math.random() - 0.5) * 0.3,
-          speedY: (Math.random() - 0.5) * 0.3,
-          opacity: Math.random() * 0.5 + 0.1,
-          fadeDir: Math.random() > 0.5 ? 1 : -1,
+          x: secureRandom() * canvas.width,
+          y: secureRandom() * canvas.height,
+          size: secureRandom() * 2 + 0.5,
+          speedX: (secureRandom() - 0.5) * 0.3,
+          speedY: (secureRandom() - 0.5) * 0.3,
+          opacity: secureRandom() * 0.5 + 0.1,
+          fadeDir: secureRandom() > 0.5 ? 1 : -1,
         });
       }
     };

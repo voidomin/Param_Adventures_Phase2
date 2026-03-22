@@ -13,7 +13,7 @@ export async function GET() {
       return NextResponse.json({ quote: null });
     }
 
-    const skip = count > 1 ? Math.floor(require("crypto").randomInt(0, count)) : 0;
+    const skip = count > 1 ? randomInt(0, count) : 0;
     const quote = await prisma.adventureQuote.findFirst({
       where: { isActive: true },
       skip: skip,
