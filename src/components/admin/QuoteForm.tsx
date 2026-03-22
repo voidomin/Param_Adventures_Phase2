@@ -4,22 +4,25 @@ import React, { useState } from "react";
 import { X } from "lucide-react";
 
 interface Quote {
-  id?: string;
-  text: string;
-  author?: string | null;
-  isActive: boolean;
+  readonly id?: string;
+  readonly text: string;
+  readonly author?: string | null;
+  readonly isActive: boolean;
 }
 
 interface QuoteFormProps {
-  quote?: Quote | null;
-  onClose: () => void;
-  onSuccess: () => void;
+  readonly quote?: Quote | null;
+  readonly onClose: () => void;
+  readonly onSuccess: () => void;
 }
 
 export default function QuoteForm({ quote, onClose, onSuccess }: QuoteFormProps) {
-  const [formData, setFormData] = useState<Quote>(
-    quote || { text: "", author: "", isActive: true },
-  );
+  const [formData, setFormData] = useState<Quote>(() => ({
+    id: quote?.id,
+    text: quote?.text || "",
+    author: quote?.author || "",
+    isActive: quote?.isActive ?? true,
+  }));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,6 +65,7 @@ export default function QuoteForm({ quote, onClose, onSuccess }: QuoteFormProps)
             {quote ? "Edit Quote" : "Add New Quote"}
           </h3>
           <button
+            type="button"
             onClick={onClose}
             className="text-foreground/40 hover:text-foreground transition-colors"
           >
@@ -77,10 +81,11 @@ export default function QuoteForm({ quote, onClose, onSuccess }: QuoteFormProps)
           )}
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground/60">
+            <label htmlFor="quote-text" className="text-sm font-medium text-foreground/60">
               Quote Text
             </label>
             <textarea
+              id="quote-text"
               required
               value={formData.text}
               onChange={(e) =>
@@ -92,10 +97,11 @@ export default function QuoteForm({ quote, onClose, onSuccess }: QuoteFormProps)
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground/60">
+            <label htmlFor="quote-author" className="text-sm font-medium text-foreground/60">
               Author (Optional)
             </label>
             <input
+              id="quote-author"
               type="text"
               value={formData.author || ""}
               onChange={(e) =>
@@ -109,6 +115,7 @@ export default function QuoteForm({ quote, onClose, onSuccess }: QuoteFormProps)
           <div className="flex items-center gap-3 py-2">
             <button
               type="button"
+              id="quote-active-toggle"
               onClick={() =>
                 setFormData({ ...formData, isActive: !formData.isActive })
               }
@@ -122,9 +129,9 @@ export default function QuoteForm({ quote, onClose, onSuccess }: QuoteFormProps)
                 }`}
               />
             </button>
-            <span className="text-sm font-medium text-foreground">
+            <label htmlFor="quote-active-toggle" className="text-sm font-medium text-foreground cursor-pointer">
               Active (Visible on Auth Pages)
-            </span>
+            </label>
           </div>
 
           <div className="flex justify-end gap-3 mt-8">
