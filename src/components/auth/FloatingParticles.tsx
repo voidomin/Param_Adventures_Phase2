@@ -32,7 +32,7 @@ export default function FloatingParticles() {
 
     const secureRandom = () => {
       const array = new Uint32Array(1);
-      window.crypto.getRandomValues(array);
+      globalThis.crypto.getRandomValues(array);
       return array[0] / 4294967296;
     };
 
@@ -96,7 +96,6 @@ export default function FloatingParticles() {
     <canvas
       ref={canvasRef}
       className="absolute inset-0 w-full h-full pointer-events-none z-0"
-      aria-hidden="true"
     />
   );
 }
