@@ -53,6 +53,7 @@ export default function RegisterPage() {
       heading="Create Account"
       subheading="Join the adventure community"
       backgroundImage="/auth-register-bg.png"
+      settingsKey="auth_register_bg"
       imageHeading={"Begin Your\nJourney Today"}
       imageSubheading="Create an account and start exploring curated treks across India."
       compact

@@ -10,6 +10,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import HeroForm from "@/components/admin/HeroForm";
+import AuthBackgroundManager from "@/components/admin/AuthBackgroundManager";
 
 interface HeroSlide {
   id: string;
@@ -269,6 +270,19 @@ export default function AdminHeroPage() {
           onSuccess={onFormSuccess}
         />
       )}
+
+      {/* Auth Background Management */}
+      <div className="mt-12 pt-8 border-t border-border">
+        <div className="mb-6">
+          <h2 className="text-2xl font-heading font-bold text-foreground">
+            Auth Page Backgrounds
+          </h2>
+          <p className="text-foreground/60 mt-1">
+            Upload custom images or videos for the Sign In &amp; Sign Up pages.
+          </p>
+        </div>
+        <AuthBackgroundManager />
+      </div>
     </div>
   );
 }

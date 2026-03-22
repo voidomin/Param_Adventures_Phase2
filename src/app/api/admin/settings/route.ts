@@ -1,88 +1,94 @@
-import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { NextResponse, NextRequest } from "next/server";
 import { authorizeRequest } from "@/lib/api-auth";
+import { prisma } from "@/lib/db";
+import { z } from "zod";
 
-/**
- * GET /api/admin/settings
- * Fetch all platform settings. Defaults are provided if missing.
- */
+// GET /api/admin/settings?key=auth_login_bg
 export async function GET(request: NextRequest) {
-  const auth = await authorizeRequest(request, "ops:view-all-trips"); // Basic admin check
-  if (!auth.authorized) return auth.response;
-
   try {
-    const settings = await prisma.platformSetting.findMany();
-    
-    // Convert to a neat object
-    const map = settings.reduce((acc: Record<string, unknown>, current: { key: string; value: string }) => {
-      try {
-         // Attempt to parse JSON objects (like taxConfig)
-         acc[current.key] = JSON.parse(current.value);
-      } catch {
-         // Fallback to string
-         console.warn(`Could not parse JSON for setting ${current.key}, returning as string`);
-         acc[current.key] = current.value;
-      }
-      return acc;
-    }, {});
+    const auth = await authorizeRequest(request, ["system:config"]);
+    if (!auth.authorized) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
 
-    return NextResponse.json({ settings: map });
-  } catch (error) {
+    const key = request.nextUrl.searchParams.get("key");
+
+    if (key) {
+      const setting = await prisma.siteSetting.findUnique({ where: { key } });
+      return NextResponse.json({ setting });
+    }
+
+    // Return all settings if no key specified
+    const settings = await prisma.siteSetting.findMany();
+    return NextResponse.json({ settings });
+  } catch (error: unknown) {
     console.error("Fetch settings error:", error);
     return NextResponse.json(
-      { error: "Failed to fetch platform settings." },
+      { error: "Failed to fetch settings" },
       { status: 500 },
     );
   }
 }
 
-import { z } from "zod";
-
-const settingsUpdateSchema = z.object({
-  settings: z.record(z.string(), z.any()),
+const settingSchema = z.object({
+  key: z.string().min(1),
+  value: z.string().min(1),
 });
 
-/**
- * PUT /api/admin/settings
- * Update one or more platform settings
- */
+// PUT /api/admin/settings — upsert a setting
 export async function PUT(request: NextRequest) {
-  const auth = await authorizeRequest(request, "trip:create"); // Super admin/Manager check
-  if (!auth.authorized) return auth.response;
-
   try {
-    const body = await request.json();
+    const auth = await authorizeRequest(request, ["system:config"]);
+    if (!auth.authorized) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
 
-    // ─── Validation ──────────────────────────────────────
-    const parseResult = settingsUpdateSchema.safeParse(body);
+    const body = await request.json();
+    const parseResult = settingSchema.safeParse(body);
     if (!parseResult.success) {
       return NextResponse.json(
-        { error: "Invalid settings payload" },
+        { error: parseResult.error.issues[0].message },
         { status: 400 },
       );
     }
-    const { settings } = parseResult.data;
 
-    // Process as Key-Value object
-    const promises = Object.entries(settings).map(([key, value]) => {
-      return prisma.platformSetting.upsert({
-        where: { key },
-        update: { value: String(value) },
-        create: {
-          key,
-          value: String(value),
-          description: `Platform setting: ${key}`,
-        },
-      });
+    const { key, value } = parseResult.data;
+
+    const setting = await prisma.siteSetting.upsert({
+      where: { key },
+      update: { value },
+      create: { key, value },
     });
 
-    await Promise.all(promises);
-
-    return NextResponse.json({ message: "Settings updated successfully." });
-  } catch (error) {
-    console.error("Update settings error:", error);
+    return NextResponse.json({ setting });
+  } catch (error: unknown) {
+    console.error("Update setting error:", error);
     return NextResponse.json(
-      { error: "Failed to update platform settings." },
+      { error: "Failed to update setting" },
+      { status: 500 },
+    );
+  }
+}
+
+// DELETE /api/admin/settings?key=auth_login_bg
+export async function DELETE(request: NextRequest) {
+  try {
+    const auth = await authorizeRequest(request, ["system:config"]);
+    if (!auth.authorized) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    const key = request.nextUrl.searchParams.get("key");
+    if (!key) {
+      return NextResponse.json({ error: "Key is required" }, { status: 400 });
+    }
+
+    await prisma.siteSetting.deleteMany({ where: { key } });
+    return NextResponse.json({ success: true });
+  } catch (error: unknown) {
+    console.error("Delete setting error:", error);
+    return NextResponse.json(
+      { error: "Failed to delete setting" },
       { status: 500 },
     );
   }

@@ -413,6 +413,12 @@ model AuditLog {
   timestamp  DateTime @default(now())
 }
 
+model SiteSetting {
+  id    String @id @default(uuid())
+  key   String @unique // e.g. "auth_login_bg", "auth_register_bg"
+  value String // URL to the media
+}
+
 model ExperienceReview {
   id         String @id @default(uuid())
   rating     Int    @db.SmallInt // 1 to 5

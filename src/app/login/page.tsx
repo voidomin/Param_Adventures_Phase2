@@ -40,6 +40,7 @@ function LoginContent() {
       heading="Welcome Back"
       subheading="Sign in to continue your adventure"
       backgroundImage="/auth-login-bg.png"
+      settingsKey="auth_login_bg"
       imageHeading={"Welcome Back\nTo The Trail"}
       imageSubheading="Pick up where you left off — your next summit is waiting."
     >

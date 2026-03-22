@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
@@ -11,6 +11,7 @@ interface AuthLayoutProps {
   heading: string;
   subheading: string;
   backgroundImage?: string;
+  settingsKey?: string; // e.g. "auth_login_bg" or "auth_register_bg"
   imageHeading?: string;
   imageSubheading?: string;
   compact?: boolean;
@@ -40,10 +41,26 @@ export default function AuthLayout({
   heading,
   subheading,
   backgroundImage = "/auth-bg.png",
+  settingsKey,
   imageHeading = "Your Next\nAdventure Awaits",
   imageSubheading = "Explore breathtaking treks across India\u2019s most stunning landscapes.",
   compact = false,
 }: AuthLayoutProps) {
+  const [dynamicBg, setDynamicBg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!settingsKey) return;
+    fetch(`/api/settings?key=${settingsKey}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.value) setDynamicBg(data.value);
+      })
+      .catch(() => {});
+  }, [settingsKey]);
+
+  const bgSrc = dynamicBg || backgroundImage;
+  const isVideo = /\.(mp4|webm|ogv)$/i.test(bgSrc) || bgSrc.includes("/video/upload/");
+
   return (
     <div className="min-h-screen flex bg-[#060606]">
       {/* Left — Form Side */}
@@ -112,14 +129,26 @@ export default function AuthLayout({
           animate={{ scale: 1 }}
           transition={{ duration: 1.5, ease: "easeOut" }}
         >
-          <Image
-            src={backgroundImage}
-            alt="Adventure landscape"
-            fill
-            className="object-cover"
-            priority
-            quality={90}
-          />
+          {isVideo ? (
+            <video
+              src={bgSrc}
+              className="absolute inset-0 w-full h-full object-cover"
+              autoPlay
+              muted
+              loop
+              playsInline
+            />
+          ) : (
+            <Image
+              src={bgSrc}
+              alt="Adventure landscape"
+              fill
+              className="object-cover"
+              priority
+              quality={90}
+              {...(dynamicBg ? { unoptimized: true } : {})}
+            />
+          )}
         </motion.div>
 
         {/* Gradient Overlays */}
