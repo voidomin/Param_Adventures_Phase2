@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import crypto from "node:crypto";
 import { z } from "zod";
+import { sendResetPasswordEmail } from "@/lib/email";
 
 const forgotPasswordSchema = z.object({
   email: z.email("Invalid email address"),
@@ -60,18 +61,24 @@ export async function POST(request: NextRequest) {
       "http://localhost:3000";
     const resetLink = `${baseUrl}/reset-password?token=${resetToken}`;
 
-    // Note: Since Resend integration logic isn't fully defined yet, we'll simulate the console
-    // sending for now until we identify if there's a specific wrapper used.
-    console.log(`[AUTH] Password Reset Link for ${user.email}: ${resetLink}`);
+    // Send real email
+    await sendResetPasswordEmail({
+      userName: user.name || "Adventurer",
+      userEmail: user.email,
+      resetLink,
+    });
+
+    console.log(`[AUTH] Password Reset Link for ${user.email} sent via Zoho.`);
 
     return NextResponse.json(
       { message: "If an account exists, a reset link has been sent." },
       { status: 200 },
     );
-  } catch (error) {
-    console.error("Forgot Password error:", error);
+  } catch (error: any) {
+    console.error("[AUTH] Forgot Password error:", error);
+    if (error.stack) console.error(error.stack);
     return NextResponse.json(
-      { error: "Internal server error." },
+      { error: "Internal server error.", details: error.message },
       { status: 500 },
     );
   }

@@ -10,7 +10,8 @@ if (process.env.NODE_ENV === "production" && !process.env.FORCE_SEED) {
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
-import bcrypt from "bcryptjs";
+import crypto from "node:crypto";
+import nodemailer from "nodemailer";
 
 const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
@@ -129,40 +130,86 @@ async function seedCategories() {
 // ─── INITIAL ADMIN ────────────────────────────────────────
 
 async function seedAdmin() {
-  console.log("👤 Seeding initial super admin...");
+  console.log("👤 Seeding 4 super admins...");
   
-  const adminEmail = process.env.ADMIN_EMAIL;
-  const rawPassword = process.env.ADMIN_PASSWORD;
-
-  if (!adminEmail || !rawPassword) {
-    console.error("❌ ERROR: ADMIN_EMAIL or ADMIN_PASSWORD not found in environment.");
-    console.error("   Please set these variables in your .env file to create the initial admin.");
-    process.exit(1);
+  const superAdminRole = await prisma.role.findUnique({ where: { name: "SUPER_ADMIN" } });
+  if (!superAdminRole) {
+    console.error("❌ ERROR: SUPER_ADMIN role not found.");
+    return;
   }
 
-  const hash = await bcrypt.hash(rawPassword, 10);
+  const ADMINS = [
+    { email: "paramadventures@zohomail.in", name: "Param Adventures" },
+    { email: "booking@paramadventures.in", name: "Param Adventures Bookings" },
+    { email: "dev@paramadventures.in", name: "Param Dev" },
+    { email: "info@paramadventures.in", name: "Param Info" },
+  ];
 
-  const superAdminRole = await prisma.role.findUnique({ where: { name: "SUPER_ADMIN" } });
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
-  await prisma.user.upsert({
-    where: { email: adminEmail },
-    update: { 
-      name: "Param Admin", 
-      roleId: superAdminRole.id,
-      isVerified: true
-    },
-    create: {
-      email: adminEmail,
-      password: hash,
-      name: "Param Admin",
-      roleId: superAdminRole.id,
-      isVerified: true,
-      phoneNumber: "+91-0000000000",
-      gender: "Other",
-      age: 30,
-    },
-  });
-  console.log(`   ✓ Admin created: ${adminEmail}`);
+  for (const admin of ADMINS) {
+    // Generate a secure reset token for initial setup
+    const resetToken = crypto.randomBytes(32).toString("hex");
+    const resetTokenExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    await prisma.user.upsert({
+      where: { email: admin.email },
+      update: { 
+        name: admin.name, 
+        roleId: superAdminRole.id,
+        isVerified: true
+      },
+      create: {
+        email: admin.email,
+        name: admin.name,
+        roleId: superAdminRole.id,
+        isVerified: true,
+        phoneNumber: "+91-0000000000",
+        resetToken: resetToken,
+        resetTokenExpiry: resetTokenExpiry,
+        gender: "Other",
+        age: 30,
+      },
+    });
+
+    const setupLink = `${baseUrl}/reset-password?token=${resetToken}`;
+    console.log(`   ✓ Admin: ${admin.email}`);
+    console.log(`     Setup Link: ${setupLink}`);
+
+    // Automated Invite Email (if configured)
+    if (process.env.SMTP_USER && process.env.SMTP_PASS && process.env.SEND_INVITES === "true") {
+      try {
+        const transporter = nodemailer.createTransport({
+          host: process.env.SMTP_HOST || "smtp.zoho.in",
+          port: Number.parseInt(process.env.SMTP_PORT || "465"),
+          secure: Number.parseInt(process.env.SMTP_PORT || "465") === 465,
+          auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS,
+          },
+        });
+
+        await transporter.sendMail({
+          from: process.env.SMTP_FROM || `"Param Adventures" <${process.env.SMTP_USER}>`,
+          to: admin.email,
+          subject: "Welcome to Param Adventures Admin Team! 🚀",
+          html: `
+            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+              <h1 style="color: #4F46E5;">Welcome to the Team! 🏔️</h1>
+              <p>Hello ${admin.name},</p>
+              <p>The Param Adventures platform has been deployed and you've been assigned <strong>Super Admin</strong> access.</p>
+              <p>To get started, please click the link below to set your account password:</p>
+              <a href="${setupLink}" style="display: inline-block; padding: 12px 24px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">Set Your Password →</a>
+              <p style="margin-top: 30px; font-size: 12px; color: #666;">This link is unique to your account and will expire in 7 days.</p>
+            </div>
+          `,
+        });
+        console.log(`     ✉️  Invite sent to ${admin.email}`);
+      } catch (err) {
+        console.error(`     ❌ Failed to send invite to ${admin.email}:`, err.message);
+      }
+    }
+  }
 }
 
 // ─── HERO SLIDES ──────────────────────────────────────────

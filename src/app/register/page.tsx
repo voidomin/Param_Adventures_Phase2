@@ -159,15 +159,23 @@ export default function RegisterPage() {
             </button>
           </form>
 
-          <p className="text-slate-400 text-sm text-center mt-6">
-            Already have an account?{" "}
+          <div className="mt-6 flex flex-col items-center gap-2">
+            <p className="text-slate-400 text-sm text-center">
+              Already have an account?{" "}
+              <Link
+                href="/login"
+                className="text-amber-400 hover:text-amber-300 font-medium transition-colors"
+              >
+                Sign in
+              </Link>
+            </p>
             <Link
-              href="/login"
-              className="text-amber-400 hover:text-amber-300 font-medium transition-colors"
+              href="/forgot-password"
+              className="text-xs text-slate-500 hover:text-slate-400 transition-colors"
             >
-              Sign in
+              Forgot your password?
             </Link>
-          </p>
+          </div>
         </div>
       </div>
     </div>

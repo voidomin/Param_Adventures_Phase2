@@ -5,6 +5,9 @@ import BookingCancelledEmail from "@/components/emails/BookingCancelledEmail";
 import WelcomeEmail from "@/components/emails/WelcomeEmail";
 import RoleAssignedEmail from "@/components/emails/RoleAssignedEmail";
 import TripCompletedEmail from "@/components/emails/TripCompletedEmail";
+import PasswordResetEmail from "@/components/emails/PasswordResetEmail";
+import AdminInviteEmail from "@/components/emails/AdminInviteEmail";
+import React from "react";
 
 // ─── SMTP CONFIGURATION ──────────────────────────────────
 const transporter = nodemailer.createTransport({
@@ -59,6 +62,18 @@ interface TripCompletedData {
   experienceSlug: string;
 }
 
+interface PasswordResetData {
+  userName: string;
+  userEmail: string;
+  resetLink: string;
+}
+
+interface AdminInviteData {
+  userName: string;
+  userEmail: string;
+  setupLink: string;
+}
+
 // ─── SENDERS ───────────────────────────────────────────
 
 async function sendEmail({ to, subject, html }: { to: string; subject: string; html: string }) {
@@ -83,7 +98,7 @@ async function sendEmail({ to, subject, html }: { to: string; subject: string; h
 
 export async function sendBookingConfirmation(data: BookingEmailData) {
   try {
-    const html = await render(BookingConfirmedEmail(data));
+    const html = await render(<BookingConfirmedEmail {...data} />);
     await sendEmail({
       to: data.userEmail,
       subject: `Booking Confirmed — ${data.experienceTitle}`,
@@ -96,7 +111,7 @@ export async function sendBookingConfirmation(data: BookingEmailData) {
 
 export async function sendBookingCancellation(data: BookingCancelledData) {
   try {
-    const html = await render(BookingCancelledEmail(data));
+    const html = await render(<BookingCancelledEmail {...data} />);
     await sendEmail({
       to: data.userEmail,
       subject: `Booking Cancelled — ${data.experienceTitle}`,
@@ -109,7 +124,7 @@ export async function sendBookingCancellation(data: BookingCancelledData) {
 
 export async function sendWelcomeEmail(data: WelcomeEmailData) {
   try {
-    const html = await render(WelcomeEmail(data));
+    const html = await render(<WelcomeEmail {...data} />);
     await sendEmail({
       to: data.userEmail,
       subject: "Welcome to Param Adventures! 🏔️",
@@ -122,7 +137,7 @@ export async function sendWelcomeEmail(data: WelcomeEmailData) {
 
 export async function sendRoleAssignedEmail(data: RoleAssignedData) {
   try {
-    const html = await render(RoleAssignedEmail(data));
+    const html = await render(<RoleAssignedEmail {...data} />);
     await sendEmail({
       to: data.userEmail,
       subject: `Role Updated: ${data.roleName.replaceAll("_", " ")}`,
@@ -135,10 +150,36 @@ export async function sendRoleAssignedEmail(data: RoleAssignedData) {
 
 export async function sendTripCompletedEmail(data: TripCompletedData) {
   try {
-    const html = await render(TripCompletedEmail(data));
+    const html = await render(<TripCompletedEmail {...data} />);
     await sendEmail({
       to: data.userEmail,
       subject: `Hope you enjoyed ${data.experienceTitle}! 🏔️`,
+      html,
+    });
+  } catch (err) {
+    console.error("Email layout error:", err);
+  }
+}
+
+export async function sendResetPasswordEmail(data: PasswordResetData) {
+  try {
+    const html = await render(<PasswordResetEmail {...data} />);
+    await sendEmail({
+      to: data.userEmail,
+      subject: "Reset your Param Adventures password 🏔️",
+      html,
+    });
+  } catch (err) {
+    console.error("Email layout error:", err);
+  }
+}
+
+export async function sendAdminInviteEmail(data: AdminInviteData) {
+  try {
+    const html = await render(<AdminInviteEmail {...data} />);
+    await sendEmail({
+      to: data.userEmail,
+      subject: "Welcome to Param Adventures Admin Team! 🚀",
       html,
     });
   } catch (err) {
