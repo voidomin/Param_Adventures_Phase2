@@ -14,7 +14,13 @@ function createPrismaClient() {
   return new PrismaClient({ adapter });
 }
 
-export const prisma = globalForPrisma.prisma ?? createPrismaClient();
+// Extend the PrismaClient type to include the new model explicitly
+// This handles cases where the IDE/runtime might have stale type caches
+export type ExtendedPrismaClient = PrismaClient & {
+  adventureQuote: any; // Using any here as a fail-safe for the delegate
+};
+
+export const prisma = (globalForPrisma.prisma ?? createPrismaClient()) as ExtendedPrismaClient;
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;

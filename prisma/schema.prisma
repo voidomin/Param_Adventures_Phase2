@@ -419,6 +419,14 @@ model SiteSetting {
   value String // URL to the media
 }
 
+model AdventureQuote {
+  id        String   @id @default(uuid())
+  text      String   @db.Text
+  author    String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
 model ExperienceReview {
   id         String @id @default(uuid())
   rating     Int    @db.SmallInt // 1 to 5

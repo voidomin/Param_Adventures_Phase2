@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import HeroForm from "@/components/admin/HeroForm";
 import AuthBackgroundManager from "@/components/admin/AuthBackgroundManager";
+import QuoteManager from "@/components/admin/QuoteManager";
 
 interface HeroSlide {
   id: string;
@@ -282,6 +283,11 @@ export default function AdminHeroPage() {
           </p>
         </div>
         <AuthBackgroundManager />
+      </div>
+
+      {/* Quotes Management */}
+      <div className="mt-12 pt-8 border-t border-border">
+        <QuoteManager />
       </div>
     </div>
   );

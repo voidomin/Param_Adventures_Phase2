@@ -5,16 +5,17 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import FloatingParticles from "./FloatingParticles";
+import { FilmGrain, LightLeak } from "./AestheticOverlays";
 
 interface AuthLayoutProps {
-  children: ReactNode;
-  heading: string;
-  subheading: string;
-  backgroundImage?: string;
-  settingsKey?: string; // e.g. "auth_login_bg" or "auth_register_bg"
-  imageHeading?: string;
-  imageSubheading?: string;
-  compact?: boolean;
+  readonly children: ReactNode;
+  readonly heading: string;
+  readonly subheading: string;
+  readonly backgroundImage?: string;
+  readonly settingsKey?: string; // e.g. "auth_login_bg" or "auth_register_bg"
+  readonly imageHeading?: string;
+  readonly imageSubheading?: string;
+  readonly compact?: boolean;
 }
 
 const containerVariants = {
@@ -47,13 +48,24 @@ export default function AuthLayout({
   compact = false,
 }: AuthLayoutProps) {
   const [dynamicBg, setDynamicBg] = useState<string | null>(null);
+  const [quote, setQuote] = useState<{ text: string; author?: string | null } | null>(null);
 
   useEffect(() => {
-    if (!settingsKey) return;
-    fetch(`/api/settings?key=${settingsKey}`)
+    // Fetch background
+    if (settingsKey) {
+      fetch(`/api/settings?key=${settingsKey}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.value) setDynamicBg(data.value);
+        })
+        .catch(() => {});
+    }
+
+    // Fetch random quote
+    fetch("/api/quotes")
       .then((res) => res.json())
       .then((data) => {
-        if (data.value) setDynamicBg(data.value);
+        if (data.quote) setQuote(data.quote);
       })
       .catch(() => {});
   }, [settingsKey]);
@@ -62,10 +74,43 @@ export default function AuthLayout({
   const isVideo = /\.(mp4|webm|ogv)$/i.test(bgSrc) || bgSrc.includes("/video/upload/");
 
   return (
-    <div className="min-h-screen flex bg-[#060606]">
+    <div className="min-h-screen flex bg-[#060606] selection:bg-amber-500/30">
+      <FilmGrain />
+      
       {/* Left — Form Side */}
       <div className={`relative w-full lg:w-[55%] flex flex-col items-center justify-center px-4 sm:px-6 overflow-hidden ${compact ? "py-4 sm:py-6" : "py-8 sm:py-12"}`}>
         <FloatingParticles />
+
+        {/* Adventure Trail Path */}
+        <div className="absolute inset-0 pointer-events-none opacity-[0.07] overflow-hidden">
+          <svg className="w-full h-full" viewBox="0 0 400 800" fill="none">
+            <motion.path
+              d="M-50,150 C50,250 350,150 450,300 S150,550 450,700"
+              stroke="url(#trail-gradient)"
+              strokeWidth="2.5"
+              strokeDasharray="6 12"
+              strokeLinecap="round"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: 1 }}
+              transition={{ duration: 4, ease: "easeInOut" }}
+            />
+            <motion.path
+              d="M-50,150 C50,250 350,150 450,300 S150,550 450,700"
+              stroke="#F59E0B"
+              strokeWidth="3"
+              strokeDasharray="0.1 200"
+              strokeLinecap="round"
+              animate={{ strokeDashoffset: [-200, 0] }}
+              transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+            />
+            <defs>
+              <linearGradient id="trail-gradient" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#F59E0B" />
+                <stop offset="100%" stopColor="#D97706" />
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
 
         {/* Content */}
         <motion.div
@@ -146,7 +191,7 @@ export default function AuthLayout({
               className="object-cover"
               priority
               quality={90}
-              {...(dynamicBg ? { unoptimized: true } : {})}
+              unoptimized={!!dynamicBg}
             />
           )}
         </motion.div>
@@ -154,9 +199,11 @@ export default function AuthLayout({
         {/* Gradient Overlays */}
         <div className="absolute inset-0 bg-gradient-to-r from-[#060606] via-[#060606]/50 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#060606]/80 via-transparent to-[#060606]/30" />
+        <LightLeak />
 
         {/* Text over image */}
-        <div className="absolute bottom-12 left-10 right-10 z-10">
+        <div className="absolute bottom-12 left-10 right-10 z-10 space-y-8">
+          {/* Main Tagline */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
@@ -173,10 +220,35 @@ export default function AuthLayout({
             <h2 className="text-4xl font-heading font-bold text-white leading-tight mb-3 whitespace-pre-line">
               {imageHeading}
             </h2>
-            <p className="text-white/50 text-sm max-w-xs">
+            <p className="text-white/50 text-sm max-w-xs leading-relaxed">
               {imageSubheading}
             </p>
           </motion.div>
+
+          {/* Dynamic Quote */}
+          {quote && (
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 1.2, duration: 1 }}
+              className="relative pl-6 border-l border-amber-500/30"
+            >
+              <div className="text-white/40 mb-2">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M14.017 21L14.017 18C14.017 16.8954 14.9124 16 16.017 16H19.017C20.1216 16 21.017 16.8954 21.017 18V21C21.017 22.1046 20.1216 23 19.017 23H16.017C14.9124 23 14.017 22.1046 14.017 21ZM14.017 21C14.017 19.8954 13.1216 19 12.017 19H9.01705C7.91248 19 7.01705 19.8954 7.01705 21V23H12.017C13.1216 23 14.017 22.1046 14.017 21ZM5.01705 21.0116V18C5.01705 15.7909 6.80791 14 9.01705 14H12.017C14.2262 14 16.017 15.7909 16.017 18V21.0116C16.017 22.1163 15.1216 23.0116 14.017 23.0116H9.01705C7.91248 23.0116 7.01705 22.1163 7.01705 21.0116Z" opacity="0"/>
+                  <path d="M11.192 15.757c0-.962-.139-1.897-.412-2.805a10.05 10.05 0 00-1.03-2.31c-.443-.75-.989-1.425-1.616-2.025C7.502 8.01 6.83 7.518 6.13 7.15l-1.04-.506-.316.924c1.233.568 2.21 1.34 2.924 2.317.712.977 1.07 2.14 1.07 3.493v2.383h3.424v-.001zm10.74 0c0-.962-.139-1.897-.412-2.805a10.05 10.05 0 00-1.03-2.31c-.443-.75-.989-1.425-1.616-2.025C18.242 8.01 17.57 7.518 16.87 7.15l-1.04-.506-.316.924c1.233.568 2.21 1.34 2.924 2.317.712.977 1.07 2.14 1.07 3.493v2.383h3.424v-.001z" fill="currentColor"/>
+                </svg>
+              </div>
+              <p className="text-white/70 text-sm font-medium italic leading-relaxed mb-2">
+                &ldquo;{quote.text}&rdquo;
+              </p>
+              {quote.author && (
+                <p className="text-amber-500/60 text-[10px] font-bold uppercase tracking-[0.2em]">
+                  — {quote.author}
+                </p>
+              )}
+            </motion.div>
+          )}
         </div>
 
         {/* Floating accent lines */}
