@@ -2,6 +2,7 @@ import nodemailer from "nodemailer";
 import { render } from "@react-email/render";
 import BookingConfirmedEmail from "@/components/emails/BookingConfirmedEmail";
 import BookingCancelledEmail from "@/components/emails/BookingCancelledEmail";
+import RefundResolvedEmail from "@/components/emails/RefundResolvedEmail";
 import WelcomeEmail from "@/components/emails/WelcomeEmail";
 import RoleAssignedEmail from "@/components/emails/RoleAssignedEmail";
 import TripCompletedEmail from "@/components/emails/TripCompletedEmail";
@@ -42,6 +43,17 @@ interface BookingCancelledData {
   userEmail: string;
   experienceTitle: string;
   slotDate: string;
+  refundPreference: "COUPON" | "BANK_REFUND";
+}
+
+interface RefundResolvedData {
+  userName: string;
+  userEmail: string;
+  experienceTitle: string;
+  slotDate: string;
+  refundPreference: "COUPON" | "BANK_REFUND";
+  refundNote: string;
+  totalPrice: number;
 }
 
 interface WelcomeEmailData {
@@ -119,6 +131,20 @@ export async function sendBookingCancellation(data: BookingCancelledData) {
     });
   } catch (err) {
     console.error("Email layout error:", err);
+  }
+}
+
+export async function sendRefundResolved(data: RefundResolvedData) {
+  try {
+    const html = await render(<RefundResolvedEmail {...data} />);
+    const label = data.refundPreference === "COUPON" ? "Coupon Issued" : "Refund Processed";
+    await sendEmail({
+      to: data.userEmail,
+      subject: `${label} — ${data.experienceTitle}`,
+      html,
+    });
+  } catch (err) {
+    console.error("Email layout error (RefundResolved):", err);
   }
 }
 

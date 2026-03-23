@@ -17,7 +17,7 @@ import { ManualVerifyModal } from "@/components/admin/ManualVerifyModal";
 
 
 type BookingStatus = "REQUESTED" | "CONFIRMED" | "CANCELLED";
-type PaymentStatus = "PENDING" | "PAID" | "FAILED";
+type PaymentStatus = "PENDING" | "PAID" | "FAILED" | "REFUND_PENDING" | "REFUNDED";
 
 interface Booking {
   id: string;
@@ -26,6 +26,10 @@ interface Booking {
   bookingStatus: BookingStatus;
   paymentStatus: PaymentStatus;
   createdAt: string;
+  cancelledAt?: string | null;
+  refundPreference?: string | null;
+  refundNote?: string | null;
+  cancellationReason?: string | null;
   user: {
     name: string;
     email: string;
@@ -56,6 +60,8 @@ const paymentStyles: Record<PaymentStatus, string> = {
   PENDING: "text-yellow-500",
   PAID: "text-green-500",
   FAILED: "text-red-500",
+  REFUND_PENDING: "text-amber-400",
+  REFUNDED: "text-blue-400",
 };
 
 const STATUS_FILTERS: (BookingStatus | "ALL")[] = [
@@ -74,6 +80,96 @@ function formatDate(d: string) {
   });
 }
 
+// Resolve Refund Modal
+function RefundResolveModal({
+  booking,
+  onClose,
+  onSuccess,
+}: Readonly<{
+  booking: Booking;
+  onClose: () => void;
+  onSuccess: () => void;
+}>) {
+  const [note, setNote] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const isCoupon = booking.refundPreference === "COUPON";
+
+  const handleResolve = async () => {
+    if (!note.trim()) { setError("Please enter a " + (isCoupon ? "coupon code" : "bank UTR number")); return; }
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/bookings/${booking.id}/refund`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refundNote: note }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+      onSuccess();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to resolve");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+      <div className="bg-card border border-border w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+        <div className="p-6 border-b border-border">
+          <h3 className="text-lg font-bold text-foreground">Resolve Refund</h3>
+          <p className="text-foreground/50 text-sm mt-1">{booking.user.name} — {booking.experience.title}</p>
+        </div>
+        <div className="p-6 space-y-4">
+          <div className="bg-foreground/5 rounded-xl p-4 space-y-1">
+            <p className="text-sm text-foreground">
+              <strong>Amount:</strong> ₹{Number(booking.totalPrice).toLocaleString()}
+            </p>
+            <p className="text-sm text-foreground">
+              <strong>Preference:</strong>{" "}
+              {isCoupon ? "🎟️ Adventure Coupon" : "🏦 Bank Refund"}
+            </p>
+            {booking.cancellationReason && (
+              <p className="text-xs text-foreground/50">
+                <strong>Reason:</strong> {booking.cancellationReason}
+              </p>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="refund-note" className="text-sm font-bold text-foreground/60">
+              {isCoupon ? "Coupon Code" : "Bank UTR / Reference"}
+            </label>
+            <input
+              id="refund-note"
+              type="text"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder={isCoupon ? "e.g. PARAM2024TREK" : "e.g. UTR123456789"}
+              className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+            />
+          </div>
+          {error && <p className="text-red-400 text-sm">{error}</p>}
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-border text-foreground/60 font-bold hover:bg-foreground/5">
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={handleResolve}
+              className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              {isSubmitting ? "Resolving…" : "Mark Resolved"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminBookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -82,6 +178,19 @@ export default function AdminBookingsPage() {
   );
   const [search, setSearch] = useState("");
   const [selectedBooking, setSelectedBooking] = useState<{ id: string; amount: number } | null>(null);
+  const [resolvingBooking, setResolvingBooking] = useState<Booking | null>(null);
+
+  const fetchBookings = () => {
+    const params = new URLSearchParams();
+    if (statusFilter !== "ALL") params.set("status", statusFilter);
+    setIsLoading(true);
+
+    fetch(`/api/admin/bookings?${params}`)
+      .then((r) => r.json())
+      .then((d) => { setBookings(d.bookings || []); })
+      .catch((err) => { console.error(err); })
+      .finally(() => { setIsLoading(false); });
+  };
 
   useEffect(() => {
     let active = true;
@@ -338,19 +447,77 @@ export default function AdminBookingsPage() {
 
       {renderTableContent()}
 
+      {/* ─── Cancellations Section ───────────────────────── */}
+      {(() => {
+        const pending = bookings.filter(b => b.paymentStatus === "REFUND_PENDING");
+        if (pending.length === 0) return null;
+        return (
+          <div className="mt-12 pt-8 border-t border-border">
+            <div className="mb-6">
+              <h2 className="text-2xl font-heading font-bold text-foreground flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                Pending Refunds
+                <span className="ml-2 text-sm font-normal bg-amber-400/10 text-amber-400 border border-amber-400/20 px-2.5 py-0.5 rounded-full">
+                  {pending.length}
+                </span>
+              </h2>
+              <p className="text-foreground/50 mt-1 text-sm">
+                Users are waiting for a coupon code or bank refund. Resolve each one manually.
+              </p>
+            </div>
+            <div className="grid gap-4">
+              {pending.map(b => (
+                <div key={b.id} className="bg-card border border-amber-500/20 rounded-xl p-5 flex flex-col md:flex-row gap-4 items-start md:items-center">
+                  <div className="flex-1 space-y-1">
+                    <p className="font-bold text-foreground">{b.user.name}{" "}
+                      <span className="text-foreground/40 font-normal text-sm">&lt;{b.user.email}&gt;</span>
+                    </p>
+                    <p className="text-sm text-foreground/60">{b.experience.title}{b.slot ? ` · ${formatDate(b.slot.date)}` : ""}</p>
+                    <p className="text-sm">₹{Number(b.totalPrice).toLocaleString("en-IN")} · {b.participantCount} pax</p>
+                    {b.cancellationReason && (
+                      <p className="text-xs text-foreground/40">Reason: {b.cancellationReason}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-sm font-bold px-3 py-1 rounded-full border ${
+                      b.refundPreference === "COUPON"
+                        ? "bg-primary/10 text-primary border-primary/20"
+                        : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                    }`}>
+                      {b.refundPreference === "COUPON" ? "🎟️ Coupon" : "🏦 Bank Refund"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setResolvingBooking(b)}
+                      className="px-4 py-2 bg-primary text-primary-foreground font-bold text-sm rounded-xl hover:opacity-90 transition-opacity"
+                    >
+                      Resolve →
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
+
       {selectedBooking && (
         <ManualVerifyModal
           bookingId={selectedBooking.id}
           bookingAmount={selectedBooking.amount}
           isOpen={!!selectedBooking}
           onClose={() => setSelectedBooking(null)}
+          onSuccess={() => { fetchBookings(); }}
+        />
+      )}
+
+      {resolvingBooking && (
+        <RefundResolveModal
+          booking={resolvingBooking}
+          onClose={() => setResolvingBooking(null)}
           onSuccess={() => {
-            // Refresh bookings
-            const params = new URLSearchParams();
-            if (statusFilter !== "ALL") params.set("status", statusFilter);
-            fetch(`/api/admin/bookings?${params}`)
-              .then((r) => r.json())
-              .then((d) => setBookings(d.bookings || []));
+            setResolvingBooking(null);
+            fetchBookings();
           }}
         />
       )}

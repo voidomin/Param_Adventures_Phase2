@@ -15,6 +15,7 @@ interface BookingCancelledProps {
   userName: string;
   experienceTitle: string;
   slotDate: string;
+  refundPreference?: "COUPON" | "BANK_REFUND";
 }
 
 const formatDate = (dateStr: string) => {
@@ -30,7 +31,9 @@ export const BookingCancelledEmail = ({
   userName = "Adventurer",
   experienceTitle = "Himalayan Trek",
   slotDate = new Date().toISOString(),
+  refundPreference = "COUPON",
 }: BookingCancelledProps) => {
+  const isCoupon = refundPreference === "COUPON";
   return (
     <Html>
       <Head />
@@ -50,8 +53,13 @@ export const BookingCancelledEmail = ({
             </Text>
 
             <Text style={subText}>
-              If this was a mistake or you have questions about a refund, please{" "}
-              <Link href="mailto:support@paramadventures.com" style={link}>
+              You have selected a{" "}
+              <strong style={highlight}>
+                {isCoupon ? "Coupon Code" : "Bank Refund"}
+              </strong>
+              . Our team will process this within 5–7 business days and you will
+              receive another email with the details. If you have any questions,{" "}
+              <Link href="mailto:booking@paramadventures.in" style={link}>
                 reach out to us
               </Link>
               .

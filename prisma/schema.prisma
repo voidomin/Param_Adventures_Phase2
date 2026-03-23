@@ -41,6 +41,8 @@ enum PaymentStatus {
   PENDING
   PAID
   FAILED
+  REFUND_PENDING
+  REFUNDED
 }
 
 enum PaymentProvider {
@@ -277,6 +279,14 @@ model Booking {
   paymentStatus    PaymentStatus @default(PENDING)
   attended         Boolean       @default(false) // Marked by trek lead on D-Day
   canReview        Boolean       @default(false) // Unlocked when trip COMPLETED
+
+  // Cancellation fields
+  cancelledAt        DateTime?
+  cancelledByUserId  String?
+  cancellationReason String?       @db.Text
+  refundPreference   String?       // "COUPON" or "BANK_REFUND"
+  refundNote         String?       @db.Text // Admin fills: coupon code or bank UTR
+
   deletedAt        DateTime?
   createdAt        DateTime      @default(now())
   updatedAt        DateTime      @updatedAt

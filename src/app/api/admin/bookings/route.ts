@@ -24,7 +24,6 @@ export async function GET(request: NextRequest) {
       },
       orderBy: { createdAt: "desc" },
       include: {
-        // Explicitly including participants relation (must match schema)
         participants: true,
         user: {
           select: { id: true, name: true, email: true, phoneNumber: true },
