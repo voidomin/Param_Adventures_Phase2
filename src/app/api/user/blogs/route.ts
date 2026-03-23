@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("POST /api/user/blogs error:", error);
     return NextResponse.json(
-      { error: error.message || "Internal Server Error" },
+      { error: error?.message || "Internal Server Error" },
       { status: 500 },
     );
   }

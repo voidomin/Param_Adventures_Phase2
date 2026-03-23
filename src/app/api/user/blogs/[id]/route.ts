@@ -10,7 +10,7 @@ type Params = { params: Promise<{ id: string }> };
 const blogUpdateSchema = z.object({
   title: z.string().min(1).max(120).optional(),
   content: z.any().optional(), // JSON
-  coverImageUrl: z.url().optional().nullable(),
+  coverImageUrl: z.string().url().optional().nullable(),
   authorSocials: z.any().optional(), // JSON
   theme: z.enum(["CLASSIC", "MODERN", "MINIMAL"]).optional(),
 });
