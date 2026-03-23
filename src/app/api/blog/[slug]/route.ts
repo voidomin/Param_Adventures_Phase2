@@ -27,7 +27,7 @@ export async function GET(_request: NextRequest, { params }: Params) {
     },
   });
 
-  if (!blog || blog.status !== "PUBLISHED" || blog.deletedAt) {
+  if (blog?.status !== "PUBLISHED" || blog?.deletedAt) {
     return NextResponse.json({ error: "Blog not found." }, { status: 404 });
   }
 

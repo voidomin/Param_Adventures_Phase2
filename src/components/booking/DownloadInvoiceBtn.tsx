@@ -5,7 +5,7 @@ import { Download, Loader2, FileText } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-export default function DownloadInvoiceBtn({ bookingId }: { bookingId: string }) {
+export default function DownloadInvoiceBtn({ bookingId }: Readonly<{ bookingId: string }>) {
   const [isDownloading, setIsDownloading] = useState(false);
 
   const handleDownload = async () => {

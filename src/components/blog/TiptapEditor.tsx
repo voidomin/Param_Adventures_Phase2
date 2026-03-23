@@ -13,7 +13,7 @@ import {
   Quote,
   Minus,
   Image as ImageIcon,
-  Youtube as YoutubeBrandIcon,
+  Video,
 } from "lucide-react";
 import Image from "@tiptap/extension-image";
 import Youtube from "@tiptap/extension-youtube";
@@ -189,7 +189,7 @@ export default function TiptapEditor({
             }}
             title="Insert YouTube Video"
           >
-            <YoutubeBrandIcon className="w-4 h-4 text-red-500" />
+            <Video className="w-4 h-4 text-red-500" />
           </ToolbarButton>
         </div>
       )}

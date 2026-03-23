@@ -455,8 +455,7 @@ export default function AdminBookingsPage() {
           <div className="mt-12 pt-8 border-t border-border">
             <div className="mb-6">
               <h2 className="text-2xl font-heading font-bold text-foreground flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                Pending Refunds
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" /> Pending Refunds
                 <span className="ml-2 text-sm font-normal bg-amber-400/10 text-amber-400 border border-amber-400/20 px-2.5 py-0.5 rounded-full">
                   {pending.length}
                 </span>

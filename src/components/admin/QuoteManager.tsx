@@ -88,7 +88,7 @@ export default function QuoteManager() {
             <div
               key={quote.id}
               className={`group relative bg-card border rounded-2xl p-5 hover:border-primary/40 transition-all ${
-                !quote.isActive ? "opacity-60 bg-background" : ""
+                quote.isActive ? "" : "opacity-60 bg-background"
               }`}
             >
               <QuoteIcon className="absolute top-4 right-4 w-4 h-4 text-primary/20 group-hover:text-primary/40 transition-colors" />

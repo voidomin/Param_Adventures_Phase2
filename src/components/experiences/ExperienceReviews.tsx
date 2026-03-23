@@ -393,15 +393,16 @@ export default function ExperienceReviews({
 
       {/* ── Write / Edit Review Modal ── */}
       {showModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm"
+        <button
+          type="button"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm w-full h-full border-none"
+          aria-label="Close modal"
           onClick={(e) => {
             if (e.target === e.currentTarget) setShowModal(false);
           }}
           onKeyDown={(e) => {
             if (e.key === "Escape") setShowModal(false);
           }}
-          tabIndex={-1}
         >
           {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
           <dialog
@@ -533,7 +534,7 @@ export default function ExperienceReviews({
               )}
             </div>
           </dialog>
-        </div>
+        </button>
       )}
     </div>
   );

@@ -43,7 +43,7 @@ export async function PATCH(
       include: { role: true },
     });
 
-    if (!user || user.status !== "ACTIVE") {
+    if (user?.status !== "ACTIVE") {
       return NextResponse.json(
         { error: "User not found or inactive." },
         { status: 404 },
@@ -144,7 +144,7 @@ export async function POST(
       include: { role: true },
     });
 
-    if (!user || user.status !== "ACTIVE") {
+    if (user?.status !== "ACTIVE") {
       return NextResponse.json(
         { error: "User not found or inactive." },
         { status: 404 },

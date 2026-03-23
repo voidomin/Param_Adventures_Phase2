@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authorizeRequest } from "@/lib/api-auth";
 import { uploadToCloudinary } from "@/lib/cloudinary";
 import { prisma } from "@/lib/db";
-import { createHash } from "crypto";
+import { createHash } from "node:crypto";
 
 /**
  * POST /api/admin/media/upload

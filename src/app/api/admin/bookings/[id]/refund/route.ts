@@ -46,7 +46,7 @@ export async function POST(
     if (!booking) {
       return NextResponse.json({ error: "Booking not found." }, { status: 404 });
     }
-    if ((booking?.paymentStatus as any) !== "REFUND_PENDING") {
+    if (booking?.paymentStatus !== "REFUND_PENDING") {
       return NextResponse.json(
         { error: "Booking is not awaiting a refund." },
         { status: 409 }
@@ -56,24 +56,24 @@ export async function POST(
     await prisma.booking.update({
       where: { id: bookingId },
       data: {
-        paymentStatus: ("REFUNDED" as any),
+        paymentStatus: "REFUNDED",
         refundNote,
-      } as any,
+      },
     });
 
     await logActivity("REFUND_RESOLVED", adminId, "Booking", bookingId, {
       refundNote,
-      refundPreference: (booking as any).refundPreference,
+      refundPreference: booking.refundPreference,
     });
 
-    await (sendRefundResolved as any)({
+    await sendRefundResolved({
       userName: booking.user.name || "Adventurer",
       userEmail: booking.user.email,
       experienceTitle: booking.experience.title,
       slotDate: booking.slot?.date?.toISOString() ?? new Date().toISOString(),
-      refundPreference: ((booking as any).refundPreference ?? "COUPON") as any,
+      refundPreference: (booking.refundPreference ?? "COUPON") as any,
       refundNote,
-      totalPrice: Number((booking as any).totalPrice),
+      totalPrice: Number(booking.totalPrice),
     });
 
     return NextResponse.json({ success: true });

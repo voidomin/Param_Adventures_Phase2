@@ -12,7 +12,7 @@ function getStrength(password: string) {
   if (password.length >= 8) score++;
   if (password.length >= 12) score++;
   if (/[A-Z]/.test(password)) score++;
-  if (/[0-9]/.test(password)) score++;
+  if (/\d/.test(password)) score++;
   if (/[^A-Za-z0-9]/.test(password)) score++;
   return score; // 0-5
 }
@@ -26,7 +26,7 @@ const LEVELS = [
   { label: "Excellent", color: "bg-emerald-400", textColor: "text-emerald-400" },
 ];
 
-export default function PasswordStrength({ password }: PasswordStrengthProps) {
+export default function PasswordStrength({ password }: Readonly<{ password: string }>) {
   const strength = useMemo(() => getStrength(password), [password]);
   const level = LEVELS[strength];
 

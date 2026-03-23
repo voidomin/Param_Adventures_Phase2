@@ -22,7 +22,7 @@ export async function GET(
       },
     });
 
-    if (!experience || experience.status !== "PUBLISHED") {
+    if (experience?.status !== "PUBLISHED") {
       return NextResponse.json(
         { error: "Experience not found" },
         { status: 404 }

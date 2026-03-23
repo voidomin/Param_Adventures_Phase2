@@ -10,7 +10,6 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
-  Cell,
   AreaChart,
   Area,
 } from "recharts";
@@ -139,11 +138,7 @@ export default function DashboardCharts({
                       innerRadius="55%"
                       paddingAngle={3}
                       strokeWidth={0}
-                    >
-                      {charts.bookingsByStatus.map((entry) => (
-                        <Cell key={entry.status} fill={entry.color} />
-                      ))}
-                    </Pie>
+                    />
                     <Tooltip content={<PieTooltip />} />
                   </PieChart>
                 </ResponsiveContainer>

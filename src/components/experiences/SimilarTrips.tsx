@@ -57,7 +57,7 @@ export default async function SimilarTrips({
                 src={
                   exp.cardImage ||
                   exp.coverImage ||
-                  (exp.images && exp.images[0]) ||
+                  exp.images?.[0] ||
                   "/placeholder.jpg"
                 }
                 alt=""

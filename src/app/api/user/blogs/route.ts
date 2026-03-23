@@ -30,7 +30,7 @@ import { z } from "zod";
 const blogCreateSchema = z.object({
   experienceId: z.string().min(1, "experienceId is required"),
   title: z.string().min(1, "title is required").max(120),
-  coverImageUrl: z.string().url("Invalid cover image URL").optional().nullable(),
+  coverImageUrl: z.string().url({ message: "Invalid cover image URL" }).optional().nullable(),
   theme: z.enum(["CLASSIC", "MODERN", "MINIMAL"]).optional(),
   authorSocials: z.any().optional(), // JSON
 });

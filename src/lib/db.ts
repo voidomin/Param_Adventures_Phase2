@@ -21,7 +21,7 @@ export type ExtendedPrismaClient = PrismaClient & {
   siteSetting: any; // Using any as a fail-safe for the delegate
 };
 
-export const prisma = (globalForPrisma.prisma ?? createPrismaClient()) as ExtendedPrismaClient;
+export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
 if (process.env.NODE_ENV !== "production") {
   globalForPrisma.prisma = prisma;
