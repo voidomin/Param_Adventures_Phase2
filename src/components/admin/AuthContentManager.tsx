@@ -68,6 +68,7 @@ export default function AuthContentManager() {
         throw new Error("Failed to save");
       }
     } catch (err) {
+      console.error("Save error:", err);
       setMessage({ type: "error", text: "Failed to save setting." });
     } finally {
       setIsSaving(false);
@@ -100,37 +101,40 @@ export default function AuthContentManager() {
           const isTextarea = key.includes("subheading") || key.includes("heading");
           
           return (
-            <div key={key} className="space-y-2">
+            <div key={key} className="space-y-2 group">
               <label className="text-sm font-bold text-foreground/70 flex justify-between items-center">
                 {def.label}
                 <button
                   onClick={() => handleSave(key, settings[key] || def.value)}
-                  className="text-xs text-primary hover:underline flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  disabled={isSaving}
+                  className="text-xs text-primary hover:underline flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"
                 >
-                  <Save className="w-3 h-3" /> Save Changes
+                  <Save className="w-3 h-3" /> {isSaving ? "Saving..." : "Save Changes"}
                 </button>
               </label>
-              <div className="relative group">
+              <div className="relative">
                 {isTextarea ? (
                   <textarea
                     value={settings[key] || ""}
+                    disabled={isSaving}
                     onChange={(e) => handleChange(key, e.target.value)}
                     onBlur={() => handleSave(key, settings[key] || "")}
                     placeholder={def.value}
-                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all min-h-[80px] resize-none"
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all min-h-[80px] resize-none disabled:opacity-50"
                   />
                 ) : (
                   <input
                     type="text"
                     value={settings[key] || ""}
+                    disabled={isSaving}
                     onChange={(e) => handleChange(key, e.target.value)}
                     onBlur={() => handleSave(key, settings[key] || "")}
                     placeholder={def.value}
-                    className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                    className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all disabled:opacity-50"
                   />
                 )}
                 <div className="absolute right-3 top-3 opacity-0 group-hover:opacity-40 transition-opacity pointer-events-none">
-                  <Save className="w-4 h-4" />
+                  {isSaving ? <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" /> : <Save className="w-4 h-4" />}
                 </div>
               </div>
             </div>
