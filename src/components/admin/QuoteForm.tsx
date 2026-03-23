@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, type FormEvent } from "react";
+import React, { useState } from "react";
 import { X } from "lucide-react";
 
 interface Quote {
