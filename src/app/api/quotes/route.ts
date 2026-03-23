@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { randomInt } from "node:crypto";
 
+export const dynamic = "force-dynamic";
+
 // GET /api/quotes - Public random quote
 export async function GET() {
   try {
@@ -19,7 +21,14 @@ export async function GET() {
       skip: skip,
     });
 
-    return NextResponse.json({ quote });
+    return NextResponse.json(
+      { quote },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        },
+      },
+    );
   } catch (error: any) {
     console.error("Public quotes error:", error);
     return NextResponse.json(

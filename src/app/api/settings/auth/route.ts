@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 // Public GET /api/settings/auth
 // Returns all auth-related text settings in a single request
 export async function GET() {
@@ -23,11 +25,20 @@ export async function GET() {
 
     // Map to an object for easier frontend consumption
     const config: Record<string, string> = {};
-    settings.forEach(s => {
+    settings.forEach((s: { key: string; value: string }) => {
       config[s.key] = s.value;
     });
 
-    return NextResponse.json({ settings: config });
+    return NextResponse.json(
+      {
+        settings: config,
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+        },
+      },
+    );
   } catch (error: unknown) {
     console.error("Auth settings fetch error:", error);
     return NextResponse.json(

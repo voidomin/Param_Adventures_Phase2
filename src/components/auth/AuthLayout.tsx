@@ -54,7 +54,7 @@ export default function AuthLayout({
   useEffect(() => {
     // Fetch background
     if (settingsKey) {
-      fetch(`/api/settings?key=${settingsKey}`)
+      fetch(`/api/settings?key=${settingsKey}`, { cache: "no-store" })
         .then((res) => res.json())
         .then((data) => {
           if (data.value) setDynamicBg(data.value);
@@ -63,7 +63,7 @@ export default function AuthLayout({
     }
 
     // Fetch all auth text settings
-    fetch("/api/settings/auth")
+    fetch("/api/settings/auth", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
         if (data.settings) setAuthSettings(data.settings);
@@ -71,7 +71,7 @@ export default function AuthLayout({
       .catch(() => {});
 
     // Fetch random quote
-    fetch("/api/quotes")
+    fetch("/api/quotes", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
         if (data.quote) setQuote(data.quote);
