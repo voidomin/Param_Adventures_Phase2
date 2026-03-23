@@ -9,7 +9,7 @@ import { z } from "zod";
 const manualVerifySchema = z.object({
   transactionId: z.string().min(1, "Transaction ID is required"),
   amountPaid: z.number().min(0, "Amount must be a positive number"),
-  paymentProofUrl: z.string().url({ message: "Valid proof URL is required" }),
+  paymentProofUrl: z.url({ message: "Valid proof URL is required" }),
   adminNotes: z.string().optional(),
 });
 
