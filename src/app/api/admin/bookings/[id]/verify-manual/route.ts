@@ -23,7 +23,7 @@ async function sendBookingConfirmationEmail(bookingId: string) {
     },
   });
 
-  if (!booking || !booking.slot) return;
+  if (!booking?.slot) return;
 
   await sendBookingConfirmation({
     userName: booking.user.name,
