@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, type FormEvent } from "react";
 import { X } from "lucide-react";
 
 interface Quote {
@@ -26,7 +26,8 @@ export default function QuoteForm({ quote, onClose, onSuccess }: QuoteFormProps)
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.SyntheticEvent) => {
+  // Using BaseSyntheticEvent as a robust alternative to deprecated FormEvent if warned
+  const handleSubmit = async (e: React.BaseSyntheticEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
