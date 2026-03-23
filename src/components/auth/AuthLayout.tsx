@@ -48,6 +48,7 @@ export default function AuthLayout({
   compact = false,
 }: AuthLayoutProps) {
   const [dynamicBg, setDynamicBg] = useState<string | null>(null);
+  const [authSettings, setAuthSettings] = useState<Record<string, string>>({});
   const [quote, setQuote] = useState<{ text: string; author?: string | null } | null>(null);
 
   useEffect(() => {
@@ -61,6 +62,14 @@ export default function AuthLayout({
         .catch(() => {});
     }
 
+    // Fetch all auth text settings
+    fetch("/api/settings/auth")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.settings) setAuthSettings(data.settings);
+      })
+      .catch(() => {});
+
     // Fetch random quote
     fetch("/api/quotes")
       .then((res) => res.json())
@@ -69,6 +78,16 @@ export default function AuthLayout({
       })
       .catch(() => {});
   }, [settingsKey]);
+
+  // Resolve dynamic content based on page type (login vs register)
+  const isLogin = settingsKey === "auth_login_bg";
+  const prefix = isLogin ? "auth_login" : "auth_register";
+
+  const displayTagline = authSettings["auth_common_tagline"] || "Curated Adventures";
+  const displayImageHeading = authSettings[`${prefix}_image_heading`] || imageHeading;
+  const displayImageSubheading = authSettings[`${prefix}_image_subheading`] || imageSubheading;
+  const displayFormHeading = authSettings[`${prefix}_form_heading`] || heading;
+  const displayFormSubheading = authSettings[`${prefix}_form_subheading`] || subheading;
 
   const bgSrc = dynamicBg || backgroundImage;
   const isVideo = /\.(mp4|webm|ogv)$/i.test(bgSrc) || bgSrc.includes("/video/upload/");
@@ -145,9 +164,9 @@ export default function AuthLayout({
           {/* Heading */}
           <motion.div variants={itemVariants} className={`text-center ${compact ? "mb-3" : "mb-6 sm:mb-8"}`}>
             <h1 className={`font-heading font-bold text-white ${compact ? "text-xl mb-0.5" : "text-2xl sm:text-3xl mb-1.5"}`}>
-              {heading}
+              {displayFormHeading}
             </h1>
-            <p className="text-white/50 text-sm">{subheading}</p>
+            <p className="text-white/50 text-sm">{displayFormSubheading}</p>
           </motion.div>
 
           {/* Form Card */}
@@ -215,13 +234,13 @@ export default function AuthLayout({
               animate={{ x: 0, opacity: 1 }}
               transition={{ delay: 0.8, duration: 0.6 }}
             >
-              Curated Adventures
+              {displayTagline}
             </motion.p>
             <h2 className="text-4xl font-heading font-bold text-white leading-tight mb-3 whitespace-pre-line">
-              {imageHeading}
+              {displayImageHeading}
             </h2>
             <p className="text-white/50 text-sm max-w-xs leading-relaxed">
-              {imageSubheading}
+              {displayImageSubheading}
             </p>
           </motion.div>
 

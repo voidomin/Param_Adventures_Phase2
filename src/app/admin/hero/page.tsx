@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import HeroForm from "@/components/admin/HeroForm";
 import AuthBackgroundManager from "@/components/admin/AuthBackgroundManager";
+import AuthContentManager from "@/components/admin/AuthContentManager";
 import QuoteManager from "@/components/admin/QuoteManager";
 
 interface HeroSlide {
@@ -283,6 +284,19 @@ export default function AdminHeroPage() {
           </p>
         </div>
         <AuthBackgroundManager />
+      </div>
+
+      {/* Auth Text Management */}
+      <div className="mt-12 pt-8 border-t border-border">
+        <div className="mb-6">
+          <h2 className="text-2xl font-heading font-bold text-foreground">
+            Auth Page Text Content
+          </h2>
+          <p className="text-foreground/60 mt-1">
+            Customize the headings, subheadings, and taglines for your Sign In & Sign Up pages.
+          </p>
+        </div>
+        <AuthContentManager />
       </div>
 
       {/* Quotes Management */}
