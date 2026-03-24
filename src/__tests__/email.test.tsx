@@ -107,12 +107,12 @@ describe("email library", () => {
   });
 
   it("sends reset password email", async () => {
-    await emailLib.sendResetPasswordEmail({ userName: "Test", userEmail: "test@example.com", resetLink: "http://reset" });
+    await emailLib.sendResetPasswordEmail({ userName: "Test", userEmail: "test@example.com", resetLink: "https://reset" });
     expect(mockSendMail).toHaveBeenCalled();
   });
 
   it("sends admin invite email", async () => {
-    await emailLib.sendAdminInviteEmail({ userName: "Test", userEmail: "test@example.com", setupLink: "http://setup" });
+    await emailLib.sendAdminInviteEmail({ userName: "Test", userEmail: "test@example.com", setupLink: "https://setup" });
     expect(mockSendMail).toHaveBeenCalled();
   });
 
