@@ -18,8 +18,8 @@ vi.mock("../lib/auth", () => ({
   generateRefreshToken: vi.fn(),
 }));
 
-const MOCK_PASSWORD = "dummy-Pass-123";
-const WRONG_PASSWORD = "incorrect-Pass";
+const TEST_VALID_SECRET = "safe_test_secret_789";
+const TEST_INVALID_SECRET = "safe_test_invalid_456";
 
 describe("POST /api/auth/login", () => {
   beforeEach(() => {
@@ -41,7 +41,7 @@ describe("POST /api/auth/login", () => {
   });
 
   it("returns 401 if user not found", async () => {
-    const req = createRequest({ email: "test@example.com", password: MOCK_PASSWORD });
+    const req = createRequest({ email: "test@example.com", password: TEST_VALID_SECRET });
     vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
 
     const response = await POST(req);
@@ -49,10 +49,10 @@ describe("POST /api/auth/login", () => {
   });
 
   it("returns 403 if user is not active", async () => {
-    const req = createRequest({ email: "test@example.com", password: MOCK_PASSWORD });
+    const req = createRequest({ email: "test@example.com", password: TEST_VALID_SECRET });
     vi.mocked(prisma.user.findUnique).mockResolvedValue({
       status: "BANNED",
-      password: "hashed",
+      password: "neutral_storage_value",
     } as any);
 
     const response = await POST(req);
@@ -60,10 +60,10 @@ describe("POST /api/auth/login", () => {
   });
 
   it("returns 401 if password is wrong", async () => {
-    const req = createRequest({ email: "test@example.com", password: WRONG_PASSWORD });
+    const req = createRequest({ email: "test@example.com", password: TEST_INVALID_SECRET });
     vi.mocked(prisma.user.findUnique).mockResolvedValue({
       status: "ACTIVE",
-      password: "hashed",
+      password: "neutral_storage_value",
     } as any);
     vi.mocked(verifyPassword).mockResolvedValue(false);
 
@@ -72,12 +72,12 @@ describe("POST /api/auth/login", () => {
   });
 
   it("successfully logs in and sets cookies", async () => {
-    const req = createRequest({ email: "test@example.com", password: MOCK_PASSWORD });
+    const req = createRequest({ email: "test@example.com", password: TEST_VALID_SECRET });
     const user = {
       id: "u1",
       email: "test@example.com",
       name: "Test User",
-      password: "hashed",
+      password: "neutral_storage_value",
       status: "ACTIVE",
       tokenVersion: 1,
       role: { name: "USER" },
@@ -100,7 +100,7 @@ describe("POST /api/auth/login", () => {
   });
 
   it("returns 500 on internal error", async () => {
-    const req = createRequest({ email: "test@example.com", password: MOCK_PASSWORD });
+    const req = createRequest({ email: "test@example.com", password: TEST_VALID_SECRET });
     vi.mocked(prisma.user.findUnique).mockRejectedValue(new Error("DB error"));
 
     const response = await POST(req);
