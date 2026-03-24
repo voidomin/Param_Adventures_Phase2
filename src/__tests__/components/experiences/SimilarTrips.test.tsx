@@ -57,4 +57,32 @@ describe("SimilarTrips Smoke Test", () => {
     });
     expect(Result).toBeNull();
   });
+
+  it("returns null when Prisma findMany throws an error", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(prisma.experience.findMany).mockRejectedValue(new Error("Database error"));
+    
+    const Result = await SimilarTrips({ 
+      currentExperienceId: "1", 
+      categoryIds: ["cat1"] 
+    });
+    expect(Result).toBeNull();
+  });
+
+  it("excludes the current experience from the Prisma query", async () => {
+    vi.mocked(prisma.experience.findMany).mockResolvedValue([]);
+    
+    await SimilarTrips({ 
+      currentExperienceId: "999", 
+      categoryIds: ["cat1"] 
+    });
+
+    expect(prisma.experience.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: { not: "999" }
+        })
+      })
+    );
+  });
 });

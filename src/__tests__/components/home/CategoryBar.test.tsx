@@ -90,4 +90,89 @@ describe("CategoryBar Smoke Test", () => {
       expect(screen.getByText(/All Adventures/i)).toBeInTheDocument();
     });
   });
+
+  it("clicking a category and then All Adventures resets active state", async () => {
+    render(<CategoryBar />);
+    await waitFor(() => {
+      expect(screen.getAllByText("Trekking")[0]).toBeInTheDocument();
+    });
+
+    // Click a specific category
+    fireEvent.click(screen.getAllByText("Trekking")[0]);
+    expect(mockRouter.push).toHaveBeenCalledWith("/experiences?category=trekking");
+
+    // Click "All Adventures" to reset
+    fireEvent.click(screen.getByText(/All Adventures/i));
+    expect(mockRouter.push).toHaveBeenCalledWith("/experiences");
+  });
+
+  it("renders fallback icon for unknown icon names", async () => {
+    const categoriesWithBadIcon = [
+      { id: "1", name: "Mystery", slug: "mystery", icon: "NonExistentIcon" },
+      { id: "2", name: "Plain", slug: "plain", icon: null },
+    ];
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ categories: categoriesWithBadIcon }),
+    });
+
+    render(<CategoryBar />);
+    await waitFor(() => {
+      expect(screen.getAllByText("Mystery")[0]).toBeInTheDocument();
+      expect(screen.getAllByText("Plain")[0]).toBeInTheDocument();
+    });
+  });
+
+  it("renders only All Adventures when categories array is empty", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ categories: [] }),
+    });
+
+    render(<CategoryBar />);
+    await waitFor(() => {
+      expect(screen.getByText(/All Adventures/i)).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Trekking")).not.toBeInTheDocument();
+  });
+
+  it("handles non-ok API response without crashing", async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: () => Promise.resolve({ error: "Internal Server Error" }),
+    });
+
+    render(<CategoryBar />);
+    await waitFor(() => {
+      expect(screen.getByText(/All Adventures/i)).toBeInTheDocument();
+    });
+    expect(screen.queryByText("Trekking")).not.toBeInTheDocument();
+  });
+
+  it("scroll buttons trigger scroll navigation when clicked", async () => {
+    render(<CategoryBar />);
+    await waitFor(() => {
+      expect(screen.getAllByText("Trekking")[0]).toBeInTheDocument();
+    });
+
+    const leftBtn = screen.getByLabelText("Scroll left");
+    const rightBtn = screen.getByLabelText("Scroll right");
+
+    fireEvent.click(rightBtn);
+    fireEvent.click(leftBtn);
+
+    // scrollTo is used for wrap-around when at scroll boundaries
+    expect(HTMLElement.prototype.scrollTo).toHaveBeenCalled();
+  });
+
+  it("updates state on globalThis resize", async () => {
+    render(<CategoryBar />);
+    await waitFor(() => {
+      expect(screen.queryByText("All Adventures")).toBeInTheDocument();
+    });
+    fireEvent(globalThis as unknown as Window, new Event('resize'));
+    expect(screen.queryByText("All Adventures")).toBeInTheDocument();
+  });
 });

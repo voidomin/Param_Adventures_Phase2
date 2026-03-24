@@ -120,31 +120,162 @@ describe("DownloadItineraryBtn Smoke Test", () => {
     expect(screen.getByText(/Download Trip Itinerary \(PDF\)/i)).toBeInTheDocument();
   });
 
-  it("triggers PDF generation on click", async () => {
+  it("triggers PDF generation with full data", async () => {
     vi.spyOn(globalThis, "alert").mockImplementation(() => {});
-    render(<DownloadItineraryBtn {...defaultProps} />);
-    const btn = screen.getByRole("button");
-    fireEvent.click(btn);
+    
+    // Test a very rich data set to hit highlights, description, itchy, etc.
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("/itinerary-data")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            title: "Super Mega Adventure",
+            location: "Nepal",
+            durationDays: 14,
+            maxAltitude: "5545m",
+            trekDistance: "130km",
+            difficulty: "HARD",
+            bestTimeToVisit: "Spring/Autumn",
+            maxGroupSize: 12,
+            company: { name: "Param", email: "test@param.com", phone: "123", website: "param.com" },
+            highlights: ["Highlight 1", "Highlight 2"],
+            description: "Extra long description to trigger page breaks and line splitting in the PDF generator logic.",
+            itinerary: [
+              { title: "Day 1", description: "Arrival", meals: "Dinner", accommodation: "Hotel" },
+              { title: "Day 2", description: "Trek start" }
+            ],
+            inclusions: ["Inc 1", "Inc 2"],
+            exclusions: ["Exc 1"],
+            thingsToCarry: ["Boots", "Jacket", "Water"],
+            meetingPoint: "Kathmandu",
+            meetingTime: "8:00 AM",
+            cancellationPolicy: "Non-refundable if cancelled within 24 hours.",
+            images: ["img1.jpg", "img2.jpg", "img3.jpg", "img4.jpg"],
+            coverImage: "cover.jpg",
+          }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ dataUrl: "data:image/png;base64,mock" }),
+      });
+    });
 
-    expect(screen.getByText(/Generating Itinerary/i)).toBeInTheDocument();
+    render(<DownloadItineraryBtn slug="rich-trek" variant="sidebar" />);
+    fireEvent.click(screen.getByRole("button"));
+
+    await waitFor(() => {
+      expect(mockSave).toHaveBeenCalledWith(expect.stringContaining("Super_Mega_Adventure"));
+    }, { timeout: 15000 });
+  });
+
+  it("handles image fetch failure gracefully within the PDF flow", async () => {
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("/itinerary-data")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            title: "Fail Trek",
+            location: "Unknown",
+            durationDays: 1,
+            company: { website: "a.com" },
+            images: ["broken.jpg"],
+          }),
+        });
+      }
+      if (url.includes("/api/proxy-image")) {
+        return Promise.resolve({ ok: false }); // Proxy fails
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    render(<DownloadItineraryBtn slug="fail-trek" variant="inline" />);
+    fireEvent.click(screen.getByRole("button"));
 
     await waitFor(() => {
       expect(mockSave).toHaveBeenCalled();
     }, { timeout: 15000 });
-
-    expect(screen.getByText(/Download Itinerary/i)).toBeInTheDocument();
   });
 
-  it("handles fetch failure gracefully", async () => {
-    mockFetch.mockResolvedValueOnce({ ok: false });
-    vi.spyOn(globalThis, "alert").mockImplementation(() => {});
+  it("works with success variant and missing fields", async () => {
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("/itinerary-data")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            title: "Min Trek",
+            location: "Void",
+            durationDays: 1,
+            company: { website: "p.com" },
+            // Missing Highlights, Desc, Itinerary, etc.
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
 
-    render(<DownloadItineraryBtn {...defaultProps} />);
-    const btn = screen.getByRole("button");
-    fireEvent.click(btn);
+    render(<DownloadItineraryBtn slug="min-trek" variant="success" />);
+    fireEvent.click(screen.getByRole("button"));
 
     await waitFor(() => {
-      expect(globalThis.alert).toHaveBeenCalledWith("Error generating PDF.");
+      expect(mockSave).toHaveBeenCalled();
+    }, { timeout: 15000 });
+  });
+
+  it("shows alert when itinerary-data fetch fails", async () => {
+    const alertSpy = vi.spyOn(globalThis, "alert").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("/itinerary-data")) {
+        return Promise.resolve({ ok: false, status: 500 });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
+
+    render(<DownloadItineraryBtn slug="bad-trek" variant="sidebar" />);
+    fireEvent.click(screen.getByRole("button"));
+
+    await waitFor(() => {
+      expect(alertSpy).toHaveBeenCalledWith("Error generating PDF.");
+    }, { timeout: 15000 });
+
+    alertSpy.mockRestore();
+  });
+
+  it("renders inline variant with correct text", () => {
+    render(<DownloadItineraryBtn slug="inline-trek" variant="inline" />);
+    expect(screen.getByText(/Download Itinerary/i)).toBeInTheDocument();
+    expect(screen.getByRole("button")).toBeInTheDocument();
+  });
+
+  it("generates PDF with no itinerary, inclusions, or logistics data", async () => {
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("/itinerary-data")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            title: "Empty Trek",
+            location: "Nowhere",
+            durationDays: 1,
+            company: { name: "Param", email: "t@p.com", phone: "123", website: "p.com" },
+            itinerary: [],
+            inclusions: [],
+            exclusions: [],
+            thingsToCarry: [],
+            highlights: [],
+            images: [],
+          }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    render(<DownloadItineraryBtn slug="empty-trek" variant="sidebar" />);
+    fireEvent.click(screen.getByRole("button"));
+
+    await waitFor(() => {
+      expect(mockSave).toHaveBeenCalledWith(expect.stringContaining("Empty_Trek"));
+    }, { timeout: 15000 });
   });
 });

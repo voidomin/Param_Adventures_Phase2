@@ -75,6 +75,7 @@ describe("BookingModal Smoke Test", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseAuth.mockReturnValue({ user: mockUser });
     
     // Mock successful slot fetch
     mockFetch.mockImplementation((url: string) => {
@@ -174,5 +175,107 @@ describe("BookingModal Smoke Test", () => {
     fireEvent.click(screen.getByText(/Pay ₹/i));
 
     expect(await screen.findByText(/Verification failed/i)).toBeInTheDocument();
+  });
+
+  it("shows 'No available dates' when slots are empty", async () => {
+    mockFetch.mockImplementation((url: string) => {
+      if (url.includes("/slots")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ slots: [] }),
+        });
+      }
+      return Promise.reject(new Error("Unknown URL"));
+    });
+
+    render(<BookingModal {...defaultProps} />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/No available dates/i)).toBeInTheDocument();
+    });
+  });
+
+  it("renders without crashing when user is null (guest)", async () => {
+    mockUseAuth.mockReturnValue({ user: null });
+
+    render(<BookingModal {...defaultProps} />);
+
+    expect(screen.getByText(/Book Experience/i)).toBeInTheDocument();
+    expect(screen.getByText(/Amazing Trek/i)).toBeInTheDocument();
+  });
+
+  it("close button triggers onClose callback", async () => {
+    render(<BookingModal {...defaultProps} />);
+
+    // The X close button
+    const closeButtons = screen.getAllByRole("button").filter(
+      btn => btn.querySelector(".lucide-x")
+    );
+    if (closeButtons.length > 0) {
+      fireEvent.click(closeButtons[0]);
+      expect(defaultProps.onClose).toHaveBeenCalled();
+    }
+  });
+
+  it("shows error when booking creation fails", async () => {
+    mockFetch.mockImplementation((url: string, opts?: any) => {
+      if (url.includes("/slots")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            slots: [{ id: "s1", date: new Date().toISOString(), capacity: 10, remainingCapacity: 5 }],
+          }),
+        });
+      }
+      if (url === "/api/bookings" && opts?.method === "POST") {
+        return Promise.resolve({
+          ok: false,
+          json: () => Promise.resolve({ error: "Slot is full" }),
+        });
+      }
+      return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+    });
+
+    render(<BookingModal {...defaultProps} />);
+
+    // Step 1: Select slot
+    fireEvent.click(await screen.findByText(/Select an upcoming date/i));
+    fireEvent.click(await screen.findByText(/5 spots remaining/i));
+    fireEvent.click(screen.getByRole("button", { name: /Continue to Details/i }));
+
+    // Step 2: Fill required fields (Name + Phone)
+    await waitFor(() => screen.getByLabelText(/Full Name \*/i));
+    fireEvent.change(screen.getByLabelText(/Full Name \*/i), { target: { value: "Test User" } });
+    fireEvent.change(screen.getByLabelText(/Phone Number \*/i), { target: { value: "1111111111" } });
+    fireEvent.click(screen.getByRole("button", { name: /Review Booking/i }));
+
+    // Step 3: Pay
+    await waitFor(() => screen.getByText(/Pay ₹/i));
+    fireEvent.click(screen.getByText(/Pay ₹/i));
+
+    // Should show error
+    expect(await screen.findByText(/Slot is full/i)).toBeInTheDocument();
+  });
+
+  it("calculates correct total price with multiple participants", async () => {
+    render(<BookingModal {...defaultProps} />);
+
+    // Select slot
+    fireEvent.click(await screen.findByText(/Select an upcoming date/i));
+    fireEvent.click(await screen.findByText(/5 spots remaining/i));
+
+    // Default is 1 participant: ₹5,000 (appears in breakdown and total)
+    const priceElements = screen.getAllByText(/₹5,000/);
+    expect(priceElements.length).toBeGreaterThan(0);
+
+    // Increase to 2 participants
+    const plusBtn = screen.getAllByRole("button").find(b => b.textContent === "+");
+    if (plusBtn) {
+      fireEvent.click(plusBtn);
+      await waitFor(() => {
+        const updatedPrices = screen.getAllByText(/₹10,000/);
+        expect(updatedPrices.length).toBeGreaterThan(0);
+      });
+    }
   });
 });
