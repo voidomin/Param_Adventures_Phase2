@@ -88,7 +88,10 @@ describe("ManualVerifyModal", () => {
     fireEvent.change(fileInput, { target: { files: [new File(["abc"], "proof.png")] } });
     await waitFor(() => expect(screen.getByText(/Screenshot Uploaded/i)).toBeInTheDocument(), { timeout: 3000 });
 
-    // 2. Submit
+    // 2. Fill form
+    fireEvent.change(screen.getByPlaceholderText(/e.g. PAY-123456789/i), { target: { value: "TXN123" } });
+    
+    // 3. Submit
     const submitBtn = screen.getByRole("button", { name: /Confirm Payment/i });
     fireEvent.click(submitBtn);
 
