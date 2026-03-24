@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import ExperienceGallery from "@/components/experiences/ExperienceGallery";
 import React from "react";
@@ -8,7 +8,14 @@ vi.mock("framer-motion", () => {
   return {
     motion: {
       div: ({ children, onClick, layoutId, ...props }: any) => (
-        <div data-testid={`motion-div-${layoutId}`} onClick={onClick} {...props}>
+        <div 
+          data-testid={`motion-div-${layoutId}`} 
+          onClick={onClick} 
+          role="button" 
+          tabIndex={0} 
+          onKeyDown={() => {}} 
+          {...props}
+        >
           {children}
         </div>
       ),

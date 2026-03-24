@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { generatePresignedUrl, deleteFromS3 } from "@/lib/s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+
 
 // Mock AWS SDK
 vi.mock("@aws-sdk/client-s3", () => {
@@ -8,8 +8,8 @@ vi.mock("@aws-sdk/client-s3", () => {
     S3Client: class {
       send = vi.fn().mockResolvedValue({});
     },
-    PutObjectCommand: class {},
-    DeleteObjectCommand: class {},
+    PutObjectCommand: class { constructor(public input: any) {} },
+    DeleteObjectCommand: class { constructor(public input: any) {} },
   };
 });
 
@@ -116,7 +116,7 @@ describe("S3 Utilities", () => {
         S3Client: class {
           send = vi.fn().mockRejectedValue(new Error("Network Error"));
         },
-        DeleteObjectCommand: class {},
+        DeleteObjectCommand: class { constructor(public input: any) {} },
       }));
 
       const { deleteFromS3 } = await import("@/lib/s3");

@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, act } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import Carousel from "@/components/ui/Carousel";
 import React from "react";
@@ -21,7 +21,7 @@ describe("Carousel Component", () => {
 
   it("initializes with scroll buttons based on mock metrics", () => {
     // We mock properties for the layout to test state changes
-    const OriginalDiv = "div";
+
     vi.spyOn(React, "useRef").mockReturnValueOnce({
       current: {
         scrollLeft: 0,
@@ -34,7 +34,7 @@ describe("Carousel Component", () => {
     render(<Carousel><div /></Carousel>);
 
     const leftBtn = screen.getByLabelText("Scroll Left");
-    const rightBtn = screen.getByLabelText("Scroll Right");
+    screen.getByLabelText("Scroll Right");
 
     expect(leftBtn).toBeDisabled(); // scrollLeft is 0
     expect(leftBtn).toHaveClass("opacity-0 pointer-events-none");
@@ -105,7 +105,7 @@ describe("Carousel Component", () => {
   });
 
   it("listens to window resize to recalculate constraints", () => {
-    const checkScrollSpy = vi.fn();
+
     render(<Carousel><div /></Carousel>);
     expect(screen.getByLabelText("Scroll Left")).toBeInTheDocument();
     
