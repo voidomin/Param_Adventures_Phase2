@@ -1,66 +1,105 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import React from "react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import AuthContentManager from "@/components/admin/AuthContentManager";
+import React from "react";
 
-vi.setConfig({ testTimeout: 30000 });
+// Mock fetch
+globalThis.fetch = vi.fn();
 
-describe("AuthContentManager", () => {
+describe("AuthContentManager Component", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    globalThis.fetch = vi.fn();
   });
 
-  it("fetches and renders settings on mount", async () => {
-    const mockSettings = [
-      { key: "auth_common_tagline", value: "Test Tagline" },
-      { key: "auth_login_form_heading", value: "Test Heading" },
-    ];
-    (globalThis.fetch as any).mockResolvedValue({
+  it("renders loading state initially", () => {
+    // Provide a never-resolving promise to keep it in loading state
+    (globalThis.fetch as any).mockImplementation(() => new Promise(() => {}));
+    const { container } = render(<AuthContentManager />);
+    expect(container.querySelector(".animate-spin")).toBeInTheDocument();
+  });
+
+  it("fetches settings and renders UI", async () => {
+    (globalThis.fetch as any).mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ settings: mockSettings }),
+      json: async () => ({
+        settings: [
+          { key: "auth_common_tagline", value: "Test Tagline" }
+        ]
+      })
     });
-
+    
     render(<AuthContentManager />);
     
-    // Shows loading initially
-    // wait for it to load
+    expect(globalThis.fetch).toHaveBeenCalledWith("/api/admin/settings");
+    
+    // Wait for the UI to render the fetched data
     await waitFor(() => {
-      expect(globalThis.fetch).toHaveBeenCalledWith("/api/admin/settings");
+      expect(screen.getByText("Global Styles")).toBeInTheDocument();
     });
     
-    // Check if input value is populated
-    const inputs = await screen.findAllByRole("textbox");
-    expect(inputs.some((input) => (input as HTMLInputElement).value === "Test Tagline")).toBe(true);
+    // The input should have the value we passed
+    const inputs = screen.getAllByRole("textbox");
+    // auth_common_tagline is an input (not textarea) and is the first one rendered
+    expect(inputs[0]).toHaveValue("Test Tagline");
   });
 
-  it("handles saving a setting", async () => {
-    const mockSettings = [{ key: "auth_common_tagline", value: "Test Tagline" }];
-    (globalThis.fetch as any)
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ settings: mockSettings }) }) // GET
-      .mockResolvedValueOnce({ ok: true }); // PUT
-
+  it("handles saving a setting correctly", async () => {
+    // 1. Initial fetch mock
+    (globalThis.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        settings: [
+          { key: "auth_common_tagline", value: "Test Tagline" }
+        ]
+      })
+    });
+    
     render(<AuthContentManager />);
     
-    const inputs = await screen.findAllByRole("textbox");
-    expect(inputs.length).toBeGreaterThan(0);
-
-    // Find the save button associated with common tagline
-    const saveButtons = await screen.findAllByText(/Save Changes/i);
-    expect(saveButtons.length).toBeGreaterThan(0);
-    
-    // Modify input and blur (or click save)
-    const textboxes = screen.getAllByRole("textbox");
-    fireEvent.change(textboxes[0], { target: { value: "New Tagline" } });
-    fireEvent.click(saveButtons[0]);
-
     await waitFor(() => {
-      expect(globalThis.fetch).toHaveBeenCalledWith("/api/admin/settings", expect.objectContaining({
-        method: "PUT",
-        body: JSON.stringify({ key: "auth_common_tagline", value: "New Tagline" })
-      }));
+      expect(screen.getByText("Global Styles")).toBeInTheDocument();
     });
 
-    expect(await screen.findByText("Setting saved successfully!")).toBeInTheDocument();
+    // 2. Mock save request
+    (globalThis.fetch as any).mockResolvedValueOnce({
+      ok: true
+    });
+
+    const inputs = screen.getAllByRole("textbox");
+    fireEvent.change(inputs[0], { target: { value: "New Tagline" } });
+    
+    // Changing triggers handleSave on blur
+    fireEvent.blur(inputs[0]);
+
+    await waitFor(() => {
+      expect(globalThis.fetch).toHaveBeenCalledWith("/api/admin/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: "auth_common_tagline", value: "New Tagline" }),
+      });
+      expect(screen.getByText("Setting saved successfully!")).toBeInTheDocument();
+    });
+  });
+
+  it("shows error message when saving fails", async () => {
+    // 1. Initial fetch mock
+    (globalThis.fetch as any).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ settings: [] })
+    });
+    
+    render(<AuthContentManager />);
+    await waitFor(() => expect(screen.getByText("Global Styles")).toBeInTheDocument());
+
+    // 2. Mock failed save request
+    (globalThis.fetch as any).mockResolvedValueOnce({ ok: false });
+
+    const inputs = screen.getAllByRole("textbox");
+    fireEvent.change(inputs[0], { target: { value: "Bad Tagline" } });
+    fireEvent.blur(inputs[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText("Failed to save setting.")).toBeInTheDocument();
+    });
   });
 });
