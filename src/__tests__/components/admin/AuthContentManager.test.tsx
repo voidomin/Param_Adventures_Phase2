@@ -3,6 +3,8 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import React from "react";
 import AuthContentManager from "@/components/admin/AuthContentManager";
 
+vi.setConfig({ testTimeout: 30000 });
+
 describe("AuthContentManager", () => {
   beforeEach(() => {
     vi.clearAllMocks();

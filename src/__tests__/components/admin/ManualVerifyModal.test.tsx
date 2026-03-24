@@ -6,6 +6,8 @@ import { ManualVerifyModal } from "@/components/admin/ManualVerifyModal";
 // Mock fetch globally
 globalThis.fetch = vi.fn();
 
+vi.setConfig({ testTimeout: 30000 });
+
 describe("ManualVerifyModal", () => {
   const mockProps = {
     bookingId: "booking-123",

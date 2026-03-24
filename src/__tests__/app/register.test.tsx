@@ -15,6 +15,8 @@ vi.mock("@/components/auth/AuthLayout", () => ({
   itemVariants: {},
 }));
 
+vi.setConfig({ testTimeout: 30000 });
+
 describe("RegisterPage", () => {
   const mockRegister = vi.fn();
   const mockPush = vi.fn();

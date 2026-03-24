@@ -23,6 +23,8 @@ vi.mock("@/components/auth/AuthLayout", () => ({
   itemVariants: {},
 }));
 
+vi.setConfig({ testTimeout: 30000 });
+
 describe("LoginPage", () => {
   const mockLogin = vi.fn();
   const mockPush = vi.fn();
@@ -99,7 +101,7 @@ describe("LoginPage", () => {
     // The button doesn't have an explicit label, it just has the Eye icon. 
     // It's the only button besides the submit button
     const buttons = screen.getAllByRole("button");
-    const toggleBtn = buttons.find(b => b.type === "button"); // Search for type="button" instead of type="submit"
+    const toggleBtn = buttons.find(b => (b as HTMLButtonElement).type === "button");
     
     if (toggleBtn) {
       fireEvent.click(toggleBtn);

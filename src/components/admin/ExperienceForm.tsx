@@ -614,7 +614,7 @@ export default function ExperienceForm({
 
 
   return (
-    <form onSubmit={handleSubmit} className="max-w-4xl pb-24">
+    <form onSubmit={handleSubmit} aria-label="Experience Form" className="max-w-4xl pb-24">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
           <Link
