@@ -6,6 +6,7 @@ import { prisma } from "../lib/db";
 
 vi.mock("bcryptjs");
 vi.mock("jsonwebtoken");
+vi.unmock("@/lib/auth");
 vi.mock("../lib/db", () => ({
   prisma: {
     user: {

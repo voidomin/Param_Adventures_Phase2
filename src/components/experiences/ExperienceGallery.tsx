@@ -150,6 +150,7 @@ export default function ExperienceGallery({ images }: ExperienceGalleryProps) {
               exit={{ opacity: 0, scale: 0.8, y: -20 }}
               transition={{ delay: 0.1 }}
               onClick={closeLightbox}
+              aria-label="Close lightbox"
               className="absolute top-6 right-6 z-[110] p-3 rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors backdrop-blur-md border border-white/10"
             >
               <X className="w-6 h-6" />
@@ -163,6 +164,7 @@ export default function ExperienceGallery({ images }: ExperienceGalleryProps) {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                   onClick={showPrev}
+                  aria-label="Previous image"
                   className="absolute left-6 z-[110] p-4 rounded-full bg-white/5 text-white hover:bg-white/20 transition-all border border-white/5 hover:scale-110"
                 >
                   <ChevronLeft className="w-8 h-8" />
@@ -172,6 +174,7 @@ export default function ExperienceGallery({ images }: ExperienceGalleryProps) {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
                   onClick={showNext}
+                  aria-label="Next image"
                   className="absolute right-6 z-[110] p-4 rounded-full bg-white/5 text-white hover:bg-white/20 transition-all border border-white/5 hover:scale-110"
                 >
                   <ChevronRight className="w-8 h-8" />

@@ -70,12 +70,8 @@ describe("ExperienceGallery Component", () => {
     
     expect(screen.getByText("1 / 3")).toBeInTheDocument();
 
-    // Close lightbox. We mock motion.button, which contains the X icon
-    // We can find the button by finding its lucide-react X child or just use querySelector/role if there's no text
-    // The first button in the lightbox is the close button, followed by left/right. 
-    // They don't have aria-labels, so we grab all buttons in the document not in the main grid
-    const buttons = screen.getAllByRole("button");
-    const closeBtn = buttons[0]; 
+    // Close lightbox. We use the aria-label for stable selection
+    const closeBtn = screen.getByRole("button", { name: /close lightbox/i }); 
     
     fireEvent.click(closeBtn);
     
@@ -88,11 +84,9 @@ describe("ExperienceGallery Component", () => {
     // Open on first
     fireEvent.click(screen.getByTestId(`motion-div-gallery-${sampleImages[0]}`));
     
-    // In our mock, the close button is the first button inside the lightbox
-    // then Left Chevron, then Right Chevron
-    const buttons = screen.getAllByRole("button");
-    const prevBtn = buttons[1];
-    const nextBtn = buttons[2];
+    // Select by ARIA label for stable tests
+    const prevBtn = screen.getByRole("button", { name: /previous image/i });
+    const nextBtn = screen.getByRole("button", { name: /next image/i });
 
     expect(screen.getByText("1 / 3")).toBeInTheDocument();
 
@@ -121,15 +115,15 @@ describe("ExperienceGallery Component", () => {
     expect(screen.getByText("2 / 3")).toBeInTheDocument();
 
     // Arrow Right
-    fireEvent.keyDown(globalThis, { key: "ArrowRight", code: "ArrowRight" });
+    fireEvent.keyDown(window, { key: "ArrowRight", code: "ArrowRight" });
     expect(screen.getByText("3 / 3")).toBeInTheDocument();
 
     // Arrow Left
-    fireEvent.keyDown(globalThis, { key: "ArrowLeft", code: "ArrowLeft" });
+    fireEvent.keyDown(window, { key: "ArrowLeft", code: "ArrowLeft" });
     expect(screen.getByText("2 / 3")).toBeInTheDocument();
 
     // Escape to close
-    fireEvent.keyDown(globalThis, { key: "Escape", code: "Escape" });
+    fireEvent.keyDown(window, { key: "Escape", code: "Escape" });
     expect(screen.queryByText("2 / 3")).not.toBeInTheDocument();
   });
 
