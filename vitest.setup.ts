@@ -117,10 +117,27 @@ vi.mock("jspdf", () => {
   return { default: MockJsPDF };
 });
 
-// Mock jspdf-autotable
-vi.mock("jspdf-autotable", () => ({
-  default: vi.fn((doc, options) => {
-    doc.lastAutoTable = { finalY: (options.startY || 0) + 50 };
-  }),
-}));
+// Mock global fetch for smoke tests
+globalThis.fetch = vi.fn().mockImplementation(() =>
+  Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve({}),
+  } as Response)
+);
+
+// Mock razorpay
+vi.mock("razorpay", () => {
+  return {
+    default: class MockRazorpay {
+      orders = {
+        create: vi.fn().mockResolvedValue({ id: "mock_order_id" }),
+        fetch: vi.fn(),
+      };
+      payments = {
+        fetch: vi.fn(),
+        capture: vi.fn(),
+      };
+    }
+  };
+});
 

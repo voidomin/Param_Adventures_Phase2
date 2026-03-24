@@ -12,7 +12,7 @@ const quoteSchema = z.object({
 // GET /api/admin/quotes/[id]
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const auth = await authorizeRequest(request, ["trip:create", "system:config"]);
@@ -20,7 +20,7 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     const quote = await prisma.adventureQuote.findUnique({
       where: { id },
@@ -43,7 +43,7 @@ export async function GET(
 // PUT /api/admin/quotes/[id]
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const auth = await authorizeRequest(request, ["trip:create", "system:config"]);
@@ -51,7 +51,7 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const parseResult = quoteSchema.safeParse(body);
     if (!parseResult.success) {
@@ -79,7 +79,7 @@ export async function PUT(
 // DELETE /api/admin/quotes/[id]
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } },
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const auth = await authorizeRequest(request, ["trip:create", "system:config"]);
@@ -87,7 +87,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     await prisma.adventureQuote.delete({
       where: { id },

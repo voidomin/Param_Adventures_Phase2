@@ -43,7 +43,7 @@ describe("Cloudinary Utils", () => {
     });
 
     it("handles upload errors", async () => {
-      vi.mocked(cloudinary.uploader.upload_stream).mockImplementationOnce((options, callback) => {
+      vi.mocked(cloudinary.uploader.upload_stream).mockImplementationOnce((options: any, callback?: any) => {
         return {
           end: vi.fn(() => {
             callback(new Error("Upload Failed"), null);

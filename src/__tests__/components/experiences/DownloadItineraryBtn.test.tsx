@@ -4,6 +4,12 @@ import DownloadItineraryBtn from "@/components/experiences/DownloadItineraryBtn"
 import React from "react";
 import jsPDF from "jspdf";
 
+vi.mock("jspdf-autotable", () => ({
+  default: vi.fn((doc, options) => {
+    doc.lastAutoTable = { finalY: (options.startY || 0) + 50 };
+  }),
+}));
+
 
 // Mock fetch
 const mockFetch = vi.fn();

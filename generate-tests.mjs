@@ -1,86 +1,70 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const APP_DIR = path.join(process.cwd(), 'src/app/admin');
-const API_DIR = path.join(process.cwd(), 'src/app/api/admin');
-const TEST_APP_DIR = path.join(process.cwd(), 'src/__tests__/app/admin');
-const TEST_API_DIR = path.join(process.cwd(), 'src/__tests__/api/admin');
+const SRC_DIR = path.join(process.cwd(), 'src');
+const TEST_DIR = path.join(process.cwd(), 'src/__tests__/auto-generated');
 
-function generateReactTest(filePath) {
-  const relPath = path.relative(APP_DIR, filePath).replaceAll('\\', '/');
-  const importPath = `@/app/admin/${relPath.replace('.tsx', '')}`;
-  
-  return `import { render } from "@testing-library/react";
-import { describe, it, expect } from "vitest";
-import React from "react";
-// @ts-ignore
-import Component from "${importPath}";
+// Folders to exclude from auto-generation (already manually tested or irrelevant)
+const EXCLUDE_DIRS = new Set(['__tests__', 'fonts', 'styles', 'types', '.next']);
+const EXCLUDE_FILES = new Set(['layout.tsx', 'error.tsx', 'loading.tsx', 'not-found.tsx', 'middleware.ts', 'globals.css']);
 
-// Auto-generated test (Mocks handled in vitest.setup.ts)
-describe("Auto-generated React Test for ${relPath}", () => {
-  it("imports and compiles", () => {
-    expect(Component).toBeDefined();
-  });
+function getGenerator(filePath) {
+  const ext = path.extname(filePath);
+  const relPath = path.relative(SRC_DIR, filePath).replaceAll('\\', '/');
+  const importPath = `@/${relPath.replace(/\.(ts|tsx)$/, '')}`;
+  const helperPath = `@/__tests__/smoke-test-helper`;
 
-  it("renders without crashing", () => {
-    if (typeof Component === 'function') {
-      const props = { params: Promise.resolve({}), searchParams: Promise.resolve({}) };
-      try {
-        render(React.createElement(Component, props));
-      } catch (e) {
-        // Log error but don't fail smoke test
-        console.warn("Smoke render failed for ${relPath}:", e instanceof Error ? e.message : String(e));
-      }
-    }
-    expect(true).toBe(true);
-  });
+  if (ext === '.tsx') {
+    return `import { describe, it } from "vitest";
+import * as Module from "${importPath}";
+import { smokeTestReact } from "${helperPath}";
+
+describe("Smoke: ${relPath}", () => {
+  it("renders", () => smokeTestReact(Module, "${relPath}"));
 });
 `;
-}
+  } else {
+    return `import { describe, it } from "vitest";
+import { smokeTestModule } from "${helperPath}";
 
-function generateApiTest(filePath) {
-  const relPath = path.relative(API_DIR, filePath).replaceAll('\\', '/');
-  const importPath = `@/app/api/admin/${relPath.replace('.ts', '')}`;
-  
-  return `import { describe, it, expect } from "vitest";
-
-// Auto-generated test (Mocks handled in vitest.setup.ts)
-describe("Auto-generated API Test for ${relPath}", () => {
-  it("imports safely", async () => {
-    const mod = await import("${importPath}");
-    expect(mod).toBeDefined();
-  });
+describe("Smoke: ${relPath}", () => {
+  it("imports", () => smokeTestModule("${importPath}"));
 });
 `;
-}
-
-function walk(dir, testDir, generator, extMatch) {
-  if (!fs.existsSync(dir)) return;
-  const files = fs.readdirSync(dir);
-  for (const file of files) {
-    const fullPath = path.join(dir, file);
-    if (fs.statSync(fullPath).isDirectory()) {
-      walk(fullPath, path.join(testDir, file), generator, extMatch);
-    } else if (fullPath.endsWith(extMatch)) {
-      const outPath = path.join(testDir, file.replace(extMatch, '.test' + extMatch));
-      if (!fs.existsSync(outPath)) {
-        if (!fs.existsSync(testDir)) fs.mkdirSync(testDir, { recursive: true });
-        fs.writeFileSync(outPath, generator(fullPath));
-        console.log("Generated:", outPath);
-      }
-    }
   }
 }
 
-function cleanupDirs() {
-  [TEST_APP_DIR, TEST_API_DIR].forEach(dir => {
-    if (fs.existsSync(dir)) {
-      fs.rmSync(dir, { recursive: true, force: true });
-      console.log("Cleaned:", dir);
+function walk(dir, currentTestDir) {
+  if (!fs.existsSync(dir)) return;
+  
+  for (const file of fs.readdirSync(dir)) {
+    const fullPath = path.join(dir, file);
+    const stat = fs.statSync(fullPath);
+
+    if (stat.isDirectory()) {
+      if (EXCLUDE_DIRS.has(file)) continue;
+      walk(fullPath, path.join(currentTestDir, file));
+      continue;
     }
-  });
+
+    if (EXCLUDE_FILES.has(file) || !/\.(ts|tsx)$/.test(file) || /\.(test|d)\.ts(x?)$/.test(file)) {
+      continue;
+    }
+
+    const outPath = path.join(currentTestDir, file.replace(/\.(ts|tsx)$/, '.test.$1'));
+    if (!fs.existsSync(currentTestDir)) fs.mkdirSync(currentTestDir, { recursive: true });
+    fs.writeFileSync(outPath, getGenerator(fullPath));
+  }
 }
 
-cleanupDirs();
-walk(APP_DIR, TEST_APP_DIR, generateReactTest, '.tsx');
-walk(API_DIR, TEST_API_DIR, generateApiTest, '.ts');
+function cleanup() {
+  if (fs.existsSync(TEST_DIR)) {
+    fs.rmSync(TEST_DIR, { recursive: true, force: true });
+    console.log("Cleaned:", TEST_DIR);
+  }
+}
+
+console.log("Starting test generation...");
+cleanup();
+walk(SRC_DIR, TEST_DIR);
+console.log("Generation complete.");

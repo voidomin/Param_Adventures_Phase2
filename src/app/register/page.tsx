@@ -6,8 +6,8 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
 import AuthLayout, { itemVariants } from "@/components/auth/AuthLayout";
+import { AuthInput, AuthButton } from "@/components/auth/AuthShared";
 import PasswordStrength from "@/components/auth/PasswordStrength";
-import { Eye, EyeOff, ArrowRight } from "lucide-react";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -17,8 +17,6 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -69,143 +67,66 @@ export default function RegisterPage() {
       )}
 
       <form onSubmit={handleSubmit} className="space-y-3.5">
-        {/* Name + Email in a row on desktop */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          <motion.div variants={itemVariants}>
-            <label
-              htmlFor="register-name"
-              className="block text-xs font-medium text-white/60 mb-1 uppercase tracking-wider"
-            >
-              Full Name
-            </label>
-            <input
-              id="register-name"
-              type="text"
-              required
-              suppressHydrationWarning
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all duration-300"
-              placeholder="Your name"
-            />
-          </motion.div>
+          <AuthInput
+            id="register-name"
+            label="Full Name"
+            type="text"
+            required
+            value={name}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setName(e.target.value)}
+            placeholder="Your name"
+          />
 
-          <motion.div variants={itemVariants}>
-            <label
-              htmlFor="register-email"
-              className="block text-xs font-medium text-white/60 mb-1 uppercase tracking-wider"
-            >
-              Email
-            </label>
-            <input
-              id="register-email"
-              type="email"
-              required
-              suppressHydrationWarning
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all duration-300"
-              placeholder="you@example.com"
-            />
-          </motion.div>
+          <AuthInput
+            id="register-email"
+            label="Email"
+            type="email"
+            required
+            value={email}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+            placeholder="you@example.com"
+          />
         </div>
 
-        <motion.div variants={itemVariants}>
-          <label
-            htmlFor="register-password"
-            className="block text-xs font-medium text-white/60 mb-1 uppercase tracking-wider"
-          >
-            Password
-          </label>
-          <div className="relative">
-            <input
-              id="register-password"
-              type={showPassword ? "text" : "password"}
-              required
-              suppressHydrationWarning
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3.5 py-2.5 pr-10 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all duration-300"
-              placeholder="Min. 8 characters"
-            />
-            <button
-              type="button"
-              suppressHydrationWarning
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
-            >
-              {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-            </button>
-          </div>
-          <PasswordStrength password={password} />
-        </motion.div>
+        <AuthInput
+          id="register-password"
+          label="Password"
+          type="password"
+          required
+          showPasswordToggle
+          value={password}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
+          placeholder="Min. 8 characters"
+        />
+        <PasswordStrength password={password} />
 
-        <motion.div variants={itemVariants}>
-          <label
-            htmlFor="register-confirm"
-            className="block text-xs font-medium text-white/60 mb-1 uppercase tracking-wider"
+        <AuthInput
+          id="register-confirm"
+          label="Confirm Password"
+          type="password"
+          required
+          showPasswordToggle
+          value={confirmPassword}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setConfirmPassword(e.target.value)}
+          placeholder="••••••••"
+        />
+        
+        {confirmPassword && password !== confirmPassword && (
+          <motion.p
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-red-400 text-xs mt-1"
           >
-            Confirm Password
-          </label>
-          <div className="relative">
-            <input
-              id="register-confirm"
-              type={showConfirm ? "text" : "password"}
-              required
-              suppressHydrationWarning
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-3.5 py-2.5 pr-10 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all duration-300"
-              placeholder="••••••••"
-            />
-            <button
-              type="button"
-              suppressHydrationWarning
-              onClick={() => setShowConfirm(!showConfirm)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
-            >
-              {showConfirm ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-            </button>
-          </div>
-          {confirmPassword && password !== confirmPassword && (
-            <motion.p
-              initial={{ opacity: 0, y: -5 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-red-400 text-xs mt-1"
-            >
-              Passwords do not match
-            </motion.p>
-          )}
-        </motion.div>
+            Passwords do not match
+          </motion.p>
+        )}
 
-        <motion.div variants={itemVariants} className="pt-1">
-          <motion.button
-            type="submit"
-            disabled={isSubmitting}
-            suppressHydrationWarning
-            className="group relative w-full py-3 px-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-amber-500/20 hover:shadow-xl hover:shadow-amber-500/30 overflow-hidden"
-            whileHover={{ y: -2 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <span className="relative z-10 flex items-center justify-center gap-2">
-              {isSubmitting ? "Creating account..." : "Create Account"}
-              {!isSubmitting && (
-                <motion.span
-                  animate={{ x: [0, 4, 0] }}
-                  transition={{ duration: 1.5, repeat: Infinity }}
-                >
-                  <ArrowRight className="w-4 h-4" />
-                </motion.span>
-              )}
-            </span>
-            <motion.div
-              className="absolute inset-0 bg-gradient-to-r from-amber-600 to-orange-600"
-              initial={{ opacity: 0 }}
-              whileHover={{ opacity: 1 }}
-              transition={{ duration: 0.3 }}
-            />
-          </motion.button>
-        </motion.div>
+        <AuthButton
+          isSubmitting={isSubmitting}
+          loadingText="Creating account..."
+          text="Create Account"
+        />
       </form>
 
       <motion.div

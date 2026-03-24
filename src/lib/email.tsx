@@ -110,7 +110,13 @@ async function sendEmail({ to, subject, html }: { to: string; subject: string; h
 
 export async function sendBookingConfirmation(data: BookingEmailData) {
   try {
-    const html = await render(<BookingConfirmedEmail {...data} />);
+    const html = await render(
+      <BookingConfirmedEmail 
+        userName={data.userName} 
+        tripName={data.experienceTitle} 
+        bookingId={data.bookingId} 
+      />
+    );
     await sendEmail({
       to: data.userEmail,
       subject: `Booking Confirmed — ${data.experienceTitle}`,
@@ -123,7 +129,13 @@ export async function sendBookingConfirmation(data: BookingEmailData) {
 
 export async function sendBookingCancellation(data: BookingCancelledData) {
   try {
-    const html = await render(<BookingCancelledEmail {...data} />);
+    const html = await render(
+      <BookingCancelledEmail 
+        userName={data.userName} 
+        tripName={data.experienceTitle} 
+        bookingId="N/A" 
+      />
+    );
     await sendEmail({
       to: data.userEmail,
       subject: `Booking Cancelled — ${data.experienceTitle}`,
@@ -136,7 +148,13 @@ export async function sendBookingCancellation(data: BookingCancelledData) {
 
 export async function sendRefundResolved(data: RefundResolvedData) {
   try {
-    const html = await render(<RefundResolvedEmail {...data} />);
+    const html = await render(
+      <RefundResolvedEmail 
+        userName={data.userName} 
+        bookingId="N/A" 
+        amount={data.totalPrice} 
+      />
+    );
     const label = data.refundPreference === "COUPON" ? "Coupon Issued" : "Refund Processed";
     await sendEmail({
       to: data.userEmail,
@@ -163,7 +181,7 @@ export async function sendWelcomeEmail(data: WelcomeEmailData) {
 
 export async function sendRoleAssignedEmail(data: RoleAssignedData) {
   try {
-    const html = await render(<RoleAssignedEmail {...data} />);
+    const html = await render(<RoleAssignedEmail userName={data.userName} role={data.roleName} />);
     await sendEmail({
       to: data.userEmail,
       subject: `Role Updated: ${data.roleName.replaceAll("_", " ")}`,
@@ -176,7 +194,12 @@ export async function sendRoleAssignedEmail(data: RoleAssignedData) {
 
 export async function sendTripCompletedEmail(data: TripCompletedData) {
   try {
-    const html = await render(<TripCompletedEmail {...data} />);
+    const html = await render(
+      <TripCompletedEmail 
+        userName={data.userName} 
+        tripName={data.experienceTitle} 
+      />
+    );
     await sendEmail({
       to: data.userEmail,
       subject: `Hope you enjoyed ${data.experienceTitle}! 🏔️`,
