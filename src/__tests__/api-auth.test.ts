@@ -4,6 +4,8 @@ import { verifyAccessToken } from "../lib/auth";
 import { prisma } from "../lib/db";
 import { NextRequest } from "next/server";
 
+vi.unmock("@/lib/api-auth");
+
 vi.mock("../lib/auth");
 vi.mock("../lib/db", () => ({
   prisma: {

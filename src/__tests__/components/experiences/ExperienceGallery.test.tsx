@@ -3,32 +3,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import ExperienceGallery from "@/components/experiences/ExperienceGallery";
 import React from "react";
 
-// Mock framer-motion to avoid complex animation rendering issues in JSDOM
-vi.mock("framer-motion", () => {
-  return {
-    motion: {
-      div: ({ children, onClick, layoutId, ...props }: any) => (
-        <div 
-          data-testid={`motion-div-${layoutId}`} 
-          onClick={onClick} 
-          role="button" 
-          tabIndex={0} 
-          onKeyDown={() => {}} 
-          {...props}
-        >
-          {children}
-        </div>
-      ),
-      button: ({ children, onClick, ...props }: any) => (
-        <button onClick={onClick} {...props}>
-          {children}
-        </button>
-      ),
-    },
-    AnimatePresence: ({ children }: any) => <>{children}</>,
-  };
-});
-
 describe("ExperienceGallery Component", () => {
   const sampleImages = [
     "https://example.com/img1.jpg",
@@ -122,15 +96,15 @@ describe("ExperienceGallery Component", () => {
     expect(screen.getByText("2 / 3")).toBeInTheDocument();
 
     // Arrow Right
-    fireEvent.keyDown(window, { key: "ArrowRight", code: "ArrowRight" });
+    fireEvent.keyDown(globalThis as any, { key: "ArrowRight", code: "ArrowRight" });
     expect(screen.getByText("3 / 3")).toBeInTheDocument();
 
     // Arrow Left
-    fireEvent.keyDown(window, { key: "ArrowLeft", code: "ArrowLeft" });
+    fireEvent.keyDown(globalThis as any, { key: "ArrowLeft", code: "ArrowLeft" });
     expect(screen.getByText("2 / 3")).toBeInTheDocument();
 
     // Escape to close
-    fireEvent.keyDown(window, { key: "Escape", code: "Escape" });
+    fireEvent.keyDown(globalThis as any, { key: "Escape", code: "Escape" });
     expect(screen.queryByText("2 / 3")).not.toBeInTheDocument();
   });
 

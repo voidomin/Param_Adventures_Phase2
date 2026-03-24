@@ -2,72 +2,8 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import DownloadItineraryBtn from "@/components/experiences/DownloadItineraryBtn";
 import React from "react";
+import jsPDF from "jspdf";
 
-const { mockSave } = vi.hoisted(() => ({
-  mockSave: vi.fn(),
-}));
-
-vi.mock("jspdf", () => {
-  const mockAddPage = vi.fn();
-  const mockText = vi.fn();
-  const mockAddImage = vi.fn();
-  const mockGetNumberOfPages = vi.fn(() => 2);
-  const mockSetPage = vi.fn();
-
-  class MockGState {
-    public opacity: number;
-    constructor({ opacity }: { opacity: number }) {
-      this.opacity = opacity;
-    }
-  }
-
-  class MockJsPDF {
-    constructor() {
-      (this as any).GState = MockGState;
-      (this as any).lastAutoTable = { finalY: 100 };
-    }
-    internal = {
-      pageSize: {
-        getWidth: () => 210,
-        getHeight: () => 297,
-      },
-    };
-    save = mockSave;
-    addPage = mockAddPage;
-    text = mockText.mockReturnValue(this);
-    addImage = mockAddImage.mockReturnValue(this);
-    getNumberOfPages = mockGetNumberOfPages;
-    setPage = mockSetPage.mockReturnValue(this);
-    setFontSize = vi.fn().mockReturnValue(this);
-    setFont = vi.fn().mockReturnValue(this);
-    setTextColor = vi.fn().mockReturnValue(this);
-    setFillColor = vi.fn().mockReturnValue(this);
-    rect = vi.fn().mockReturnValue(this);
-    line = vi.fn().mockReturnValue(this);
-    setLineWidth = vi.fn().mockReturnValue(this);
-    setDrawColor = vi.fn().mockReturnValue(this);
-    splitTextToSize = vi.fn((text) => [text]);
-    roundedRect = vi.fn().mockReturnValue(this);
-    setGState = vi.fn().mockReturnValue(this);
-    circle = vi.fn().mockReturnValue(this);
-  }
-
-  return {
-    default: MockJsPDF,
-  };
-});
-
-// Mock location
-vi.stubGlobal("location", {
-  origin: "http://localhost:3000",
-});
-
-// Mock jspdf-autotable
-vi.mock("jspdf-autotable", () => ({
-  default: vi.fn((doc, options) => {
-    doc.lastAutoTable = { finalY: (options.startY || 0) + 50 };
-  }),
-}));
 
 // Mock fetch
 const mockFetch = vi.fn();
@@ -161,11 +97,12 @@ describe("DownloadItineraryBtn Smoke Test", () => {
       });
     });
 
+    const saveSpy = vi.spyOn(jsPDF.prototype, "save");
     render(<DownloadItineraryBtn slug="rich-trek" variant="sidebar" />);
     fireEvent.click(screen.getByRole("button"));
 
     await waitFor(() => {
-      expect(mockSave).toHaveBeenCalledWith(expect.stringContaining("Super_Mega_Adventure"));
+      expect(saveSpy).toHaveBeenCalledWith(expect.stringContaining("Super_Mega_Adventure"));
     }, { timeout: 15000 });
   });
 
@@ -189,11 +126,12 @@ describe("DownloadItineraryBtn Smoke Test", () => {
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
 
+    const saveSpy = vi.spyOn(jsPDF.prototype, "save");
     render(<DownloadItineraryBtn slug="fail-trek" variant="inline" />);
     fireEvent.click(screen.getByRole("button"));
 
     await waitFor(() => {
-      expect(mockSave).toHaveBeenCalled();
+      expect(saveSpy).toHaveBeenCalled();
     }, { timeout: 15000 });
   });
 
@@ -214,11 +152,12 @@ describe("DownloadItineraryBtn Smoke Test", () => {
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
 
+    const saveSpy = vi.spyOn(jsPDF.prototype, "save");
     render(<DownloadItineraryBtn slug="min-trek" variant="success" />);
     fireEvent.click(screen.getByRole("button"));
 
     await waitFor(() => {
-      expect(mockSave).toHaveBeenCalled();
+      expect(saveSpy).toHaveBeenCalled();
     }, { timeout: 15000 });
   });
 
@@ -271,11 +210,12 @@ describe("DownloadItineraryBtn Smoke Test", () => {
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
 
+    const saveSpy = vi.spyOn(jsPDF.prototype, "save");
     render(<DownloadItineraryBtn slug="empty-trek" variant="sidebar" />);
     fireEvent.click(screen.getByRole("button"));
 
     await waitFor(() => {
-      expect(mockSave).toHaveBeenCalledWith(expect.stringContaining("Empty_Trek"));
+      expect(saveSpy).toHaveBeenCalledWith(expect.stringContaining("Empty_Trek"));
     }, { timeout: 15000 });
   });
 });
