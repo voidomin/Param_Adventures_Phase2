@@ -420,8 +420,6 @@ export default function ExperienceReviews({
         <div className="flex items-end sm:items-center justify-center min-h-full p-0 sm:p-4">
           <div
             className="bg-card border border-border rounded-t-3xl sm:rounded-3xl shadow-2xl w-full sm:max-w-lg overflow-hidden relative"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
             <div className="px-6 pt-6 pb-4 border-b border-border/50">
