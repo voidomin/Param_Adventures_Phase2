@@ -1,8 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
 import React from "react";
 import ScrollReveal from "@/components/ui/ScrollReveal";
-import { vi } from "vitest";
+
 
 // Mock framer-motion since we just want to test component mounting and props
 vi.mock("framer-motion", () => ({

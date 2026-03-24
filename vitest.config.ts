@@ -14,6 +14,7 @@ export default defineConfig({
     },
     coverage: {
       provider: 'v8',
+      include: ['src/**/*.ts', 'src/**/*.tsx'],
       reporter: ['text', 'lcov'],
       reportsDirectory: './coverage',
       exclude: [
@@ -21,7 +22,8 @@ export default defineConfig({
         '.next/**',
         '**/*.config.*',
         '**/*.d.ts',
-        'src/components/emails/**',
+        'src/**/*.test.ts',
+        'src/**/*.test.tsx',
       ],
     },
   },
