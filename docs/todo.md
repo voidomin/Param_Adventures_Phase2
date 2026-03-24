@@ -106,5 +106,12 @@ Based on the final deep-dive architectural audit, these critical gaps need addre
   - [x] User can fill booking details and select "Manual Payment". (Handled via admin/manual-verify endpoint for now)
   - [x] Admin dashboard interface to approve manual payments.
   - [x] Support for uploading/storing payment receipts or confirmation documents.
-- [ ] **Brand Identity: Our Story Page:** Design and implement the "Our Story" page to communicate brand values.
-- [ ] **Admin Dashboard Refactor:** Final audit of the dashboard layout to determine key metrics and data visualizations for admins.
+## 🧪 Phase 11: Manual Testing & Peer Review
+- [ ] **Deploy to Vercel (Staging)**: Push a production-ready branch to Vercel for peer review.
+- [ ] **Peer Testing Scenarios**:
+  - [ ] **User Flow**: Register -> Forgot Password -> Login.
+  - [ ] **Booking Flow**: Select Experience -> Pick Slot -> Pay (Test Mode).
+  - [ ] **Admin Flow**: Update Auth Tagline -> Verify update on Login Page.
+  - [ ] **Cancellation Flow**: User cancels -> Admin resolves refund -> Verify emails.
+- [ ] **Device Lab**: Test on at least 3 physical devices (iPhone, Android, Desktop Safari).
+- [ ] **Cross-Browser Verification**: Check layout consistency on Firefox and Edge.
