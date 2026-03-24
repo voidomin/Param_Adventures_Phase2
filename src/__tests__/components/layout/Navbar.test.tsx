@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import Navbar from "@/components/layout/Navbar";
 import { usePathname } from "next/navigation";
@@ -77,5 +77,60 @@ describe("Navbar Smoke Test", () => {
     // Check if mobile overlay is present (Open menu shows X icon)
     // When open, there are two "Explore" links (desktop and mobile)
     expect(screen.getAllByText(/Explore/i).length).toBe(2);
+  });
+
+  it("closes mobile menu when auth link is clicked", () => {
+    render(<Navbar />);
+    const menuBtn = screen.getByRole("button", { name: "" });
+    fireEvent.click(menuBtn); // Open menu
+    
+    // Unauthenticated: shows "Sign In to Book" link
+    const signInLink = screen.getByText("Sign In to Book");
+    fireEvent.click(signInLink); // Click link
+    
+    // Menu should close
+    expect(screen.getAllByText(/Explore/i).length).toBe(1);
+  });
+
+  it("renders mobile menu with authenticated user options (dashboard & sign out)", async () => {
+    (useAuth as any).mockReturnValue({
+      user: { name: "Test User", role: "USER" },
+      isLoading: false,
+      logout: mockLogout,
+    });
+    render(<Navbar />);
+    const menuBtn = screen.getAllByRole("button")[1]; // theme toggle is [0], menu is [1]
+    fireEvent.click(menuBtn);
+    
+    expect(screen.getByText("My Dashboard")).toBeInTheDocument();
+    
+    const signOutBtn = screen.getByRole("button", { name: "Sign Out" });
+    fireEvent.click(signOutBtn);
+    
+    // Clicking Sign Out triggers logout() and closes menu
+    expect(mockLogout).toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.queryByText("My Dashboard")).not.toBeInTheDocument(); // Menu closed
+    });
+  });
+
+  it("renders mobile menu with admin user options (admin dashboard)", async () => {
+    (useAuth as any).mockReturnValue({
+      user: { name: "Admin", role: "ADMIN" },
+      isLoading: false,
+      logout: mockLogout,
+    });
+    render(<Navbar />);
+    const menuBtn = screen.getAllByRole("button")[1];
+    fireEvent.click(menuBtn);
+    
+    const adminLink = screen.getByText("Go to Admin Dashboard");
+    expect(adminLink).toBeInTheDocument();
+    
+    fireEvent.click(adminLink);
+    // Menu should close
+    await waitFor(() => {
+      expect(screen.queryByText("Go to Admin Dashboard")).not.toBeInTheDocument();
+    });
   });
 });

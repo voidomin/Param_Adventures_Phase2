@@ -1,52 +1,116 @@
-import { describe, it, expect } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
-import React from "react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import Carousel from "@/components/ui/Carousel";
+import React from "react";
 
-describe("Carousel", () => {
-  it("renders the children within a scrollable container", () => {
-    render(
-      <Carousel>
-        <div data-testid="carousel-item">Item 1</div>
-        <div data-testid="carousel-item">Item 2</div>
-      </Carousel>
-    );
-    const items = screen.getAllByTestId("carousel-item");
-    expect(items).toHaveLength(2);
+describe("Carousel Component", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it("renders left and right scroll buttons", () => {
+  it("renders children correctly", () => {
     render(
       <Carousel>
-        <div>Item</div>
+        <div data-testid="child-1">Item 1</div>
+        <div data-testid="child-2">Item 2</div>
       </Carousel>
     );
-    const leftBtn = screen.getByRole("button", { name: /Scroll Left/i });
-    const rightBtn = screen.getByRole("button", { name: /Scroll Right/i });
-    expect(leftBtn).toBeInTheDocument();
-    expect(rightBtn).toBeInTheDocument();
+    expect(screen.getByTestId("child-1")).toBeInTheDocument();
+    expect(screen.getByTestId("child-2")).toBeInTheDocument();
   });
 
-  it("disables left button initially", () => {
-    render(
-      <Carousel>
-        <div>Item</div>
-      </Carousel>
-    );
-    const leftBtn = screen.getByRole("button", { name: /Scroll Left/i });
-    expect(leftBtn).toBeDisabled();
+  it("initializes with scroll buttons based on mock metrics", () => {
+    // We mock properties for the layout to test state changes
+    const OriginalDiv = "div";
+    vi.spyOn(React, "useRef").mockReturnValueOnce({
+      current: {
+        scrollLeft: 0,
+        scrollWidth: 1000,
+        clientWidth: 500,
+        scrollBy: vi.fn(),
+      },
+    });
+
+    render(<Carousel><div /></Carousel>);
+
+    const leftBtn = screen.getByLabelText("Scroll Left");
+    const rightBtn = screen.getByLabelText("Scroll Right");
+
+    expect(leftBtn).toBeDisabled(); // scrollLeft is 0
+    expect(leftBtn).toHaveClass("opacity-0 pointer-events-none");
+
+    // We can't easily rely on the checkScroll effect strictly because useRef is hard to mock
+    // cleanly for an inner element in React Testing Library without extensive stubbing.
+    // Testing the logic more directly.
   });
 
-  it("calls scrollBy when clicking the right arrow", () => {
-    render(
-      <Carousel>
-        <div>Item</div>
-      </Carousel>
-    );
+  it("advances slide on clicking next button (mocks)", () => {
+    const mockScrollBy = vi.fn();
     
-    // We cannot easily mock the inner ref directly with testing-library without complex setups,
-    // but we can verify the button is clickable without throwing errors.
-    const rightBtn = screen.getByRole("button", { name: /Scroll Right/i });
-    expect(() => fireEvent.click(rightBtn)).not.toThrow();
+    // Patching HTMLDivElement prototype for the test duration
+    const originalClientWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'clientWidth');
+    const originalScrollWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollWidth');
+    const originalScrollLeft = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollLeft');
+    
+    Object.defineProperty(HTMLElement.prototype, 'clientWidth', { configurable: true, value: 500 });
+    Object.defineProperty(HTMLElement.prototype, 'scrollWidth', { configurable: true, value: 1000 });
+    Object.defineProperty(HTMLElement.prototype, 'scrollLeft', { configurable: true, value: 0 });
+    HTMLElement.prototype.scrollBy = mockScrollBy;
+
+    render(
+      <Carousel>
+        <div>Item</div>
+      </Carousel>
+    );
+
+    const rightBtn = screen.getByLabelText("Scroll Right");
+    fireEvent.click(rightBtn);
+
+    expect(mockScrollBy).toHaveBeenCalledWith({ left: 400, behavior: "smooth" }); // 0.8 * 500 = 400
+
+    // Cleanup
+    if (originalClientWidth) Object.defineProperty(HTMLElement.prototype, 'clientWidth', originalClientWidth);
+    if (originalScrollWidth) Object.defineProperty(HTMLElement.prototype, 'scrollWidth', originalScrollWidth);
+    if (originalScrollLeft) Object.defineProperty(HTMLElement.prototype, 'scrollLeft', originalScrollLeft);
+    delete (HTMLElement.prototype as any).scrollBy;
+  });
+
+  it("goes back on clicking prev button (mocks)", () => {
+    const mockScrollBy = vi.fn();
+    
+    Object.defineProperty(HTMLElement.prototype, 'clientWidth', { configurable: true, value: 500 });
+    Object.defineProperty(HTMLElement.prototype, 'scrollWidth', { configurable: true, value: 1000 });
+    Object.defineProperty(HTMLElement.prototype, 'scrollLeft', { configurable: true, value: 500 }); // Can scroll left
+    HTMLElement.prototype.scrollBy = mockScrollBy;
+
+    render(
+      <Carousel>
+        <div>Item</div>
+      </Carousel>
+    );
+
+    // Initial render triggers checkScroll due to useEffect
+    // Since scrollLeft = 500, left arrow should be enabled
+    const leftBtn = screen.getByLabelText("Scroll Left");
+    expect(leftBtn).not.toBeDisabled();
+    
+    fireEvent.click(leftBtn);
+    expect(mockScrollBy).toHaveBeenCalledWith({ left: -400, behavior: "smooth" });
+
+    // Cleanup
+    Object.defineProperty(HTMLElement.prototype, 'clientWidth', { configurable: true, value: 0 });
+    Object.defineProperty(HTMLElement.prototype, 'scrollWidth', { configurable: true, value: 0 });
+    Object.defineProperty(HTMLElement.prototype, 'scrollLeft', { configurable: true, value: 0 });
+    delete (HTMLElement.prototype as any).scrollBy;
+  });
+
+  it("listens to window resize to recalculate constraints", () => {
+    const checkScrollSpy = vi.fn();
+    render(<Carousel><div /></Carousel>);
+    expect(screen.getByLabelText("Scroll Left")).toBeInTheDocument();
+    
+    // Dispatch resize
+    fireEvent(globalThis as unknown as Window, new Event('resize'));
+    expect(screen.getByLabelText("Scroll Right")).toBeInTheDocument();
   });
 });

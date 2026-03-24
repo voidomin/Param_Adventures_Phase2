@@ -1,36 +1,60 @@
-import { describe, it, expect, vi } from "vitest";
 import { render } from "@testing-library/react";
-import React from "react";
+import { describe, it, expect, vi, beforeAll, afterAll } from "vitest";
 import ScrollReveal from "@/components/ui/ScrollReveal";
+import React from "react";
 
+// Minimal mock for framer-motion to simplify IntersectionObserver interactions
+vi.mock("framer-motion", async () => {
+  const actual = await vi.importActual("framer-motion");
+  return {
+    ...actual as any,
+    motion: {
+      div: ({ children, initial, whileInView, className, ...props }: any) => {
+        // Render a static div and pass initial as data-attributes so we can verify the logic
+        return (
+          <div 
+            className={className} 
+            data-initial={JSON.stringify(initial)}
+            data-testid="motion-div"
+          >
+            {children}
+          </div>
+        );
+      }
+    }
+  };
+});
 
-// Mock framer-motion since we just want to test component mounting and props
-vi.mock("framer-motion", () => ({
-  motion: {
-    div: ({ children, className, "data-testid": testId }: any) => (
-      <div className={className} data-testid={testId || "motion-div"}>
-        {children}
-      </div>
-    ),
-  },
-}));
-
-describe("ScrollReveal", () => {
+describe("ScrollReveal Component", () => {
   it("renders children correctly", () => {
     const { getByText } = render(
       <ScrollReveal>
-        <p>Revealed Content</p>
+        <span>Content inside</span>
       </ScrollReveal>
     );
-    expect(getByText("Revealed Content")).toBeInTheDocument();
+    expect(getByText("Content inside")).toBeInTheDocument();
   });
 
-  it("applies custom class names", () => {
-    const { getByTestId } = render(
-      <ScrollReveal className="custom-reveal">
-        <p>Test</p>
-      </ScrollReveal>
-    );
-    expect(getByTestId("motion-div").className).toContain("custom-reveal");
+  it("applies correct initial state for direction 'up'", () => {
+    const { getByTestId } = render(<ScrollReveal direction="up">Content</ScrollReveal>);
+    const motionDiv = getByTestId("motion-div");
+    const initial = JSON.parse(motionDiv.getAttribute("data-initial") || "{}");
+    expect(initial).toEqual({ opacity: 0, y: 40 });
+  });
+
+  it("applies correct initial state for variant 'blur'", () => {
+    const { getByTestId } = render(<ScrollReveal direction="left" variant="blur">Content</ScrollReveal>);
+    const motionDiv = getByTestId("motion-div");
+    const initial = JSON.parse(motionDiv.getAttribute("data-initial") || "{}");
+    expect(initial.x).toBe(40);
+    expect(initial.filter).toBe("blur(12px)");
+  });
+
+  it("applies correct initial state for variant 'zoom'", () => {
+    const { getByTestId } = render(<ScrollReveal direction="down" variant="zoom">Content</ScrollReveal>);
+    const motionDiv = getByTestId("motion-div");
+    const initial = JSON.parse(motionDiv.getAttribute("data-initial") || "{}");
+    expect(initial.y).toBe(-40);
+    expect(initial.scale).toBe(0.95);
   });
 });
