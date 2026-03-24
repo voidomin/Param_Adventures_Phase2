@@ -416,6 +416,9 @@ export default function ExperienceReviews({
         onClick={(e) => {
           if (e.target === dialogRef.current) setShowModal(false);
         }}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") setShowModal(false);
+        }}
       >
         <div className="flex items-end sm:items-center justify-center min-h-full p-0 sm:p-4">
           <div

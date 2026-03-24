@@ -50,12 +50,15 @@ describe("Hero Smoke Test", () => {
     
     const nextBtn = document.querySelector(".lucide-chevron-right");
     expect(nextBtn).toBeDefined();
-
-    fireEvent.click(nextBtn!.parentElement!);
+    if (nextBtn?.parentElement) {
+      fireEvent.click(nextBtn.parentElement);
+    }
     expect(screen.getByText("Custom Adventure 2")).toBeInTheDocument();
 
     const prevBtn = document.querySelector(".lucide-chevron-left");
-    fireEvent.click(prevBtn!.parentElement!);
+    if (prevBtn?.parentElement) {
+      fireEvent.click(prevBtn.parentElement);
+    }
     expect(screen.getByText("Custom Adventure 1")).toBeInTheDocument();
   });
 });
