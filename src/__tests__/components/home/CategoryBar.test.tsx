@@ -1,70 +1,93 @@
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import CategoryBar from "@/components/home/CategoryBar";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import CategoryBar from "../../../components/home/CategoryBar";
+import { vi, describe, it, expect, beforeEach } from "vitest";
 import React from "react";
 
-// Mock framer-motion
-vi.mock("framer-motion", () => ({
-  motion: {
-    button: ({ children, ...props }: any) => <button {...props}>{children}</button>,
-    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
-  },
+const mockRouter = {
+  push: vi.fn(),
+};
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => mockRouter,
 }));
 
-// Mock next/navigation
-vi.mock("next/navigation", () => ({
-  useRouter: vi.fn(() => ({ push: vi.fn() })),
-}));
+// Mock framer-motion to avoid animation delays in tests
+vi.mock("framer-motion", async () => {
+  const React = await import("react");
+  return {
+    motion: {
+      button: React.forwardRef(({ children, onClick, className, ...props }: any, ref: any) => (
+        <button onClick={onClick} className={className} ref={ref} {...props}>
+          {children}
+        </button>
+      )),
+      div: React.forwardRef(({ children, className, ...props }: any, ref: any) => (
+        <div className={className} ref={ref} {...props}>{children}</div>
+      )),
+    },
+    AnimatePresence: ({ children }: any) => <>{children}</>,
+  };
+});
+
+const mockFetch = vi.fn();
+vi.stubGlobal("fetch", mockFetch);
+
+// Mock Scroll APIs
+Object.defineProperty(HTMLElement.prototype, 'scrollLeft', { value: 0, writable: true });
+Object.defineProperty(HTMLElement.prototype, 'scrollWidth', { value: 1000, writable: true });
+Object.defineProperty(HTMLElement.prototype, 'clientWidth', { value: 500, writable: true });
+HTMLElement.prototype.scrollBy = vi.fn();
+HTMLElement.prototype.scrollTo = vi.fn();
 
 describe("CategoryBar Smoke Test", () => {
-  const mockCategories = {
-    categories: [
-      { id: "1", name: "Trekking", slug: "trekking", icon: "Mountain" },
-      { id: "2", name: "Camping", slug: "camping", icon: "Tent" },
-    ],
-  };
+  const mockCategories = [
+    { id: "1", name: "Trekking", slug: "trekking", icon: "Mountain" },
+    { id: "2", name: "Camping", slug: "camping", icon: "Tent" },
+  ];
 
   beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn());
-  });
-
-  it("renders loading state initially", () => {
-    vi.mocked(fetch).mockReturnValue(new Promise(() => {})); // Hang
-    render(<CategoryBar />);
-    expect(document.querySelector(".animate-pulse")).toBeDefined();
-  });
-
-  it("renders categories when loaded", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
+    vi.clearAllMocks();
+    mockFetch.mockResolvedValue({
       ok: true,
-      json: async () => mockCategories,
-    } as Response);
-
-    render(<CategoryBar />);
-
-    await waitFor(() => {
-      // Use getAllByText for Trekking/Camping since they are duplicated for infinite loop
-      expect(screen.getByText(/All Adventures/i)).toBeInTheDocument();
-      expect(screen.getAllByText(/Trekking/i).length).toBeGreaterThan(0);
-      expect(screen.getAllByText(/Camping/i).length).toBeGreaterThan(0);
+      json: () => Promise.resolve({ categories: mockCategories }),
     });
   });
 
-  it("calls router.push when a category is clicked", async () => {
-    const mockPush = vi.fn();
-    const { useRouter } = await import("next/navigation");
-    vi.mocked(useRouter).mockReturnValue({ push: mockPush } as any);
+  it("renders loading state initially", () => {
+    mockFetch.mockReturnValue(new Promise(() => {})); // Never resolves
+    render(<CategoryBar />);
+    const pulses = document.getElementsByClassName("animate-pulse");
+    expect(pulses.length).toBeGreaterThan(0);
+  });
 
-    vi.mocked(fetch).mockResolvedValueOnce({
-      ok: true,
-      json: async () => mockCategories,
-    } as Response);
-
+  it("renders categories and handles selection", async () => {
     render(<CategoryBar />);
 
-    const trekkingBtns = await screen.findAllByText(/Trekking/i);
-    fireEvent.click(trekkingBtns[0]);
+    await waitFor(() => {
+      // Use getAllByText because categories are duplicated for infinite scroll illusion
+      expect(screen.getAllByText("Trekking")[0]).toBeInTheDocument();
+      expect(screen.getAllByText("Camping")[0]).toBeInTheDocument();
+    });
 
-    expect(mockPush).toHaveBeenCalledWith("/experiences?category=trekking");
+    // Click "All Adventures"
+    fireEvent.click(screen.getByText(/All Adventures/i));
+    expect(mockRouter.push).toHaveBeenCalledWith("/experiences");
+
+    // Click "Trekking"
+    const trekBtns = screen.getAllByText("Trekking");
+    fireEvent.click(trekBtns[0]);
+    expect(mockRouter.push).toHaveBeenCalledWith("/experiences?category=trekking");
+  });
+
+
+  it("handles fetch failure gracefully", async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    mockFetch.mockRejectedValue(new Error("Network Error"));
+    
+    render(<CategoryBar />);
+    await waitFor(() => {
+      expect(screen.queryByText("Trekking")).not.toBeInTheDocument();
+      expect(screen.getByText(/All Adventures/i)).toBeInTheDocument();
+    });
   });
 });
