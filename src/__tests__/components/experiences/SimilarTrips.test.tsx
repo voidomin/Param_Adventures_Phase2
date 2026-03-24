@@ -30,9 +30,9 @@ describe("SimilarTrips Smoke Test", () => {
     vi.mocked(prisma.experience.findMany).mockResolvedValue(mockSimilar as any);
 
     // SimilarTrips is an async server component
-    const Result = await SimilarTrips({ 
-      currentExperienceId: "1", 
-      categoryIds: ["cat1"] 
+    const Result = await SimilarTrips({
+      currentExperienceId: "1",
+      categoryIds: ["cat1"]
     });
     render(Result);
 
