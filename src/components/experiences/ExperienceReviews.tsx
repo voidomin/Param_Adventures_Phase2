@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import {
   Star,
@@ -94,6 +94,7 @@ export default function ExperienceReviews({
   });
 
   // Modal & form state
+  const dialogRef = useRef<HTMLDialogElement>(null);
   const [showModal, setShowModal] = useState(false);
   const [rating, setRating] = useState(5);
   const [hoverRating, setHoverRating] = useState(0);
@@ -101,6 +102,19 @@ export default function ExperienceReviews({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
   const [submitSuccess, setSubmitSuccess] = useState(false);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    if (showModal) {
+      dialog.showModal();
+      document.body.style.overflow = "hidden";
+    } else {
+      dialog.close();
+      document.body.style.overflow = "unset";
+    }
+  }, [showModal]);
 
   const fetchReviews = useCallback(async () => {
     try {
@@ -392,23 +406,22 @@ export default function ExperienceReviews({
       </div>
 
       {/* ── Write / Edit Review Modal ── */}
-      {showModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm w-full h-full border-none"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowModal(false);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Escape") setShowModal(false);
-          }}
-          role="dialog"
-          aria-modal="true"
-        >
-          {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
+      <dialog
+        ref={dialogRef}
+        className="fixed inset-0 z-50 m-0 p-0 w-full h-full bg-black/70 backdrop-blur-sm border-none backdrop:bg-black/70 backdrop:backdrop-blur-sm shadow-none overflow-hidden"
+        onCancel={(e) => {
+          e.preventDefault();
+          setShowModal(false);
+        }}
+        onClick={(e) => {
+          if (e.target === dialogRef.current) setShowModal(false);
+        }}
+      >
+        <div className="flex items-end sm:items-center justify-center min-h-full p-0 sm:p-4">
           <div
-            aria-label="Write a review"
-            className="bg-card border border-border rounded-t-3xl sm:rounded-3xl shadow-2xl w-full sm:max-w-lg overflow-hidden m-0 p-0 max-w-none max-h-none"
+            className="bg-card border border-border rounded-t-3xl sm:rounded-3xl shadow-2xl w-full sm:max-w-lg overflow-hidden relative"
             onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
             <div className="px-6 pt-6 pb-4 border-b border-border/50">
@@ -534,7 +547,7 @@ export default function ExperienceReviews({
             </div>
           </div>
         </div>
-      )}
+      </dialog>
     </div>
   );
 }

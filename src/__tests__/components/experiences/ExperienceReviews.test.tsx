@@ -9,6 +9,16 @@ vi.mock("next/navigation", () => ({
   usePathname: vi.fn(() => "/experiences/test-trip"),
 }));
 
+// Mock HTMLDialogElement for JSDOM
+if (typeof HTMLDialogElement !== 'undefined' && !HTMLDialogElement.prototype.showModal) {
+  HTMLDialogElement.prototype.showModal = vi.fn(function(this: HTMLDialogElement) {
+    this.setAttribute('open', 'true');
+  });
+  HTMLDialogElement.prototype.close = vi.fn(function(this: HTMLDialogElement) {
+    this.removeAttribute('open');
+  });
+}
+
 describe("ExperienceReviews Smoke Test", () => {
   const mockReviews = [
     {
