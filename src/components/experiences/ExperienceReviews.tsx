@@ -393,23 +393,22 @@ export default function ExperienceReviews({
 
       {/* ── Write / Edit Review Modal ── */}
       {showModal && (
-        <button
-          type="button"
+        <div
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm w-full h-full border-none"
-          aria-label="Close modal"
           onClick={(e) => {
             if (e.target === e.currentTarget) setShowModal(false);
           }}
           onKeyDown={(e) => {
             if (e.key === "Escape") setShowModal(false);
           }}
+          role="dialog"
+          aria-modal="true"
         >
           {/* eslint-disable-next-line jsx-a11y/no-autofocus */}
-          <dialog
-            open
+          <div
             aria-label="Write a review"
             className="bg-card border border-border rounded-t-3xl sm:rounded-3xl shadow-2xl w-full sm:max-w-lg overflow-hidden m-0 p-0 max-w-none max-h-none"
-            style={{ position: "static" }}
+            onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
             <div className="px-6 pt-6 pb-4 border-b border-border/50">
@@ -533,8 +532,8 @@ export default function ExperienceReviews({
                 </>
               )}
             </div>
-          </dialog>
-        </button>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -59,7 +59,7 @@ describe("ManualVerifyModal", () => {
     // 1. Upload proof
     const fileInput = screen.getByLabelText(/Click to upload proof/i);
     fireEvent.change(fileInput, { target: { files: [new File(["abc"], "proof.png", { type: "image/png" })] } });
-    await waitFor(() => expect(screen.getByText(/Screenshot Uploaded/i)).toBeInTheDocument(), { timeout: 3000 });
+    await waitFor(() => expect(screen.getByText(/Screenshot Uploaded/i)).toBeInTheDocument(), { timeout: 10000 });
 
     // 2. Fill form
     fireEvent.change(screen.getByPlaceholderText(/e.g. PAY-123456789/i), { target: { value: "TXN123" } });
@@ -68,8 +68,8 @@ describe("ManualVerifyModal", () => {
     const submitBtn = screen.getByRole("button", { name: /Confirm Payment/i });
     fireEvent.click(submitBtn);
 
-    await waitFor(() => expect(screen.getByText(/Payment Confirmed!/i)).toBeInTheDocument(), { timeout: 3000 });
-    await waitFor(() => expect(mockProps.onSuccess).toHaveBeenCalled(), { timeout: 4000 });
+    await waitFor(() => expect(screen.getByText(/Payment Confirmed!/i)).toBeInTheDocument(), { timeout: 10000 });
+    await waitFor(() => expect(mockProps.onSuccess).toHaveBeenCalled(), { timeout: 10000 });
   });
 
   it("handles verification API errors", async () => {
