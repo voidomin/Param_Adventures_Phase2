@@ -81,8 +81,17 @@ export default function ExperienceGallery({ images }: ExperienceGalleryProps) {
             <motion.div
               key={url}
               layoutId={`gallery-${url}`}
-              className="group relative aspect-square rounded-lg overflow-hidden bg-muted cursor-pointer ring-1 ring-border/50 hover:ring-primary/50 transition-all shadow-sm hover:shadow-lg"
+              role="button"
+              tabIndex={0}
+              aria-label={`View image ${index + 1}`}
+              className="group relative aspect-square rounded-lg overflow-hidden bg-muted cursor-pointer ring-1 ring-border/50 hover:ring-primary/50 transition-all shadow-sm hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary"
               onClick={() => openLightbox(index)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  openLightbox(index);
+                }
+              }}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >

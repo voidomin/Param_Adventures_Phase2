@@ -1,18 +1,6 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 
-// Auto-generated test
-vi.mock("@/lib/db", () => ({
-  prisma: {
-    user: { findMany: vi.fn().mockResolvedValue([]), count: vi.fn().mockResolvedValue(0) },
-    booking: { findMany: vi.fn().mockResolvedValue([]), count: vi.fn().mockResolvedValue(0) },
-    experience: { findMany: vi.fn().mockResolvedValue([]), count: vi.fn().mockResolvedValue(0) },
-  }
-}));
-
-vi.mock("@/lib/auth", () => ({
-  auth: vi.fn().mockResolvedValue({ user: { id: "admin", role: "ADMIN" } })
-}));
-
+// Auto-generated test (Mocks handled in vitest.setup.ts)
 describe("Auto-generated API Test for bookings/[id]/refund/route.ts", () => {
   it("imports safely", async () => {
      try {

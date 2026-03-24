@@ -13,10 +13,6 @@ vi.mock("@/lib/AuthContext", () => ({
   useAuth: vi.fn().mockReturnValue({ user: null, loading: false }),
 }));
 
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
-  usePathname: () => "/experiences",
-}));
 
 const mockCategories = [
   { id: "c1", name: "Trekking", slug: "trekking", icon: "Mountain" },

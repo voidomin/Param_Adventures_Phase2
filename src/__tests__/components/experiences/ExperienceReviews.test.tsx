@@ -2,12 +2,9 @@ import { render, screen, act } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import ExperienceReviews from "@/components/experiences/ExperienceReviews";
 
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
-  usePathname: () => "/experiences/test-slug",
-}));
 
 describe("ExperienceReviews", () => {
+
   it("renders reviews and stats when available", async () => {
     globalThis.fetch = vi.fn().mockImplementation((url: string) => {
       if (url.includes("/my-review")) {

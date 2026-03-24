@@ -3,25 +3,12 @@ import { describe, it, expect, vi } from "vitest";
 import ExperienceDetailPage from "@/app/experiences/[slug]/page";
 import { prisma } from "@/lib/db";
 
-// Mock Next.js navigation
-vi.mock("next/navigation", () => ({
-  notFound: vi.fn(),
-  useRouter: () => ({ push: vi.fn() }),
-  usePathname: () => "/experiences/test-slug",
-}));
 
 vi.mock("@/lib/AuthContext", () => ({
   useAuth: vi.fn().mockReturnValue({ user: null, loading: false }),
 }));
 
-// Mock DB
-vi.mock("@/lib/db", () => ({
-  prisma: {
-    experience: {
-      findUnique: vi.fn(),
-    },
-  },
-}));
+
 
 // Mock child components that might complain about missing context or cause JSDOM issues
 vi.mock("@/components/experiences/ExperienceReviews", () => ({
