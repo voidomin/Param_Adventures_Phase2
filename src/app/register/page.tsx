@@ -82,6 +82,7 @@ export default function RegisterPage() {
               id="register-name"
               type="text"
               required
+              suppressHydrationWarning
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all duration-300"
@@ -100,6 +101,7 @@ export default function RegisterPage() {
               id="register-email"
               type="email"
               required
+              suppressHydrationWarning
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all duration-300"
@@ -120,6 +122,7 @@ export default function RegisterPage() {
               id="register-password"
               type={showPassword ? "text" : "password"}
               required
+              suppressHydrationWarning
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-3.5 py-2.5 pr-10 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all duration-300"
@@ -127,6 +130,7 @@ export default function RegisterPage() {
             />
             <button
               type="button"
+              suppressHydrationWarning
               onClick={() => setShowPassword(!showPassword)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
             >
@@ -148,6 +152,7 @@ export default function RegisterPage() {
               id="register-confirm"
               type={showConfirm ? "text" : "password"}
               required
+              suppressHydrationWarning
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               className="w-full px-3.5 py-2.5 pr-10 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white text-sm placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all duration-300"
@@ -155,6 +160,7 @@ export default function RegisterPage() {
             />
             <button
               type="button"
+              suppressHydrationWarning
               onClick={() => setShowConfirm(!showConfirm)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
             >
@@ -176,6 +182,7 @@ export default function RegisterPage() {
           <motion.button
             type="submit"
             disabled={isSubmitting}
+            suppressHydrationWarning
             className="group relative w-full py-3 px-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-amber-500/20 hover:shadow-xl hover:shadow-amber-500/30 overflow-hidden"
             whileHover={{ y: -2 }}
             whileTap={{ scale: 0.98 }}
