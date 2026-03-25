@@ -78,4 +78,97 @@ describe("GET /api/admin/reviews", () => {
       }),
     );
   });
+
+  it("allows SUPER_ADMIN role", async () => {
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: true,
+      roleName: "SUPER_ADMIN",
+    } as any);
+    mockFindMany.mockResolvedValue([{ id: "r2" }] as any);
+    mockCount.mockResolvedValue(1);
+
+    const response = await GET(
+      new NextRequest("http://localhost/api/admin/reviews?experienceId=exp-2"),
+    );
+
+    expect(response.status).toBe(200);
+  });
+
+  it("uses default page and limit when params are missing", async () => {
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: true,
+      roleName: "ADMIN",
+    } as any);
+    mockFindMany.mockResolvedValue([] as any);
+    mockCount.mockResolvedValue(0);
+
+    const response = await GET(
+      new NextRequest("http://localhost/api/admin/reviews"),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.pagination).toEqual({ total: 0, page: 1, limit: 20, totalPages: 0 });
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {},
+        skip: 0,
+        take: 20,
+      }),
+    );
+  });
+
+  it("clamps limit to max 50", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, roleName: "ADMIN" } as any);
+    mockFindMany.mockResolvedValue([] as any);
+    mockCount.mockResolvedValue(0);
+
+    const response = await GET(
+      new NextRequest("http://localhost/api/admin/reviews?page=1&limit=999"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skip: 0,
+        take: 50,
+      }),
+    );
+  });
+
+  it("clamps limit minimum to 1", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, roleName: "ADMIN" } as any);
+    mockFindMany.mockResolvedValue([] as any);
+    mockCount.mockResolvedValue(5);
+
+    const response = await GET(
+      new NextRequest("http://localhost/api/admin/reviews?page=2&limit=0"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skip: 1,
+        take: 1,
+      }),
+    );
+  });
+
+  it("clamps page minimum to 1", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, roleName: "ADMIN" } as any);
+    mockFindMany.mockResolvedValue([] as any);
+    mockCount.mockResolvedValue(5);
+
+    const response = await GET(
+      new NextRequest("http://localhost/api/admin/reviews?page=0&limit=10"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skip: 0,
+        take: 10,
+      }),
+    );
+  });
 });
