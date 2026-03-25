@@ -83,6 +83,27 @@ describe("/api/user/blogs", () => {
     expect(response.status).toBe(400);
   });
 
+  it("POST returns 401 when token is missing", async () => {
+    const response = await POST(
+      createRequest({ body: { experienceId: "exp-1", title: "My Trip" } }),
+    );
+
+    expect(response.status).toBe(401);
+  });
+
+  it("POST returns 401 for invalid token", async () => {
+    mockVerifyAccessToken.mockResolvedValue(null);
+
+    const response = await POST(
+      createRequest({
+        token: "bad",
+        body: { experienceId: "exp-1", title: "My Trip" },
+      }),
+    );
+
+    expect(response.status).toBe(401);
+  });
+
   it("POST returns 403 when completed booking is missing", async () => {
     mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
     mockBookingFindFirst.mockResolvedValue(null);
@@ -146,5 +167,66 @@ describe("/api/user/blogs", () => {
         }),
       }),
     );
+  });
+
+  it("POST defaults optional fields when not provided", async () => {
+    mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+    mockBookingFindFirst.mockResolvedValue({ id: "bk-1" } as any);
+    mockBlogFindFirst.mockResolvedValue(null);
+    mockGenerateSlug.mockReturnValue("my-trip");
+    mockBlogFindUnique.mockResolvedValue(null);
+    mockBlogCreate.mockResolvedValue({ id: "b3", slug: "my-trip" } as any);
+
+    const response = await POST(
+      createRequest({
+        token: "ok",
+        body: {
+          experienceId: "exp-1",
+          title: "  My Trip  ",
+        },
+      }),
+    );
+
+    expect(response.status).toBe(201);
+    expect(mockBlogCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          title: "My Trip",
+          coverImageUrl: null,
+          theme: "CLASSIC",
+          authorSocials: null,
+        }),
+      }),
+    );
+  });
+
+  it("POST returns 500 when database throws", async () => {
+    mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+    mockBookingFindFirst.mockRejectedValue(new Error("db down"));
+
+    const response = await POST(
+      createRequest({
+        token: "ok",
+        body: { experienceId: "exp-1", title: "My Trip" },
+      }),
+    );
+
+    expect(response.status).toBe(500);
+  });
+
+  it("POST returns generic 500 message for non-Error throws", async () => {
+    mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+    mockBookingFindFirst.mockRejectedValue(null as any);
+
+    const response = await POST(
+      createRequest({
+        token: "ok",
+        body: { experienceId: "exp-1", title: "My Trip" },
+      }),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(data.error).toBe("Internal Server Error");
   });
 });
