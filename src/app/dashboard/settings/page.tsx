@@ -1,7 +1,7 @@
 "use client";
 
 import { useAuth } from "@/lib/AuthContext";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   User,
   Lock,
@@ -11,6 +11,19 @@ import {
   Stethoscope,
   HeartPulse,
 } from "lucide-react";
+
+const COUNTRY_CODES = [
+  { code: "+91", name: "India" },
+  { code: "+1", name: "USA" },
+  { code: "+44", name: "UK" },
+  { code: "+971", name: "UAE" },
+  { code: "+61", name: "Australia" },
+  { code: "+65", name: "Singapore" },
+];
+
+function getErrorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : "Something went wrong";
+}
 
 export default function SettingsPage() {
   const { user, mutateUser } = useAuth();
@@ -29,18 +42,11 @@ export default function SettingsPage() {
   const [ecPhone, setEcPhone] = useState("");
   const [ecRelationship, setEcRelationship] = useState("");
 
-  const countryCodes = [
-    { code: "+91", name: "India" },
-    { code: "+1", name: "USA" },
-    { code: "+44", name: "UK" },
-    { code: "+971", name: "UAE" },
-    { code: "+61", name: "Australia" },
-    { code: "+65", name: "Singapore" },
-  ];
-
-  const parsePhoneNumber = (fullPhone: string) => {
+  const parsePhoneNumber = useCallback((fullPhone: string) => {
     if (!fullPhone) return { code: "+91", number: "" };
-    const matchedCode = countryCodes.find((c) => fullPhone.startsWith(c.code));
+    const matchedCode = COUNTRY_CODES.find((c) =>
+      fullPhone.startsWith(c.code),
+    );
     if (matchedCode) {
       return {
         code: matchedCode.code,
@@ -48,7 +54,7 @@ export default function SettingsPage() {
       };
     }
     return { code: "+91", number: fullPhone };
-  };
+  }, []);
 
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [profileMsg, setProfileMsg] = useState({ type: "", text: "" });
@@ -81,7 +87,7 @@ export default function SettingsPage() {
 
       setEcRelationship(user.emergencyRelationship || "");
     }
-  }, [user]);
+  }, [user, parsePhoneNumber]);
 
   if (!user) {
     return (
@@ -145,8 +151,8 @@ export default function SettingsPage() {
 
       setProfileMsg({ type: "success", text: "Profile updated successfully!" });
       if (mutateUser) mutateUser(); // Refresh global auth context
-    } catch (err: any) {
-      setProfileMsg({ type: "error", text: err.message });
+    } catch (err: unknown) {
+      setProfileMsg({ type: "error", text: getErrorMessage(err) });
     } finally {
       setIsUpdatingProfile(false);
     }
@@ -183,8 +189,8 @@ export default function SettingsPage() {
       });
       setCurrentPassword("");
       setNewPassword("");
-    } catch (err: any) {
-      setPasswordMsg({ type: "error", text: err.message });
+    } catch (err: unknown) {
+      setPasswordMsg({ type: "error", text: getErrorMessage(err) });
     } finally {
       setIsUpdatingPassword(false);
     }
@@ -206,7 +212,7 @@ export default function SettingsPage() {
         <div className="lg:col-span-2 space-y-8">
           <form onSubmit={handleProfileUpdate} className="space-y-8">
             {/* Identity & Contact Section */}
-            <div className="bg-card rounded-[1.5rem] border border-border p-8 shadow-sm">
+            <div className="bg-card rounded-3xl border border-border p-8 shadow-sm">
               <div className="flex items-center gap-3 mb-8">
                 <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                   <User className="w-5 h-5" />
@@ -315,7 +321,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Health & Safety Section */}
-            <div className="bg-card rounded-[1.5rem] border border-border p-8 shadow-sm">
+            <div className="bg-card rounded-3xl border border-border p-8 shadow-sm">
               <div className="flex items-center gap-3 mb-8">
                 <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-500">
                   <Stethoscope className="w-5 h-5" />
@@ -377,7 +383,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Emergency Contact Section */}
-            <div className="bg-card rounded-[1.5rem] border border-border p-8 shadow-sm">
+            <div className="bg-card rounded-3xl border border-border p-8 shadow-sm">
               <div className="flex items-center gap-3 mb-8">
                 <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500">
                   <HeartPulse className="w-5 h-5" />
@@ -494,7 +500,7 @@ export default function SettingsPage() {
 
         {/* Right Column: Security */}
         <div className="space-y-8">
-          <div className="bg-card rounded-[2rem] border border-border p-8 shadow-sm">
+          <div className="bg-card rounded-4xl border border-border p-8 shadow-sm">
             <div className="flex items-center gap-3 mb-8">
               <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500">
                 <Lock className="w-5 h-5" />

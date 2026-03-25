@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
         resetToken: null,
         resetTokenExpiry: null,
         tokenVersion: { increment: 1 },
-      } as any,
+      },
     });
 
     return NextResponse.json(

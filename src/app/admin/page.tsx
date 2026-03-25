@@ -38,7 +38,7 @@ interface AdminDashboardData {
     targetType: string;
     targetId: string | null;
     timestamp: string;
-    metadata: Record<string, any> | null;
+    metadata: Record<string, unknown> | null;
   }[];
   charts: {
     revenueByMonth: { month: string; revenue: number }[];

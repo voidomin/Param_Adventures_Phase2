@@ -29,10 +29,13 @@ export async function GET() {
         },
       },
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Public quotes error:", error);
     return NextResponse.json(
-      { error: "Failed to fetch quote", details: error.message },
+      {
+        error: "Failed to fetch quote",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
       { status: 500 },
     );
   }

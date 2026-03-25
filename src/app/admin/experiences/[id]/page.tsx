@@ -25,7 +25,9 @@ export default async function EditExperiencePage({
   const initialData = {
     ...experience,
     basePrice: Number(experience.basePrice), // Convert Decimal to number
-    itinerary: (experience.itinerary as any) || [
+    itinerary: Array.isArray(experience.itinerary)
+      ? experience.itinerary
+      : [
       { title: "", description: "" },
     ],
     images: experience.images.length > 0 ? experience.images : [""],

@@ -28,6 +28,9 @@ export default function AdminSettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [statusMsg, setStatusMsg] = useState({ type: "", text: "" });
 
+  const getErrorMessage = (error: unknown) =>
+    error instanceof Error ? error.message : "Failed to save settings";
+
   useEffect(() => {
     if (!isLoading) {
       if (user?.role !== "SUPER_ADMIN") {
@@ -80,8 +83,8 @@ export default function AdminSettingsPage() {
       
       setStatusMsg({ type: "success", text: "Settings saved successfully." });
       setTimeout(() => setStatusMsg({ type: "", text: "" }), 3000);
-    } catch (error: any) {
-      setStatusMsg({ type: "error", text: error.message });
+    } catch (error: unknown) {
+      setStatusMsg({ type: "error", text: getErrorMessage(error) });
     } finally {
       setIsSaving(false);
     }

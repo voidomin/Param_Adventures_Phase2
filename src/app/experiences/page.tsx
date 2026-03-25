@@ -69,6 +69,7 @@ export default async function ExperiencesPage({
     durationDays: exp.durationDays,
     location: exp.location,
     basePrice: Number(exp.basePrice),
+    capacity: exp.capacity,
     difficulty: exp.difficulty,
     status: exp.status,
     coverImage: exp.coverImage,
@@ -91,7 +92,7 @@ export default async function ExperiencesPage({
   return (
     <div className="min-h-screen bg-background text-foreground pb-20">
       <ExperiencesClient
-        initialExperiences={serializedExperiences as any}
+        initialExperiences={serializedExperiences}
         categories={serializedCategories}
         initialFilter={initialFilter}
       />

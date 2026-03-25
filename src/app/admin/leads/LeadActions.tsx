@@ -39,8 +39,11 @@ export default function LeadActions({
 
       setIsEditing(false);
       router.refresh();
-    } catch (error: any) {
-      console.error("Update failed:", error);
+    } catch (error: unknown) {
+      console.error(
+        "Update failed:",
+        error instanceof Error ? error.message : error,
+      );
     } finally {
       setIsLoading(false);
     }

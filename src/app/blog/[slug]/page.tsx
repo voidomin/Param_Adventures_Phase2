@@ -110,7 +110,10 @@ export default async function BlogArticlePage({ params }: Props) {
     blog?.coverImageUrl ||
     blog?.experience?.images[0] ||
     `https://picsum.photos/seed/${blog?.id}/1200/600`;
-  const socials = (blog?.authorSocials as any) || {};
+  const socials =
+    (blog?.authorSocials as
+      | { instagram?: string; twitter?: string; youtube?: string }
+      | null) ?? {};
 
   const publishDate = new Date(blog.updatedAt).toLocaleDateString("en-IN", {
     day: "numeric",

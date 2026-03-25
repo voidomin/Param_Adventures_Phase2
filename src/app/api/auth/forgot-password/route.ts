@@ -74,11 +74,24 @@ export async function POST(request: NextRequest) {
       { message: "If an account exists, a reset link has been sent." },
       { status: 200 },
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage =
+      error instanceof Error
+        ? error.message
+        : typeof error === "object" &&
+            error !== null &&
+            "message" in error &&
+            typeof (error as { message: unknown }).message === "string"
+          ? (error as { message: string }).message
+          : "Unknown error";
+
     console.error("[AUTH] Forgot Password error:", error);
-    if (error.stack) console.error(error.stack);
+    if (error instanceof Error && error.stack) console.error(error.stack);
     return NextResponse.json(
-      { error: "Internal server error.", details: error.message },
+      {
+        error: "Internal server error.",
+        details: errorMessage,
+      },
       { status: 500 },
     );
   }

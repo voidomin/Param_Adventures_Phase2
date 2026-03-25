@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
+import type { Prisma } from "@prisma/client";
 
 // GET /api/admin/roles
 // Fetch all system roles (filtered by the acting user's permissions)
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
     // These roles are always excluded from assignment (e.g. system internals)
     const alwaysExcluded = ["GUEST", "USER"]; // USER is usually manually assigned but let's see
 
-    let whereClause: any = {
+    let whereClause: Prisma.RoleWhereInput = {
       name: { notIn: [...alwaysExcluded] },
     };
 

@@ -22,7 +22,7 @@ interface AuditLog {
   targetType: string;
   targetId: string | null;
   timestamp: string;
-  metadata: Record<string, any> | null;
+  metadata: Record<string, unknown> | null;
 }
 
 export default function AuditLogsPage() {

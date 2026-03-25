@@ -1,7 +1,7 @@
 "use client";
 
 import { Share2, Check } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 interface ShareButtonProps {
@@ -21,33 +21,29 @@ export default function ShareButton({
 }: Readonly<ShareButtonProps>) {
   const [copied, setCopied] = useState(false);
 
-  // Use provided URL or fallback to current window location - handled in useEffect to avoid hydration mismatch
-  const [shareUrl, setShareUrl] = useState(url || "");
-
-  useEffect(() => {
-    if (globalThis.window !== undefined) {
-      // If no url provided, use current. If relative, make absolute.
-      const base = globalThis.window.location.origin;
-      let finalUrl = globalThis.window.location.href;
-      if (url) {
-        finalUrl = url.startsWith('http') ? url : `${base}${url}`;
-      }
-      setShareUrl(finalUrl);
-    }
-  }, [url]);
-
-  const shareData = {
-    title: title,
-    text: text || `Check out this experience on Param Adventures: ${title}`,
-    url: shareUrl,
+  const resolveShareUrl = () => {
+    if (globalThis.window === undefined) return url ?? "";
+    const base = globalThis.window.location.origin;
+    if (!url) return globalThis.window.location.href;
+    return url.startsWith("http") ? url : `${base}${url}`;
   };
 
   const handleShare = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
+    const shareUrl = resolveShareUrl();
+    const shareData = {
+      title,
+      text: text || `Check out this experience on Param Adventures: ${title}`,
+      url: shareUrl,
+    };
+
     // Try Web Share API first
-    if (globalThis.navigator?.share !== undefined && !!globalThis.navigator?.canShare?.(shareData)) {
+    if (
+      globalThis.navigator?.share !== undefined &&
+      !!globalThis.navigator?.canShare?.(shareData)
+    ) {
       try {
         await navigator.share(shareData);
         return;

@@ -57,7 +57,7 @@ function TripCard({ trip }: Readonly<{ trip: TripSlot }>) {
   const canAct = isToday && trip.status === "ACTIVE";
 
   return (
-    <div className="bg-card border border-border rounded-[1.5rem] p-6 sm:p-8 flex flex-col gap-6 hover:shadow-xl hover:border-foreground/20 transition-all group">
+    <div className="bg-card border border-border rounded-3xl p-6 sm:p-8 flex flex-col gap-6 hover:shadow-xl hover:border-foreground/20 transition-all group">
       <div className="flex flex-col sm:flex-row sm:items-start gap-4">
         <div className="flex-1">
           <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -178,7 +178,7 @@ export default function TrekLeadTripsPage() {
       {!isLoading && trips.length > 0 && (
         <div className="space-y-10">
           {active.length > 0 && (
-            <section className="bg-gradient-to-br from-yellow-500/5 to-transparent p-6 sm:p-8 rounded-[2rem] border border-yellow-500/10">
+            <section className="bg-linear-to-br from-yellow-500/5 to-transparent p-6 sm:p-8 rounded-4xl border border-yellow-500/10">
               <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-3 border-b border-border/50 pb-4">
                 <span className="w-3 h-3 rounded-full bg-yellow-400 animate-pulse shadow-[0_0_10px_rgba(250,204,21,0.5)]" />{" "}
                 In Progress
@@ -192,7 +192,7 @@ export default function TrekLeadTripsPage() {
           )}
 
           {upcoming.length > 0 && (
-            <section className="bg-foreground/[0.02] p-6 sm:p-8 rounded-[2rem] border border-border">
+            <section className="bg-foreground/2 p-6 sm:p-8 rounded-4xl border border-border">
               <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-3 border-b border-border/50 pb-4">
                 <span className="w-3 h-3 rounded-full bg-blue-400 inline-block" />{" "}
                 Upcoming Missions
