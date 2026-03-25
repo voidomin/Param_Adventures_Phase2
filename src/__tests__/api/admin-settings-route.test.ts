@@ -77,6 +77,16 @@ describe("/api/admin/settings", () => {
     expect(response.status).toBe(400);
   });
 
+  it("PUT returns 403 when unauthorized", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: false } as any);
+
+    const response = await PUT(
+      createJsonRequest("http://localhost/api/admin/settings", { key: "k1", value: "v1" }),
+    );
+
+    expect(response.status).toBe(403);
+  });
+
   it("PUT upserts setting", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
     mockUpsert.mockResolvedValue({ key: "k1", value: "v1" } as any);
@@ -90,12 +100,33 @@ describe("/api/admin/settings", () => {
     expect(data.setting.key).toBe("k1");
   });
 
+  it("PUT returns 500 on upsert failure", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockUpsert.mockRejectedValue(new Error("db down"));
+
+    const response = await PUT(
+      createJsonRequest("http://localhost/api/admin/settings", { key: "k1", value: "v1" }),
+    );
+
+    expect(response.status).toBe(500);
+  });
+
   it("DELETE returns 400 when key is missing", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
 
     const response = await DELETE(createRequest("http://localhost/api/admin/settings"));
 
     expect(response.status).toBe(400);
+  });
+
+  it("DELETE returns 403 when unauthorized", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: false } as any);
+
+    const response = await DELETE(
+      createRequest("http://localhost/api/admin/settings?key=auth_login_bg"),
+    );
+
+    expect(response.status).toBe(403);
   });
 
   it("DELETE removes setting by key", async () => {
@@ -110,5 +141,25 @@ describe("/api/admin/settings", () => {
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
     expect(mockDeleteMany).toHaveBeenCalledWith({ where: { key: "auth_login_bg" } });
+  });
+
+  it("DELETE returns 500 on delete failure", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockDeleteMany.mockRejectedValue(new Error("db down"));
+
+    const response = await DELETE(
+      createRequest("http://localhost/api/admin/settings?key=auth_login_bg"),
+    );
+
+    expect(response.status).toBe(500);
+  });
+
+  it("GET returns 500 on fetch failure", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockFindMany.mockRejectedValue(new Error("db down"));
+
+    const response = await GET(createRequest("http://localhost/api/admin/settings"));
+
+    expect(response.status).toBe(500);
   });
 });

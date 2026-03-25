@@ -72,6 +72,17 @@ describe("/api/admin/hero/[id]", () => {
     expect(data.id).toBe("h1");
   });
 
+  it("GET returns 500 when lookup fails", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockFindUnique.mockRejectedValue(new Error("db fail"));
+
+    const response = await GET({} as NextRequest, {
+      params: Promise.resolve({ id: "h1" }),
+    });
+
+    expect(response.status).toBe(500);
+  });
+
   it("PUT returns 400 on validation error", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
 
@@ -80,6 +91,16 @@ describe("/api/admin/hero/[id]", () => {
     });
 
     expect(response.status).toBe(400);
+  });
+
+  it("PUT returns 403 when unauthorized", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: false } as any);
+
+    const response = await PUT(createJsonRequest({ title: "x" }), {
+      params: Promise.resolve({ id: "h1" }),
+    });
+
+    expect(response.status).toBe(403);
   });
 
   it("PUT updates selected fields", async () => {
@@ -101,6 +122,17 @@ describe("/api/admin/hero/[id]", () => {
     expect(mockRevalidatePath).toHaveBeenCalledWith("/", "layout");
   });
 
+  it("PUT returns 500 on update failure", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockUpdate.mockRejectedValue(new Error("db fail"));
+
+    const response = await PUT(createJsonRequest({ title: "Updated" }), {
+      params: Promise.resolve({ id: "h1" }),
+    });
+
+    expect(response.status).toBe(500);
+  });
+
   it("DELETE removes slide and returns success", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
     mockDelete.mockResolvedValue({ id: "h1" } as any);
@@ -113,6 +145,16 @@ describe("/api/admin/hero/[id]", () => {
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
     expect(mockRevalidatePath).toHaveBeenCalledWith("/", "layout");
+  });
+
+  it("DELETE returns 403 when unauthorized", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: false } as any);
+
+    const response = await DELETE({} as NextRequest, {
+      params: Promise.resolve({ id: "h1" }),
+    });
+
+    expect(response.status).toBe(403);
   });
 
   it("DELETE returns 500 on failure", async () => {
