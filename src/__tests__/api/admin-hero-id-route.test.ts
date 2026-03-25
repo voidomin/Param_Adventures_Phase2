@@ -122,6 +122,22 @@ describe("/api/admin/hero/[id]", () => {
     expect(mockRevalidatePath).toHaveBeenCalledWith("/", "layout");
   });
 
+  it("PUT accepts empty videoUrl and nullable fields", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockUpdate.mockResolvedValue({ id: "h1", subtitle: null, ctaLink: null } as any);
+
+    const response = await PUT(
+      createJsonRequest({ videoUrl: "", subtitle: null, ctaLink: null }),
+      { params: Promise.resolve({ id: "h1" }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockUpdate).toHaveBeenCalledWith({
+      where: { id: "h1" },
+      data: { subtitle: null, videoUrl: "", ctaLink: null },
+    });
+  });
+
   it("PUT returns 500 on update failure", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
     mockUpdate.mockRejectedValue(new Error("db fail"));

@@ -157,6 +157,39 @@ describe("/api/admin/experiences/[id]/slots/[slotId]", () => {
     });
   });
 
+  it("PATCH updates date only and keeps existing capacity", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockSlotFindUnique.mockResolvedValue({
+      id: "slot-1",
+      experienceId: "exp-1",
+      capacity: 20,
+      remainingCapacity: 8,
+      _count: { bookings: 12 },
+    } as any);
+    mockSlotUpdate.mockResolvedValue({
+      id: "slot-1",
+      capacity: 20,
+      remainingCapacity: 8,
+    } as any);
+
+    const response = await PATCH(
+      createJsonRequest({ date: "2026-08-22T10:00:00.000Z" }),
+      {
+        params: Promise.resolve({ id: "exp-1", slotId: "slot-1" }),
+      },
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockSlotUpdate).toHaveBeenCalledWith({
+      where: { id: "slot-1" },
+      data: {
+        date: new Date("2026-08-22T10:00:00.000Z"),
+        capacity: 20,
+        remainingCapacity: 8,
+      },
+    });
+  });
+
   it("PATCH returns 500 on unexpected error", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
     mockSlotFindUnique.mockRejectedValue(new Error("db down"));
