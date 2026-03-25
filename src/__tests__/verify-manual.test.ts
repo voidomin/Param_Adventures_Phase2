@@ -47,21 +47,21 @@ describe("POST /api/admin/bookings/[id]/verify-manual", () => {
   });
 
   it("returns 401 if unauthorized", async () => {
-    (authorizeRequest as any).mockResolvedValue({ authorized: false, response: { status: 401 } });
+    (authorizeRequest as unknown).mockResolvedValue({ authorized: false, response: { status: 401 } });
     const req = new NextRequest("http://localhost/api", { method: "POST" });
     const res: any = await POST(req, { params: mockParams });
     expect(res.status).toBe(401);
   });
 
   it("returns 403 if not an admin", async () => {
-    (authorizeRequest as any).mockResolvedValue({ authorized: true, roleName: "USER" });
+    (authorizeRequest as unknown).mockResolvedValue({ authorized: true, roleName: "USER" });
     const req = new NextRequest("http://localhost/api", { method: "POST" });
     const res: any = await POST(req, { params: mockParams });
     expect(res.status).toBe(403);
   });
 
   it("returns 400 for invalid request body", async () => {
-    (authorizeRequest as any).mockResolvedValue({ authorized: true, roleName: "ADMIN" });
+    (authorizeRequest as unknown).mockResolvedValue({ authorized: true, roleName: "ADMIN" });
     const req = new NextRequest("http://localhost/api", {
       method: "POST",
       body: JSON.stringify({ transactionId: "" }), // Missing fields
@@ -71,8 +71,8 @@ describe("POST /api/admin/bookings/[id]/verify-manual", () => {
   });
 
   it("returns 404 if booking not found", async () => {
-    (authorizeRequest as any).mockResolvedValue({ authorized: true, roleName: "ADMIN" });
-    (prisma.booking.findUnique as any).mockResolvedValue(null);
+    (authorizeRequest as unknown).mockResolvedValue({ authorized: true, roleName: "ADMIN" });
+    (prisma.booking.findUnique as unknown).mockResolvedValue(null);
 
     const req = new NextRequest("http://localhost/api", {
       method: "POST",
@@ -88,8 +88,8 @@ describe("POST /api/admin/bookings/[id]/verify-manual", () => {
   });
 
   it("returns 400 if booking already paid", async () => {
-    (authorizeRequest as any).mockResolvedValue({ authorized: true, roleName: "ADMIN" });
-    (prisma.booking.findUnique as any).mockResolvedValue({ id: mockBookingId, paymentStatus: "PAID" });
+    (authorizeRequest as unknown).mockResolvedValue({ authorized: true, roleName: "ADMIN" });
+    (prisma.booking.findUnique as unknown).mockResolvedValue({ id: mockBookingId, paymentStatus: "PAID" });
 
     const req = new NextRequest("http://localhost/api", {
       method: "POST",
@@ -108,7 +108,7 @@ describe("POST /api/admin/bookings/[id]/verify-manual", () => {
 
   it("successfully verifies booking and creates payment", async () => {
     const mockAuth = { authorized: true, roleName: "ADMIN", userId: "admin-1" };
-    (authorizeRequest as any).mockResolvedValue(mockAuth);
+    (authorizeRequest as unknown).mockResolvedValue(mockAuth);
     
     const mockBooking = {
       id: mockBookingId,
@@ -121,8 +121,8 @@ describe("POST /api/admin/bookings/[id]/verify-manual", () => {
       slot: { date: new Date() }
     };
 
-    (prisma.booking.findUnique as any).mockResolvedValue(mockBooking);
-    (prisma.$transaction as any).mockResolvedValue([{ ...mockBooking, paymentStatus: "PAID" }]);
+    (prisma.booking.findUnique as unknown).mockResolvedValue(mockBooking);
+    (prisma.$transaction as unknown).mockResolvedValue([{ ...mockBooking, paymentStatus: "PAID" }]);
 
     const req = new NextRequest("http://localhost/api", {
       method: "POST",
@@ -160,8 +160,8 @@ describe("POST /api/admin/bookings/[id]/verify-manual", () => {
   });
 
   it("handles internal errors with 500", async () => {
-    (authorizeRequest as any).mockResolvedValue({ authorized: true, roleName: "ADMIN" });
-    (prisma.booking.findUnique as any).mockRejectedValue(new Error("DB Fallure"));
+    (authorizeRequest as unknown).mockResolvedValue({ authorized: true, roleName: "ADMIN" });
+    (prisma.booking.findUnique as unknown).mockRejectedValue(new Error("DB Fallure"));
 
     const req = new NextRequest("http://localhost/api", {
       method: "POST",

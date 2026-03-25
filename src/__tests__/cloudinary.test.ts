@@ -48,7 +48,7 @@ describe("Cloudinary Utils", () => {
           end: vi.fn(() => {
             callback(new Error("Upload Failed"), null);
           }),
-        } as any;
+        } as unknown;
       });
 
       const buffer = Buffer.from("test");

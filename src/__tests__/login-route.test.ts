@@ -53,7 +53,7 @@ describe("POST /api/auth/login", () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue({
       status: "BANNED",
       password: "neutral_storage_value",
-    } as any);
+    } as unknown);
 
     const response = await POST(req);
     expect(response.status).toBe(403);
@@ -64,7 +64,7 @@ describe("POST /api/auth/login", () => {
     vi.mocked(prisma.user.findUnique).mockResolvedValue({
       status: "ACTIVE",
       password: "neutral_storage_value",
-    } as any);
+    } as unknown);
     vi.mocked(verifyPassword).mockResolvedValue(false);
 
     const response = await POST(req);
@@ -82,7 +82,7 @@ describe("POST /api/auth/login", () => {
       tokenVersion: 1,
       role: { name: "USER" },
     };
-    vi.mocked(prisma.user.findUnique).mockResolvedValue(user as any);
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(user as unknown);
     vi.mocked(verifyPassword).mockResolvedValue(true);
     vi.mocked(generateAccessToken).mockReturnValue("access");
     vi.mocked(generateRefreshToken).mockReturnValue("refresh");

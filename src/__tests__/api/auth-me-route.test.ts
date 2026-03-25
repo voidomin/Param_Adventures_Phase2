@@ -142,3 +142,4 @@ describe("GET /api/auth/me", () => {
     expect(data.error).toBe("Internal server error.");
   });
 });
+

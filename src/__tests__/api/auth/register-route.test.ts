@@ -41,7 +41,7 @@ describe("POST /api/auth/register", () => {
   it("returns 409 if user already exists", async () => {
     const TEST_SECRET = "TestValue@123";
     const req = createRequest({ email: "test@example.com", password: TEST_SECRET, name: "Test" });
-    vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: "1" } as any);
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: "1" } as unknown);
 
     const response = await POST(req);
     expect(response.status).toBe(409);
@@ -54,13 +54,13 @@ describe("POST /api/auth/register", () => {
     const req = createRequest({ email: "new@example.com", password: TEST_SECRET, name: "New User" });
     
     vi.mocked(prisma.user.findUnique).mockResolvedValue(null);
-    vi.mocked(prisma.role.findUnique).mockResolvedValue({ id: "r1", name: "REGISTERED_USER" } as any);
+    vi.mocked(prisma.role.findUnique).mockResolvedValue({ id: "r1", name: "REGISTERED_USER" } as unknown);
     vi.mocked(prisma.user.create).mockResolvedValue({ 
       id: "u2", 
       email: "new@example.com", 
       name: "New User",
       role: { name: "REGISTERED_USER" }
-    } as any);
+    } as unknown);
 
     const response = await POST(req);
     expect(response.status).toBe(201);

@@ -33,7 +33,7 @@ describe("POST /api/admin/bookings/[id]/refund", () => {
   it("returns 401 if unauthorized", async () => {
     vi.mocked(authorizeRequest).mockResolvedValue({
       authorized: false,
-      response: { status: 401 } as any,
+      response: { status: 401 } as unknown,
     });
     const req = createRequest({});
     const result = await POST(req, { params: Promise.resolve({ id: "b1" }) });
@@ -57,7 +57,7 @@ describe("POST /api/admin/bookings/[id]/refund", () => {
 
   it("returns 409 if booking is not awaiting refund", async () => {
     vi.mocked(authorizeRequest).mockResolvedValue({ authorized: true, userId: "a1", roleName: "ADMIN" });
-    vi.mocked(prisma.booking.findUnique).mockResolvedValue({ paymentStatus: "PAID" } as any);
+    vi.mocked(prisma.booking.findUnique).mockResolvedValue({ paymentStatus: "PAID" } as unknown);
     const req = createRequest({ refundNote: "COUPON-123" });
     const result = await POST(req, { params: Promise.resolve({ id: "b1" }) });
     expect(result.status).toBe(409);
@@ -74,8 +74,8 @@ describe("POST /api/admin/bookings/[id]/refund", () => {
       slot: { date: new Date() },
       user: { name: "Tester", email: "test@example.com" },
     };
-    vi.mocked(prisma.booking.findUnique).mockResolvedValue(booking as any);
-    vi.mocked(prisma.booking.update).mockResolvedValue({} as any);
+    vi.mocked(prisma.booking.findUnique).mockResolvedValue(booking as unknown);
+    vi.mocked(prisma.booking.update).mockResolvedValue({} as unknown);
 
     const req = createRequest({ refundNote: "CPN100" });
     const result = await POST(req, { params: Promise.resolve({ id: "b1" }) });

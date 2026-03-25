@@ -31,7 +31,7 @@ describe("PATCH /api/user/profile", () => {
   it("returns 401 if no token is provided", async () => {
     vi.mocked(cookies).mockResolvedValue({
       get: vi.fn().mockReturnValue(undefined),
-    } as any);
+    } as unknown);
 
     const req = createRequest({});
     const response = await PATCH(req);
@@ -41,7 +41,7 @@ describe("PATCH /api/user/profile", () => {
   it("returns 400 for invalid validation", async () => {
     vi.mocked(cookies).mockResolvedValue({
       get: vi.fn().mockReturnValue({ value: "valid-token" }),
-    } as any);
+    } as unknown);
     vi.mocked(verifyAccessToken).mockResolvedValue({ userId: "u1", roleName: "USER", tokenVersion: 1 });
 
     const req = createRequest({ name: "" }); // Invalid
@@ -52,7 +52,7 @@ describe("PATCH /api/user/profile", () => {
   it("returns 400 if emergency contact is same as phone", async () => {
     vi.mocked(cookies).mockResolvedValue({
       get: vi.fn().mockReturnValue({ value: "valid-token" }),
-    } as any);
+    } as unknown);
     vi.mocked(verifyAccessToken).mockResolvedValue({ userId: "u1", roleName: "USER", tokenVersion: 1 });
 
     const req = createRequest({
@@ -70,10 +70,10 @@ describe("PATCH /api/user/profile", () => {
   it("successfully updates profile", async () => {
     vi.mocked(cookies).mockResolvedValue({
       get: vi.fn().mockReturnValue({ value: "valid-token" }),
-    } as any);
+    } as unknown);
     vi.mocked(verifyAccessToken).mockResolvedValue({ userId: "u1", roleName: "USER", tokenVersion: 1 });
     const updatedUser = { id: "u1", name: "New Name" };
-    vi.mocked(prisma.user.update).mockResolvedValue(updatedUser as any);
+    vi.mocked(prisma.user.update).mockResolvedValue(updatedUser as unknown);
 
     const req = createRequest({
       name: "New Name",
@@ -92,7 +92,7 @@ describe("PATCH /api/user/profile", () => {
   it("returns 500 on internal error", async () => {
     vi.mocked(cookies).mockResolvedValue({
       get: vi.fn().mockReturnValue({ value: "valid-token" }),
-    } as any);
+    } as unknown);
     vi.mocked(verifyAccessToken).mockRejectedValue(new Error("DB error"));
 
     const req = createRequest({ 

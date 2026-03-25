@@ -21,7 +21,7 @@ describe("GET /api/experiences", () => {
       { id: "1", title: "Trek 1", slug: "trek-1", location: "Himalayas" },
       { id: "2", title: "Trek 2", slug: "trek-2", location: "Western Ghats" },
     ];
-    vi.mocked(prisma.experience.findMany).mockResolvedValue(mockExperiences as any);
+    vi.mocked(prisma.experience.findMany).mockResolvedValue(mockExperiences as unknown);
 
     const req = new NextRequest("http://localhost/api/experiences");
     const response = await GET(req);

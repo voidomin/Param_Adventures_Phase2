@@ -72,7 +72,7 @@ describe("authorizeRequest", () => {
       tokenVersion: 2, // Mismatch
       deletedAt: null,
       role: { name: "USER", permissions: [] }
-    } as any);
+    } as unknown);
 
     const result = await authorizeRequest(req);
     expect(result.authorized).toBe(false);
@@ -92,7 +92,7 @@ describe("authorizeRequest", () => {
       tokenVersion: 1,
       deletedAt: null,
       role: { name: "USER", permissions: [] }
-    } as any);
+    } as unknown);
 
     const result = await authorizeRequest(req);
     expect(result.authorized).toBe(true);
@@ -110,7 +110,7 @@ describe("authorizeRequest", () => {
       tokenVersion: 1,
       deletedAt: null,
       role: { name: "USER", permissions: [] }
-    } as any);
+    } as unknown);
 
     const result = await authorizeRequest(req);
     expect(result.authorized).toBe(true);
@@ -126,7 +126,7 @@ describe("authorizeRequest", () => {
       tokenVersion: 1,
       deletedAt: null,
       role: { name: "SUPER_ADMIN", permissions: [] }
-    } as any);
+    } as unknown);
 
     const result = await authorizeRequest(req, "any-permission");
     expect(result.authorized).toBe(true);
@@ -144,7 +144,7 @@ describe("authorizeRequest", () => {
         name: "USER", 
         permissions: [{ permission: { key: "can-view" } }] 
       }
-    } as any);
+    } as unknown);
 
     const okResult = await authorizeRequest(req, "can-view");
     expect(okResult.authorized).toBe(true);
@@ -168,7 +168,7 @@ describe("authorizeRequest", () => {
         name: "USER", 
         permissions: [{ permission: { key: "can-view" } }] 
       }
-    } as any);
+    } as unknown);
 
     const result = await authorizeRequest(req, ["can-edit", "can-view"]);
     expect(result.authorized).toBe(true);

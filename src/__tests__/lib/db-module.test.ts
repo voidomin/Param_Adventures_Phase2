@@ -3,24 +3,23 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.unmock("@/lib/db");
 
 declare global {
-  // eslint-disable-next-line no-var
   var prisma: unknown;
 }
 
 afterEach(() => {
   vi.resetModules();
   vi.unstubAllEnvs();
-  delete (globalThis as any).prisma;
+  delete ((globalThis as unknown) as Record<string, any>).prisma;
 });
 
 describe("lib/db module", () => {
   it("creates client and caches it on global in non-production", async () => {
-    delete (globalThis as any).prisma;
+    delete ((globalThis as unknown) as Record<string, any>).prisma;
 
-    const poolCtor = vi.fn(function (this: any, options: unknown) {
+    const poolCtor = vi.fn(function (this: Record<string, unknown>, options: unknown) {
       this.options = options;
     });
-    const adapterCtor = vi.fn(function (this: any, pool: unknown) {
+    const adapterCtor = vi.fn(function (this: Record<string, unknown>, pool: unknown) {
       this.pool = pool;
     });
     const prismaCtor = vi.fn(function () {
@@ -55,11 +54,11 @@ describe("lib/db module", () => {
     });
     expect(adapterCtor).toHaveBeenCalledTimes(1);
     expect(prismaCtor).toHaveBeenCalledTimes(1);
-    expect((globalThis as any).prisma).toBe(dbModule.prisma);
+    expect(((globalThis as unknown) as Record<string, any>).prisma).toBe(dbModule.prisma);
   });
 
   it("does not cache prisma on global in production", async () => {
-    delete (globalThis as any).prisma;
+    delete ((globalThis as unknown) as Record<string, any>).prisma;
 
     vi.doMock("pg", () => ({
       default: {
@@ -83,6 +82,6 @@ describe("lib/db module", () => {
     const dbModule = await import("../../lib/db");
 
     expect(dbModule.prisma).toBeDefined();
-    expect((globalThis as any).prisma).toBeUndefined();
+    expect(((globalThis as unknown) as Record<string, any>).prisma).toBeUndefined();
   });
 });

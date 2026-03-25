@@ -4,7 +4,7 @@ import { sanitizeEditorContent } from "../lib/sanitize";
 describe("sanitizeEditorContent", () => {
   it("returns null or empty for falsey input", () => {
     expect(sanitizeEditorContent("")).toBe("");
-    expect(sanitizeEditorContent(null as any)).toBe(null);
+    expect(sanitizeEditorContent(null as unknown)).toBe(null);
   });
 
   it("keeps allowed tags", () => {

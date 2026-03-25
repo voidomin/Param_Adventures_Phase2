@@ -39,7 +39,7 @@ describe("POST /api/bookings/[id]/cancel", () => {
   it("returns 401 if unauthorized", async () => {
     vi.mocked(authorizeRequest).mockResolvedValue({
       authorized: false,
-      response: { status: 401 } as any,
+      response: { status: 401 } as unknown,
     });
     const req = createRequest({});
     const result = await POST(req, { params: Promise.resolve({ id: "b1" }) });
@@ -63,7 +63,7 @@ describe("POST /api/bookings/[id]/cancel", () => {
 
   it("returns 403 if booking belongs to someone else", async () => {
     vi.mocked(authorizeRequest).mockResolvedValue({ authorized: true, userId: "u1", roleName: "USER" });
-    vi.mocked(prisma.booking.findUnique).mockResolvedValue({ userId: "u2" } as any);
+    vi.mocked(prisma.booking.findUnique).mockResolvedValue({ userId: "u2" } as unknown);
     const req = createRequest({ preference: "COUPON" });
     const result = await POST(req, { params: Promise.resolve({ id: "b1" }) });
     expect(result.status).toBe(403);
@@ -75,7 +75,7 @@ describe("POST /api/bookings/[id]/cancel", () => {
       userId: "u1", 
       bookingStatus: "CANCELLED",
       paymentStatus: "PAID"
-    } as any);
+    } as unknown);
     const req = createRequest({ preference: "COUPON" });
     const result = await POST(req, { params: Promise.resolve({ id: "b1" }) });
     expect(result.status).toBe(409);
@@ -94,7 +94,7 @@ describe("POST /api/bookings/[id]/cancel", () => {
       experience: { title: "Fun Trip" },
       user: { name: "Test", email: "test@example.com" },
     };
-    vi.mocked(prisma.booking.findUnique).mockResolvedValue(booking as any);
+    vi.mocked(prisma.booking.findUnique).mockResolvedValue(booking as unknown);
 
     const req = createRequest({ preference: "BANK_REFUND" });
     const result = await POST(req, { params: Promise.resolve({ id: "b1" }) });

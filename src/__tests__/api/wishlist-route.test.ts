@@ -56,7 +56,7 @@ describe("/api/wishlist route", () => {
       userId: "user-1",
       roleName: "REGISTERED_USER",
     });
-    mockFindMany.mockResolvedValue(saved as any);
+    mockFindMany.mockResolvedValue(saved as { id: string; userId: string; experienceId: string; savedAt: Date }[]);
 
     const response = await GET({} as NextRequest);
     const data = await response.json();
@@ -140,7 +140,7 @@ describe("/api/wishlist route", () => {
       id: "exp-1",
       status: "PUBLISHED",
     } as any);
-    mockUpsert.mockResolvedValue(saved as any);
+    mockUpsert.mockResolvedValue(saved as { id: string; userId: string; experienceId: string; savedAt: Date });
 
     const response = await POST(createJsonRequest({ experienceId: "exp-1" }));
     const data = await response.json();
