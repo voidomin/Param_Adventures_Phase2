@@ -56,6 +56,26 @@ describe("GET /api/proxy-image", () => {
     expect(data.dataUrl).toContain("data:image/png;base64,");
   });
 
+  it("defaults to image/jpeg when content-type header is missing", async () => {
+    const bytes = new Uint8Array([1, 2, 3, 4]);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        headers: { get: vi.fn().mockReturnValue(null) },
+        arrayBuffer: vi.fn().mockResolvedValue(bytes.buffer),
+      } as unknown),
+    );
+
+    const response = await GET(
+      createRequest("http://localhost/api/proxy-image?url=http://img"),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.dataUrl).toContain("data:image/jpeg;base64,");
+  });
+
   it("returns 500 on unexpected error", async () => {
     vi.stubGlobal(
       "fetch",
