@@ -58,6 +58,16 @@ describe("/api/admin/experiences/[id]/slots/[slotId]", () => {
     expect(response.status).toBe(400);
   });
 
+  it("PATCH returns 400 for invalid date format", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+
+    const response = await PATCH(createJsonRequest({ date: "not-a-date" }), {
+      params: Promise.resolve({ id: "exp-1", slotId: "slot-1" }),
+    });
+
+    expect(response.status).toBe(400);
+  });
+
   it("PATCH returns 404 when slot belongs to another experience", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
     mockSlotFindUnique.mockResolvedValue({
@@ -122,6 +132,42 @@ describe("/api/admin/experiences/[id]/slots/[slotId]", () => {
     });
   });
 
+  it("PATCH updates capacity only without date", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockSlotFindUnique.mockResolvedValue({
+      id: "slot-1",
+      experienceId: "exp-1",
+      capacity: 20,
+      remainingCapacity: 8,
+      _count: { bookings: 12 },
+    } as any);
+    mockSlotUpdate.mockResolvedValue({ id: "slot-1", capacity: 22, remainingCapacity: 10 } as any);
+
+    const response = await PATCH(createJsonRequest({ capacity: 22 }), {
+      params: Promise.resolve({ id: "exp-1", slotId: "slot-1" }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(mockSlotUpdate).toHaveBeenCalledWith({
+      where: { id: "slot-1" },
+      data: {
+        capacity: 22,
+        remainingCapacity: 10,
+      },
+    });
+  });
+
+  it("PATCH returns 500 on unexpected error", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockSlotFindUnique.mockRejectedValue(new Error("db down"));
+
+    const response = await PATCH(createJsonRequest({ capacity: 22 }), {
+      params: Promise.resolve({ id: "exp-1", slotId: "slot-1" }),
+    });
+
+    expect(response.status).toBe(500);
+  });
+
   it("DELETE returns auth response when unauthorized", async () => {
     mockAuthorizeRequest.mockResolvedValue({
       authorized: false,
@@ -148,6 +194,17 @@ describe("/api/admin/experiences/[id]/slots/[slotId]", () => {
     });
 
     expect(response.status).toBe(409);
+  });
+
+  it("DELETE returns 404 when slot is not found", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockSlotFindUnique.mockResolvedValue({ id: "slot-1", experienceId: "exp-other" } as any);
+
+    const response = await DELETE({} as NextRequest, {
+      params: Promise.resolve({ id: "exp-1", slotId: "slot-1" }),
+    });
+
+    expect(response.status).toBe(404);
   });
 
   it("DELETE removes slot when no active bookings", async () => {
