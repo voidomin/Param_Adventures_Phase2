@@ -13,6 +13,7 @@ vi.mock("../lib/db", () => ({
 describe("logActivity", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(prisma.auditLog.create).mockResolvedValue(undefined as any);
   });
 
   it("successfully creates an audit log with metadata", async () => {
@@ -52,5 +53,19 @@ describe("logActivity", () => {
 
     expect(consoleSpy).toHaveBeenCalledWith("[Audit Logger Error]", expect.any(Error));
     consoleSpy.mockRestore();
+  });
+
+  it("clones metadata before persisting", async () => {
+    const metadata = {
+      nested: { count: 1 },
+      tags: ["a", "b"],
+    };
+
+    await logActivity("CLONE_TEST", "user1", "Booking", "b1", metadata);
+
+    const createArg = vi.mocked(prisma.auditLog.create).mock.calls[0][0] as any;
+    expect(createArg.data.metadata).toEqual(metadata);
+    expect(createArg.data.metadata).not.toBe(metadata);
+    expect(createArg.data.metadata.nested).not.toBe(metadata.nested);
   });
 });

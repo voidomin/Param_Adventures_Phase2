@@ -79,4 +79,19 @@ describe("sanitizeEditorContent", () => {
     // data URIs are not allowed by default allowedSchemes
     expect(result).toContain('<img />');
   });
+
+  it("keeps allowed link schemes like mailto and tel", () => {
+    const dirty = '<a href="mailto:test@example.com">Mail</a><a href="tel:+1234567890">Call</a>';
+    const result = sanitizeEditorContent(dirty);
+
+    expect(result).toContain('href="mailto:test@example.com"');
+    expect(result).toContain('href="tel:+1234567890"');
+  });
+
+  it("strips disallowed javascript links", () => {
+    const dirty = '<a href="javascript:alert(1)">Click</a>';
+    const result = sanitizeEditorContent(dirty);
+
+    expect(result).toBe('<a>Click</a>');
+  });
 });
