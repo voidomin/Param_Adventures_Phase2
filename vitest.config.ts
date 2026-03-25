@@ -48,7 +48,6 @@ export default defineConfig({
             'src/**/*.test.tsx',
             'src/**/*.spec.tsx',
             'src/**/*.ui.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
-            'src/__tests__/auto-generated/app/api/**/route.test.ts',
           ],
         },
       },
