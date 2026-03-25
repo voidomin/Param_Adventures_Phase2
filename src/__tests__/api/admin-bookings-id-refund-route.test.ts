@@ -33,6 +33,8 @@ const createRequest = (body: unknown) =>
 describe("POST /api/admin/bookings/[id]/refund", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockBookingUpdate.mockResolvedValue({ id: "b1" } as any);
+    mockLogActivity.mockResolvedValue(undefined as any);
     mockSendRefundResolved.mockResolvedValue(undefined as any);
   });
 
@@ -118,6 +120,113 @@ describe("POST /api/admin/bookings/[id]/refund", () => {
       expect.objectContaining({ refundNote: "UTR123" }),
     );
     expect(mockSendRefundResolved).toHaveBeenCalled();
+  });
+
+  it("uses fallback userName when booking user name is missing", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
+    mockBookingFindUnique.mockResolvedValue({
+      id: "b1",
+      paymentStatus: "REFUND_PENDING",
+      refundPreference: "COUPON",
+      totalPrice: 1500,
+      slot: { date: new Date("2026-04-01T00:00:00.000Z") },
+      user: { name: null, email: "akash@example.com" },
+      experience: { title: "Everest Base Camp" },
+    } as any);
+
+    const response = await POST(createRequest({ refundNote: "UTR999" }), {
+      params: Promise.resolve({ id: "b1" }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(mockSendRefundResolved).toHaveBeenCalledWith(
+      expect.objectContaining({ userName: "Adventurer" }),
+    );
+  });
+
+  it("uses fallback slotDate and refundPreference when missing", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
+    mockBookingFindUnique.mockResolvedValue({
+      id: "b1",
+      paymentStatus: "REFUND_PENDING",
+      refundPreference: null,
+      totalPrice: 1500,
+      slot: null,
+      user: { name: "Akash", email: "akash@example.com" },
+      experience: { title: "Everest Base Camp" },
+    } as any);
+
+    const response = await POST(createRequest({ refundNote: "UTR999" }), {
+      params: Promise.resolve({ id: "b1" }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(mockSendRefundResolved).toHaveBeenCalledWith(
+      expect.objectContaining({
+        refundPreference: "COUPON",
+        slotDate: expect.any(String),
+      }),
+    );
+  });
+
+  it("returns 500 when booking update fails", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
+    mockBookingFindUnique.mockResolvedValue({
+      id: "b1",
+      paymentStatus: "REFUND_PENDING",
+      refundPreference: "COUPON",
+      totalPrice: 2500,
+      slot: { date: new Date("2026-04-01T00:00:00.000Z") },
+      user: { name: "Akash", email: "akash@example.com" },
+      experience: { title: "Everest Base Camp" },
+    } as any);
+    mockBookingUpdate.mockRejectedValueOnce(new Error("update failed"));
+
+    const response = await POST(createRequest({ refundNote: "UTR123" }), {
+      params: Promise.resolve({ id: "b1" }),
+    });
+
+    expect(response.status).toBe(500);
+  });
+
+  it("returns 500 when audit logging fails", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
+    mockBookingFindUnique.mockResolvedValue({
+      id: "b1",
+      paymentStatus: "REFUND_PENDING",
+      refundPreference: "COUPON",
+      totalPrice: 2500,
+      slot: { date: new Date("2026-04-01T00:00:00.000Z") },
+      user: { name: "Akash", email: "akash@example.com" },
+      experience: { title: "Everest Base Camp" },
+    } as any);
+    mockLogActivity.mockRejectedValueOnce(new Error("audit failed"));
+
+    const response = await POST(createRequest({ refundNote: "UTR123" }), {
+      params: Promise.resolve({ id: "b1" }),
+    });
+
+    expect(response.status).toBe(500);
+  });
+
+  it("returns 500 when refund email send fails", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
+    mockBookingFindUnique.mockResolvedValue({
+      id: "b1",
+      paymentStatus: "REFUND_PENDING",
+      refundPreference: "COUPON",
+      totalPrice: 2500,
+      slot: { date: new Date("2026-04-01T00:00:00.000Z") },
+      user: { name: "Akash", email: "akash@example.com" },
+      experience: { title: "Everest Base Camp" },
+    } as any);
+    mockSendRefundResolved.mockRejectedValueOnce(new Error("smtp failed"));
+
+    const response = await POST(createRequest({ refundNote: "UTR123" }), {
+      params: Promise.resolve({ id: "b1" }),
+    });
+
+    expect(response.status).toBe(500);
   });
 
   it("returns 500 on unexpected failure", async () => {
