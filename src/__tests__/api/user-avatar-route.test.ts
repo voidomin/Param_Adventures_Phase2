@@ -55,8 +55,15 @@ const createRequest = (opts: ReqOpts = {}) =>
   }) as unknown as NextRequest;
 
 describe("/api/user/avatar", () => {
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    errorSpy.mockRestore();
   });
 
   it("POST returns 401 when token is missing", async () => {
@@ -119,6 +126,41 @@ describe("/api/user/avatar", () => {
     expect(mockRevalidatePath).toHaveBeenCalledWith("/", "layout");
   });
 
+  it("POST returns 500 when upload fails", async () => {
+    mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+    mockUploadToCloudinary.mockRejectedValue(new Error("cloud down"));
+
+    const response = await POST(
+      createRequest({
+        token: "ok",
+        file: {
+          type: "image/png",
+          arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+        },
+      }),
+    );
+
+    expect(response.status).toBe(500);
+  });
+
+  it("POST returns 500 when user update fails", async () => {
+    mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+    mockUploadToCloudinary.mockResolvedValue({ secure_url: "https://cdn/avatar.jpg" } as any);
+    mockUserUpdate.mockRejectedValue(new Error("db down"));
+
+    const response = await POST(
+      createRequest({
+        token: "ok",
+        file: {
+          type: "image/png",
+          arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer,
+        },
+      }),
+    );
+
+    expect(response.status).toBe(500);
+  });
+
   it("PATCH returns 401 for missing token", async () => {
     const response = await PATCH(createRequest());
 
@@ -135,6 +177,16 @@ describe("/api/user/avatar", () => {
     expect(response.status).toBe(400);
   });
 
+  it("PATCH returns 401 for invalid token", async () => {
+    mockVerifyAccessToken.mockResolvedValue(null);
+
+    const response = await PATCH(
+      createRequest({ token: "bad", body: { avatarUrl: "https://cdn/new.jpg" } }),
+    );
+
+    expect(response.status).toBe(401);
+  });
+
   it("PATCH updates avatar URL on success", async () => {
     mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
     mockUserUpdate.mockResolvedValue({ id: "u1", avatarUrl: "https://cdn/new.jpg" } as any);
@@ -147,5 +199,16 @@ describe("/api/user/avatar", () => {
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
     expect(data.avatarUrl).toBe("https://cdn/new.jpg");
+  });
+
+  it("PATCH returns 500 on update failure", async () => {
+    mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+    mockUserUpdate.mockRejectedValue(new Error("db down"));
+
+    const response = await PATCH(
+      createRequest({ token: "ok", body: { avatarUrl: "https://cdn/new.jpg" } }),
+    );
+
+    expect(response.status).toBe(500);
   });
 });
