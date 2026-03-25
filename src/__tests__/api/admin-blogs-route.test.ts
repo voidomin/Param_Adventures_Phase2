@@ -35,6 +35,17 @@ describe("GET /api/admin/blogs", () => {
     expect(response.status).toBe(401);
   });
 
+  it("passes through non-401 auth response", async () => {
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: false,
+      response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+    } as any);
+
+    const response = await GET(new NextRequest("http://localhost/api/admin/blogs"));
+
+    expect(response.status).toBe(403);
+  });
+
   it("returns paginated admin blog list", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
     mockFindMany.mockResolvedValue([{ id: "b1" }] as any);
@@ -55,5 +66,76 @@ describe("GET /api/admin/blogs", () => {
         take: 5,
       }),
     );
+  });
+
+  it("uses default pagination and no status filter when query params are absent", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockFindMany.mockResolvedValue([] as any);
+    mockCount.mockResolvedValue(0);
+
+    const response = await GET(new NextRequest("http://localhost/api/admin/blogs"));
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.pagination).toEqual({ total: 0, page: 1, limit: 20, totalPages: 0 });
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { deletedAt: null },
+        skip: 0,
+        take: 20,
+      }),
+    );
+  });
+
+  it("clamps page and limit to minimum/maximum bounds", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockFindMany.mockResolvedValue([] as any);
+    mockCount.mockResolvedValue(2);
+
+    const response = await GET(
+      new NextRequest("http://localhost/api/admin/blogs?page=0&limit=200"),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.pagination.page).toBe(1);
+    expect(data.pagination.limit).toBe(50);
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skip: 0,
+        take: 50,
+      }),
+    );
+  });
+
+  it("applies DRAFT status filter", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockFindMany.mockResolvedValue([{ id: "b1", status: "DRAFT" }] as any);
+    mockCount.mockResolvedValue(1);
+
+    const response = await GET(
+      new NextRequest("http://localhost/api/admin/blogs?status=DRAFT"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { deletedAt: null, status: "DRAFT" },
+      }),
+    );
+  });
+
+  it("calculates totalPages with ceiling behavior", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockFindMany.mockResolvedValue([{ id: "b1" }] as any);
+    mockCount.mockResolvedValue(21);
+
+    const response = await GET(
+      new NextRequest("http://localhost/api/admin/blogs?page=1&limit=20"),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.pagination.totalPages).toBe(2);
   });
 });
