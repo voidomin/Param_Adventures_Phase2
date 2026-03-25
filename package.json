@@ -8,10 +8,13 @@
     "start": "next start",
     "lint": "eslint",
     "email": "email dev -d src/components/emails -p 3001",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage",
-    "test:changed": "vitest run --changed",
+    "test": "vitest run --project unit-node --project unit-ui",
+    "test:watch": "vitest --project unit-node --project unit-ui",
+    "test:coverage": "vitest run --project unit-node --project unit-ui --coverage",
+    "test:changed": "vitest run --project unit-node --project unit-ui --changed",
+    "test:fast": "vitest run --project unit-node --project unit-ui --changed --passWithNoTests",
+    "test:api": "vitest run --project unit-node",
+    "test:ui": "vitest run --project unit-ui",
     "prepare": "husky"
   },
   "lint-staged": {
