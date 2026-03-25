@@ -127,6 +127,31 @@ describe("POST /api/user/media/register", () => {
     });
   });
 
+  it("creates IMAGE media with null hash when hash is not provided", async () => {
+    mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+    mockCreate.mockResolvedValue({ id: "img-nohash" } as any);
+
+    const response = await POST(
+      createRequest({
+        token: "ok",
+        body: { url: "https://x.com/img.jpg", type: "IMAGE" },
+      }),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(201);
+    expect(data.image.id).toBe("img-nohash");
+    expect(mockFindFirst).not.toHaveBeenCalled();
+    expect(mockCreate).toHaveBeenCalledWith({
+      data: {
+        originalUrl: "https://x.com/img.jpg",
+        type: "IMAGE",
+        uploadedById: "u1",
+        fileHash: null,
+      },
+    });
+  });
+
   it("returns 500 on unexpected error", async () => {
     mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
     mockFindFirst.mockRejectedValue(new Error("db down"));
