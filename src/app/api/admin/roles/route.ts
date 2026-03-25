@@ -34,9 +34,7 @@ export async function GET(request: NextRequest) {
       name: { notIn: [...alwaysExcluded] },
     };
 
-    if (actorRole === "SUPER_ADMIN") {
-      // Sees everything except internal exclusions
-    } else if (actorRole === "ADMIN") {
+    if (actorRole === "ADMIN") {
       // Sees everything EXCEPT SUPER_ADMIN
       whereClause.name.notIn.push("SUPER_ADMIN");
     } else if (actorRole === "TRIP_MANAGER") {
