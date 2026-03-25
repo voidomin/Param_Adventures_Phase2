@@ -1,7 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import SimilarTrips from "@/components/experiences/SimilarTrips";
-import React from "react";
 import { prisma } from "@/lib/db";
 
 // Mock prisma

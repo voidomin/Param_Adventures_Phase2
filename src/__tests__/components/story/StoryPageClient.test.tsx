@@ -6,13 +6,13 @@ import React from "react";
 // Mock framer-motion hooks
 vi.mock("framer-motion", () => ({
   motion: {
-    div: ({ children, whileInView, initial, animate, viewport, ...props }: any) => <div {...props}>{children}</div>,
-    h1: ({ children, ...props }: any) => <h1 {...props}>{children}</h1>,
-    p: ({ children, ...props }: any) => <p {...props}>{children}</p>,
+    div: ({ children, ...props }: React.ComponentPropsWithoutRef<"div">) => <div {...props}>{children}</div>,
+    h1: ({ children, ...props }: React.ComponentPropsWithoutRef<"h1">) => <h1 {...props}>{children}</h1>,
+    p: ({ children, ...props }: React.ComponentPropsWithoutRef<"p">) => <p {...props}>{children}</p>,
   },
   useScroll: () => ({ scrollYProgress: { get: () => 0.5 } }),
   useTransform: () => ({ get: () => "0%" }),
-  AnimatePresence: ({ children }: any) => children,
+  AnimatePresence: ({ children }: { children?: React.ReactNode }) => children,
 }));
 
 const mockBlocks = [

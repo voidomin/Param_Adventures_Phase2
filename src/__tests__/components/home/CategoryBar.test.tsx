@@ -14,18 +14,33 @@ vi.mock("next/navigation", () => ({
 // Mock framer-motion to avoid animation delays in tests
 vi.mock("framer-motion", async () => {
   const React = await import("react");
+  type ButtonProps = React.ComponentPropsWithoutRef<"button">;
+  type DivProps = React.ComponentPropsWithoutRef<"div">;
+
+  const MockMotionButton = React.forwardRef<HTMLButtonElement, ButtonProps>(
+    ({ children, onClick, className, ...props }, ref) => (
+      <button onClick={onClick} className={className} ref={ref} {...props}>
+        {children}
+      </button>
+    ),
+  );
+  MockMotionButton.displayName = "MockMotionButton";
+
+  const MockMotionDiv = React.forwardRef<HTMLDivElement, DivProps>(
+    ({ children, className, ...props }, ref) => (
+      <div className={className} ref={ref} {...props}>
+        {children}
+      </div>
+    ),
+  );
+  MockMotionDiv.displayName = "MockMotionDiv";
+
   return {
     motion: {
-      button: React.forwardRef(({ children, onClick, className, ...props }: any, ref: any) => (
-        <button onClick={onClick} className={className} ref={ref} {...props}>
-          {children}
-        </button>
-      )),
-      div: React.forwardRef(({ children, className, ...props }: any, ref: any) => (
-        <div className={className} ref={ref} {...props}>{children}</div>
-      )),
+      button: MockMotionButton,
+      div: MockMotionDiv,
     },
-    AnimatePresence: ({ children }: any) => <>{children}</>,
+    AnimatePresence: ({ children }: { children?: React.ReactNode }) => <>{children}</>,
   };
 });
 

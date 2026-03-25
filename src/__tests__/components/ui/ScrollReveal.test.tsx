@@ -4,24 +4,22 @@ import ScrollReveal from "@/components/ui/ScrollReveal";
 import React from "react";
 
 // Minimal mock for framer-motion to simplify IntersectionObserver interactions
-vi.mock("framer-motion", async () => {
-  const actual = await vi.importActual("framer-motion");
+vi.mock("framer-motion", () => {
   return {
-    ...actual as any,
     motion: {
-      div: ({ children, initial, whileInView, className, ...props }: any) => {
+      div: ({ children, initial, className }: { children?: React.ReactNode; initial?: unknown; className?: string }) => {
         // Render a static div and pass initial as data-attributes so we can verify the logic
         return (
-          <div 
-            className={className} 
+          <div
+            className={className}
             data-initial={JSON.stringify(initial)}
             data-testid="motion-div"
           >
             {children}
           </div>
         );
-      }
-    }
+      },
+    },
   };
 });
 

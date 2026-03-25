@@ -16,7 +16,7 @@ vi.mock("next/navigation", () => ({
 // Mock framer-motion
 vi.mock("framer-motion", () => ({
   motion: {
-    div: ({ children, whileHover, whileTap, layoutId, ...props }: any) => <div {...props}>{children}</div>,
+    div: ({ children, ...props }: React.ComponentPropsWithoutRef<"div">) => <div {...props}>{children}</div>,
   },
 }));
 
