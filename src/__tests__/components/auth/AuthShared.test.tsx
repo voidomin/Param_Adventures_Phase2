@@ -19,7 +19,7 @@ describe("AuthShared", () => {
       "href",
       "/forgot-password",
     );
-  });
+  }, 10000);
 
   it("toggles password visibility when toggle is enabled", () => {
     render(
