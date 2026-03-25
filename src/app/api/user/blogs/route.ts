@@ -127,10 +127,13 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ blog }, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("POST /api/user/blogs error:", error);
     return NextResponse.json(
-      { error: error?.message || "Internal Server Error" },
+      {
+        error:
+          error instanceof Error ? error.message : "Internal Server Error",
+      },
       { status: 500 },
     );
   }

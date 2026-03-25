@@ -145,9 +145,14 @@ export async function POST(request: NextRequest) {
         bookingId,
         message: "Payment verified and booking confirmed.",
       });
-    } catch (txError: any) {
+    } catch (txError: unknown) {
       // If the record was not found, it's likely already paid (idempotency)
-      if (txError.code === 'P2025') {
+      if (
+        typeof txError === "object" &&
+        txError !== null &&
+        "code" in txError &&
+        (txError as { code?: string }).code === "P2025"
+      ) {
         return NextResponse.json({
           success: true,
           bookingId,

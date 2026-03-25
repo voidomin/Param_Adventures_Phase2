@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 import { z } from "zod";
@@ -142,8 +143,8 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
 
     const updated = await prisma.slot.update({
       where: { id: slotId },
-      data: { 
-        vendorContacts: (vendorContacts ?? []) as any 
+      data: {
+        vendorContacts: (vendorContacts ?? []) as Prisma.InputJsonValue,
       },
     });
 

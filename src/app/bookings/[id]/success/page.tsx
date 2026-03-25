@@ -80,10 +80,21 @@ export default async function BookingSuccessPage({
   // We'll calculate a mock breakdown based on totalPrice for display purposes, 
   // or just show total if we don't have taxes/fees separated in DB.
   const totalPaid = Number(booking.totalPrice) || 0;
-  const baseFare = Number((booking as any).baseFare) || totalPaid;
+  const bookingMeta = booking as typeof booking & {
+    baseFare?: unknown;
+    taxBreakdown?: unknown;
+  };
+  const baseFare =
+    typeof bookingMeta.baseFare === "number"
+      ? bookingMeta.baseFare
+      : totalPaid;
 
-  const taxItems = Array.isArray((booking as any).taxBreakdown) 
-    ? (booking as any).taxBreakdown as unknown as { name: string, percentage: number, amount: number }[]
+  const taxItems = Array.isArray(bookingMeta.taxBreakdown)
+    ? (bookingMeta.taxBreakdown as {
+        name: string;
+        percentage: number;
+        amount: number;
+      }[])
     : [];
 
   // Leads

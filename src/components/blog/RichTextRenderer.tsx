@@ -15,7 +15,13 @@ export default function RichTextRenderer({
 }: Readonly<RichTextRendererProps>) {
   // Normalize content for Tiptap
   // Tiptap expects either a string (HTML) or a JSON object (Prosemirror document)
-  const normalizedContent = (content as any)?.html ?? content;
+  const normalizedContent =
+    typeof content === "object" &&
+    content !== null &&
+    "html" in content &&
+    typeof (content as { html?: unknown }).html !== "undefined"
+      ? (content as { html: object }).html
+      : content;
 
   const editor = useEditor({
     extensions: [
