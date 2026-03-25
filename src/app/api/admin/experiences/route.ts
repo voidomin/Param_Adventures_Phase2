@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
     } = parseResult.data;
 
     // Generate unique slug
-    let baseSlug = generateSlug(title);
+    const baseSlug = generateSlug(title);
     let uniqueSlug = baseSlug;
     let counter = 1;
     while (

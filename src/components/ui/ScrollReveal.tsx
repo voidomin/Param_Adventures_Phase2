@@ -21,7 +21,7 @@ export default function ScrollReveal({
   stagger = false,
 }: Readonly<ScrollRevealProps>) {
   const getInitial = () => {
-    let initial: any = { opacity: 0 };
+    const initial: any = { opacity: 0 };
 
     switch (direction) {
       case "up":

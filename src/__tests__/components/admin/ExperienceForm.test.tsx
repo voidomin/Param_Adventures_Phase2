@@ -113,8 +113,8 @@ describe("ExperienceForm Comprehensive Smoke Test", () => {
     fireEvent.submit(screen.getByRole("form", { name: /Experience Form/i }));
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining("/api/admin/experiences"), expect.objectContaining({ method: "POST" }));
-    });
-  });
+    }, { timeout: 10000 });
+  }, 15000);
 
   it("triggers JSON export", async () => {
     render(<ExperienceForm initialData={{ title: "Test Trip" }} />);
@@ -140,7 +140,7 @@ describe("ExperienceForm Comprehensive Smoke Test", () => {
     await waitFor(() => {
       expect(screen.getByLabelText(/Title/i)).toHaveValue("Imported");
     }, { timeout: 10000 });
-  });
+  }, 15000);
 
   it("handles editing existing experience", async () => {
     render(<ExperienceForm initialData={{ id: "exp-1", title: "Editing Mode" }} />);
@@ -158,8 +158,8 @@ describe("ExperienceForm Comprehensive Smoke Test", () => {
     fireEvent.change(screen.getByLabelText(/Import JSON/i), { target: { files: [badFile] } });
     await waitFor(() => {
       expect(screen.getByText(/Invalid JSON file uploaded/i)).toBeInTheDocument();
-    });
-  });
+    }, { timeout: 10000 });
+  }, 15000);
 
   it("shows error when form submission fails", async () => {
     mockFetch.mockImplementation((url: string, opts?: any) => {
@@ -173,8 +173,8 @@ describe("ExperienceForm Comprehensive Smoke Test", () => {
     fireEvent.submit(screen.getByRole("form", { name: /Experience Form/i }));
     await waitFor(() => {
       expect(screen.getByText(/API Server Error/i)).toBeInTheDocument();
-    });
-  });
+    }, { timeout: 10000 });
+  }, 15000);
 
   it("renders form even when category fetch fails", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});

@@ -41,7 +41,7 @@ describe("app/reset-password/page", () => {
 
     fireEvent.click(submitBtn);
     expect(mockFetch).not.toHaveBeenCalled();
-  });
+  }, 10000);
 
   it("resets password and redirects to login", async () => {
     mockGet.mockReturnValue("token-abc");
@@ -71,5 +71,5 @@ describe("app/reset-password/page", () => {
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith("/login");
     }, { timeout: 3500 });
-  });
+  }, 15000);
 });

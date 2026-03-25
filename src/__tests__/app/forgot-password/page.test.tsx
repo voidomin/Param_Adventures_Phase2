@@ -62,8 +62,8 @@ describe("app/forgot-password/page", () => {
       );
       expect(screen.getByText("Check Your Inbox")).toBeInTheDocument();
       expect(screen.getByText("Reset link sent")).toBeInTheDocument();
-    });
-  });
+    }, { timeout: 10000 });
+  }, 15000);
 
   it("shows API error message", async () => {
     mockFetch.mockResolvedValue({

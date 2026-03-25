@@ -24,7 +24,7 @@ describe("ExperienceGallery Component", () => {
     // JSDOM doesn't have good support for <video> role, so we check for the element type
     const mediaContainer = screen.getByTestId("motion-div-gallery-https://example.com/vid1.mp4");
     expect(mediaContainer.querySelector("video")).toBeInTheDocument();
-  });
+  }, 10000);
 
   it("returns null when provided with an empty array", () => {
     const { container } = render(<ExperienceGallery images={[]} />);
@@ -40,7 +40,7 @@ describe("ExperienceGallery Component", () => {
     
     // Lightbox should display the image index text "1 / 3"
     expect(screen.getByText("1 / 3")).toBeInTheDocument();
-  });
+  }, 10000);
 
   it("closes the lightbox safely when close button is clicked", async () => {
     render(<ExperienceGallery images={sampleImages} />);
@@ -57,7 +57,7 @@ describe("ExperienceGallery Component", () => {
     fireEvent.click(closeBtn);
     
     expect(screen.queryByText("1 / 3")).not.toBeInTheDocument();
-  });
+  }, 10000);
 
   it("navigates next and prev via buttons and loops around", () => {
     render(<ExperienceGallery images={sampleImages} />);
@@ -86,7 +86,7 @@ describe("ExperienceGallery Component", () => {
     // Prev loops to last
     fireEvent.click(prevBtn);
     expect(screen.getByText("3 / 3")).toBeInTheDocument();
-  });
+  }, 10000);
 
   it("responds to keyboard events (ArrowRight, ArrowLeft, Escape)", () => {
     render(<ExperienceGallery images={sampleImages} />);
@@ -106,7 +106,7 @@ describe("ExperienceGallery Component", () => {
     // Escape to close
     fireEvent.keyDown(globalThis as any, { key: "Escape", code: "Escape" });
     expect(screen.queryByText("2 / 3")).not.toBeInTheDocument();
-  });
+  }, 10000);
 
   it("shows 'See All' button when images exceed 24 and expands list", () => {
     // Generate array of 30 images

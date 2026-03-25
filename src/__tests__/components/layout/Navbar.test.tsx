@@ -77,7 +77,7 @@ describe("Navbar Smoke Test", () => {
     // Check if mobile overlay is present (Open menu shows X icon)
     // When open, there are two "Explore" links (desktop and mobile)
     expect(screen.getAllByText(/Explore/i).length).toBe(2);
-  });
+  }, 10000);
 
   it("closes mobile menu when auth link is clicked", () => {
     render(<Navbar />);

@@ -209,7 +209,7 @@ function CancelModal({
 
 declare global {
   interface Window {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     Razorpay: new (options: Record<string, unknown>) => { open(): void };
   }
 }
@@ -287,7 +287,7 @@ export default function BookingsPage() {
   useEffect(() => {
     if (authLoading || !user) return;
     fetchData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   }, [user, authLoading]);
 
   if (authLoading)

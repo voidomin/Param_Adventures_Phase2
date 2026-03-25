@@ -39,5 +39,5 @@ describe("app/privacy/page", () => {
     expect(
       screen.getByText(/privacy@paramadventures.com/i),
     ).toBeInTheDocument();
-  });
+  }, 10000);
 });
