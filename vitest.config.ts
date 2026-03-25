@@ -18,6 +18,20 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.ts', 'src/**/*.tsx'],
+      reporter: ['text', 'lcov', 'json'],
+      reportsDirectory: './coverage',
+      exclude: [
+        'node_modules/**',
+        '.next/**',
+        '**/*.config.*',
+        '**/*.d.ts',
+        'src/**/*.test.ts',
+        'src/**/*.test.tsx',
+      ],
+    },
     projects: [
       {
         test: {
@@ -35,20 +49,6 @@ export default defineConfig({
             'src/**/*.spec.tsx',
             'src/**/*.ui.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
           ],
-          coverage: {
-            provider: 'v8',
-            include: ['src/**/*.ts', 'src/**/*.tsx'],
-            reporter: ['text', 'lcov'],
-            reportsDirectory: './coverage',
-            exclude: [
-              'node_modules/**',
-              '.next/**',
-              '**/*.config.*',
-              '**/*.d.ts',
-              'src/**/*.test.ts',
-              'src/**/*.test.tsx',
-            ],
-          },
         },
       },
       {
@@ -66,20 +66,6 @@ export default defineConfig({
             'src/**/*.spec.tsx',
             'src/**/*.ui.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
           ],
-          coverage: {
-            provider: 'v8',
-            include: ['src/**/*.ts', 'src/**/*.tsx'],
-            reporter: ['text', 'lcov'],
-            reportsDirectory: './coverage',
-            exclude: [
-              'node_modules/**',
-              '.next/**',
-              '**/*.config.*',
-              '**/*.d.ts',
-              'src/**/*.test.ts',
-              'src/**/*.test.tsx',
-            ],
-          },
         },
       },
     ],
