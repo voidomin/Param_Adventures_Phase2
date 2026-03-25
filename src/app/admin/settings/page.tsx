@@ -155,12 +155,12 @@ export default function AdminSettingsPage() {
               <Info className="w-5 h-5 text-primary shrink-0 mt-0.5" />
               <div className="text-sm text-foreground/80">
                 <p className="font-bold mb-1">Reverse Calculation Logic & Dynamic Fees</p>
-                <p>Add completely dynamic taxes or deductibles here (e.g. "CGST", "Trek Leader Fee"). When an admin inputs the <strong>Gross Total Price</strong> of a trip, the system will apply all active percentages globally to backwards-calculate the true net revenue.</p>
+                 <p>Add completely dynamic taxes or deductibles here (e.g. &quot;CGST&quot;, &quot;Trek Leader Fee&quot;). When an admin inputs the <strong>Gross Total Price</strong> of a trip, the system will apply all active percentages globally to backwards-calculate the true net revenue.</p>
               </div>
            </div>
 
            <div className="space-y-4">
-              {taxConfig.map((item, index) => (
+                {taxConfig.map((item) => (
                  <div key={item.id} className="flex gap-4 items-end">
                     <div className="flex-1">
                        <label htmlFor={`tax-name-${item.id}`} className="block text-sm font-semibold text-foreground/70 mb-2">Deductible Name</label>

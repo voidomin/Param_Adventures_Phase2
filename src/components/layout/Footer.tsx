@@ -41,7 +41,7 @@ export default function Footer() {
             </Link>
             <p className="text-sm text-foreground/60 leading-relaxed">
               Curated experiences, spiritual journeys, and unforgettable treks
-              across India's most breathtaking landscapes. Discover the
+              across India&apos;s most breathtaking landscapes. Discover the
               extraordinary with us.
             </p>
             <div className="flex items-center gap-4">

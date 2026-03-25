@@ -238,7 +238,7 @@ export default async function Home() {
           ) : (
             <div className="text-center py-12 px-4 border border-dashed border-border rounded-3xl bg-card">
               <p className="text-foreground/60 text-lg">
-                Awesome stories are being written! Soon you'll find amazing trek
+                Awesome stories are being written! Soon you&apos;ll find amazing trek
                 experiences here.
               </p>
             </div>

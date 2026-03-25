@@ -371,7 +371,7 @@ function InclusionsExclusions({
       {hasInclusions && (
         <div className="bg-green-500/5 border border-green-500/20 rounded-3xl p-8">
           <h3 className="text-2xl font-bold mb-6 flex items-center gap-2 text-green-500/90">
-            <Check className="w-6 h-6" /> What's Included
+            <Check className="w-6 h-6" /> What&apos;s Included
           </h3>
           <ul className="space-y-4">
             {inclusions.map((item: string) => (
@@ -389,7 +389,7 @@ function InclusionsExclusions({
       {hasExclusions && (
         <div className="bg-red-500/5 border border-red-500/20 rounded-3xl p-8">
           <h3 className="text-2xl font-bold mb-6 flex items-center gap-2 text-red-500/90">
-            <X className="w-6 h-6" /> What's Not Included
+            <X className="w-6 h-6" /> What&apos;s Not Included
           </h3>
           <ul className="space-y-4">
             {exclusions.map((item: string) => (

@@ -170,7 +170,7 @@ export default async function AdminLeadsPage({
                       {lead.adminNotes ? (
                         <div className="text-sm text-foreground/70 flex items-start gap-2 bg-primary/5 p-3 rounded-xl border border-primary/10">
                           <MessageSquare className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                          <span className="italic">"{lead.adminNotes}"</span>
+                          <span className="italic">&quot;{lead.adminNotes}&quot;</span>
                         </div>
                       ) : (
                         <span className="text-xs text-foreground/30 italic">

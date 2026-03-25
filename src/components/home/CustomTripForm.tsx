@@ -101,7 +101,7 @@ export default function CustomTripForm() {
           Plan a Custom Trip
         </h3>
         <p className="text-foreground/60 mb-8">
-          Can't find exactly what you're looking for? Let our experts craft a
+          Can&apos;t find exactly what you&apos;re looking for? Let our experts craft a
           personalized itinerary just for you or your group.
         </p>
 

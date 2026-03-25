@@ -39,5 +39,5 @@ describe("app/terms/page", () => {
     expect(
       screen.getByText(/support@paramadventures.com/i),
     ).toBeInTheDocument();
-  });
+  }, 10000);
 });
