@@ -81,7 +81,7 @@ export async function PATCH(request: Request) {
         name: name.trim(),
         phoneNumber: phoneNumber.trim(),
         avatarUrl: avatarUrl || null,
-        gender: gender || null,
+        gender,
         age: age ? Number(age) : null,
         bloodGroup: bloodGroup || null,
         emergencyContactName: emergencyContactName || null,
