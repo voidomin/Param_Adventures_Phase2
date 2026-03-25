@@ -103,6 +103,23 @@ describe("/api/user/blogs/[id] route", () => {
       expect(response.status).toBe(400);
     });
 
+    it("returns 400 when payload validation fails", async () => {
+      mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+      mockBlogFindUnique.mockResolvedValue({
+        id: "blog-1",
+        authorId: "u1",
+        status: "DRAFT",
+      } as any);
+
+      const response = await PATCH(patchRequest({ title: "" }, "t1"), {
+        params: Promise.resolve({ id: "blog-1" }),
+      });
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.error).toBeTypeOf("string");
+    });
+
     it("updates draft blog and sanitizes content", async () => {
       mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
       mockBlogFindUnique.mockResolvedValue({
@@ -147,6 +164,56 @@ describe("/api/user/blogs/[id] route", () => {
         }),
       );
       expect(mockRevalidatePath).toHaveBeenCalledWith("/", "layout");
+    });
+
+    it("updates draft blog with omitted optional fields", async () => {
+      mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+      mockBlogFindUnique.mockResolvedValue({
+        id: "blog-1",
+        authorId: "u1",
+        status: "DRAFT",
+      } as any);
+      mockBlogUpdate.mockResolvedValue({
+        id: "blog-1",
+      } as any);
+
+      const response = await PATCH(patchRequest({}, "t1"), {
+        params: Promise.resolve({ id: "blog-1" }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(mockSanitizeEditorContent).not.toHaveBeenCalled();
+      expect(mockBlogUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: "blog-1" },
+          data: {},
+        }),
+      );
+    });
+
+    it("supports clearing cover image and updating author socials", async () => {
+      mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+      mockBlogFindUnique.mockResolvedValue({
+        id: "blog-1",
+        authorId: "u1",
+        status: "DRAFT",
+      } as any);
+      mockBlogUpdate.mockResolvedValue({ id: "blog-1" } as any);
+
+      const response = await PATCH(
+        patchRequest({ coverImageUrl: null, authorSocials: { instagram: "@param" } }, "t1"),
+        { params: Promise.resolve({ id: "blog-1" }) },
+      );
+
+      expect(response.status).toBe(200);
+      expect(mockBlogUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            coverImageUrl: null,
+            authorSocials: { instagram: "@param" },
+          }),
+        }),
+      );
     });
 
     it("returns 500 on unexpected failure", async () => {
