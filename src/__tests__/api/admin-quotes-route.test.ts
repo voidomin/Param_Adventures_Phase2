@@ -97,5 +97,31 @@ describe("/api/admin/quotes route", () => {
         data: { text: "Keep moving." },
       });
     });
+
+    it("creates quote with optional author and isActive", async () => {
+      mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+      mockCreate.mockResolvedValue({ id: "q2", text: "Keep moving.", author: "Param", isActive: false } as any);
+
+      const response = await POST(
+        createRequest({ text: "Keep moving.", author: "Param", isActive: false }),
+      );
+
+      expect(response.status).toBe(201);
+      expect(mockCreate).toHaveBeenCalledWith({
+        data: { text: "Keep moving.", author: "Param", isActive: false },
+      });
+    });
+
+    it("returns 500 on create failure", async () => {
+      mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+      mockCreate.mockRejectedValue(new Error("db down"));
+
+      const response = await POST(createRequest({ text: "Keep moving." }));
+      const data = await response.json();
+
+      expect(response.status).toBe(500);
+      expect(data.error).toBe("Failed to create quote");
+      expect(data.details).toBe("db down");
+    });
   });
 });
