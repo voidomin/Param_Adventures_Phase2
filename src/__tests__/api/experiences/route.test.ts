@@ -1,9 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { GET } from "../../../app/api/experiences/route";
-import { prisma } from "../../../lib/db";
-import { NextRequest } from "next/server";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../../../lib/db", () => ({
+vi.mock("@/lib/db", () => ({
   prisma: {
     experience: {
       findMany: vi.fn(),
@@ -11,33 +8,90 @@ vi.mock("../../../lib/db", () => ({
   },
 }));
 
+import { GET } from "@/app/api/experiences/route";
+import { prisma } from "@/lib/db";
+
+const mockFindMany = vi.mocked(prisma.experience.findMany);
+
+const createRequest = (url: string) => ({ url } as Request);
+
 describe("GET /api/experiences", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("returns a list of experiences", async () => {
-    const mockExperiences = [
-      { id: "1", title: "Trek 1", slug: "trek-1", location: "Himalayas" },
-      { id: "2", title: "Trek 2", slug: "trek-2", location: "Western Ghats" },
-    ];
-    vi.mocked(prisma.experience.findMany).mockResolvedValue(mockExperiences as unknown);
+  it("returns experiences with default published filter", async () => {
+    mockFindMany.mockResolvedValue([{ id: "e1" }] as any);
 
-    const req = new NextRequest("http://localhost/api/experiences");
-    const response = await GET(req);
-    
-    expect(response.status).toBe(200);
+    const response = await GET(createRequest("http://localhost/api/experiences"));
     const data = await response.json();
-    expect(data.experiences).toHaveLength(2);
-    expect(data.experiences[0].title).toBe("Trek 1");
+
+    expect(response.status).toBe(200);
+    expect(data.experiences).toHaveLength(1);
+    expect(mockFindMany).toHaveBeenCalledWith({
+      where: { status: "PUBLISHED" },
+      orderBy: { createdAt: "desc" },
+      include: {
+        categories: {
+          include: { category: true },
+        },
+      },
+    });
   });
 
-  it("handles database errors", async () => {
-    vi.mocked(prisma.experience.findMany).mockRejectedValue(new Error("DB Error"));
-    
-    const req = new NextRequest("http://localhost/api/experiences");
-    const response = await GET(req);
-    
+  it("applies category filter when categoryId is provided", async () => {
+    mockFindMany.mockResolvedValue([] as any);
+
+    await GET(createRequest("http://localhost/api/experiences?categoryId=cat-1"));
+
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          status: "PUBLISHED",
+          categories: { some: { categoryId: "cat-1" } },
+        },
+      }),
+    );
+  });
+
+  it("applies difficulty filter when difficulty is provided", async () => {
+    mockFindMany.mockResolvedValue([] as any);
+
+    await GET(createRequest("http://localhost/api/experiences?difficulty=HARD"));
+
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          status: "PUBLISHED",
+          difficulty: "HARD",
+        },
+      }),
+    );
+  });
+
+  it("applies both category and difficulty filters together", async () => {
+    mockFindMany.mockResolvedValue([] as any);
+
+    await GET(
+      createRequest("http://localhost/api/experiences?categoryId=cat-1&difficulty=EASY"),
+    );
+
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          status: "PUBLISHED",
+          categories: { some: { categoryId: "cat-1" } },
+          difficulty: "EASY",
+        },
+      }),
+    );
+  });
+
+  it("returns 500 when query fails", async () => {
+    mockFindMany.mockRejectedValue(new Error("db down"));
+
+    const response = await GET(createRequest("http://localhost/api/experiences"));
+
     expect(response.status).toBe(500);
   });
 });
