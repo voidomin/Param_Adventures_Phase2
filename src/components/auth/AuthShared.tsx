@@ -12,7 +12,10 @@ interface AuthInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 export const AuthInput = React.forwardRef<HTMLInputElement, AuthInputProps>(
   ({ label, id, showPasswordToggle, type, ...props }, ref) => {
     const [showPassword, setShowPassword] = React.useState(false);
-    const inputType = showPasswordToggle ? (showPassword ? "text" : "password") : type;
+    let inputType = type;
+    if (showPasswordToggle) {
+      inputType = showPassword ? "text" : "password";
+    }
 
     return (
       <motion.div variants={itemVariants}>
@@ -32,7 +35,7 @@ export const AuthInput = React.forwardRef<HTMLInputElement, AuthInputProps>(
             id={id}
             ref={ref}
             type={inputType}
-            className="w-full px-4 py-3 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all duration-300"
+            className="w-full px-4 py-3 bg-white/4 border border-white/8 rounded-xl text-white placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all duration-300"
           />
           {showPasswordToggle && (
             <button
@@ -62,7 +65,7 @@ export const AuthButton = ({ isSubmitting, loadingText, text, ...props }: AuthBu
       {...props}
       type={props.type ?? "submit"}
       disabled={isSubmitting}
-      className="group relative w-full py-3.5 px-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-amber-500/20 hover:shadow-xl hover:shadow-amber-500/30 overflow-hidden"
+      className="group relative w-full py-3.5 px-4 bg-linear-to-r from-amber-500 to-orange-500 text-white font-bold rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-amber-500/20 hover:shadow-xl hover:shadow-amber-500/30 overflow-hidden"
       whileHover={{ y: -2 }}
       whileTap={{ scale: 0.98 }}
     >
@@ -75,7 +78,7 @@ export const AuthButton = ({ isSubmitting, loadingText, text, ...props }: AuthBu
         )}
       </span>
       <motion.div
-        className="absolute inset-0 bg-gradient-to-r from-amber-600 to-orange-600"
+        className="absolute inset-0 bg-linear-to-r from-amber-600 to-orange-600"
         initial={{ opacity: 0 }}
         whileHover={{ opacity: 1 }}
         transition={{ duration: 0.3 }}

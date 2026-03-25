@@ -25,14 +25,17 @@ export const EmailBase = ({
   children,
   theme = "orange",
 }: EmailBaseProps) => {
-  const headerGradient = theme === "admin" 
-    ? "linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)" 
-    : theme === "gold"
-    ? "linear-gradient(135deg, #D4AF37 0%, #B8860B 100%)"
-    : "linear-gradient(135deg, #f97316 0%, #ea580c 100%)";
+  let headerGradient = "linear-gradient(135deg, #f97316 0%, #ea580c 100%)";
+  if (theme === "admin") {
+    headerGradient = "linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%)";
+  } else if (theme === "gold") {
+    headerGradient = "linear-gradient(135deg, #D4AF37 0%, #B8860B 100%)";
+  }
 
-  const accentColor = theme === "admin" ? "#4F46E5" : theme === "gold" ? "#D4AF37" : "#f97316";
-  const headingColor = theme === "gold" ? "#0a0a0a" : "#ffffff";
+  let headingColor = "#ffffff";
+  if (theme === "gold") {
+    headingColor = "#0a0a0a";
+  }
 
   return (
     <Html>
