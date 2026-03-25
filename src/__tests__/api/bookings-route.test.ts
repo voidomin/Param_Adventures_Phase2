@@ -73,9 +73,16 @@ const validPayload = {
 };
 
 describe("POST /api/bookings", () => {
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     vi.clearAllMocks();
     mockOrdersCreate.mockReset();
+    errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    errorSpy.mockRestore();
   });
 
   it("returns auth response when unauthorized", async () => {
@@ -117,6 +124,16 @@ describe("POST /api/bookings", () => {
     const response = await POST(createRequest(validPayload));
 
     expect(response.status).toBe(409);
+  });
+
+  it("returns 404 when slot does not belong to experience", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
+    mockExperienceFindUnique.mockResolvedValue({ id: "exp-1", status: "PUBLISHED", basePrice: 1000 } as any);
+    mockSlotFindUnique.mockResolvedValue({ id: "slot-1", experienceId: "exp-other", remainingCapacity: 10 } as any);
+
+    const response = await POST(createRequest(validPayload));
+
+    expect(response.status).toBe(404);
   });
 
   it("creates booking, payment, and razorpay order on success", async () => {
@@ -163,6 +180,91 @@ describe("POST /api/bookings", () => {
       expect.objectContaining({ experienceId: "exp-1", slotId: "slot-1" }),
     );
     expect(mockRevalidatePath).toHaveBeenCalledWith("/", "layout");
+  });
+
+  it("continues with defaults when tax config is invalid JSON", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
+    mockExperienceFindUnique.mockResolvedValue({ id: "exp-1", status: "PUBLISHED", basePrice: 1000 } as any);
+    mockSlotFindUnique.mockResolvedValue({ id: "slot-1", experienceId: "exp-1", remainingCapacity: 10 } as any);
+
+    mockPlatformSettingFindUnique.mockResolvedValue({
+      key: "taxConfig",
+      value: "{ bad-json",
+    } as any);
+
+    let capturedBookingCreateArg: any;
+    mockTransaction.mockImplementation(async (cb: any) => {
+      const tx = {
+        booking: {
+          create: vi.fn(async (arg: any) => {
+            capturedBookingCreateArg = arg;
+            return { id: "bk-1", totalPrice: 2000 };
+          }),
+          delete: mockBookingDelete,
+        },
+        slot: {
+          updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+          update: mockSlotUpdate,
+        },
+      };
+      return cb(tx);
+    });
+
+    mockOrdersCreate.mockResolvedValue({ id: "order_123" });
+    mockPaymentCreate.mockResolvedValue({ id: "pay-1" } as any);
+    mockLogActivity.mockResolvedValue(undefined);
+
+    const response = await POST(createRequest(validPayload));
+
+    expect(response.status).toBe(200);
+    expect(capturedBookingCreateArg.data.baseFare).toBe(2000);
+    expect(capturedBookingCreateArg.data.taxBreakdown).toEqual([]);
+    expect(errorSpy).toHaveBeenCalledWith("Failed to parse taxConfig during booking");
+  });
+
+  it("handles non-numeric tax percentage and blank participant age", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
+    mockExperienceFindUnique.mockResolvedValue({ id: "exp-1", status: "PUBLISHED", basePrice: 1000 } as any);
+    mockSlotFindUnique.mockResolvedValue({ id: "slot-1", experienceId: "exp-1", remainingCapacity: 10 } as any);
+
+    mockPlatformSettingFindUnique.mockResolvedValue({
+      key: "taxConfig",
+      value: JSON.stringify([{ name: "GST", percentage: "abc" }]),
+    } as any);
+
+    let capturedBookingCreateArg: any;
+    mockTransaction.mockImplementation(async (cb: any) => {
+      const tx = {
+        booking: {
+          create: vi.fn(async (arg: any) => {
+            capturedBookingCreateArg = arg;
+            return { id: "bk-2", totalPrice: 1000 };
+          }),
+          delete: mockBookingDelete,
+        },
+        slot: {
+          updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+          update: mockSlotUpdate,
+        },
+      };
+      return cb(tx);
+    });
+
+    mockOrdersCreate.mockResolvedValue({ id: "order_456" });
+    mockPaymentCreate.mockResolvedValue({ id: "pay-2" } as any);
+    mockLogActivity.mockResolvedValue(undefined);
+
+    const response = await POST(
+      createRequest({
+        ...validPayload,
+        participantCount: 1,
+        participants: [{ name: "A", age: "" }],
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(capturedBookingCreateArg.data.participants.create[0].age).toBeNull();
+    expect(capturedBookingCreateArg.data.taxBreakdown[0].amount).toBe(0);
   });
 
   it("rolls back booking when razorpay order creation fails", async () => {
@@ -223,5 +325,14 @@ describe("POST /api/bookings", () => {
     const response = await POST(createRequest(validPayload));
 
     expect(response.status).toBe(409);
+  });
+
+  it("returns 500 for unexpected non-overbooked errors", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
+    mockExperienceFindUnique.mockRejectedValue("db-down");
+
+    const response = await POST(createRequest(validPayload));
+
+    expect(response.status).toBe(500);
   });
 });
