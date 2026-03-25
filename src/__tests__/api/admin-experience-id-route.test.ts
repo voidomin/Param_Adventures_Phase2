@@ -90,6 +90,17 @@ describe("/api/admin/experiences/[id]", () => {
     expect(data.experience.id).toBe("exp-1");
   });
 
+  it("GET returns 500 when find fails", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockFindUnique.mockRejectedValue(new Error("db fail"));
+
+    const response = await GET({} as NextRequest, {
+      params: Promise.resolve({ id: "exp-1" }),
+    });
+
+    expect(response.status).toBe(500);
+  });
+
   it("PUT returns 400 on validation failure", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
 
@@ -100,6 +111,66 @@ describe("/api/admin/experiences/[id]", () => {
 
     expect(response.status).toBe(400);
     expect(typeof data.error).toBe("string");
+  });
+
+  it("PUT returns 400 for invalid cover image URL", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+
+    const response = await PUT(
+      createJsonRequest({
+        title: "New title",
+        basePrice: 999,
+        capacity: 8,
+        durationDays: 2,
+        coverImage: "not-a-url",
+      }),
+      { params: Promise.resolve({ id: "exp-1" }) },
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toBe("Invalid cover image URL");
+  });
+
+  it("PUT returns 400 for invalid card image URL", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+
+    const response = await PUT(
+      createJsonRequest({
+        title: "New title",
+        basePrice: 999,
+        capacity: 8,
+        durationDays: 2,
+        coverImage: "https://valid.example/cover.jpg",
+        cardImage: "also-invalid",
+      }),
+      { params: Promise.resolve({ id: "exp-1" }) },
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toBe("Invalid card image URL");
+  });
+
+  it("PUT returns 400 for invalid image URL inside images array", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+
+    const response = await PUT(
+      createJsonRequest({
+        title: "New title",
+        basePrice: 999,
+        capacity: 8,
+        durationDays: 2,
+        coverImage: "https://valid.example/cover.jpg",
+        cardImage: "https://valid.example/card.jpg",
+        images: ["https://valid.example/1.jpg", "bad-url"],
+      }),
+      { params: Promise.resolve({ id: "exp-1" }) },
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toBe("Invalid image URL");
   });
 
   it("PUT returns 404 when experience is missing", async () => {
@@ -164,6 +235,19 @@ describe("/api/admin/experiences/[id]", () => {
     expect(mockRevalidatePath).toHaveBeenCalledWith("/", "layout");
   });
 
+  it("PUT returns 500 when request parsing fails", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    const request = {
+      json: vi.fn().mockRejectedValue(new Error("invalid body")),
+    } as unknown as NextRequest;
+
+    const response = await PUT(request, {
+      params: Promise.resolve({ id: "exp-1" }),
+    });
+
+    expect(response.status).toBe(500);
+  });
+
   it("DELETE soft-deletes when bookings exist", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
     mockFindUnique.mockResolvedValue({ id: "exp-1", _count: { bookings: 5 } } as any);
@@ -180,6 +264,17 @@ describe("/api/admin/experiences/[id]", () => {
     expect(mockRevalidatePath).toHaveBeenCalledWith("/", "layout");
   });
 
+  it("DELETE returns 404 when experience is missing", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockFindUnique.mockResolvedValue(null);
+
+    const response = await DELETE({} as NextRequest, {
+      params: Promise.resolve({ id: "exp-1" }),
+    });
+
+    expect(response.status).toBe(404);
+  });
+
   it("DELETE hard-deletes when no bookings exist", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
     mockFindUnique.mockResolvedValue({ id: "exp-1", _count: { bookings: 0 } } as any);
@@ -193,5 +288,17 @@ describe("/api/admin/experiences/[id]", () => {
     expect(response.status).toBe(200);
     expect(data.message).toContain("permanently deleted");
     expect(mockDelete).toHaveBeenCalledWith({ where: { id: "exp-1" } });
+  });
+
+  it("DELETE returns 500 when delete operation fails", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockFindUnique.mockResolvedValue({ id: "exp-1", _count: { bookings: 0 } } as any);
+    mockDelete.mockRejectedValue(new Error("db down"));
+
+    const response = await DELETE({} as NextRequest, {
+      params: Promise.resolve({ id: "exp-1" }),
+    });
+
+    expect(response.status).toBe(500);
   });
 });
