@@ -92,16 +92,16 @@ export async function POST(
       prisma.payment.create({
         data: {
           bookingId: bookingId,
-          provider: "MANUAL" as any,
+          provider: "MANUAL",
           providerPaymentId: transactionId,
           status: "PAID",
           amount: amountPaid,
           fullPayload: {
             proofUrl: paymentProofUrl,
-            adminNotes: adminNotes,
+            adminNotes: adminNotes ?? null,
             verifiedBy: auth.userId,
             verifiedAt: new Date().toISOString(),
-          } as any,
+          },
         },
       }),
       // Decrement slot capacity if it wasn't already decremented

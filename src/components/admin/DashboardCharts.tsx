@@ -21,6 +21,14 @@ interface ChartData {
   userGrowth: { month: string; users: number }[];
 }
 
+type TooltipPayload = {
+  value: number;
+  name?: string;
+  payload?: {
+    color?: string;
+  };
+};
+
 /* ── Custom Tooltip ────────────────────────────────────── */
 function CustomTooltip({
   active,
@@ -30,7 +38,7 @@ function CustomTooltip({
   suffix = "",
 }: Readonly<{
   active?: boolean;
-  payload?: any[];
+  payload?: TooltipPayload[];
   label?: string;
   prefix?: string;
   suffix?: string;
@@ -51,7 +59,7 @@ function CustomTooltip({
 function PieTooltip({
   active,
   payload,
-}: Readonly<{ active?: boolean; payload?: any[] }>) {
+}: Readonly<{ active?: boolean; payload?: TooltipPayload[] }>) {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-card border border-border rounded-xl px-4 py-2.5 shadow-xl text-sm">

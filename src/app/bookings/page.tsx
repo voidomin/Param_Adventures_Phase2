@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type SVGProps } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import Link from "next/link";
 import { Clock, MapPin, IndianRupee, Loader2, X, AlertTriangle } from "lucide-react";
@@ -176,7 +176,7 @@ function CancelModal({
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="Tell us why you're cancelling..."
-              className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all min-h-[80px] resize-none"
+              className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all min-h-20 resize-none"
             />
           </div>
 
@@ -216,19 +216,16 @@ declare global {
 
 function loadRazorpayScript(): Promise<boolean> {
   return new Promise((resolve) => {
-    if (
-      typeof globalThis !== "undefined" &&
-      (globalThis as any).Razorpay !== undefined
-    ) {
+    if (typeof window !== "undefined" && window.Razorpay !== undefined) {
       resolve(true);
       return;
     }
-    const script = globalThis.document.createElement("script");
+    const script = document.createElement("script");
     script.src = "https://checkout.razorpay.com/v1/checkout.js"; // NOSONAR
     script.crossOrigin = "anonymous";
     script.onload = () => resolve(true);
     script.onerror = () => resolve(false);
-    globalThis.document.body.appendChild(script);
+    document.body.appendChild(script);
   });
 }
 
@@ -329,14 +326,25 @@ export default function BookingsPage() {
 
     const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "";
 
-    const rzp = new (globalThis as any).Razorpay({
+    const RazorpayCtor = window.Razorpay;
+    if (!RazorpayCtor) {
+      alert("Payment gateway is unavailable.");
+      setProcessingId(null);
+      return;
+    }
+
+    const rzp = new RazorpayCtor({
       key: keyId,
       amount: Number.parseInt(payment.amount) * 100,
       order_id: payment.providerOrderId,
       name: "Param Adventures",
       description: booking.experience.title,
       theme: { color: "#D4AF37" },
-      handler: async (response: Record<string, string>) => {
+      handler: async (response: {
+        razorpay_order_id: string;
+        razorpay_payment_id: string;
+        razorpay_signature: string;
+      }) => {
         try {
           const verifyRes = await fetch("/api/bookings/verify", {
             method: "POST",
@@ -353,8 +361,9 @@ export default function BookingsPage() {
 
           alert("Payment Successful!");
           globalThis.location.reload();
-        } catch (err: any) {
-          alert("Payment verification failed: " + err.message);
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : "Unknown error";
+          alert("Payment verification failed: " + message);
         } finally {
           setProcessingId(null);
         }
@@ -439,6 +448,7 @@ export default function BookingsPage() {
                       className="bg-card border border-border rounded-2xl overflow-hidden relative group"
                     >
                       <div className="h-48 relative block">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={
                             item.experience.images[0] ||
@@ -497,6 +507,7 @@ export default function BookingsPage() {
                       className="bg-card border border-border rounded-2xl overflow-hidden flex flex-col"
                     >
                       <div className="h-40 relative block">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={
                             b.experience.images[0] ||
@@ -505,7 +516,7 @@ export default function BookingsPage() {
                           className="w-full h-full object-cover"
                           alt="Exp"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
+                        <div className="absolute inset-0 bg-linear-to-t from-black/80 to-transparent"></div>
                         <div className="absolute bottom-4 left-4 right-4 text-white">
                           <h3 className="font-heading font-bold text-lg line-clamp-1">
                             {b.experience.title}
@@ -669,8 +680,7 @@ function EmptyState({ title, msg }: Readonly<{ title: string; msg: string }>) {
   );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function CompassIcon(props: Readonly<any>) {
+function CompassIcon(props: Readonly<SVGProps<SVGSVGElement>>) {
   return (
     <svg
       {...props}

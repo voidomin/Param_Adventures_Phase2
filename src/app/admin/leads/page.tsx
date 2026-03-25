@@ -10,6 +10,17 @@ import {
 } from "lucide-react";
 import LeadActions from "./LeadActions";
 
+type LeadRow = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  requirements: string;
+  createdAt: Date;
+  adminNotes: string | null;
+  status: string;
+};
+
 function getStatusStyles(status: string) {
   switch (status) {
     case "NEW":
@@ -34,6 +45,7 @@ export default async function AdminLeadsPage({
 }>) {
   const resolvedSearchParams = await searchParams;
   const showAll = resolvedSearchParams.status === "all";
+  const hiddenStatuses = ["DISCARDED", "CLOSED"] as const;
 
   // By default, filter out DISCARDED and CLOSED leads to keep the "front end" clean
   // while keeping them in the DB.
@@ -42,7 +54,7 @@ export default async function AdminLeadsPage({
       ? {}
       : {
           status: {
-            notIn: ["DISCARDED", "CLOSED"] as any,
+            notIn: hiddenStatuses,
           },
         },
     orderBy: { createdAt: "desc" },
@@ -124,7 +136,7 @@ export default async function AdminLeadsPage({
                   </td>
                 </tr>
               ) : (
-                leads.map((lead: any) => (
+                leads.map((lead: LeadRow) => (
                   <tr
                     key={lead.id}
                     className="hover:bg-foreground/2 transition-colors"

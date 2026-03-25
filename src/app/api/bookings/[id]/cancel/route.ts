@@ -66,7 +66,7 @@ export async function POST(
 
     // Determine refund: only if payment was made
     const newPaymentStatus =
-      booking.paymentStatus === "PAID" ? ("REFUND_PENDING" as any) : booking.paymentStatus;
+      booking.paymentStatus === "PAID" ? "REFUND_PENDING" : booking.paymentStatus;
 
     // Atomic transaction: update booking + restore slot capacity
     await prisma.$transaction(async (tx) => {
@@ -79,7 +79,7 @@ export async function POST(
           cancelledByUserId: userId,
           cancellationReason: reason || null,
           refundPreference: preference,
-        } as any,
+        },
       });
 
       if (booking.slotId) {
@@ -100,7 +100,7 @@ export async function POST(
     });
 
     // Send cancellation email
-    await (sendBookingCancellation as any)({
+    await sendBookingCancellation({
       userName: booking.user.name || "Adventurer",
       userEmail: booking.user.email,
       experienceTitle: booking.experience.title,

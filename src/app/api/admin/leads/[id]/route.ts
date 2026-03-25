@@ -36,16 +36,16 @@ export async function PATCH(
     const lead = await prisma.customLead.update({
       where: { id },
       data: {
-        status: status as any,
+        status,
         adminNotes,
       },
     });
 
     return NextResponse.json(lead);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Failed to update Lead:", error);
     return NextResponse.json(
-      { error: error?.message || "Failed to update lead" },
+      { error: error instanceof Error ? error.message : "Failed to update lead" },
       { status: 500 },
     );
   }

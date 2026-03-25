@@ -69,12 +69,12 @@ export async function PATCH(request: Request) {
       data: { 
         password: hashedPassword,
         tokenVersion: { increment: 1 }
-      } as any,
+      },
       include: { role: true },
     });
 
-    const newAccessToken = generateAccessToken(updatedUser.id, updatedUser.role.name, (updatedUser as any).tokenVersion);
-    const newRefreshToken = generateRefreshToken(updatedUser.id, (updatedUser as any).tokenVersion);
+    const newAccessToken = generateAccessToken(updatedUser.id, updatedUser.role.name, updatedUser.tokenVersion);
+    const newRefreshToken = generateRefreshToken(updatedUser.id, updatedUser.tokenVersion);
 
     const response = NextResponse.json(
       { message: "Password updated successfully" },

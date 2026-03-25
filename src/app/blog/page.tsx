@@ -20,7 +20,7 @@ export default async function BlogListingPage() {
     <div className="min-h-screen bg-background text-foreground pb-20">
       {/* Hero */}
       <div className="relative pt-0 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-background to-background" />
+        <div className="absolute inset-0 bg-liner-to-br from-primary/10 via-background to-background" />
         <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
         <div className="relative max-w-7xl mx-auto px-4 py-32 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 border border-primary/20 rounded-full text-primary text-sm font-bold mb-6">
@@ -71,7 +71,7 @@ export default async function BlogListingPage() {
                       alt={blog.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                    <div className="absolute inset-0 bg-liner-to-t from-black/60 to-transparent" />
                     {blog.experience && (
                       <div className="absolute bottom-3 left-3">
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-black/40 backdrop-blur-sm border border-white/20 rounded-full text-white text-xs font-semibold">

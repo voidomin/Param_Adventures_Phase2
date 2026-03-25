@@ -67,8 +67,8 @@ export async function POST(request: NextRequest) {
     });
 
     // ─── Generate tokens ─────────────────────────────────
-    const accessToken = generateAccessToken(user.id, user.role.name, (user as any).tokenVersion);
-    const refreshToken = generateRefreshToken(user.id, (user as any).tokenVersion);
+    const accessToken = generateAccessToken(user.id, user.role.name, user.tokenVersion);
+    const refreshToken = generateRefreshToken(user.id, user.tokenVersion);
 
     // ─── Set refresh token as HTTP-only cookie ───────────
     const response = NextResponse.json(

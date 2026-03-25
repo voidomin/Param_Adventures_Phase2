@@ -38,7 +38,14 @@ vi.mock("next/navigation", async (importOriginal) => {
 });
 
 vi.mock("next/link", () => ({
-  default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => (
+  default: ({
+    href,
+    children,
+    ...rest
+  }: {
+    href: string;
+    children: React.ReactNode;
+  }) => (
     <a href={href} {...rest}>
       {children}
     </a>
@@ -59,7 +66,9 @@ describe("app/blog/[slug]/page", () => {
   it("returns fallback metadata title when blog does not exist", async () => {
     mockBlogFindUnique.mockResolvedValue(null);
 
-    const meta = await generateMetadata({ params: Promise.resolve({ slug: "missing" }) });
+    const meta = await generateMetadata({
+      params: Promise.resolve({ slug: "missing" }),
+    });
 
     expect(meta.title).toBe("Blog Not Found");
   });
@@ -70,7 +79,9 @@ describe("app/blog/[slug]/page", () => {
       coverImage: { originalUrl: "https://example.com/og.jpg" },
     });
 
-    const meta = await generateMetadata({ params: Promise.resolve({ slug: "altitude-notes" }) });
+    const meta = await generateMetadata({
+      params: Promise.resolve({ slug: "altitude-notes" }),
+    });
 
     expect(meta.title).toBe("Altitude Notes");
     expect(String(meta.description)).toContain("Altitude Notes");
@@ -121,14 +132,17 @@ describe("app/blog/[slug]/page", () => {
       },
     });
 
-    const ui = await BlogArticlePage({ params: Promise.resolve({ slug: "published-blog" }) });
+    const ui = await BlogArticlePage({
+      params: Promise.resolve({ slug: "published-blog" }),
+    });
     render(ui);
 
-    expect(screen.getByRole("heading", { name: "Published Blog" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Published Blog" }),
+    ).toBeInTheDocument();
     expect(screen.getByTestId("blog-content")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Book this Trip/i })).toHaveAttribute(
-      "href",
-      "/experiences/kedarkantha",
-    );
+    expect(
+      screen.getByRole("link", { name: /Book this Trip/i }),
+    ).toHaveAttribute("href", "/experiences/kedarkantha");
   }, 10000);
 });
