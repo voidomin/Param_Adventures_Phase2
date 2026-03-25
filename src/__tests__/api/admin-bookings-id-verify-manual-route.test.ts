@@ -66,6 +66,19 @@ describe("POST /api/admin/bookings/[id]/verify-manual", () => {
     expect(response.status).toBe(401);
   });
 
+  it("passes through non-401 auth response", async () => {
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: false,
+      response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+    } as any);
+
+    const response = await POST(createRequest(validBody), {
+      params: Promise.resolve({ id: "b1" }),
+    });
+
+    expect(response.status).toBe(403);
+  });
+
   it("returns 403 for non-admin role", async () => {
     mockAuthorizeRequest.mockResolvedValue({
       authorized: true,
@@ -170,6 +183,110 @@ describe("POST /api/admin/bookings/[id]/verify-manual", () => {
       expect.objectContaining({ transactionId: "txn-1", amount: 5000 }),
     );
     expect(mockRevalidatePath).toHaveBeenCalledWith("/", "layout");
+  });
+
+  it("skips confirmation email when second booking lookup has no slot", async () => {
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: true,
+      roleName: "ADMIN",
+      userId: "a1",
+    } as any);
+
+    mockBookingFindUnique
+      .mockResolvedValueOnce({
+        id: "b1",
+        slotId: "slot-1",
+        participantCount: 2,
+        paymentStatus: "PENDING",
+      } as any)
+      .mockResolvedValueOnce({
+        id: "b1",
+        participantCount: 2,
+        totalPrice: 5000,
+        user: { name: "Akash", email: "akash@example.com" },
+        experience: { title: "Everest Base Camp" },
+        slot: null,
+      } as any);
+
+    mockTransaction.mockResolvedValue([{ id: "b1", bookingStatus: "CONFIRMED" }] as any);
+
+    const response = await POST(createRequest(validBody), {
+      params: Promise.resolve({ id: "b1" }),
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(response.status).toBe(200);
+    expect(mockSendBookingConfirmation).not.toHaveBeenCalled();
+  });
+
+  it("skips confirmation email when second booking lookup returns null", async () => {
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: true,
+      roleName: "ADMIN",
+      userId: "a1",
+    } as any);
+
+    mockBookingFindUnique
+      .mockResolvedValueOnce({
+        id: "b1",
+        slotId: "slot-1",
+        participantCount: 2,
+        paymentStatus: "PENDING",
+      } as any)
+      .mockResolvedValueOnce(null);
+
+    mockTransaction.mockResolvedValue([{ id: "b1", bookingStatus: "CONFIRMED" }] as any);
+
+    const response = await POST(createRequest(validBody), {
+      params: Promise.resolve({ id: "b1" }),
+    });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(response.status).toBe(200);
+    expect(mockSendBookingConfirmation).not.toHaveBeenCalled();
+  });
+
+  it("returns 500 when transaction fails", async () => {
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: true,
+      roleName: "ADMIN",
+      userId: "a1",
+    } as any);
+    mockBookingFindUnique.mockResolvedValue({
+      id: "b1",
+      slotId: "slot-1",
+      participantCount: 2,
+      paymentStatus: "PENDING",
+    } as any);
+    mockTransaction.mockRejectedValueOnce(new Error("txn failed"));
+
+    const response = await POST(createRequest(validBody), {
+      params: Promise.resolve({ id: "b1" }),
+    });
+
+    expect(response.status).toBe(500);
+  });
+
+  it("returns 500 when audit logging fails", async () => {
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: true,
+      roleName: "ADMIN",
+      userId: "a1",
+    } as any);
+    mockBookingFindUnique.mockResolvedValue({
+      id: "b1",
+      slotId: "slot-1",
+      participantCount: 2,
+      paymentStatus: "PENDING",
+    } as any);
+    mockTransaction.mockResolvedValue([{ id: "b1", bookingStatus: "CONFIRMED" }] as any);
+    mockLogActivity.mockRejectedValueOnce(new Error("audit failed"));
+
+    const response = await POST(createRequest(validBody), {
+      params: Promise.resolve({ id: "b1" }),
+    });
+
+    expect(response.status).toBe(500);
   });
 
   it("returns 500 on unexpected failure", async () => {
