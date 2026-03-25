@@ -54,6 +54,45 @@ describe("Cloudinary Utils", () => {
       const buffer = Buffer.from("test");
       await expect(uploadToCloudinary(buffer)).rejects.toThrow("Upload Failed");
     });
+
+    it("normalizes string upload errors", async () => {
+      vi.mocked(cloudinary.uploader.upload_stream).mockImplementationOnce((options: any, callback?: any) => {
+        return {
+          end: vi.fn(() => {
+            callback("String upload failure", null);
+          }),
+        } as unknown;
+      });
+
+      const buffer = Buffer.from("test");
+      await expect(uploadToCloudinary(buffer)).rejects.toThrow("String upload failure");
+    });
+
+    it("normalizes object upload errors with message", async () => {
+      vi.mocked(cloudinary.uploader.upload_stream).mockImplementationOnce((options: any, callback?: any) => {
+        return {
+          end: vi.fn(() => {
+            callback({ message: "Object upload failure" }, null);
+          }),
+        } as unknown;
+      });
+
+      const buffer = Buffer.from("test");
+      await expect(uploadToCloudinary(buffer)).rejects.toThrow("Object upload failure");
+    });
+
+    it("uses fallback message for unknown upload errors", async () => {
+      vi.mocked(cloudinary.uploader.upload_stream).mockImplementationOnce((options: any, callback?: any) => {
+        return {
+          end: vi.fn(() => {
+            callback({}, null);
+          }),
+        } as unknown;
+      });
+
+      const buffer = Buffer.from("test");
+      await expect(uploadToCloudinary(buffer)).rejects.toThrow("Cloudinary upload failed");
+    });
   });
 
   describe("deleteFromCloudinary", () => {
