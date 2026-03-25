@@ -1,16 +1,15 @@
-import React from "react";
+import React, * as ReactModule from "react";
 import { render, screen, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import AuthLayout from "@/components/auth/AuthLayout";
 
 vi.mock("framer-motion", () => {
-  const React = require("react");
   const motion = new Proxy(
     {},
     {
       get: (_, tag: string) =>
         ({ children, ...props }: any) =>
-          React.createElement(tag, props, children),
+          ReactModule.createElement(tag, props, children),
     },
   );
 
@@ -29,7 +28,13 @@ vi.mock("next/link", () => ({
 }));
 
 vi.mock("next/image", () => ({
-  default: ({ src, alt, ...rest }: any) => <img src={src} alt={alt} {...rest} />,
+  default: ({ src, alt }: any) => (
+    <div
+      data-testid="next-image"
+      data-src={String(src)}
+      aria-label={String(alt ?? "")}
+    />
+  ),
 }));
 
 vi.mock("@/components/auth/FloatingParticles", () => ({

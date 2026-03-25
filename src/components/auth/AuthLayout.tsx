@@ -133,7 +133,7 @@ export default function AuthLayout({
 
         {/* Content */}
         <motion.div
-          className={`relative z-10 w-full max-w-md ${compact ? "max-w-[420px]" : ""}`}
+          className={`relative z-10 w-full max-w-md ${compact ? "max-w-105" : ""}`}
           variants={containerVariants}
           initial="hidden"
           animate="visible"
@@ -143,7 +143,7 @@ export default function AuthLayout({
             <Link href="/" className="flex items-center gap-2.5 group">
               <div className="relative">
                 <motion.div
-                  className="absolute -inset-1 bg-gradient-to-r from-amber-500/30 to-orange-500/30 rounded-xl blur-sm"
+                  className="absolute -inset-1 bg-linear-to-r from-amber-500/30 to-orange-500/30 rounded-xl blur-sm"
                   animate={{ opacity: [0.5, 1, 0.5] }}
                   transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                 />
@@ -173,11 +173,11 @@ export default function AuthLayout({
           <motion.div variants={itemVariants} className="relative">
             {/* Animated Glow */}
             <motion.div
-              className="absolute -inset-px bg-gradient-to-b from-amber-500/20 via-transparent to-transparent rounded-2xl"
+              className="absolute -inset-px bg-linear-to-b from-amber-500/20 via-transparent to-transparent rounded-2xl"
               animate={{ opacity: [0.3, 0.6, 0.3] }}
               transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
             />
-            <div className={`relative bg-white/[0.03] backdrop-blur-2xl border border-white/[0.06] rounded-2xl shadow-2xl shadow-black/40 ${compact ? "p-5 sm:p-6" : "p-6 sm:p-8"}`}>
+            <div className={`relative bg-white/3 backdrop-blur-2xl border border-white/6 rounded-2xl shadow-2xl shadow-black/40 ${compact ? "p-5 sm:p-6" : "p-6 sm:p-8"}`}>
               {children}
             </div>
           </motion.div>
@@ -216,8 +216,8 @@ export default function AuthLayout({
         </motion.div>
 
         {/* Gradient Overlays */}
-        <div className="absolute inset-0 bg-gradient-to-r from-[#060606] via-[#060606]/50 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#060606]/80 via-transparent to-[#060606]/30" />
+        <div className="absolute inset-0 bg-linear-to-r from-[#060606] via-[#060606]/50 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-[#060606]/80 via-transparent to-[#060606]/30" />
         <LightLeak />
 
         {/* Text over image */}
@@ -272,19 +272,19 @@ export default function AuthLayout({
 
         {/* Floating accent lines */}
         <motion.div
-          className="absolute top-1/4 right-10 w-20 h-px bg-gradient-to-r from-amber-500/50 to-transparent"
+          className="absolute top-1/4 right-10 w-20 h-px bg-linear-to-r from-amber-500/50 to-transparent"
           initial={{ scaleX: 0, originX: 0 }}
           animate={{ scaleX: 1 }}
           transition={{ delay: 1, duration: 1.2 }}
         />
         <motion.div
-          className="absolute top-1/3 right-16 w-12 h-px bg-gradient-to-r from-amber-500/30 to-transparent"
+          className="absolute top-1/3 right-16 w-12 h-px bg-linear-to-r from-amber-500/30 to-transparent"
           initial={{ scaleX: 0, originX: 0 }}
           animate={{ scaleX: 1 }}
           transition={{ delay: 1.2, duration: 1 }}
         />
         <motion.div
-          className="absolute bottom-1/3 right-8 w-16 h-px bg-gradient-to-r from-amber-500/40 to-transparent"
+          className="absolute bottom-1/3 right-8 w-16 h-px bg-linear-to-r from-amber-500/40 to-transparent"
           initial={{ scaleX: 0, originX: 0 }}
           animate={{ scaleX: 1 }}
           transition={{ delay: 1.4, duration: 1 }}
