@@ -105,9 +105,55 @@ describe("/api/admin/story/[id] route", () => {
 
       expect(response.status).toBe(500);
     });
+
+    it("allows MEDIA_UPLOADER to update", async () => {
+      mockAuthorizeRequest.mockResolvedValue({ authorized: true, roleName: "MEDIA_UPLOADER" } as any);
+      mockFindUnique.mockResolvedValue({ id: "s1" } as any);
+      mockUpdate.mockResolvedValue({ id: "s1", subtitle: "Sub" } as any);
+
+      const response = await PUT(createRequest({ subtitle: "Sub" }), {
+        params: Promise.resolve({ id: "s1" }),
+      });
+
+      expect(response.status).toBe(200);
+    });
+
+    it("returns 500 when lookup fails before update", async () => {
+      mockAuthorizeRequest.mockResolvedValue({ authorized: true, roleName: "ADMIN" } as any);
+      mockFindUnique.mockRejectedValue(new Error("lookup fail"));
+
+      const response = await PUT(createRequest({ title: "Updated" }), {
+        params: Promise.resolve({ id: "s1" }),
+      });
+
+      expect(response.status).toBe(500);
+    });
   });
 
   describe("DELETE", () => {
+    it("returns auth response when unauthorized", async () => {
+      mockAuthorizeRequest.mockResolvedValue({
+        authorized: false,
+        response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+      } as any);
+
+      const response = await DELETE({} as NextRequest, {
+        params: Promise.resolve({ id: "s1" }),
+      });
+
+      expect(response.status).toBe(401);
+    });
+
+    it("returns 403 for disallowed role", async () => {
+      mockAuthorizeRequest.mockResolvedValue({ authorized: true, roleName: "CUSTOMER" } as any);
+
+      const response = await DELETE({} as NextRequest, {
+        params: Promise.resolve({ id: "s1" }),
+      });
+
+      expect(response.status).toBe(403);
+    });
+
     it("returns 404 when story block is missing", async () => {
       mockAuthorizeRequest.mockResolvedValue({ authorized: true, roleName: "SUPER_ADMIN" } as any);
       mockFindUnique.mockResolvedValue(null);
@@ -138,6 +184,17 @@ describe("/api/admin/story/[id] route", () => {
       mockAuthorizeRequest.mockResolvedValue({ authorized: true, roleName: "ADMIN" } as any);
       mockFindUnique.mockResolvedValue({ id: "s1" } as any);
       mockDelete.mockRejectedValue(new Error("db down"));
+
+      const response = await DELETE({} as NextRequest, {
+        params: Promise.resolve({ id: "s1" }),
+      });
+
+      expect(response.status).toBe(500);
+    });
+
+    it("returns 500 when lookup fails before delete", async () => {
+      mockAuthorizeRequest.mockResolvedValue({ authorized: true, roleName: "ADMIN" } as any);
+      mockFindUnique.mockRejectedValue(new Error("lookup fail"));
 
       const response = await DELETE({} as NextRequest, {
         params: Promise.resolve({ id: "s1" }),
