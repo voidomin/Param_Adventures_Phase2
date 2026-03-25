@@ -79,5 +79,9 @@ jobs:
           args: >
             -Dsonar.projectKey=voidomin_Param_Adventures_Phase2
             -Dsonar.organization=voidomin
+            -Dsonar.sources=src
+            -Dsonar.tests=src/__tests__
+            -Dsonar.test.inclusions=src/**/__tests__/**,src/**/*.test.ts,src/**/*.test.tsx,src/**/*.spec.ts,src/**/*.spec.tsx
+            -Dsonar.exclusions=**/skills/**,**/reference/**,**/.next/**,**/node_modules/**,**/public/**,**/docs/**,tsc-error.txt,build_output.log,**/.gemini/**,**/tmp/**,src/**/__tests__/**,src/**/*.test.ts,src/**/*.test.tsx,src/**/*.spec.ts,src/**/*.spec.tsx
             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
             -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info
