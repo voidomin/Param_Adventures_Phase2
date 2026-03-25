@@ -65,13 +65,20 @@ const validBody = {
 };
 
 describe("POST /api/bookings/verify", () => {
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv("RAZORPAY_KEY_SECRET", "test_secret");
+    errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     mockCreateHmac.mockReturnValue({
       update: vi.fn().mockReturnValue({ digest: vi.fn().mockReturnValue("sig_ok") }),
     } as any);
+  });
+
+  afterEach(() => {
+    errorSpy.mockRestore();
   });
 
   it("returns 400 on validation failure", async () => {
@@ -164,6 +171,76 @@ describe("POST /api/bookings/verify", () => {
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
     expect(data.message).toContain("already verified");
+  });
+
+  it("returns 500 when transaction fails with non-idempotent error", async () => {
+    mockBookingFindUnique.mockResolvedValueOnce({ paymentStatus: "PENDING" } as any);
+    mockTransaction.mockRejectedValueOnce({ code: "P9999" });
+
+    const response = await POST(createRequest(validBody));
+
+    expect(response.status).toBe(500);
+  });
+
+  it("logs background email failures without failing response", async () => {
+    mockBookingFindUnique
+      .mockResolvedValueOnce({ paymentStatus: "PENDING" } as any)
+      .mockResolvedValueOnce({
+        id: "bk_1",
+        participantCount: 2,
+        totalPrice: 1999,
+        user: { name: "User", email: "u@example.com" },
+        experience: { title: "Trip" },
+        slot: { date: new Date("2026-01-01") },
+      } as any);
+
+    mockTransaction.mockResolvedValueOnce([
+      { id: "bk_1", userId: "u1" },
+      { count: 1 },
+    ] as any);
+
+    mockLogActivity.mockResolvedValue(undefined);
+    mockSendBookingConfirmation.mockRejectedValueOnce(new Error("smtp down"));
+
+    const response = await POST(createRequest(validBody));
+    expect(response.status).toBe(200);
+
+    // allow fire-and-forget catch handler to run
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(errorSpy).toHaveBeenCalledWith(
+      "Background email error:",
+      expect.any(Error),
+    );
+  });
+
+  it("skips confirmation email when booking details have no slot", async () => {
+    mockBookingFindUnique
+      .mockResolvedValueOnce({ paymentStatus: "PENDING" } as any)
+      .mockResolvedValueOnce({
+        id: "bk_1",
+        participantCount: 2,
+        totalPrice: 1999,
+        user: { name: "User", email: "u@example.com" },
+        experience: { title: "Trip" },
+        slot: null,
+      } as any);
+
+    mockTransaction.mockResolvedValueOnce([
+      { id: "bk_1", userId: "u1" },
+      { count: 1 },
+    ] as any);
+
+    mockLogActivity.mockResolvedValue(undefined);
+
+    const response = await POST(createRequest(validBody));
+    expect(response.status).toBe(200);
+
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(mockSendBookingConfirmation).not.toHaveBeenCalled();
   });
 
   it("returns 500 on unexpected error", async () => {
