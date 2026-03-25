@@ -73,7 +73,9 @@ describe("POST /api/bookings/verify", () => {
     errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
     mockCreateHmac.mockReturnValue({
-      update: vi.fn().mockReturnValue({ digest: vi.fn().mockReturnValue("sig_ok") }),
+      update: vi
+        .fn()
+        .mockReturnValue({ digest: vi.fn().mockReturnValue("sig_ok") }),
     } as any);
   });
 
@@ -97,7 +99,9 @@ describe("POST /api/bookings/verify", () => {
 
   it("returns 400 for invalid signature and marks payment failed", async () => {
     mockCreateHmac.mockReturnValue({
-      update: vi.fn().mockReturnValue({ digest: vi.fn().mockReturnValue("different") }),
+      update: vi
+        .fn()
+        .mockReturnValue({ digest: vi.fn().mockReturnValue("different") }),
     } as any);
 
     const response = await POST(createRequest(validBody));
@@ -112,7 +116,9 @@ describe("POST /api/bookings/verify", () => {
   });
 
   it("returns success when booking is already paid", async () => {
-    mockBookingFindUnique.mockResolvedValueOnce({ paymentStatus: "PAID" } as any);
+    mockBookingFindUnique.mockResolvedValueOnce({
+      paymentStatus: "PAID",
+    } as any);
 
     const response = await POST(createRequest(validBody));
     const data = await response.json();
@@ -162,7 +168,9 @@ describe("POST /api/bookings/verify", () => {
   });
 
   it("treats P2025 as idempotent success", async () => {
-    mockBookingFindUnique.mockResolvedValueOnce({ paymentStatus: "PENDING" } as any);
+    mockBookingFindUnique.mockResolvedValueOnce({
+      paymentStatus: "PENDING",
+    } as any);
     mockTransaction.mockRejectedValueOnce({ code: "P2025" });
 
     const response = await POST(createRequest(validBody));
@@ -174,7 +182,9 @@ describe("POST /api/bookings/verify", () => {
   });
 
   it("returns 500 when transaction fails with non-idempotent error", async () => {
-    mockBookingFindUnique.mockResolvedValueOnce({ paymentStatus: "PENDING" } as any);
+    mockBookingFindUnique.mockResolvedValueOnce({
+      paymentStatus: "PENDING",
+    } as any);
     mockTransaction.mockRejectedValueOnce({ code: "P9999" });
 
     const response = await POST(createRequest(validBody));
