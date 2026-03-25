@@ -79,6 +79,17 @@ describe("/api/admin/trips/[id]/assign", () => {
     expect(data.error).toContain("Trip Manager role");
   });
 
+  it("PATCH returns 404 when manager is inactive", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockUserFindUnique.mockResolvedValue({ status: "INACTIVE", role: { name: "TRIP_MANAGER" } } as any);
+
+    const response = await PATCH(createJsonRequest({ managerId: "u1" }), {
+      params: Promise.resolve({ id: "slot-1" }),
+    });
+
+    expect(response.status).toBe(404);
+  });
+
   it("PATCH assigns manager for allowed role", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
     mockUserFindUnique.mockResolvedValue({ status: "ACTIVE", role: { name: "TRIP_MANAGER" } } as any);
@@ -91,6 +102,53 @@ describe("/api/admin/trips/[id]/assign", () => {
 
     expect(response.status).toBe(200);
     expect(data.slot.id).toBe("slot-1");
+  });
+
+  it("PATCH returns 500 on unexpected failure", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockUserFindUnique.mockResolvedValue({ status: "ACTIVE", role: { name: "TRIP_MANAGER" } } as any);
+    mockSlotUpdate.mockRejectedValue(new Error("db fail"));
+
+    const response = await PATCH(createJsonRequest({ managerId: "u1" }), {
+      params: Promise.resolve({ id: "slot-1" }),
+    });
+
+    expect(response.status).toBe(500);
+  });
+
+  it("POST validates userId", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "admin-1" } as any);
+
+    const response = await POST(createJsonRequest({ userId: "" }), {
+      params: Promise.resolve({ id: "slot-1" }),
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("POST returns auth response when unauthorized", async () => {
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: false,
+      response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+    } as any);
+
+    const response = await POST(createJsonRequest({ userId: "lead-1" }), {
+      params: Promise.resolve({ id: "slot-1" }),
+    });
+
+    expect(response.status).toBe(401);
+  });
+
+  it("POST returns 403 when slot does not exist for permission check", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "admin-1" } as any);
+    mockUserFindUnique.mockResolvedValueOnce({ role: { name: "ADMIN" } } as any);
+    mockSlotFindUnique.mockResolvedValueOnce(null as any);
+
+    const response = await POST(createJsonRequest({ userId: "lead-1" }), {
+      params: Promise.resolve({ id: "slot-1" }),
+    });
+
+    expect(response.status).toBe(403);
   });
 
   it("POST returns 403 when caller cannot modify slot", async () => {
@@ -140,6 +198,52 @@ describe("/api/admin/trips/[id]/assign", () => {
     expect(response.status).toBe(409);
   });
 
+  it("POST returns 404 when trek lead is inactive", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "admin-1" } as any);
+
+    mockUserFindUnique
+      .mockResolvedValueOnce({ role: { name: "ADMIN" } } as any)
+      .mockResolvedValueOnce({ status: "INACTIVE", role: { name: "TREK_LEAD" } } as any);
+    mockSlotFindUnique.mockResolvedValueOnce({ managerId: "manager-2" } as any);
+
+    const response = await POST(createJsonRequest({ userId: "lead-1" }), {
+      params: Promise.resolve({ id: "slot-1" }),
+    });
+
+    expect(response.status).toBe(404);
+  });
+
+  it("POST returns 403 when target user is not trek lead", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "admin-1" } as any);
+
+    mockUserFindUnique
+      .mockResolvedValueOnce({ role: { name: "ADMIN" } } as any)
+      .mockResolvedValueOnce({ status: "ACTIVE", role: { name: "TRIP_MANAGER" } } as any);
+    mockSlotFindUnique.mockResolvedValueOnce({ managerId: "manager-2" } as any);
+
+    const response = await POST(createJsonRequest({ userId: "lead-1" }), {
+      params: Promise.resolve({ id: "slot-1" }),
+    });
+
+    expect(response.status).toBe(403);
+  });
+
+  it("POST returns 500 on unexpected assignment error", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "admin-1" } as any);
+
+    mockUserFindUnique
+      .mockResolvedValueOnce({ role: { name: "ADMIN" } } as any)
+      .mockResolvedValueOnce({ status: "ACTIVE", role: { name: "TREK_LEAD" } } as any);
+    mockSlotFindUnique.mockResolvedValueOnce({ managerId: "manager-2" } as any);
+    mockTripCreate.mockRejectedValue(new Error("db fail"));
+
+    const response = await POST(createJsonRequest({ userId: "lead-1" }), {
+      params: Promise.resolve({ id: "slot-1" }),
+    });
+
+    expect(response.status).toBe(500);
+  });
+
   it("DELETE requires userId query parameter", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "admin-1" } as any);
 
@@ -149,6 +253,20 @@ describe("/api/admin/trips/[id]/assign", () => {
     );
 
     expect(response.status).toBe(400);
+  });
+
+  it("DELETE returns auth response when unauthorized", async () => {
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: false,
+      response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+    } as any);
+
+    const response = await DELETE(
+      createJsonRequest({}, "http://localhost/api/admin/trips/slot-1/assign?userId=lead-1"),
+      { params: Promise.resolve({ id: "slot-1" }) },
+    );
+
+    expect(response.status).toBe(401);
   });
 
   it("DELETE removes assignment when caller can modify", async () => {
@@ -169,5 +287,33 @@ describe("/api/admin/trips/[id]/assign", () => {
     expect(mockTripDeleteMany).toHaveBeenCalledWith({
       where: { slotId: "slot-1", trekLeadId: "lead-1" },
     });
+  });
+
+  it("DELETE returns 403 when caller cannot modify slot", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "manager-x" } as any);
+    mockUserFindUnique.mockResolvedValueOnce({ role: { name: "TRIP_MANAGER" } } as any);
+    mockSlotFindUnique.mockResolvedValueOnce({ managerId: "manager-1" } as any);
+
+    const response = await DELETE(
+      createJsonRequest({}, "http://localhost/api/admin/trips/slot-1/assign?userId=lead-1"),
+      { params: Promise.resolve({ id: "slot-1" }) },
+    );
+
+    expect(response.status).toBe(403);
+  });
+
+  it("DELETE returns 500 on unexpected delete error", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "admin-1" } as any);
+
+    mockUserFindUnique.mockResolvedValueOnce({ role: { name: "ADMIN" } } as any);
+    mockSlotFindUnique.mockResolvedValueOnce({ managerId: "manager-1" } as any);
+    mockTripDeleteMany.mockRejectedValue(new Error("db fail"));
+
+    const response = await DELETE(
+      createJsonRequest({}, "http://localhost/api/admin/trips/slot-1/assign?userId=lead-1"),
+      { params: Promise.resolve({ id: "slot-1" }) },
+    );
+
+    expect(response.status).toBe(500);
   });
 });
