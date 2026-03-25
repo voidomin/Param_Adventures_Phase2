@@ -113,6 +113,19 @@ describe("/api/admin/experiences/[id]", () => {
     expect(typeof data.error).toBe("string");
   });
 
+  it("PUT returns auth response when unauthorized", async () => {
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: false,
+      response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+    } as any);
+
+    const response = await PUT(createJsonRequest({ title: "X" }), {
+      params: Promise.resolve({ id: "exp-1" }),
+    });
+
+    expect(response.status).toBe(403);
+  });
+
   it("PUT returns 400 for invalid cover image URL", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
 
@@ -235,6 +248,147 @@ describe("/api/admin/experiences/[id]", () => {
     expect(mockRevalidatePath).toHaveBeenCalledWith("/", "layout");
   });
 
+  it("PUT keeps slug and skips category reset when title unchanged", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockFindUnique.mockResolvedValue({
+      id: "exp-1",
+      title: "Same title",
+      slug: "same-title",
+    } as any);
+
+    const tx = {
+      experienceCategory: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      experience: {
+        update: vi.fn().mockResolvedValue({ id: "exp-1", slug: "same-title" }),
+      },
+    };
+    mockTransaction.mockImplementation(async (cb: any) => cb(tx));
+
+    const response = await PUT(
+      createJsonRequest({
+        title: "Same title",
+        basePrice: 1200,
+        capacity: 10,
+        durationDays: 3,
+      }),
+      { params: Promise.resolve({ id: "exp-1" }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockGenerateSlug).not.toHaveBeenCalled();
+    expect(tx.experienceCategory.deleteMany).not.toHaveBeenCalled();
+    expect(tx.experience.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          slug: "same-title",
+          categories: undefined,
+          highlights: [],
+          vibeTags: [],
+        }),
+      }),
+    );
+  });
+
+  it("PUT accepts nullable image fields", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockFindUnique.mockResolvedValue({
+      id: "exp-1",
+      title: "Old title",
+      slug: "old-title",
+    } as any);
+
+    const tx = {
+      experienceCategory: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      experience: {
+        update: vi.fn().mockResolvedValue({ id: "exp-1", slug: "old-title" }),
+      },
+    };
+    mockTransaction.mockImplementation(async (cb: any) => cb(tx));
+
+    const response = await PUT(
+      createJsonRequest({
+        title: "Old title",
+        basePrice: 1200,
+        capacity: 10,
+        durationDays: 3,
+        coverImage: null,
+        cardImage: null,
+      }),
+      { params: Promise.resolve({ id: "exp-1" }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(tx.experience.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          coverImage: null,
+          cardImage: null,
+        }),
+      }),
+    );
+  });
+
+  it("PUT accepts empty string image fields", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockFindUnique.mockResolvedValue({
+      id: "exp-1",
+      title: "Old title",
+      slug: "old-title",
+    } as any);
+
+    const tx = {
+      experienceCategory: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      experience: {
+        update: vi.fn().mockResolvedValue({ id: "exp-1", slug: "old-title" }),
+      },
+    };
+    mockTransaction.mockImplementation(async (cb: any) => cb(tx));
+
+    const response = await PUT(
+      createJsonRequest({
+        title: "Old title",
+        basePrice: 1200,
+        capacity: 10,
+        durationDays: 3,
+        coverImage: "",
+        cardImage: "",
+      }),
+      { params: Promise.resolve({ id: "exp-1" }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(tx.experience.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          coverImage: "",
+          cardImage: "",
+        }),
+      }),
+    );
+  });
+
+  it("PUT returns 500 when transaction fails", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockFindUnique.mockResolvedValue({
+      id: "exp-1",
+      title: "Old title",
+      slug: "old-title",
+    } as any);
+    mockTransaction.mockRejectedValue(new Error("tx fail"));
+
+    const response = await PUT(
+      createJsonRequest({
+        title: "Old title",
+        basePrice: 1200,
+        capacity: 10,
+        durationDays: 3,
+      }),
+      { params: Promise.resolve({ id: "exp-1" }) },
+    );
+
+    expect(response.status).toBe(500);
+  });
+
   it("PUT returns 500 when request parsing fails", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
     const request = {
@@ -300,5 +454,18 @@ describe("/api/admin/experiences/[id]", () => {
     });
 
     expect(response.status).toBe(500);
+  });
+
+  it("DELETE returns auth response when unauthorized", async () => {
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: false,
+      response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+    } as any);
+
+    const response = await DELETE({} as NextRequest, {
+      params: Promise.resolve({ id: "exp-1" }),
+    });
+
+    expect(response.status).toBe(401);
   });
 });
