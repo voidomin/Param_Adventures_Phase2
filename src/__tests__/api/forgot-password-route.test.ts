@@ -45,8 +45,19 @@ const createRequest = (body: unknown, origin = "http://localhost:3000") =>
   }) as unknown as NextRequest;
 
 describe("POST /api/auth/forgot-password", () => {
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+  let logSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllEnvs();
+    errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+  });
+
+  afterEach(() => {
+    errorSpy.mockRestore();
+    logSpy.mockRestore();
   });
 
   it("returns 400 for invalid email", async () => {
@@ -112,6 +123,77 @@ describe("POST /api/auth/forgot-password", () => {
     );
   });
 
+  it("prefers NEXT_PUBLIC_APP_URL over request origin", async () => {
+    vi.stubEnv("NEXT_PUBLIC_APP_URL", "https://prod.example.com");
+    mockRandomBytes.mockReturnValue({
+      toString: vi.fn().mockReturnValue("token123"),
+    } as any);
+    mockFindUnique.mockResolvedValue({
+      id: "u1",
+      email: "user@example.com",
+      name: "User",
+      status: "ACTIVE",
+    } as any);
+    mockUpdate.mockResolvedValue({} as any);
+
+    const response = await POST(
+      createRequest({ email: "USER@example.com" }, "http://ignored.local"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockSendResetPasswordEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resetLink: "https://prod.example.com/reset-password?token=token123",
+      }),
+    );
+  });
+
+  it("falls back to localhost when env and origin are absent", async () => {
+    mockRandomBytes.mockReturnValue({
+      toString: vi.fn().mockReturnValue("token123"),
+    } as any);
+    mockFindUnique.mockResolvedValue({
+      id: "u1",
+      email: "user@example.com",
+      name: "User",
+      status: "ACTIVE",
+    } as any);
+    mockUpdate.mockResolvedValue({} as any);
+
+    const response = await POST(
+      createRequest({ email: "USER@example.com" }, null as any),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockSendResetPasswordEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        resetLink: "http://localhost:3000/reset-password?token=token123",
+      }),
+    );
+  });
+
+  it("uses Adventurer fallback when user name is missing", async () => {
+    mockRandomBytes.mockReturnValue({
+      toString: vi.fn().mockReturnValue("token123"),
+    } as any);
+    mockFindUnique.mockResolvedValue({
+      id: "u1",
+      email: "user@example.com",
+      name: "",
+      status: "ACTIVE",
+    } as any);
+    mockUpdate.mockResolvedValue({} as any);
+
+    const response = await POST(createRequest({ email: "user@example.com" }));
+
+    expect(response.status).toBe(200);
+    expect(mockSendResetPasswordEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userName: "Adventurer",
+      }),
+    );
+  });
+
   it("returns 500 on unexpected error", async () => {
     mockFindUnique.mockRejectedValue(new Error("db down"));
 
@@ -120,5 +202,19 @@ describe("POST /api/auth/forgot-password", () => {
 
     expect(response.status).toBe(500);
     expect(data.error).toBe("Internal server error.");
+  });
+
+  it("returns 500 when thrown error has no stack", async () => {
+    mockFindUnique.mockRejectedValue({ message: "boom" } as any);
+
+    const response = await POST(createRequest({ email: "x@example.com" }));
+    const data = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(data.details).toBe("boom");
+    expect(errorSpy).toHaveBeenCalledWith(
+      "[AUTH] Forgot Password error:",
+      expect.objectContaining({ message: "boom" }),
+    );
   });
 });
