@@ -40,10 +40,33 @@ describe("PATCH /api/admin/leads/[id]", () => {
     expect(response.status).toBe(401);
   });
 
+  it("passes through non-401 auth responses", async () => {
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: false,
+      response: NextResponse.json({ error: "Forbidden" }, { status: 403 }),
+    } as any);
+
+    const response = await PATCH(createRequest({ status: "CONTACTED" }), {
+      params: Promise.resolve({ id: "lead-1" }),
+    });
+
+    expect(response.status).toBe(403);
+  });
+
   it("returns 400 for invalid payload", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
 
     const response = await PATCH(createRequest({ status: "INVALID" }), {
+      params: Promise.resolve({ id: "lead-1" }),
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it("returns 400 when status is missing", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+
+    const response = await PATCH(createRequest({ adminNotes: "note" }), {
       params: Promise.resolve({ id: "lead-1" }),
     });
 
@@ -77,6 +100,31 @@ describe("PATCH /api/admin/leads/[id]", () => {
     });
   });
 
+  it("updates lead with nullable adminNotes", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockLeadUpdate.mockResolvedValue({
+      id: "lead-1",
+      status: "INTERESTED",
+      adminNotes: null,
+    } as any);
+
+    const response = await PATCH(
+      createRequest({ status: "INTERESTED", adminNotes: null }),
+      {
+        params: Promise.resolve({ id: "lead-1" }),
+      },
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockLeadUpdate).toHaveBeenCalledWith({
+      where: { id: "lead-1" },
+      data: {
+        status: "INTERESTED",
+        adminNotes: null,
+      },
+    });
+  });
+
   it("returns 500 with error message on failure", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
     mockLeadUpdate.mockRejectedValue(new Error("db down"));
@@ -88,5 +136,18 @@ describe("PATCH /api/admin/leads/[id]", () => {
 
     expect(response.status).toBe(500);
     expect(data.error).toBe("db down");
+  });
+
+  it("returns fallback 500 error message when thrown error has no message", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockLeadUpdate.mockRejectedValue({ code: "E_UNKNOWN" });
+
+    const response = await PATCH(createRequest({ status: "CLOSED" }), {
+      params: Promise.resolve({ id: "lead-1" }),
+    });
+    const data = await response.json();
+
+    expect(response.status).toBe(500);
+    expect(data.error).toBe("Failed to update lead");
   });
 });
