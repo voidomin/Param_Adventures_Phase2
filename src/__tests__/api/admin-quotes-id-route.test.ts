@@ -65,6 +65,27 @@ describe("/api/admin/quotes/[id] route", () => {
     expect(data.quote.id).toBe("q1");
   });
 
+  it("GET returns 500 when query throws", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockFindUnique.mockRejectedValue(new Error("db down"));
+
+    const response = await GET({} as NextRequest, {
+      params: Promise.resolve({ id: "q1" }),
+    });
+
+    expect(response.status).toBe(500);
+  });
+
+  it("PUT returns 403 when unauthorized", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: false } as any);
+
+    const response = await PUT(createRequest({ text: "Updated." }), {
+      params: Promise.resolve({ id: "q1" }),
+    });
+
+    expect(response.status).toBe(403);
+  });
+
   it("PUT validates body", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
 
@@ -90,6 +111,42 @@ describe("/api/admin/quotes/[id] route", () => {
       where: { id: "q1" },
       data: { text: "Updated." },
     });
+  });
+
+  it("PUT updates optional fields author and isActive", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockUpdate.mockResolvedValue({ id: "q1", text: "Updated.", author: null, isActive: false } as any);
+
+    const response = await PUT(createRequest({ text: "Updated.", author: null, isActive: false }), {
+      params: Promise.resolve({ id: "q1" }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(mockUpdate).toHaveBeenCalledWith({
+      where: { id: "q1" },
+      data: { text: "Updated.", author: null, isActive: false },
+    });
+  });
+
+  it("PUT returns 500 when update fails", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockUpdate.mockRejectedValue(new Error("db down"));
+
+    const response = await PUT(createRequest({ text: "Updated." }), {
+      params: Promise.resolve({ id: "q1" }),
+    });
+
+    expect(response.status).toBe(500);
+  });
+
+  it("DELETE returns 403 when unauthorized", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: false } as any);
+
+    const response = await DELETE({} as NextRequest, {
+      params: Promise.resolve({ id: "q1" }),
+    });
+
+    expect(response.status).toBe(403);
   });
 
   it("DELETE removes quote", async () => {
