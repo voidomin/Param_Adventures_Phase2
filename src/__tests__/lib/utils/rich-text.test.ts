@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getPlainTextFromJSON } from "../lib/utils/rich-text";
+import { getPlainTextFromJSON } from "@/lib/utils/rich-text";
 
 describe("getPlainTextFromJSON", () => {
   it("returns an empty string for null/undefined", () => {
