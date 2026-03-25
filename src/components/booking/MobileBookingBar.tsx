@@ -55,7 +55,7 @@ export default function MobileBookingBar({
         <button
           onClick={handleBookClick}
           disabled={isLoading}
-          className="flex-1 max-w-[200px] h-12 rounded-xl bg-primary text-primary-foreground font-black text-base hover:opacity-90 transition-opacity shadow-lg shadow-primary/25 disabled:opacity-50"
+          className="flex-1 max-w-50 h-12 rounded-xl bg-primary text-primary-foreground font-black text-base hover:opacity-90 transition-opacity shadow-lg shadow-primary/25 disabled:opacity-50"
         >
           {isLoading ? "Loading…" : "Book Now"}
         </button>

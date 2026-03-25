@@ -148,7 +148,7 @@ function ExperienceJsonLd({
 // Helper components to reduce page complexity
 function HeroTags({ experience }: Readonly<{ experience: any }>) {
   return (
-    <div className="flex gap-2 mb-8 bg-foreground/[0.02] p-4 pb-20 md:pb-4 rounded-2xl border border-border/50 overflow-x-auto md:overflow-visible md:flex-wrap no-scrollbar snap-x relative z-30">
+    <div className="flex gap-2 mb-8 bg-foreground/2 p-4 pb-20 md:pb-4 rounded-2xl border border-border/50 overflow-x-auto md:overflow-visible md:flex-wrap no-scrollbar snap-x relative z-30">
       {experience.categories.map((c: any) => (
         <span
           key={c.category.id}
@@ -295,7 +295,7 @@ function ItinerarySection({ itinerary }: Readonly<{ itinerary: any }>) {
               <div className="absolute -left-11 md:-left-12 top-6 w-6 h-6 rounded-full border-4 border-background bg-primary z-10"></div>
               <summary className="p-6 cursor-pointer select-none outline-none flex items-center justify-between gap-4 list-none [&::-webkit-details-marker]:hidden">
                 <h3 className="text-xl font-bold flex items-center gap-3 m-0">
-                  <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary text-primary-foreground font-black text-sm flex-shrink-0">
+                  <span className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-primary text-primary-foreground font-black text-sm shrink-0">
                     {index + 1}
                   </span>
                   <span>
@@ -470,7 +470,7 @@ export default async function ExperienceDetailPage({
           )}
 
           <div className="absolute inset-0 bg-black/40 z-10" />
-          <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/90 via-black/40 to-transparent z-10" />
+          <div className="absolute inset-x-0 bottom-0 h-2/3 bg-linear-to-t from-black/90 via-black/40 to-transparent z-10" />
 
         </div>
 

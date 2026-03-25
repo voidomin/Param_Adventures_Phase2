@@ -244,7 +244,7 @@ export default function AdminDashboardPage() {
                   key={log.id}
                   className="flex gap-4 p-4 hover:bg-foreground/5 transition-colors"
                 >
-                  <div className="mt-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+                  <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
                     <User className="h-4 w-4" />
                   </div>
                   <div className="flex-1 space-y-1 min-w-0">

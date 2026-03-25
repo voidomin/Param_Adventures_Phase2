@@ -104,7 +104,7 @@ export default async function AdminLeadsPage({
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="bg-foreground/[0.02] border-b border-border text-sm text-foreground/60">
+              <tr className="bg-foreground/2 border-b border-border text-sm text-foreground/60">
                 <th className="p-6 font-semibold">Contact Info</th>
                 <th className="p-6 font-semibold">Requirements</th>
                 <th className="p-6 font-semibold">Admin Notes</th>
@@ -127,7 +127,7 @@ export default async function AdminLeadsPage({
                 leads.map((lead: any) => (
                   <tr
                     key={lead.id}
-                    className="hover:bg-foreground/[0.02] transition-colors"
+                    className="hover:bg-foreground/2 transition-colors"
                   >
                     <td className="p-6">
                       <div className="font-bold text-foreground mb-1 flex items-center gap-2">

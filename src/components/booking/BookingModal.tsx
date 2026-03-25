@@ -338,7 +338,7 @@ export default function BookingModal({
   if (!mounted) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
       <div className="bg-card border border-border rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-border sticky top-0 bg-card z-10">
@@ -346,7 +346,7 @@ export default function BookingModal({
             <h2 className="text-lg font-heading font-bold text-foreground">
               Book Experience
             </h2>
-            <p className="text-xs text-foreground/50 mt-0.5 truncate max-w-[280px]">
+            <p className="text-xs text-foreground/50 mt-0.5 truncate max-w-70">
               {experienceTitle}
             </p>
           </div>
@@ -390,7 +390,7 @@ export default function BookingModal({
                   <button
                     type="button"
                     onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                    className="w-full flex items-center justify-between pl-4 pr-4 py-4 bg-card border border-border rounded-2xl outline-none focus:border-primary/50 transition-all font-bold text-left shadow-sm hover:bg-foreground/[0.02]"
+                    className="w-full flex items-center justify-between pl-4 pr-4 py-4 bg-card border border-border rounded-2xl outline-none focus:border-primary/50 transition-all font-bold text-left shadow-sm hover:bg-foreground/2"
                   >
                     <div className="flex items-center gap-3">
                       <CalendarDays className="h-5 w-5 text-primary" />
@@ -422,7 +422,7 @@ export default function BookingModal({
                         transition={{ duration: 0.3, ease: "easeInOut" }}
                         className="overflow-hidden bg-card border border-border rounded-2xl mt-2 shadow-sm"
                       >
-                        <div className="max-h-[300px] overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                        <div className="max-h-75 overflow-y-auto p-2 space-y-1 custom-scrollbar">
                           {slots.map((slot) => (
                             <button
                               key={slot.id}
@@ -434,7 +434,7 @@ export default function BookingModal({
                               className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all text-left ${
                                 selectedSlot?.id === slot.id
                                   ? "bg-primary/10 border border-primary/20"
-                                  : "hover:bg-foreground/[0.03] border border-transparent"
+                                  : "hover:bg-foreground/3 border border-transparent"
                               }`}
                             >
                               <div>
@@ -464,7 +464,7 @@ export default function BookingModal({
 
                 {selectedSlot && (
                   <div className="space-y-6 animate-in fade-in slide-in-from-top-2">
-                    <div className="flex items-center justify-between bg-foreground/[0.03] rounded-2xl p-4 border border-border/50">
+                    <div className="flex items-center justify-between bg-foreground/3 rounded-2xl p-4 border border-border/50">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
                           <Users className="w-5 h-5" />
@@ -933,7 +933,7 @@ export default function BookingModal({
               ))}
             </div>
 
-            <div className="bg-foreground/[0.03] border border-border rounded-xl p-3 text-xs text-foreground/50 text-center">
+            <div className="bg-foreground/3 border border-border rounded-xl p-3 text-xs text-foreground/50 text-center">
               Secure payment powered by Razorpay • 100% Safe
             </div>
 

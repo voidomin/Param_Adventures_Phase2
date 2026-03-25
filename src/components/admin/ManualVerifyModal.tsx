@@ -116,7 +116,7 @@ export function ManualVerifyModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
       <div className="bg-card w-full max-w-md border border-border rounded-2xl shadow-2xl overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 transition-all">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-foreground/[0.02]">
+        <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-foreground/2">
           <h3 className="font-heading font-bold text-lg text-foreground">Verify Manual Payment</h3>
           <button
             onClick={onClose}
@@ -184,7 +184,7 @@ export function ManualVerifyModal({
                   </label>
                   <div
                     className={cn(
-                      "relative border-2 border-dashed border-border rounded-xl p-4 transition-all hover:bg-foreground/[0.02]",
+                      "relative border-2 border-dashed border-border rounded-xl p-4 transition-all hover:bg-foreground/2",
                       proofUrl ? "border-green-500/50 bg-green-500/5" : "hover:border-primary/50"
                     )}
                   >

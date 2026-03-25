@@ -137,7 +137,7 @@ export default async function Home() {
               {featuredExperiences.map((exp: any) => (
                 <div
                   key={exp.id}
-                  className="w-[85vw] sm:w-[350px] md:w-[400px] shrink-0 snap-start h-full flex flex-col"
+                  className="w-[85vw] sm:w-87.5 md:w-100 shrink-0 snap-start h-full flex flex-col"
                 >
                   <ExperienceCard experience={exp} />
                 </div>
@@ -159,7 +159,7 @@ export default async function Home() {
       </div>
 
       {/* Featured Stories Section */}
-      <div className="py-24 bg-foreground/[0.015] border-y border-white/[0.02] relative px-4 md:px-12 lg:px-16">
+      <div className="py-24 bg-foreground/1.5 border-y border-white/2 relative px-4 md:px-12 lg:px-16">
         <div className="w-full">
           <ScrollReveal direction="left" variant="blur">
             <div className="flex flex-col md:flex-row justify-between items-center md:items-end mb-12 gap-6">
@@ -187,21 +187,21 @@ export default async function Home() {
                 {recentBlogs.map((blog) => (
                   <div
                     key={blog.id}
-                    className="w-[85vw] sm:w-[350px] md:w-[400px] shrink-0 snap-start h-full flex flex-col"
+                    className="w-[85vw] sm:w-87.5 md:w-100 shrink-0 snap-start h-full flex flex-col"
                   >
                     <Link
                       href={`/blog/${blog.slug}`}
                       className="group bg-card rounded-3xl border border-border flex flex-col h-full overflow-hidden hover:shadow-2xl hover:shadow-primary/5 hover:border-primary/50 transition-all"
                     >
                       <div className="p-8 flex flex-col flex-1">
-                        <div className="min-h-[1.5rem] mb-3">
+                        <div className="min-h-6 mb-3">
                           {blog.experience && (
                             <span className="text-primary text-xs font-bold uppercase tracking-wider">
                               {blog.experience.title}
                             </span>
                           )}
                         </div>
-                        <div className="min-h-[4.5rem] mb-6">
+                        <div className="min-h-18 mb-6">
                           <h3 className="text-xl md:text-2xl font-bold font-heading group-hover:text-primary transition-colors line-clamp-2 leading-tight">
                             {blog.title}
                           </h3>

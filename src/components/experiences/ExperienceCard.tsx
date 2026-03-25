@@ -67,7 +67,7 @@ export default function ExperienceCard({
         whileHover={{ y: -8, transition: { duration: 0.3 } }}
         className="flex flex-col h-full bg-card rounded-2xl border border-border overflow-hidden hover:border-primary/50 transition-all hover:shadow-2xl hover:shadow-primary/5 relative duration-300"
       >
-        <div className="relative aspect-[4/3] w-full overflow-hidden bg-foreground/5">
+        <div className="relative aspect-4/3 w-full overflow-hidden bg-foreground/5">
           {isVideo ? (
             <video
               src={primaryImage}
@@ -105,7 +105,7 @@ export default function ExperienceCard({
           </div>
 
           {/* Gradient Overlay for bottom text protection */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent z-0 opacity-80" />
+          <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent z-0 opacity-80" />
 
           <div className="absolute bottom-4 left-4 right-4 z-10 flex justify-between items-end">
             <div className="flex gap-3 text-white font-medium text-xs sm:text-sm">
@@ -116,7 +116,7 @@ export default function ExperienceCard({
               </div>
               <div className="flex items-center gap-1.5 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 shadow-sm">
                 <MapPin className="w-4 h-4 text-primary" />
-                <span className="truncate max-w-[100px]">
+                <span className="truncate max-w-25">
                   {experience.location}
                 </span>
               </div>
@@ -138,12 +138,12 @@ export default function ExperienceCard({
         </div>
 
         <div className="p-6 flex flex-col flex-1">
-          <div className="min-h-[3.5rem] mb-2">
+          <div className="min-h-14 mb-2">
             <h3 className="text-xl font-bold font-heading text-foreground group-hover:text-primary transition-colors line-clamp-2">
               {experience.title}
             </h3>
           </div>
-          <p className="text-foreground/70 text-sm line-clamp-2 mb-6 flex-1 min-h-[3rem]">
+          <p className="text-foreground/70 text-sm line-clamp-2 mb-6 flex-1 min-h-12">
             {typeof experience.description === 'string' 
               ? experience.description 
               : getPlainTextFromJSON(experience.description)}

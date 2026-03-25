@@ -86,7 +86,7 @@ export default function Hero({
   return (
     <section className="relative h-screen w-full flex items-end justify-center overflow-hidden pb-24 md:pb-32 bg-black group">
       {/* Film Grain Overlay */}
-      <div className="absolute inset-0 z-[5] pointer-events-none opacity-[0.03]">
+      <div className="absolute inset-0 z-5 pointer-events-none opacity-[0.03]">
         <svg
           viewBox="0 0 200 200"
           xmlns="http://www.w3.org/2000/svg"
@@ -106,7 +106,7 @@ export default function Hero({
 
       {/* Background with Overlay */}
       <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/40 to-black z-10" />
+        <div className="absolute inset-0 bg-linear-to-b from-black/70 via-black/40 to-black z-10" />
 
         <AnimatePresence>
           <motion.div
@@ -186,11 +186,11 @@ export default function Hero({
               Your Odyssey Awaits
             </motion.div>
 
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-heading font-black text-white leading-[1] mb-6 whitespace-pre-line tracking-tight drop-shadow-2xl max-w-4xl">
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-heading font-black text-white leading-none mb-6 whitespace-pre-line tracking-tight drop-shadow-2xl max-w-4xl">
               {currentSlide.title.includes("Extraordinary") ? (
                 <>
                   Experience the <br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-orange-400 to-primary italic font-serif">
+                  <span className="text-transparent bg-clip-text bg-linear-to-r from-primary via-orange-400 to-primary italic font-serif">
                     Extraordinary
                   </span>
                 </>
@@ -210,7 +210,7 @@ export default function Hero({
               >
                 <span className="relative z-10">Explore Adventures</span>
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform relative z-10" />
-                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-white/0 via-white/20 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
+                <div className="absolute inset-0 rounded-full bg-linear-to-r from-white/0 via-white/20 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity blur-sm" />
               </Link>
 
               <Link
