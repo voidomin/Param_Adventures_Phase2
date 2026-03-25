@@ -19,7 +19,10 @@ describe("GET /api/manager/trips", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("returns auth response when unauthorized", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: false, response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) } as any);
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: false,
+      response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+    } as any);
 
     const response = await GET({} as NextRequest);
 
@@ -27,7 +30,10 @@ describe("GET /api/manager/trips", () => {
   });
 
   it("returns assigned upcoming trips", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "m1" } as any);
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: true,
+      userId: "m1",
+    } as any);
     mockFindMany.mockResolvedValue([{ id: "s1" }] as any);
 
     const response = await GET({} as NextRequest);
@@ -36,12 +42,17 @@ describe("GET /api/manager/trips", () => {
     expect(response.status).toBe(200);
     expect(data.trips).toHaveLength(1);
     expect(mockFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { managerId: "m1", status: { not: "COMPLETED" } } }),
+      expect.objectContaining({
+        where: { managerId: "m1", status: { not: "COMPLETED" } },
+      }),
     );
   });
 
   it("returns 500 on query failure", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "m1" } as any);
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: true,
+      userId: "m1",
+    } as any);
     mockFindMany.mockRejectedValue(new Error("db down"));
 
     const response = await GET({} as NextRequest);

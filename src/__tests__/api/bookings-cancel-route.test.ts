@@ -56,7 +56,10 @@ describe("POST /api/bookings/[id]/cancel", () => {
   });
 
   it("returns 400 for invalid payload", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: true,
+      userId: "u1",
+    } as any);
 
     const response = await POST(createRequest({}), {
       params: Promise.resolve({ id: "b1" }),
@@ -66,7 +69,10 @@ describe("POST /api/bookings/[id]/cancel", () => {
   });
 
   it("returns 404 when booking is missing", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: true,
+      userId: "u1",
+    } as any);
     mockFindUnique.mockResolvedValue(null);
 
     const response = await POST(createRequest({ preference: "COUPON" }), {
@@ -77,8 +83,15 @@ describe("POST /api/bookings/[id]/cancel", () => {
   });
 
   it("returns 403 when booking belongs to different user", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
-    mockFindUnique.mockResolvedValue({ id: "b1", userId: "u2", bookingStatus: "CONFIRMED" } as any);
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: true,
+      userId: "u1",
+    } as any);
+    mockFindUnique.mockResolvedValue({
+      id: "b1",
+      userId: "u2",
+      bookingStatus: "CONFIRMED",
+    } as any);
 
     const response = await POST(createRequest({ preference: "COUPON" }), {
       params: Promise.resolve({ id: "b1" }),
@@ -88,8 +101,15 @@ describe("POST /api/bookings/[id]/cancel", () => {
   });
 
   it("returns 409 when booking already cancelled", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
-    mockFindUnique.mockResolvedValue({ id: "b1", userId: "u1", bookingStatus: "CANCELLED" } as any);
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: true,
+      userId: "u1",
+    } as any);
+    mockFindUnique.mockResolvedValue({
+      id: "b1",
+      userId: "u1",
+      bookingStatus: "CANCELLED",
+    } as any);
 
     const response = await POST(createRequest({ preference: "COUPON" }), {
       params: Promise.resolve({ id: "b1" }),
@@ -99,8 +119,15 @@ describe("POST /api/bookings/[id]/cancel", () => {
   });
 
   it("returns 409 for non-cancellable booking state", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
-    mockFindUnique.mockResolvedValue({ id: "b1", userId: "u1", bookingStatus: "COMPLETED" } as any);
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: true,
+      userId: "u1",
+    } as any);
+    mockFindUnique.mockResolvedValue({
+      id: "b1",
+      userId: "u1",
+      bookingStatus: "COMPLETED",
+    } as any);
 
     const response = await POST(createRequest({ preference: "COUPON" }), {
       params: Promise.resolve({ id: "b1" }),
@@ -110,7 +137,10 @@ describe("POST /api/bookings/[id]/cancel", () => {
   });
 
   it("cancels booking and restores slot capacity", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: true,
+      userId: "u1",
+    } as any);
     mockFindUnique.mockResolvedValue({
       id: "b1",
       userId: "u1",
@@ -125,14 +155,19 @@ describe("POST /api/bookings/[id]/cancel", () => {
 
     const updateBooking = vi.fn().mockResolvedValue({});
     const updateSlot = vi.fn().mockResolvedValue({});
-    mockTransaction.mockImplementation(async (cb: any) => cb({
-      booking: { update: updateBooking },
-      slot: { update: updateSlot },
-    }));
+    mockTransaction.mockImplementation(async (cb: any) =>
+      cb({
+        booking: { update: updateBooking },
+        slot: { update: updateSlot },
+      }),
+    );
 
-    const response = await POST(createRequest({ preference: "BANK_REFUND", reason: "can't make it" }), {
-      params: Promise.resolve({ id: "b1" }),
-    });
+    const response = await POST(
+      createRequest({ preference: "BANK_REFUND", reason: "can't make it" }),
+      {
+        params: Promise.resolve({ id: "b1" }),
+      },
+    );
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -147,7 +182,10 @@ describe("POST /api/bookings/[id]/cancel", () => {
   });
 
   it("cancels booking without slot update when slotId is absent", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: true,
+      userId: "u1",
+    } as any);
     mockFindUnique.mockResolvedValue({
       id: "b1",
       userId: "u1",
@@ -162,10 +200,12 @@ describe("POST /api/bookings/[id]/cancel", () => {
 
     const updateBooking = vi.fn().mockResolvedValue({});
     const updateSlot = vi.fn().mockResolvedValue({});
-    mockTransaction.mockImplementation(async (cb: any) => cb({
-      booking: { update: updateBooking },
-      slot: { update: updateSlot },
-    }));
+    mockTransaction.mockImplementation(async (cb: any) =>
+      cb({
+        booking: { update: updateBooking },
+        slot: { update: updateSlot },
+      }),
+    );
 
     const response = await POST(createRequest({ preference: "COUPON" }), {
       params: Promise.resolve({ id: "b1" }),
@@ -176,7 +216,10 @@ describe("POST /api/bookings/[id]/cancel", () => {
   });
 
   it("returns 500 on unexpected error", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: true,
+      userId: "u1",
+    } as any);
     mockFindUnique.mockRejectedValue(new Error("db down"));
 
     const response = await POST(createRequest({ preference: "COUPON" }), {

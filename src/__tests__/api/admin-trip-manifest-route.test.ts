@@ -19,9 +19,14 @@ describe("GET /api/admin/trips/[id]/manifest", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("returns auth response when unauthorized", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: false, response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) } as any);
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: false,
+      response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }),
+    } as any);
 
-    const response = await GET({} as NextRequest, { params: Promise.resolve({ id: "slot-1" }) });
+    const response = await GET({} as NextRequest, {
+      params: Promise.resolve({ id: "slot-1" }),
+    });
 
     expect(response.status).toBe(401);
   });
@@ -30,7 +35,9 @@ describe("GET /api/admin/trips/[id]/manifest", () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
     mockFindMany.mockResolvedValue([{ id: "b1" }] as any);
 
-    const response = await GET({} as NextRequest, { params: Promise.resolve({ id: "slot-1" }) });
+    const response = await GET({} as NextRequest, {
+      params: Promise.resolve({ id: "slot-1" }),
+    });
     const data = await response.json();
 
     expect(response.status).toBe(200);
@@ -46,7 +53,9 @@ describe("GET /api/admin/trips/[id]/manifest", () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
     mockFindMany.mockRejectedValue(new Error("db down"));
 
-    const response = await GET({} as NextRequest, { params: Promise.resolve({ id: "slot-1" }) });
+    const response = await GET({} as NextRequest, {
+      params: Promise.resolve({ id: "slot-1" }),
+    });
 
     expect(response.status).toBe(500);
   });
