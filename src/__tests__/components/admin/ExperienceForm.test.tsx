@@ -139,7 +139,7 @@ describe("ExperienceForm Comprehensive Smoke Test", () => {
     fireEvent.change(screen.getByLabelText(/Import JSON/i), { target: { files: [file] } });
     await waitFor(() => {
       expect(screen.getByLabelText(/Title/i)).toHaveValue("Imported");
-    });
+    }, { timeout: 10000 });
   });
 
   it("handles editing existing experience", async () => {

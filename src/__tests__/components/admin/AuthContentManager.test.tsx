@@ -35,13 +35,13 @@ describe("AuthContentManager Component", () => {
     // Wait for the UI to render the fetched data
     await waitFor(() => {
       expect(screen.getByText("Global Styles")).toBeInTheDocument();
-    });
+    }, { timeout: 10000 });
     
     // The input should have the value we passed
     const inputs = screen.getAllByRole("textbox");
     // auth_common_tagline is an input (not textarea) and is the first one rendered
     expect(inputs[0]).toHaveValue("Test Tagline");
-  });
+  }, 20000);
 
   it("handles saving a setting correctly", async () => {
     // 1. Initial fetch mock

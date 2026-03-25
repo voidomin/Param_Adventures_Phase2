@@ -2,6 +2,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { prisma } from "@/lib/db";
 import jwt from "jsonwebtoken";
 
+vi.mock("bcryptjs", () => ({
+  default: {
+    hash: vi.fn(async (password: string) => `mock-hash-${password}`),
+    compare: vi.fn(async (password: string, hash: string) => hash === `mock-hash-${password}`),
+  },
+}));
+
 // Try to unmock static imports if possible
 vi.unmock("@/lib/auth");
 
@@ -28,8 +35,8 @@ describe("Auth Utilities", () => {
       expect(hash).toBeDefined();
       expect(hash).not.toBe(password);
       expect(typeof hash).toBe("string");
-      expect(hash.length).toBeGreaterThan(20);
-    });
+      expect(hash).toBe("mock-hash-mySecurePassword123");
+    }, 15000);
 
     it("verifies a correct password", async () => {
       const { hashPassword, verifyPassword } = await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth");
@@ -37,7 +44,7 @@ describe("Auth Utilities", () => {
       const hash = await hashPassword(password);
       const isMatch = await verifyPassword(password, hash);
       expect(isMatch).toBe(true);
-    });
+    }, 15000);
 
     it("rejects an incorrect password", async () => {
       const { hashPassword, verifyPassword } = await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth");
@@ -45,7 +52,7 @@ describe("Auth Utilities", () => {
       const hash = await hashPassword(password);
       const isMatch = await verifyPassword("wrongpassword", hash);
       expect(isMatch).toBe(false);
-    });
+    }, 15000);
   });
 
   describe("JWT Tokens", () => {

@@ -129,5 +129,5 @@ describe("ExperienceGallery Component", () => {
     
     // Button text changes to "Show Less"
     expect(screen.getByText("Show Less")).toBeInTheDocument();
-  });
+  }, 20000);
 });

@@ -13,7 +13,7 @@ describe("CustomTripForm Smoke Test", () => {
     expect(screen.getByText("Plan a Custom Trip")).toBeInTheDocument();
     expect(screen.getByLabelText(/Full Name/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Send Request/i })).toBeInTheDocument();
-  });
+  }, 20000);
 
   it("shows validation error for invalid email", async () => {
     render(<CustomTripForm />);

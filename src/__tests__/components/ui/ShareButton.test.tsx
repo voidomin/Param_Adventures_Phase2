@@ -57,9 +57,10 @@ describe("ShareButton", () => {
     await waitFor(() => {
       expect(mockWriteText).toHaveBeenCalledWith("https://example.com");
     });
-    
-    // Check if the "Link Copied!" text appears
-    expect(screen.getByText("Link Copied!")).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText("Link Copied!")).toBeInTheDocument();
+    });
   });
 
   it("handles share errors gracefully", async () => {
