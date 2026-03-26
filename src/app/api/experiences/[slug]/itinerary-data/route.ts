@@ -55,7 +55,7 @@ export async function GET(
     const descriptionText =
       experience.description &&
       typeof experience.description === "object"
-        ? getPlainTextFromJSON(experience.description)
+        ? getPlainTextFromJSON(experience.description as any)
         : String(experience.description || "");
 
     return NextResponse.json({

@@ -12,11 +12,11 @@ on:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: true
 
 jobs:
   lint:
-    name: Lint
+    name: Lint & Security Audit
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -35,6 +35,9 @@ jobs:
 
       - name: Run lint
         run: npm run lint
+
+      - name: Security Audit
+        run: npm audit --audit-level=high
 
   test:
     name: Test Suite (No Coverage)
@@ -62,16 +65,44 @@ jobs:
       - name: Run tests
         run: npm test
 
-  sonarcloud:
-    name: Coverage & SonarCloud Scan
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  build:
+    name: Build Verification
     needs: lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
         with:
-          fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Run build
+        run: npm run build
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
+
+  sonarcloud:
+    name: Coverage & SonarCloud Scan
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [lint, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v5
@@ -88,11 +119,6 @@ jobs:
       - name: Run Tests with Coverage
         run: npm run test:coverage
 
-      - name: Verify coverage artifacts
-        run: |
-          ls -la coverage
-          test -f coverage/lcov.info
-
       - name: SonarCloud Scan
         uses: SonarSource/sonarqube-scan-action@a31c9398be7ace6bbfaf30c0bd5d415f843d45e9 # v7.0.0
         env:
@@ -108,3 +134,4 @@ jobs:
             -Dsonar.exclusions=**/skills/**,**/reference/**,**/.next/**,**/node_modules/**,**/public/**,**/docs/**,tsc-error.txt,build_output.log,**/.gemini/**,**/tmp/**,src/**/__tests__/**,src/**/*.test.ts,src/**/*.test.tsx,src/**/*.spec.ts,src/**/*.spec.tsx
             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
             -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info
+            -Dsonar.qualitygate.wait=true

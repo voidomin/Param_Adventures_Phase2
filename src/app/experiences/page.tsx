@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
 import ExperiencesClient from "./ExperiencesClient";
+import { getPlainTextFromJSON } from "@/lib/utils/rich-text";
 
 export const revalidate = 60; // Revalidate every minute
 
@@ -65,7 +66,9 @@ export default async function ExperiencesPage({
     id: exp.id,
     title: exp.title,
     slug: exp.slug,
-    description: exp.description,
+    description: typeof exp.description === "object"
+      ? getPlainTextFromJSON(exp.description as any)
+      : String(exp.description || ""),
     durationDays: exp.durationDays,
     location: exp.location,
     basePrice: Number(exp.basePrice),

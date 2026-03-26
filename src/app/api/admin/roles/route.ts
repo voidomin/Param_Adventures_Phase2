@@ -28,20 +28,22 @@ export async function GET(request: NextRequest) {
     const actorRole = user.role.name;
 
     // ─── Filter Logic ────────────────────────────────────────
-    // These roles are always excluded from assignment (e.g. system internals)
-    const alwaysExcluded = ["GUEST", "USER"]; // USER is usually manually assigned but let's see
+    const alwaysExcluded = ["GUEST", "USER"];
+    
+    let whereClause: Prisma.RoleWhereInput;
 
-    let whereClause: Prisma.RoleWhereInput = {
-      name: { notIn: [...alwaysExcluded] },
-    };
-
-    if (actorRole === "ADMIN") {
-      // Sees everything EXCEPT SUPER_ADMIN
-      whereClause.name.notIn.push("SUPER_ADMIN");
-    } else if (actorRole === "TRIP_MANAGER") {
+    if (actorRole === "TRIP_MANAGER") {
       // Only sees TREK_LEAD (as requested: "electric manager can assign a trick lead")
+      whereClause = { name: "TREK_LEAD" };
+    } else if (actorRole === "ADMIN") {
+      // Sees everything EXCEPT SUPER_ADMIN and system roles
       whereClause = {
-        name: "TREK_LEAD",
+        name: { notIn: [...alwaysExcluded, "SUPER_ADMIN"] },
+      };
+    } else {
+      // SUPER_ADMIN case or fallback
+      whereClause = {
+        name: { notIn: alwaysExcluded },
       };
     }
 

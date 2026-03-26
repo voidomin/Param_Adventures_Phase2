@@ -4,7 +4,7 @@ import { authorizeRequest } from "@/lib/api-auth";
 import { z } from "zod";
 
 const leadUpdateSchema = z.object({
-  status: z.enum(["NEW", "CONTACTED", "INTERESTED", "CONVERTED", "CLOSED"]),
+  status: z.enum(["NEW", "CONTACTED", "CONVERTED", "CLOSED", "DISCARDED"]),
   adminNotes: z.string().optional().nullable(),
 });
 

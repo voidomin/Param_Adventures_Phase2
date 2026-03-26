@@ -38,7 +38,7 @@ interface FAQ {
   answer: string;
 }
 
-interface ExperienceFormData {
+export interface ExperienceFormData {
   id?: string;
   title: string;
   description: RichTextNode | string; // ProseMirror/Tiptap JSON

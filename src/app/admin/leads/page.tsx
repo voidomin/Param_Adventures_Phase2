@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { LeadStatus } from "@prisma/client";
 import { format } from "date-fns";
 import {
   Users,
@@ -45,7 +46,7 @@ export default async function AdminLeadsPage({
 }>) {
   const resolvedSearchParams = await searchParams;
   const showAll = resolvedSearchParams.status === "all";
-  const hiddenStatuses = ["DISCARDED", "CLOSED"] as const;
+  const hiddenStatuses: LeadStatus[] = ["DISCARDED", "CLOSED"];
 
   // By default, filter out DISCARDED and CLOSED leads to keep the "front end" clean
   // while keeping them in the DB.

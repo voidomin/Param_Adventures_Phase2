@@ -60,7 +60,7 @@ function PieTooltip({
   active,
   payload,
 }: Readonly<{ active?: boolean; payload?: TooltipPayload[] }>) {
-  if (!active || !payload?.length) return null;
+  if (!active || !payload?.length || !payload[0].payload) return null;
   return (
     <div className="bg-card border border-border rounded-xl px-4 py-2.5 shadow-xl text-sm">
       <p className="font-bold text-foreground">{payload[0].name}</p>
