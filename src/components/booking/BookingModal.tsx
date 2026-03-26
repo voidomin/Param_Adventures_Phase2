@@ -73,7 +73,9 @@ function loadRazorpayScript(): Promise<boolean> {
       return;
     }
     const script = globalThis.document.createElement("script");
-    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    // Razorpay does not recommend SRI for checkout.js as it is frequently updated for 
+    // bug fixes and new features. Omitted for platform availability.
+    script.src = "https://checkout.razorpay.com/v1/checkout.js"; // NOSONAR
     script.crossOrigin = "anonymous";
     script.onload = () => resolve(true);
     script.onerror = () => resolve(false);

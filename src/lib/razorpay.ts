@@ -7,13 +7,12 @@ let razorpayInstance: Razorpay | null = null;
  * This prevents build-time errors when environment variables are missing.
  */
 export function getRazorpay() {
-  if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET) {
+  const { RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET } = process.env;
+
+  if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
     if (process.env.NODE_ENV === "production") {
       throw new Error("RAZORPAY_KEY_ID or RAZORPAY_KEY_SECRET is missing.");
     }
-    // Return a dummy instance or null during build/dev
-    // Note: returning null might cause issues if methods are called immediately, 
-    // but the goal here is to prevent the constructor from crashing during module import.
     return new Razorpay({
       key_id: "dummy",
       key_secret: "dummy",
@@ -21,8 +20,8 @@ export function getRazorpay() {
   }
 
   razorpayInstance ??= new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID!,
-    key_secret: process.env.RAZORPAY_KEY_SECRET!,
+    key_id: RAZORPAY_KEY_ID,
+    key_secret: RAZORPAY_KEY_SECRET,
   });
   return razorpayInstance;
 }
