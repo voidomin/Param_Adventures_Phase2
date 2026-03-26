@@ -117,7 +117,6 @@ export async function POST(request: NextRequest) {
     const startTime = Date.now();
 
     // Import the seed logic (mjs)
-    // @ts-expect-error - Importing .mjs in .ts
     const { main: runSeed } = await import("../../../../../prisma/seed.mjs");
 
     await runSeed(prisma);
