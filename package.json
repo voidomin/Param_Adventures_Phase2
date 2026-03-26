@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "db:migrate:deploy": "prisma migrate deploy",
+    "db:sync:schema": "prisma db push",
     "db:seed": "prisma db seed",
     "db:seed:force": "node scripts/run-seed-force.mjs",
     "db:bootstrap:prod": "npm run db:migrate:deploy && npm run db:seed:force",

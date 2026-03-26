@@ -90,8 +90,14 @@ interface AdminInviteData {
 
 async function sendEmail({ to, subject, html }: { to: string; subject: string; html: string }) {
   if (!isReady) {
-    console.warn("⚠️ SMTP credentials not configured. Logging email to console.");
+    const msg = "SMTP credentials not configured.";
+    console.warn(`⚠️ ${msg} Logging email to console.`);
     console.log(`To: ${to}\nSubject: ${subject}\n--- Content --- \n${html.substring(0, 200)}...\n---`);
+
+    // In production we should fail loudly so API handlers can surface the issue.
+    if (process.env.NODE_ENV === "production") {
+      throw new Error(msg);
+    }
     return;
   }
 
@@ -105,6 +111,7 @@ async function sendEmail({ to, subject, html }: { to: string; subject: string; h
     console.log(`✅ Email sent: ${info.messageId} to ${to}`);
   } catch (err) {
     console.error(`❌ Failed to send email to ${to}:`, err);
+    throw err;
   }
 }
 
