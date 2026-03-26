@@ -1,5 +1,6 @@
 import { Metadata } from "next";
 import { prisma } from "@/lib/db";
+import { withBuildSafety } from "@/lib/db-utils";
 import StoryPageClient from "@/components/story/StoryPageClient";
 
 export const metadata: Metadata = {
@@ -115,14 +116,16 @@ const FALLBACK_BLOCKS = [
 ];
 
 export default async function OurStoryPage() {
-  let blocks = await prisma.storyBlock.findMany({
-    where: { isActive: true },
-    orderBy: { order: "asc" },
-  });
+  const dbBlocks = await withBuildSafety(
+    () =>
+      prisma.storyBlock.findMany({
+        where: { isActive: true },
+        orderBy: { order: "asc" },
+      }),
+    [],
+  );
 
-  if (blocks.length === 0) {
-    blocks = FALLBACK_BLOCKS as typeof blocks;
-  }
+  const blocks = dbBlocks.length > 0 ? dbBlocks : FALLBACK_BLOCKS;
 
   return <StoryPageClient blocks={structuredClone(blocks)} />;
 }

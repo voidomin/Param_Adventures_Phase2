@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/db";
+import { withBuildSafety } from "@/lib/db-utils";
 
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
@@ -39,10 +40,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   // Dynamic experience pages
-  const experiences = await prisma.experience.findMany({
-    where: { status: "PUBLISHED", deletedAt: null },
-    select: { slug: true, updatedAt: true },
-  });
+  const experiences = await withBuildSafety(
+    () =>
+      prisma.experience.findMany({
+        where: { status: "PUBLISHED", deletedAt: null },
+        select: { slug: true, updatedAt: true },
+      }),
+    [],
+  );
 
   const experiencePages: MetadataRoute.Sitemap = experiences.map((exp) => ({
     url: `${BASE_URL}/experiences/${exp.slug}`,
@@ -52,10 +57,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   // Dynamic blog pages
-  const blogs = await prisma.blog.findMany({
-    where: { status: "PUBLISHED", deletedAt: null },
-    select: { slug: true, updatedAt: true },
-  });
+  const blogs = await withBuildSafety(
+    () =>
+      prisma.blog.findMany({
+        where: { status: "PUBLISHED", deletedAt: null },
+        select: { slug: true, updatedAt: true },
+      }),
+    [],
+  );
 
   const blogPages: MetadataRoute.Sitemap = blogs.map((blog) => ({
     url: `${BASE_URL}/blog/${blog.slug}`,
