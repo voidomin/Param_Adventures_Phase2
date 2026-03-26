@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { X, Image as ImageIcon } from "lucide-react";
+import Image from "next/image";
 import MediaUploader from "./MediaUploader";
 import { ASPECT_RATIOS } from "@/lib/constants/aspect-ratios";
 
@@ -108,12 +109,14 @@ export default function HeroForm({ slide, onClose, onSuccess }: HeroFormProps) {
                       autoPlay
                     />
                   ) : (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <div className="relative aspect-video w-full">
+                    <Image
                       src={videoUrl}
-                      className="w-full aspect-video object-cover"
                       alt="Hero background"
+                      fill
+                      className="object-cover"
                     />
+                  </div>
                   )}
                   <div className="absolute inset-0 bg-background/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                     <button

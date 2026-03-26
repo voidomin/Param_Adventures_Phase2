@@ -26,6 +26,7 @@ const YoutubeSVG = () => (
   </svg>
 );
 
+import Image from "next/image";
 import ClientTiptapViewer from "@/components/blog/ClientTiptapViewer";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -125,11 +126,12 @@ export default async function BlogArticlePage({ params }: Props) {
     <div className="min-h-screen bg-background text-foreground pb-20">
       {/* Hero Cover */}
       <div className="relative h-[45vh] min-h-[300px] overflow-hidden">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={cover}
           alt={blog.title}
-          className="w-full h-full object-cover"
+          fill
+          priority
+          className="object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/40 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 max-w-3xl mx-auto px-4 pb-8">
@@ -162,16 +164,16 @@ export default async function BlogArticlePage({ params }: Props) {
         >
           {/* Author */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full overflow-hidden bg-primary/20 flex items-center justify-center font-bold text-primary">
+            <div className="relative w-10 h-10 rounded-full overflow-hidden bg-primary/20 flex items-center justify-center text-primary font-bold shadow-inner">
               {blog.author.avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <Image
                   src={blog.author.avatarUrl}
                   alt={blog.author.name}
-                  className="w-full h-full object-cover"
+                  fill
+                  className="object-cover"
                 />
               ) : (
-                blog.author.name[0].toUpperCase()
+                blog.author.name.charAt(0).toUpperCase()
               )}
             </div>
             <div>
@@ -246,12 +248,14 @@ export default async function BlogArticlePage({ params }: Props) {
           <div className="bg-card border border-border rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center gap-6">
             <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-muted">
               {blog.experience.images[0] ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={blog.experience.images[0]}
-                  alt={blog.experience.title}
-                  className="w-full h-full object-cover"
-                />
+                <div className="relative w-full h-full">
+                  <Image
+                    src={blog.experience.images[0]}
+                    alt={blog.experience.title}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
               ) : (
                 <div className="w-full h-full bg-primary/10 flex items-center justify-center">
                   <Mountain className="w-6 h-6 text-primary/50" />

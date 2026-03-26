@@ -77,16 +77,6 @@ interface ExperienceFormData {
 }
 
 const MEAL_OPTIONS = ["Breakfast", "Lunch", "Dinner", "Snacks"];
- 
-interface XLSXUtils {
-  sheet_to_json: <T>(sheet: unknown) => T[];
-}
-interface XLSXLib {
-  utils: XLSXUtils;
-}
-interface WorkBook {
-  Sheets: Record<string, unknown>;
-}
 
 function MealButtons({ 
   meals, 

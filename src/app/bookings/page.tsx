@@ -3,6 +3,7 @@
 import { useEffect, useState, type SVGProps } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import Link from "next/link";
+import Image from "next/image";
 import { Clock, MapPin, IndianRupee, Loader2, X, AlertTriangle } from "lucide-react";
 import SaveButton from "@/components/experiences/SaveButton";
 
@@ -37,6 +38,8 @@ interface BookingItem {
     images: string[];
     location: string;
     durationDays: number;
+    coverImage: string | null;
+    cardImage: string | null;
   };
   slot?: {
     date: string;
@@ -209,7 +212,6 @@ function CancelModal({
 
 declare global {
   interface Window {
-     
     Razorpay: new (options: Record<string, unknown>) => { open(): void };
   }
 }
@@ -284,7 +286,6 @@ export default function BookingsPage() {
   useEffect(() => {
     if (authLoading || !user) return;
     fetchData();
-   
   }, [user, authLoading]);
 
   if (authLoading)
@@ -448,14 +449,15 @@ export default function BookingsPage() {
                       className="bg-card border border-border rounded-2xl overflow-hidden relative group"
                     >
                       <div className="h-48 relative block">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
+                        <Image
                           src={
                             item.experience.images[0] ||
                             "https://picsum.photos/800/600"
                           }
                           alt="Experience"
-                          className="w-full h-full object-cover"
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         />
                         <SaveButton
                           experienceId={item.experience.id}
@@ -506,15 +508,16 @@ export default function BookingsPage() {
                       key={b.id}
                       className="bg-card border border-border rounded-2xl overflow-hidden flex flex-col"
                     >
-                      <div className="h-40 relative block">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
+                      <div className="relative w-full h-40">
+                        <Image
                           src={
                             b.experience.images[0] ||
                             "https://picsum.photos/800/600"
                           }
-                          className="w-full h-full object-cover"
+                          fill
+                          className="object-cover"
                           alt="Exp"
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                         />
                         <div className="absolute inset-0 bg-linear-to-t from-black/80 to-transparent"></div>
                         <div className="absolute bottom-4 left-4 right-4 text-white">

@@ -3,10 +3,6 @@
 import { useMemo } from "react";
 import { motion } from "framer-motion";
 
-interface PasswordStrengthProps {
-  password: string;
-}
-
 function getStrength(password: string) {
   let score = 0;
   if (password.length >= 8) score++;

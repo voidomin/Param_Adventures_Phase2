@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { X, Loader2 } from "lucide-react";
+import Image from "next/image";
 
 interface StoryBlock {
   id: string;
@@ -202,12 +203,14 @@ export default function StoryBlockForm({
               />
               {imageUrl && (
                 <div className="mt-2 w-32 h-20 rounded-lg overflow-hidden bg-foreground/5">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={imageUrl}
-                    alt="Preview"
-                    className="w-full h-full object-cover"
-                  />
+                  <div className="relative aspect-video w-full">
+                    <Image
+                      src={imageUrl}
+                      alt="Preview"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
                 </div>
               )}
             </div>

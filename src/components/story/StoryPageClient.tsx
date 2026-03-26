@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 
 import { useRef } from "react";
 import Link from "next/link";
@@ -60,12 +61,15 @@ function StoryHero({ block }: Readonly<{ block: StoryBlock }>) {
       {/* Parallax BG */}
       <motion.div style={{ y }} className="absolute inset-0 -top-[10%] h-[120%]">
         {block.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={block.imageUrl}
-            alt={block.title}
-            className="w-full h-full object-cover"
-          />
+          <div className="relative w-full h-full">
+            <Image
+              src={block.imageUrl}
+              alt={block.title}
+              fill
+              priority
+              className="object-cover"
+            />
+          </div>
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-black via-gray-900 to-black" />
         )}
@@ -145,12 +149,14 @@ function MilestoneBlock({
             className="w-full lg:w-1/2 relative group"
           >
             <div className="relative overflow-hidden rounded-3xl aspect-[4/3] shadow-2xl shadow-black/20">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={block.imageUrl}
-                alt={block.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-              />
+                <div className="relative aspect-[4/3] w-full group-hover:scale-105 transition-transform duration-700">
+                  <Image
+                    src={block.imageUrl}
+                    alt={block.title}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
               <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
             </div>
             {/* Stat badge */}

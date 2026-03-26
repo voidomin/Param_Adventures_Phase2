@@ -63,6 +63,7 @@ export async function GET(request: NextRequest) {
       );
       
       // Remove the full bookings array to keep the payload clean if not needed
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { bookings, ...slotInfo } = slot;
       return {
         ...slotInfo,

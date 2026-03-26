@@ -15,9 +15,31 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run lint
+        run: npm run lint
+
   test:
     name: Test Suite (No Coverage)
     if: github.event_name == 'pull_request'
+    needs: lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -43,6 +65,7 @@ jobs:
   sonarcloud:
     name: Coverage & SonarCloud Scan
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: lint
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code

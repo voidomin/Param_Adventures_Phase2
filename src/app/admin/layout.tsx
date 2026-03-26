@@ -4,6 +4,7 @@ import { useAuth } from "@/lib/AuthContext";
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Compass,
   LayoutDashboard,
@@ -251,10 +252,12 @@ export default function AdminLayout({
         <div className="p-4 border-t border-border mt-auto">
           <div className="flex items-center gap-3 px-4 py-3 mb-2 rounded-xl bg-foreground/5">
             {user.avatarUrl ? (
-              <img
+              <Image
                 src={user.avatarUrl}
                 alt={user.name}
-                className="w-8 h-8 rounded-full object-cover border border-primary/20"
+                width={32}
+                height={32}
+                className="rounded-full object-cover border border-primary/20"
               />
             ) : (
               <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold shrink-0">

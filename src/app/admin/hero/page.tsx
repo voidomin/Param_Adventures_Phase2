@@ -9,6 +9,7 @@ import {
   ArrowDown,
   Image as ImageIcon,
 } from "lucide-react";
+import Image from "next/image";
 import HeroForm from "@/components/admin/HeroForm";
 import AuthBackgroundManager from "@/components/admin/AuthBackgroundManager";
 import AuthContentManager from "@/components/admin/AuthContentManager";
@@ -171,12 +172,14 @@ export default function AdminHeroPage() {
                     muted
                   />
                 ) : (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={slide.videoUrl}
-                    alt={slide.title}
-                    className="w-full h-full object-cover"
-                  />
+                  <div className="relative w-full h-full">
+                    <Image
+                      src={slide.videoUrl}
+                      alt={slide.title}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
                 )}
                 {!slide.isActive && (
                   <div className="absolute inset-0 bg-background/50 flex items-center justify-center">

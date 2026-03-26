@@ -9,6 +9,7 @@ import {
   ArrowDown,
   BookOpen,
 } from "lucide-react";
+import Image from "next/image";
 import StoryBlockForm from "@/components/admin/StoryBlockForm";
 
 interface StoryBlock {
@@ -183,13 +184,14 @@ export default function AdminStoryPage() {
             {/* Preview */}
             {block.imageUrl && (
               <div className="w-full md:w-20 h-14 rounded-lg overflow-hidden bg-foreground/5 shrink-0">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={block.imageUrl}
-                  alt={block.title}
-                  className="w-full h-full object-cover"
-                />
-              </div>
+                        <div className="relative aspect-video w-full">
+                          <Image
+                            src={block.imageUrl}
+                            alt={block.title}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>         </div>
             )}
 
             {/* Title & subtitle */}

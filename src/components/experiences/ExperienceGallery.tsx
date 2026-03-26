@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { X, ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 
 interface ExperienceGalleryProps {
   readonly images: string[];
@@ -31,10 +32,10 @@ export default function ExperienceGallery({ images }: ExperienceGalleryProps) {
 
   // Handle body scroll locking
   useEffect(() => {
-    if (selectedIndex !== null) {
-      document.body.style.overflow = "hidden";
-    } else {
+    if (selectedIndex === null) {
       document.body.style.overflow = "unset";
+    } else {
+      document.body.style.overflow = "hidden";
     }
     return () => {
       document.body.style.overflow = "unset";
@@ -115,11 +116,13 @@ export default function ExperienceGallery({ images }: ExperienceGalleryProps) {
                   playsInline
                 />
               ) : (
-                <img
+                <Image
                   src={url}
                   alt={`Item ${index + 1}`}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                   loading="lazy"
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 />
               )}
               <div className="absolute inset-0 bg-black/5 group-hover:bg-black/20 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
@@ -212,11 +215,14 @@ export default function ExperienceGallery({ images }: ExperienceGalleryProps) {
                   <track kind="captions" />
                 </video>
               ) : (
-                <img
-                  src={galleryImages[selectedIndex]}
-                  alt={`Item detail ${selectedIndex + 1}`}
-                  className="max-w-full max-h-[80vh] rounded-lg shadow-2xl object-contain"
-                />
+                <div className="relative w-full h-[80vh]">
+                  <Image
+                    src={galleryImages[selectedIndex]}
+                    alt={`Item detail ${selectedIndex + 1}`}
+                    fill
+                    className="object-contain"
+                  />
+                </div>
               )}
             </motion.div>
 

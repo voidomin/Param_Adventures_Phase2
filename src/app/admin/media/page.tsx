@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import MediaUploader from "@/components/admin/MediaUploader";
 import { Trash2, Copy, CheckCircle2, Image as ImageIcon } from "lucide-react";
+import Image from "next/image";
 
 interface MediaItem {
   id: string;
@@ -96,12 +97,14 @@ export default function MediaLibraryPage() {
           >
             <div className="relative aspect-square bg-foreground/5">
               {item.type === "IMAGE" ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={item.originalUrl}
-                  alt="Media upload"
-                  className="w-full h-full object-cover"
-                />
+                <div className="relative aspect-square">
+                  <Image
+                    src={item.originalUrl}
+                    alt={item.originalUrl.split("/").pop() || "Media upload"}
+                    fill
+                    className="object-cover group-hover:scale-110 transition-transform duration-500"
+                  />
+                </div>
               ) : (
                 <div className="relative w-full h-full bg-black">
                   <video

@@ -12,6 +12,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 
 interface HeroSlide {
   id: string;
@@ -70,7 +71,7 @@ export default function Hero({
       setCurrentIndex((prev) => (prev + 1) % activeSlides.length);
     }, 6000);
     return () => clearInterval(timer);
-  }, [activeSlides.length, currentIndex]);
+  }, [activeSlides, currentIndex]);
 
   const goToPrev = () => {
     setCurrentIndex((prev) =>
@@ -127,10 +128,12 @@ export default function Hero({
                 onEnded={goToNext}
               />
             ) : (
-              <img
+              <Image
                 src={currentSlide.videoUrl}
                 alt={currentSlide.title}
-                className="w-full h-full object-cover"
+                fill
+                priority
+                className="object-cover"
               />
             )}
           </motion.div>

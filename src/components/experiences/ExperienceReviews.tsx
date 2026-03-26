@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import Image from "next/image";
 import {
   Star,
   MessageSquare,
@@ -19,14 +20,14 @@ interface Review {
   rating: number;
   reviewText: string;
   createdAt: string;
-  user: { name: string };
+  user: { name: string; avatarUrl?: string }; // Added avatarUrl
 }
 
 interface FeaturedReview {
   id: string;
   rating: number;
   reviewText: string;
-  user: { name: string };
+  user: { name: string; avatarUrl?: string }; // Added avatarUrl
 }
 
 interface ReviewStats {
@@ -347,9 +348,20 @@ export default function ExperienceReviews({
           </blockquote>
 
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-primary font-black text-sm shrink-0">
-              {featuredReview.user.name?.charAt(0)?.toUpperCase() ?? "?"}
-            </div>
+            {featuredReview.user.avatarUrl ? (
+              <div className="relative w-9 h-9 rounded-full overflow-hidden bg-primary/10 border border-primary/20 shrink-0">
+                <Image
+                  src={featuredReview.user.avatarUrl}
+                  alt={featuredReview.user.name}
+                  fill
+                  className="object-cover"
+                />
+              </div>
+            ) : (
+              <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-primary font-black text-sm shrink-0">
+                {featuredReview.user.name?.charAt(0)?.toUpperCase() ?? "?"}
+              </div>
+            )}
             <div>
               <p className="font-bold text-foreground text-sm">
                 {featuredReview.user.name}
@@ -380,9 +392,20 @@ export default function ExperienceReviews({
             >
               <div className="flex items-start justify-between gap-4 mb-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm shrink-0">
-                    {review.user.name?.charAt(0)?.toUpperCase() ?? "?"}
-                  </div>
+                  {review.user.avatarUrl ? (
+                    <div className="relative w-9 h-9 rounded-full overflow-hidden bg-primary/10 border border-primary/20 shrink-0">
+                      <Image
+                        src={review.user.avatarUrl}
+                        alt={review.user.name}
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+                      {review.user.name?.charAt(0)?.toUpperCase() ?? "?"}
+                    </div>
+                  )}
                   <div>
                     <div className="font-bold text-foreground leading-tight">
                       {review.user.name}

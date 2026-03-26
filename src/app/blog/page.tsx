@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { MapPin, CalendarDays, ArrowRight, PenLine } from "lucide-react";
+import Image from "next/image";
+import { format } from "date-fns";
 
 export const revalidate = 60;
 
@@ -20,7 +22,7 @@ export default async function BlogListingPage() {
     <div className="min-h-screen bg-background text-foreground pb-20">
       {/* Hero */}
       <div className="relative pt-0 overflow-hidden">
-        <div className="absolute inset-0 bg-liner-to-br from-primary/10 via-background to-background" />
+        <div className="absolute inset-0 bg-linear-to-br from-primary/10 via-background to-background" />
         <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
         <div className="relative max-w-7xl mx-auto px-4 py-32 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 border border-primary/20 rounded-full text-primary text-sm font-bold mb-6">
@@ -65,13 +67,13 @@ export default async function BlogListingPage() {
                 >
                   {/* Cover */}
                   <div className="relative h-48 overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <Image
                       src={cover}
                       alt={blog.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                    <div className="absolute inset-0 bg-liner-to-t from-black/60 to-transparent" />
+                    <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent" />
                     {blog.experience && (
                       <div className="absolute bottom-3 left-3">
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-black/40 backdrop-blur-sm border border-white/20 rounded-full text-white text-xs font-semibold">
@@ -90,13 +92,13 @@ export default async function BlogListingPage() {
 
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-full overflow-hidden bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
+                        <div className="relative w-7 h-7 rounded-full overflow-hidden bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
                           {blog.author.avatarUrl ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
+                            <Image
                               src={blog.author.avatarUrl}
                               alt={blog.author.name}
-                              className="w-full h-full object-cover"
+                              fill
+                              className="object-cover"
                             />
                           ) : (
                             blog.author.name[0].toUpperCase()
@@ -109,10 +111,7 @@ export default async function BlogListingPage() {
 
                       <div className="flex items-center gap-1 text-xs text-foreground/40">
                         <CalendarDays className="w-3 h-3" />
-                        {new Date(blog.updatedAt).toLocaleDateString("en-IN", {
-                          day: "numeric",
-                          month: "short",
-                        })}
+                        {format(new Date(blog.updatedAt), "dd MMM")}
                       </div>
                     </div>
 
@@ -139,3 +138,4 @@ export default async function BlogListingPage() {
     </div>
   );
 }
+

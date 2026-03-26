@@ -22,6 +22,14 @@ vi.mock('next/navigation', () => ({
   notFound: vi.fn(),
 }));
 
+vi.mock('next/image', () => ({
+  __esModule: true,
+  default: (props: any) => {
+    // eslint-disable-next-line @next/next/no-img-element
+    return React.createElement('img', { ...props, fill: props.fill ? 'true' : undefined, priority: props.priority ? 'true' : undefined });
+  },
+}));
+
 import React from 'react';
 
 vi.mock('framer-motion', () => {

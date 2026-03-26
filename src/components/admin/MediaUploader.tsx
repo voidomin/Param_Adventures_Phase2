@@ -283,7 +283,7 @@ export default function MediaUploader({
     }
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
@@ -291,7 +291,7 @@ export default function MediaUploader({
     if (files && files.length > 0) {
       handleInitialFile(files[0], Array.from(files));
     }
-  }, []);
+  };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;

@@ -30,9 +30,8 @@ interface BookingModalProps {
   experienceTitle: string;
   experienceSlug: string;
   basePrice: number;
-  maxCapacity: number;
   pickupPoints: string[];
-  dropPoints: string[];
+  maxCapacity: number;
   onClose: () => void;
 }
 
@@ -101,7 +100,6 @@ export default function BookingModal({
   basePrice,
   maxCapacity,
   pickupPoints,
-  dropPoints,
   onClose,
 }: Readonly<BookingModalProps>) {
   const [mounted, setMounted] = useState(false);

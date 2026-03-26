@@ -10,6 +10,7 @@ import { format } from "date-fns";
 import Link from "next/link";
 import ScrollReveal from "@/components/ui/ScrollReveal";
 import Carousel from "@/components/ui/Carousel";
+import Image from "next/image";
 
 export default async function Home() {
   // Fetch active hero slides for the homepage carousel
@@ -209,13 +210,14 @@ export default async function Home() {
 
                         <div className="mt-auto pt-4 border-t border-border flex justify-between items-center text-sm">
                           <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold overflow-hidden shadow-sm">
+                            <div className="relative w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold overflow-hidden shadow-sm">
                               {blog.author.avatarUrl ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
+                                <Image
                                   src={blog.author.avatarUrl}
                                   alt={blog.author.name}
-                                  className="w-full h-full object-cover"
+                                  fill
+                                  className="object-cover"
+                                  sizes="32px"
                                 />
                               ) : (
                                 blog.author.name.charAt(0).toUpperCase()

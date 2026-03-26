@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Clock, MapPin, Users, IndianRupee } from "lucide-react";
 import { motion } from "framer-motion";
 import SaveButton from "./SaveButton";
@@ -78,11 +79,11 @@ export default function ExperienceCard({
               playsInline
             />
           ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={primaryImage}
               alt={experience.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-700"
             />
           )}
 

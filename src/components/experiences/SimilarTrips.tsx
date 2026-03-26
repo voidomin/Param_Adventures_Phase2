@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { MapPin, IndianRupee, Clock } from "lucide-react";
+import Image from "next/image";
 
 interface SimilarTripsProps {
   currentExperienceId: string;
@@ -57,8 +58,7 @@ export default async function SimilarTrips({
             className="group flex gap-4 bg-card border border-border rounded-2xl p-3 hover:border-primary/50 hover:shadow-lg transition-all"
           >
             <div className="w-20 h-20 rounded-xl overflow-hidden bg-muted shrink-0 relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={
                   exp.cardImage ||
                   exp.coverImage ||
@@ -66,7 +66,8 @@ export default async function SimilarTrips({
                   "/placeholder.jpg"
                 }
                 alt=""
-                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                fill
+                className="object-cover group-hover:scale-110 transition-transform duration-500"
               />
             </div>
             <div className="flex-1 min-w-0 flex flex-col justify-center">

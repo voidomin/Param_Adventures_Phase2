@@ -3,12 +3,6 @@
 import React, { useState, useEffect } from "react";
 import { Save, Type, Layout, ImageIcon } from "lucide-react";
 
-interface AuthSetting {
-  key: string;
-  label: string;
-  value: string;
-}
-
 const DEFAULT_SETTINGS = [
   { key: "auth_common_tagline", label: "Common Tagline", value: "Curated Adventures" },
   { key: "auth_login_image_heading", label: "Login Side Heading", value: "Welcome Back\nTo The Trail" },

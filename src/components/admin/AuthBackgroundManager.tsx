@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Trash2, Image as ImageIcon } from "lucide-react";
+import Image from "next/image";
 import MediaUploader from "./MediaUploader";
 
 interface AuthBgSetting {
@@ -106,12 +107,14 @@ export default function AuthBackgroundManager() {
                   autoPlay
                 />
               ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={setting.value}
-                  className="w-full aspect-video object-cover"
-                  alt={`${setting.label} background`}
-                />
+                <div className="w-full aspect-video relative">
+                  <Image
+                    src={setting.value}
+                    alt={`${setting.label} background`}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
               )}
               <div className="absolute inset-0 bg-background/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                 <button

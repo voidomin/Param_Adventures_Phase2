@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Loader2, Send, Save, Mountain, X } from "lucide-react";
+import Image from "next/image";
 // Custom Social SVGs to avoid Lucide deprecation warnings
 const InstagramSVG = () => (
   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
@@ -257,10 +258,11 @@ export default function WriteBlogPage() {
             </label>
             {coverImageUrl ? (
               <div className="relative w-full aspect-[21/9] rounded-2xl overflow-hidden group">
-                <img
+                <Image
                   src={coverImageUrl}
                   alt="Cover"
-                  className="object-cover w-full h-full"
+                  fill
+                  className="object-cover"
                 />
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                   <button

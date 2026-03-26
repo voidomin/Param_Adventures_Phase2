@@ -21,6 +21,7 @@ import {
   Pencil,
   PenLine,
 } from "lucide-react";
+import Image from "next/image";
 import ImageCropper from "@/components/admin/ImageCropper";
 import { ASPECT_RATIOS } from "@/lib/constants/aspect-ratios";
 
@@ -129,11 +130,12 @@ function BookingCard({
     <div className="group bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300">
       {/* Cover Image */}
       <div className="relative h-44 overflow-hidden">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={coverImage}
           alt={booking.experience.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          fill
+          className="object-cover group-hover:scale-105 transition-transform duration-500"
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
         />
         <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent" />
         {isUpcoming && (
@@ -419,13 +421,13 @@ export default function DashboardPage() {
           <div className="flex flex-col md:flex-row items-start md:items-center gap-8">
             {/* Avatar with upload */}
             <div className="relative shrink-0">
-              <div className="w-24 h-24 md:w-28 md:h-28 rounded-2xl overflow-hidden shadow-2xl shadow-primary/30 bg-linear-to-br from-primary to-primary/60 flex items-center justify-center">
+              <div className="relative w-24 h-24 md:w-28 md:h-28 rounded-2xl overflow-hidden shadow-2xl shadow-primary/30 bg-linear-to-br from-primary to-primary/60 flex items-center justify-center">
                 {currentAvatarUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <Image
                     src={currentAvatarUrl}
                     alt={user.name}
-                    className="w-full h-full object-cover"
+                    fill
+                    className="object-cover"
                   />
                 ) : (
                   <span className="text-3xl font-black text-primary-foreground">
@@ -625,15 +627,15 @@ export default function DashboardPage() {
                   className="bg-card border border-border rounded-xl p-5 flex flex-col sm:flex-row gap-4 items-start sm:items-center hover:bg-foreground/5 transition-colors"
                 >
                   {/* Thumbnail */}
-                  <div className="w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-muted">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                  <div className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0 bg-muted">
+                    <Image
                       src={
                         booking.experience.images[0] ||
                         "https://picsum.photos/seed/past/160/160"
                       }
                       alt={booking.experience.title}
-                      className="w-full h-full object-cover opacity-80"
+                      fill
+                      className="object-cover opacity-80"
                     />
                   </div>
 

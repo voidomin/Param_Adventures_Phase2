@@ -21,6 +21,7 @@ const eslintConfig = defineConfig([
       "lint-final.txt",
       "backup_current.sql",
       "generate-tests.mjs",
+      "coverage/**",
     ],
   },
   ...nextVitals,

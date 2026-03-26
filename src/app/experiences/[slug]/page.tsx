@@ -29,6 +29,7 @@ import BookNowButton from "@/components/booking/BookNowButton";
 import ExperienceReviews from "@/components/experiences/ExperienceReviews";
 import SaveButton from "@/components/experiences/SaveButton";
 import SimilarTrips from "@/components/experiences/SimilarTrips";
+import Image from "next/image";
 import ExperienceGallery from "@/components/experiences/ExperienceGallery";
 import MobileBookingBar from "@/components/booking/MobileBookingBar";
 import ExperienceStickyNav from "@/components/experiences/ExperienceStickyNav";
@@ -522,12 +523,15 @@ export default async function ExperienceDetailPage({
               playsInline
             />
           ) : (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={primaryMedia}
-              alt={experience.title}
-              className="w-full h-full object-cover"
-            />
+            <div className="relative w-full h-full">
+              <Image
+                src={primaryMedia}
+                alt={experience.title}
+                fill
+                priority
+                className="object-cover"
+              />
+            </div>
           )}
 
           <div className="absolute inset-0 bg-black/40 z-10" />
@@ -706,7 +710,7 @@ export default async function ExperienceDetailPage({
                   Things to Carry
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-8">
-                  {experience.thingsToCarry.map((item, ix) => (
+                  {experience.thingsToCarry.map((item) => (
                     <div
                       key={item}
                       className="flex items-center gap-3 border-b border-border/50 pb-2"
@@ -736,9 +740,9 @@ export default async function ExperienceDetailPage({
                 Frequently Asked Questions
               </h2>
               <div className="space-y-4">
-                {experience.faqs.map((faq, ix) => (
+                {experience.faqs.map((faq, _ix) => (
                   <details
-                    key={`${ix}-${faq.question}`}
+                    key={`${_ix}-${faq.question}`}
                     className="group bg-card border border-border rounded-2xl overflow-hidden [&_summary::-webkit-details-marker]:hidden"
                   >
                     <summary className="flex items-center justify-between gap-4 p-6 cursor-pointer font-bold text-lg select-none hover:bg-foreground/5 transition-colors list-none [&::-webkit-details-marker]:hidden">
@@ -802,7 +806,6 @@ export default async function ExperienceDetailPage({
               basePrice={Number(experience.basePrice)}
               maxCapacity={experience.capacity}
               pickupPoints={experience.pickupPoints || []}
-              dropPoints={experience.dropPoints || []}
             />
 
             <SimilarTrips
@@ -822,7 +825,6 @@ export default async function ExperienceDetailPage({
         basePrice={Number(experience.basePrice)}
         maxCapacity={experience.capacity}
         pickupPoints={experience.pickupPoints || []}
-        dropPoints={experience.dropPoints || []}
       />
     </div>
   );
