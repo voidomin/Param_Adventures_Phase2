@@ -227,6 +227,7 @@ export async function sendResetPasswordEmail(data: PasswordResetData) {
     });
   } catch (err) {
     console.error("Email layout error:", err);
+    throw err;
   }
 }
 
