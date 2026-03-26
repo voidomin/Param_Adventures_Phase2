@@ -47,9 +47,43 @@ const transporter = nodemailer.createTransport({
 
 const FROM_EMAIL =
   process.env.SMTP_FROM || "Param Adventures <booking@paramadventures.in>";
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const RESEND_FROM = process.env.RESEND_FROM || FROM_EMAIL;
 
 // check if we are ready to send
 const isReady = !!(process.env.SMTP_USER && process.env.SMTP_PASS);
+
+async function sendViaResend({
+  to,
+  subject,
+  html,
+}: {
+  to: string;
+  subject: string;
+  html: string;
+}) {
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+    },
+    body: JSON.stringify({
+      from: RESEND_FROM,
+      to: [to],
+      subject,
+      html,
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Resend API failed (${response.status}): ${body}`);
+  }
+
+  const data = (await response.json()) as { id?: string };
+  console.log(`✅ Email sent via Resend: ${data.id || "unknown-id"} to ${to}`);
+}
 
 // ─── TYPES ─────────────────────────────────────────────
 
@@ -123,6 +157,12 @@ async function sendEmail({
   html: string;
 }) {
   if (!isReady) {
+    // If SMTP is unavailable but Resend is configured, use API-based delivery.
+    if (RESEND_API_KEY) {
+      await sendViaResend({ to, subject, html });
+      return;
+    }
+
     const msg = "SMTP credentials not configured.";
     console.warn(`⚠️ ${msg} Logging email to console.`);
     console.log(
@@ -146,6 +186,14 @@ async function sendEmail({
     console.log(`✅ Email sent: ${info.messageId} to ${to}`);
   } catch (err) {
     console.error(`❌ Failed to send email to ${to}:`, err);
+
+    // Fallback path: if SMTP connection/auth fails, try HTTPS email API.
+    if (RESEND_API_KEY) {
+      console.log("[EMAIL] Falling back to Resend API...");
+      await sendViaResend({ to, subject, html });
+      return;
+    }
+
     throw err;
   }
 }
