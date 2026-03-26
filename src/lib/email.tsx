@@ -19,22 +19,30 @@ function parseBoolean(value: string | undefined): boolean | undefined {
 }
 
 // ─── SMTP CONFIGURATION ──────────────────────────────────
-const SMTP_HOST = process.env.SMTP_HOST || "smtp.zoho.in";
+// Note: smtp.zoho.com is generally more reliable on cloud platforms than .in
+const SMTP_HOST = process.env.SMTP_HOST || "smtp.zoho.com";
 const SMTP_PORT = Number.parseInt(process.env.SMTP_PORT || "587", 10);
 const SMTP_SECURE = parseBoolean(process.env.SMTP_SECURE) ?? SMTP_PORT === 465;
+
+console.log(`[SMTP_INIT] Attempting connection to ${SMTP_HOST}:${SMTP_PORT} (Secure: ${SMTP_SECURE})`);
 
 const transporter = nodemailer.createTransport({
   host: SMTP_HOST,
   port: SMTP_PORT,
-  secure: SMTP_SECURE, // true for 465, false for 587/25
+  secure: SMTP_SECURE, 
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
-  // ─── Reliability & Timeouts ────────────────────────────
-  connectionTimeout: 15000, // 15 seconds
-  greetingTimeout: 15000,
-  socketTimeout: 30000,
+  // ─── Reliability & Performance ──────────────────────────
+  pool: true,              // Use connection pooling
+  maxConnections: 3,       // Limit concurrent connections
+  connectionTimeout: 20000, // 20 seconds
+  greetingTimeout: 20000,
+  socketTimeout: 45000,
+  // Enable debug logging in production logs to catch the exact failure point
+  debug: true,
+  logger: true,
 });
 
 const FROM_EMAIL =
