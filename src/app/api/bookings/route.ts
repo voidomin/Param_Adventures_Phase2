@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import Razorpay from "razorpay";
+import { getRazorpay } from "@/lib/razorpay";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-});
+// Lazy-loaded singleton
+const razorpay = getRazorpay();
 
 /**
  * POST /api/bookings
