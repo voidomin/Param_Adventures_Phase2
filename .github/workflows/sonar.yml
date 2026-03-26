@@ -26,12 +26,12 @@ jobs:
       contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        uses: actions/checkout@d632683dd7b4114ad3ca9ae40b9e4acc13eab4c5 # v4.2.1
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4.0.3
+        uses: actions/setup-node@1345a757486c0d30be6d0260d7b6355dd1f5a4c9 # v4.0.4
         with:
           node-version: 24
           cache: "npm"
@@ -50,10 +50,10 @@ jobs:
       contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        uses: actions/checkout@d632683dd7b4114ad3ca9ae40b9e4acc13eab4c5 # v4.2.1
 
       - name: Setup Node.js
-        uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4.0.3
+        uses: actions/setup-node@1345a757486c0d30be6d0260d7b6355dd1f5a4c9 # v4.0.4
         with:
           node-version: 24
           cache: "npm"
@@ -75,12 +75,12 @@ jobs:
       contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        uses: actions/checkout@d632683dd7b4114ad3ca9ae40b9e4acc13eab4c5 # v4.2.1
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4.0.3
+        uses: actions/setup-node@1345a757486c0d30be6d0260d7b6355dd1f5a4c9 # v4.0.4
         with:
           node-version: 24
           cache: "npm"
@@ -95,7 +95,7 @@ jobs:
         run: npm run test:coverage
 
       - name: Upload Coverage Artifact
-        uses: actions/upload-artifact@b7759232930a00df837c76214ed0faee3f5bc515 # v4.3.0
+        uses: actions/upload-artifact@1159379685957d65377ad5a8a6136be497f19114 # v4.3.1
         with:
           name: coverage-report
           path: coverage/
@@ -110,12 +110,12 @@ jobs:
       contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        uses: actions/checkout@d632683dd7b4114ad3ca9ae40b9e4acc13eab4c5 # v4.2.1
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4.0.3
+        uses: actions/setup-node@1345a757486c0d30be6d0260d7b6355dd1f5a4c9 # v4.0.4
         with:
           node-version: 24
           cache: "npm"
@@ -144,12 +144,12 @@ jobs:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        uses: actions/checkout@d632683dd7b4114ad3ca9ae40b9e4acc13eab4c5 # v4.2.1
         with:
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4.0.3
+        uses: actions/setup-node@1345a757486c0d30be6d0260d7b6355dd1f5a4c9 # v4.0.4
         with:
           node-version: 24
           cache: "npm"

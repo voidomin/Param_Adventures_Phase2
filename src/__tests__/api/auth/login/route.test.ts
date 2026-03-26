@@ -33,6 +33,9 @@ const createRequest = (body: unknown) =>
     body: JSON.stringify(body),
   });
 
+const TEST_PASSWORD = "pw"; // NOSONAR
+const TEST_HASHED = "hashed"; // NOSONAR
+
 describe("POST /api/auth/login", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -47,7 +50,7 @@ describe("POST /api/auth/login", () => {
     mockFindUnique.mockResolvedValue(null);
 
     const response = await POST(
-      createRequest({ email: "user@example.com", password: "pw" }),
+      createRequest({ email: "user@example.com", password: TEST_PASSWORD }),
     );
     const data = await response.json();
 
@@ -60,14 +63,14 @@ describe("POST /api/auth/login", () => {
       id: "u1",
       email: "user@example.com",
       name: "User",
-      password: "hashed",
+      password: TEST_HASHED,
       status: "SUSPENDED",
       tokenVersion: 1,
       role: { name: "CUSTOMER" },
     } as any);
 
     const response = await POST(
-      createRequest({ email: "user@example.com", password: "pw" }),
+      createRequest({ email: "user@example.com", password: TEST_PASSWORD }),
     );
 
     expect(response.status).toBe(403);
@@ -78,7 +81,7 @@ describe("POST /api/auth/login", () => {
       id: "u1",
       email: "user@example.com",
       name: "User",
-      password: "hashed",
+      password: TEST_HASHED,
       status: "ACTIVE",
       tokenVersion: 1,
       role: { name: "CUSTOMER" },
@@ -86,7 +89,7 @@ describe("POST /api/auth/login", () => {
     mockVerifyPassword.mockResolvedValue(false);
 
     const response = await POST(
-      createRequest({ email: "user@example.com", password: "pw" }),
+      createRequest({ email: "user@example.com", password: TEST_PASSWORD }),
     );
 
     expect(response.status).toBe(401);
@@ -97,7 +100,7 @@ describe("POST /api/auth/login", () => {
       id: "u1",
       email: "user@example.com",
       name: "User",
-      password: "hashed",
+      password: TEST_HASHED,
       status: "ACTIVE",
       tokenVersion: 3,
       role: { name: "CUSTOMER" },
@@ -107,7 +110,7 @@ describe("POST /api/auth/login", () => {
     mockGenerateRefreshToken.mockReturnValue("refresh-1" as any);
 
     const response = await POST(
-      createRequest({ email: "USER@example.com", password: "pw" }),
+      createRequest({ email: "USER@example.com", password: TEST_PASSWORD }),
     );
     const data = await response.json();
 
@@ -126,7 +129,7 @@ describe("POST /api/auth/login", () => {
     mockFindUnique.mockRejectedValue(new Error("db down"));
 
     const response = await POST(
-      createRequest({ email: "user@example.com", password: "pw" }),
+      createRequest({ email: "user@example.com", password: TEST_PASSWORD }),
     );
     const data = await response.json();
 
