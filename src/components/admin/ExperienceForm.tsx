@@ -1,4 +1,3 @@
- 
 "use client";
 
 import { useState, useEffect } from "react";
@@ -78,16 +77,16 @@ export interface ExperienceFormData {
 
 const MEAL_OPTIONS = ["Breakfast", "Lunch", "Dinner", "Snacks"];
 
-function MealButtons({ 
-  meals, 
-  onToggle 
-}: Readonly<{ 
-  meals: string[]; 
-  onToggle: (meal: string) => void 
+function MealButtons({
+  meals,
+  onToggle,
+}: Readonly<{
+  meals: string[];
+  onToggle: (meal: string) => void;
 }>) {
   return (
     <div className="flex gap-2 flex-wrap">
-      {MEAL_OPTIONS.map(meal => {
+      {MEAL_OPTIONS.map((meal) => {
         const isSelected = meals.includes(meal);
         return (
           <button
@@ -95,8 +94,8 @@ function MealButtons({
             type="button"
             onClick={() => onToggle(meal)}
             className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${
-              isSelected 
-                ? "bg-primary text-primary-foreground border-primary shadow-sm" 
+              isSelected
+                ? "bg-primary text-primary-foreground border-primary shadow-sm"
                 : "bg-background text-foreground/60 border-border hover:border-primary/50 hover:text-foreground"
             }`}
           >
@@ -119,7 +118,9 @@ export default function ExperienceForm({
   const [categories, setCategories] = useState<Category[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [taxes, setTaxes] = useState<{ id: string; name: string; percentage: number }[]>([]);
+  const [taxes, setTaxes] = useState<
+    { id: string; name: string; percentage: number }[]
+  >([]);
 
   // Form State
   const [title, setTitle] = useState(initialData?.title || "");
@@ -140,8 +141,7 @@ export default function ExperienceForm({
     initialData?.isFeatured || false,
   );
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
-    initialData?.categories?.map((c) => c.categoryId) ||
-      [],
+    initialData?.categories?.map((c) => c.categoryId) || [],
   );
 
   // Images
@@ -154,12 +154,10 @@ export default function ExperienceForm({
   const [images, setImages] = useState<string[]>(initialData?.images || []);
 
   const [itinerary, setItinerary] = useState<ItineraryDay[]>(
-    (initialData?.itinerary || [{ title: "", description: "" }]).map(
-      (d) => ({
-        ...d,
-        _id: d._id || crypto.randomUUID(),
-      }),
-    ) as ItineraryDay[],
+    (initialData?.itinerary || [{ title: "", description: "" }]).map((d) => ({
+      ...d,
+      _id: d._id || crypto.randomUUID(),
+    })) as ItineraryDay[],
   );
 
   // New Array States with stable IDs
@@ -234,12 +232,20 @@ export default function ExperienceForm({
       text,
     })),
   );
-  const [networkConnectivity, setNetworkConnectivity] = useState(initialData?.networkConnectivity || "");
+  const [networkConnectivity, setNetworkConnectivity] = useState(
+    initialData?.networkConnectivity || "",
+  );
   const [lastAtm, setLastAtm] = useState(initialData?.lastAtm || "");
-  const [fitnessRequirement, setFitnessRequirement] = useState(initialData?.fitnessRequirement || "");
+  const [fitnessRequirement, setFitnessRequirement] = useState(
+    initialData?.fitnessRequirement || "",
+  );
   const [ageRange, setAgeRange] = useState(initialData?.ageRange || "");
-  const [meetingTime, setMeetingTime] = useState(initialData?.meetingTime || "");
-  const [dropoffTime, setDropoffTime] = useState(initialData?.dropoffTime || "");
+  const [meetingTime, setMeetingTime] = useState(
+    initialData?.meetingTime || "",
+  );
+  const [dropoffTime, setDropoffTime] = useState(
+    initialData?.dropoffTime || "",
+  );
 
   useEffect(() => {
     // Fetch available categories
@@ -252,7 +258,7 @@ export default function ExperienceForm({
         console.error("Failed to load categories:", err);
       }
     };
-    
+
     // Fetch Taxes
     const fetchSettings = async () => {
       try {
@@ -403,14 +409,18 @@ export default function ExperienceForm({
       trekDistance,
       bestTimeToVisit,
       maxGroupSize: maxGroupSize ? Number(maxGroupSize) : null,
-      highlights: highlights.map((item) => item.text).filter((item) => item.trim() !== ""),
+      highlights: highlights
+        .map((item) => item.text)
+        .filter((item) => item.trim() !== ""),
       networkConnectivity,
       lastAtm,
       fitnessRequirement,
       ageRange,
       meetingTime,
       dropoffTime,
-      vibeTags: vibeTags.map((item) => item.text).filter((item) => item.trim() !== ""),
+      vibeTags: vibeTags
+        .map((item) => item.text)
+        .filter((item) => item.trim() !== ""),
     };
 
     try {
@@ -431,7 +441,9 @@ export default function ExperienceForm({
       router.push("/admin/experiences");
       router.refresh(); // Ensure the list page shows the new data
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save experience");
+      setError(
+        err instanceof Error ? err.message : "Failed to save experience",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -439,7 +451,12 @@ export default function ExperienceForm({
 
   const applyBasicData = (data: Partial<ExperienceFormData>) => {
     if (data.title) setTitle(data.title);
-    if (data.description && typeof data.description === 'object' && Object.keys(data.description as object).length > 0) setDescription(data.description);
+    if (
+      data.description &&
+      typeof data.description === "object" &&
+      Object.keys(data.description as object).length > 0
+    )
+      setDescription(data.description);
     if (data.basePrice !== undefined) setBasePrice(data.basePrice);
     if (data.capacity !== undefined) setCapacity(data.capacity);
     if (data.durationDays !== undefined) setDurationDays(data.durationDays);
@@ -450,32 +467,48 @@ export default function ExperienceForm({
     if (data.coverImage) setCoverImage(data.coverImage);
     if (data.cardImage) setCardImage(data.cardImage);
     if (data.images) setImages(data.images);
-    if (data.categories) setSelectedCategories(data.categories.map(c => c.categoryId));
+    if (data.categories)
+      setSelectedCategories(data.categories.map((c) => c.categoryId));
   };
 
   const applyListData = (data: Partial<ExperienceFormData>) => {
-    if (data.itinerary) setItinerary(data.itinerary.map((d: ItineraryDay) => ({ ...d, _id: crypto.randomUUID() })));
-    const mapToObj = (arr: string[] | undefined) => arr?.map((text) => ({ id: crypto.randomUUID(), text })) || [];
+    if (data.itinerary)
+      setItinerary(
+        data.itinerary.map((d: ItineraryDay) => ({
+          ...d,
+          _id: crypto.randomUUID(),
+        })),
+      );
+    const mapToObj = (arr: string[] | undefined) =>
+      arr?.map((text) => ({ id: crypto.randomUUID(), text })) || [];
     if (data.inclusions) setInclusions(mapToObj(data.inclusions));
     if (data.exclusions) setExclusions(mapToObj(data.exclusions));
     if (data.thingsToCarry) setThingsToCarry(mapToObj(data.thingsToCarry));
     if (data.highlights) setHighlights(mapToObj(data.highlights));
     if (data.vibeTags) setVibeTags(mapToObj(data.vibeTags));
     if (data.pickupPoints) setPickupPoints(mapToObj(data.pickupPoints));
-    if (data.faqs) setFaqs(data.faqs.map((f: FAQ) => ({ ...f, id: crypto.randomUUID() })));
+    if (data.faqs)
+      setFaqs(data.faqs.map((f: FAQ) => ({ ...f, id: crypto.randomUUID() })));
   };
 
   const applyLogisticsData = (data: Partial<ExperienceFormData>) => {
-    if (data.cancellationPolicy !== undefined) setCancellationPolicy(data.cancellationPolicy || "");
-    if (data.meetingPoint !== undefined) setMeetingPoint(data.meetingPoint || "");
+    if (data.cancellationPolicy !== undefined)
+      setCancellationPolicy(data.cancellationPolicy || "");
+    if (data.meetingPoint !== undefined)
+      setMeetingPoint(data.meetingPoint || "");
     if (data.minAge !== undefined) setMinAge(data.minAge || "");
     if (data.maxAltitude !== undefined) setMaxAltitude(data.maxAltitude || "");
-    if (data.trekDistance !== undefined) setTrekDistance(data.trekDistance || "");
-    if (data.bestTimeToVisit !== undefined) setBestTimeToVisit(data.bestTimeToVisit || "");
-    if (data.maxGroupSize !== undefined) setMaxGroupSize(data.maxGroupSize || "");
-    if (data.networkConnectivity !== undefined) setNetworkConnectivity(data.networkConnectivity || "");
+    if (data.trekDistance !== undefined)
+      setTrekDistance(data.trekDistance || "");
+    if (data.bestTimeToVisit !== undefined)
+      setBestTimeToVisit(data.bestTimeToVisit || "");
+    if (data.maxGroupSize !== undefined)
+      setMaxGroupSize(data.maxGroupSize || "");
+    if (data.networkConnectivity !== undefined)
+      setNetworkConnectivity(data.networkConnectivity || "");
     if (data.lastAtm !== undefined) setLastAtm(data.lastAtm || "");
-    if (data.fitnessRequirement !== undefined) setFitnessRequirement(data.fitnessRequirement || "");
+    if (data.fitnessRequirement !== undefined)
+      setFitnessRequirement(data.fitnessRequirement || "");
     if (data.ageRange !== undefined) setAgeRange(data.ageRange || "");
     if (data.meetingTime !== undefined) setMeetingTime(data.meetingTime || "");
     if (data.dropoffTime !== undefined) setDropoffTime(data.dropoffTime || "");
@@ -488,16 +521,44 @@ export default function ExperienceForm({
   };
 
   const currentPayload = () => ({
-    title, description, basePrice, capacity, durationDays, location, difficulty, status, isFeatured,
-    coverImage, cardImage, images, itinerary, categories: selectedCategories,
-    inclusions: inclusions.map((i) => i.text), exclusions: exclusions.map((i) => i.text),
-    thingsToCarry: thingsToCarry.map((i) => i.text), pickupPoints: pickupPoints.map((i) => i.text),
-    faqs, cancellationPolicy, meetingPoint, minAge, maxAltitude, trekDistance, bestTimeToVisit, maxGroupSize,
-    highlights: highlights.map((i) => i.text), networkConnectivity, lastAtm, fitnessRequirement, ageRange, meetingTime, dropoffTime,
+    title,
+    description,
+    basePrice,
+    capacity,
+    durationDays,
+    location,
+    difficulty,
+    status,
+    isFeatured,
+    coverImage,
+    cardImage,
+    images,
+    itinerary,
+    categories: selectedCategories,
+    inclusions: inclusions.map((i) => i.text),
+    exclusions: exclusions.map((i) => i.text),
+    thingsToCarry: thingsToCarry.map((i) => i.text),
+    pickupPoints: pickupPoints.map((i) => i.text),
+    faqs,
+    cancellationPolicy,
+    meetingPoint,
+    minAge,
+    maxAltitude,
+    trekDistance,
+    bestTimeToVisit,
+    maxGroupSize,
+    highlights: highlights.map((i) => i.text),
+    networkConnectivity,
+    lastAtm,
+    fitnessRequirement,
+    ageRange,
+    meetingTime,
+    dropoffTime,
     vibeTags: vibeTags.map((i) => i.text),
   });
 
-  const getExportFilename = () => `${title ? title.toLowerCase().replaceAll(/\s+/g, '-') : 'trip'}-export`;
+  const getExportFilename = () =>
+    `${title ? title.toLowerCase().replaceAll(/\s+/g, "-") : "trip"}-export`;
 
   const handleExportJSON = () => {
     const dataStr = JSON.stringify(currentPayload(), null, 2);
@@ -537,7 +598,11 @@ export default function ExperienceForm({
   interface XLSXUtils {
     sheet_to_json<T>(worksheet: WorkSheet, opts?: unknown): T[];
     book_new(): WorkBook;
-    book_append_sheet(workbook: WorkBook, worksheet: WorkSheet, sheetName: string): void;
+    book_append_sheet(
+      workbook: WorkBook,
+      worksheet: WorkSheet,
+      sheetName: string,
+    ): void;
     json_to_sheet(data: unknown[], opts?: unknown): WorkSheet;
   }
 
@@ -559,49 +624,92 @@ export default function ExperienceForm({
       }
     }
     if (typeof val === "symbol") return val.description ?? "";
-    return String(val);
+    if (typeof val === "number" || typeof val === "boolean") return String(val);
+    return "";
   };
 
-  const parseExcelBasicInfo = (imported: Partial<Record<string, unknown>>, wb: WorkBook, XLSX: XLSXLib) => {
+  const parseExcelBasicInfo = (
+    imported: Partial<Record<string, unknown>>,
+    wb: WorkBook,
+    XLSX: XLSXLib,
+  ) => {
     if (wb.Sheets["Basic Info"]) {
-      const basicInfo = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets["Basic Info"]);
+      const basicInfo = XLSX.utils.sheet_to_json<Record<string, unknown>>(
+        wb.Sheets["Basic Info"],
+      );
       basicInfo.forEach((row) => {
-        if (row.Key && row.Value !== undefined) imported[ensureString(row.Key)] = row.Value;
+        if (row.Key && row.Value !== undefined)
+          imported[ensureString(row.Key)] = row.Value;
       });
     }
   };
 
-  const parseExcelItinerary = (imported: Partial<ExperienceFormData>, wb: WorkBook, XLSX: XLSXLib) => {
+  const parseExcelItinerary = (
+    imported: Partial<ExperienceFormData>,
+    wb: WorkBook,
+    XLSX: XLSXLib,
+  ) => {
     if (wb.Sheets["Itinerary"]) {
-      const itinRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets["Itinerary"]);
+      const itinRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(
+        wb.Sheets["Itinerary"],
+      );
       imported.itinerary = itinRows.map((row) => ({
         title: ensureString(row.Title),
         description: ensureString(row.Description),
-        meals: (typeof row.Meals === 'string') ? row.Meals.split(",").map((m: string) => m.trim()).filter(Boolean) : [],
-        accommodation: ensureString(row.Accommodation)
+        meals:
+          typeof row.Meals === "string"
+            ? row.Meals.split(",")
+                .map((m: string) => m.trim())
+                .filter(Boolean)
+            : [],
+        accommodation: ensureString(row.Accommodation),
       }));
     }
   };
 
-  const parseExcelFaqs = (imported: Partial<ExperienceFormData>, wb: WorkBook, XLSX: XLSXLib) => {
+  const parseExcelFaqs = (
+    imported: Partial<ExperienceFormData>,
+    wb: WorkBook,
+    XLSX: XLSXLib,
+  ) => {
     if (wb.Sheets["FAQs"]) {
-      const faqRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets["FAQs"]);
+      const faqRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(
+        wb.Sheets["FAQs"],
+      );
       imported.faqs = faqRows.map((row) => ({
         question: ensureString(row.Question),
-        answer: ensureString(row.Answer)
+        answer: ensureString(row.Answer),
       }));
     }
   };
 
-  const parseExcelLists = (imported: Partial<ExperienceFormData>, wb: WorkBook, XLSX: XLSXLib) => {
+  const parseExcelLists = (
+    imported: Partial<ExperienceFormData>,
+    wb: WorkBook,
+    XLSX: XLSXLib,
+  ) => {
     if (wb.Sheets["Lists"]) {
-      const listRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets["Lists"]);
-      imported.inclusions = listRows.map((r) => ensureString(r.Inclusions)).filter(Boolean);
-      imported.exclusions = listRows.map((r) => ensureString(r.Exclusions)).filter(Boolean);
-      imported.thingsToCarry = listRows.map((r) => ensureString(r.ThingsToCarry)).filter(Boolean);
-      imported.highlights = listRows.map((r) => ensureString(r.Highlights)).filter(Boolean);
-      imported.vibeTags = listRows.map((r) => ensureString(r.VibeTags)).filter(Boolean);
-      imported.pickupPoints = listRows.map((r) => ensureString(r.PickupPoints)).filter(Boolean);
+      const listRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(
+        wb.Sheets["Lists"],
+      );
+      imported.inclusions = listRows
+        .map((r) => ensureString(r.Inclusions))
+        .filter(Boolean);
+      imported.exclusions = listRows
+        .map((r) => ensureString(r.Exclusions))
+        .filter(Boolean);
+      imported.thingsToCarry = listRows
+        .map((r) => ensureString(r.ThingsToCarry))
+        .filter(Boolean);
+      imported.highlights = listRows
+        .map((r) => ensureString(r.Highlights))
+        .filter(Boolean);
+      imported.vibeTags = listRows
+        .map((r) => ensureString(r.VibeTags))
+        .filter(Boolean);
+      imported.pickupPoints = listRows
+        .map((r) => ensureString(r.PickupPoints))
+        .filter(Boolean);
     }
   };
 
@@ -627,23 +735,30 @@ export default function ExperienceForm({
         { Key: "meetingTime", Value: meetingTime },
         { Key: "dropoffTime", Value: dropoffTime },
         { Key: "meetingPoint", Value: meetingPoint },
-        { Key: "cancellationPolicy", Value: cancellationPolicy }
+        { Key: "cancellationPolicy", Value: cancellationPolicy },
       ];
-      
+
       const itineraryData = itinerary.map((d, i) => ({
         Day: i + 1,
         Title: d.title,
         Description: d.description,
         Meals: d.meals?.join(", ") || "",
-        Accommodation: d.accommodation || ""
+        Accommodation: d.accommodation || "",
       }));
 
-      const faqsData = faqs.map(f => ({
+      const faqsData = faqs.map((f) => ({
         Question: f.question,
-        Answer: f.answer
+        Answer: f.answer,
       }));
 
-      const maxLen = Math.max(inclusions.length, exclusions.length, thingsToCarry.length, highlights.length, vibeTags.length, pickupPoints.length);
+      const maxLen = Math.max(
+        inclusions.length,
+        exclusions.length,
+        thingsToCarry.length,
+        highlights.length,
+        vibeTags.length,
+        pickupPoints.length,
+      );
       const listsData = [];
       for (let i = 0; i < maxLen; i++) {
         listsData.push({
@@ -657,10 +772,26 @@ export default function ExperienceForm({
       }
 
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(basicInfoData), "Basic Info");
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(itineraryData), "Itinerary");
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(faqsData), "FAQs");
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(listsData), "Lists");
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.json_to_sheet(basicInfoData),
+        "Basic Info",
+      );
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.json_to_sheet(itineraryData),
+        "Itinerary",
+      );
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.json_to_sheet(faqsData),
+        "FAQs",
+      );
+      XLSX.utils.book_append_sheet(
+        wb,
+        XLSX.utils.json_to_sheet(listsData),
+        "Lists",
+      );
 
       XLSX.writeFile(wb, `${getExportFilename()}.xlsx`);
     });
@@ -669,34 +800,39 @@ export default function ExperienceForm({
   const handleImportExcel = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    
+
     try {
       const XLSX = await import("xlsx");
       const buffer = await file.arrayBuffer();
       const data = new Uint8Array(buffer);
-      const wb = XLSX.read(data, { type: 'array' });
-      
+      const wb = XLSX.read(data, { type: "array" });
+
       const imported: Partial<ExperienceFormData> = {};
       parseExcelBasicInfo(imported as Record<string, unknown>, wb, XLSX);
       parseExcelItinerary(imported, wb, XLSX);
       parseExcelFaqs(imported, wb, XLSX);
       parseExcelLists(imported, wb, XLSX);
-      
+
       applyImportedData(imported);
       setError("");
     } catch (err) {
-      setError("Failed to parse Excel file. Ensure it follows the export template structure.");
+      setError(
+        "Failed to parse Excel file. Ensure it follows the export template structure.",
+      );
       console.error(err);
     }
     e.target.value = "";
   };
-  
+
   const [showImportOptions, setShowImportOptions] = useState(false);
   const [showExportOptions, setShowExportOptions] = useState(false);
 
-
   return (
-    <form onSubmit={handleSubmit} aria-label="Experience Form" className="max-w-4xl pb-24">
+    <form
+      onSubmit={handleSubmit}
+      aria-label="Experience Form"
+      className="max-w-4xl pb-24"
+    >
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
           <Link
@@ -710,7 +846,6 @@ export default function ExperienceForm({
           </h1>
         </div>
         <div className="flex items-center gap-3 relative">
-          
           {/* Import Dropdown */}
           <div className="relative">
             <button
@@ -724,16 +859,39 @@ export default function ExperienceForm({
             {showImportOptions && (
               <div className="absolute top-full right-0 mt-2 w-48 bg-card border border-border rounded-xl shadow-lg shadow-black/10 overflow-hidden z-10 flex flex-col p-1">
                 <label className="px-4 py-2.5 hover:bg-foreground/5 cursor-pointer text-sm font-medium transition-colors text-foreground flex items-center gap-2 rounded-lg">
-                  <input type="file" accept=".json" className="hidden" onChange={(e) => { handleImportJSON(e); setShowImportOptions(false); }} />
+                  <input
+                    type="file"
+                    accept=".json"
+                    className="hidden"
+                    onChange={(e) => {
+                      handleImportJSON(e);
+                      setShowImportOptions(false);
+                    }}
+                  />
                   <span>Import JSON</span>
                 </label>
                 <label className="px-4 py-2.5 hover:bg-foreground/5 cursor-pointer text-sm font-medium transition-colors text-foreground flex items-center gap-2 rounded-lg">
-                  <input type="file" accept=".xlsx" className="hidden" onChange={(e) => { handleImportExcel(e); setShowImportOptions(false); }} />
+                  <input
+                    type="file"
+                    accept=".xlsx"
+                    className="hidden"
+                    onChange={(e) => {
+                      handleImportExcel(e);
+                      setShowImportOptions(false);
+                    }}
+                  />
                   <span>Import Excel (.xlsx)</span>
                 </label>
               </div>
             )}
-            {showImportOptions && <button type="button" aria-label="Close menu" className="fixed inset-0 z-0 w-full h-full cursor-default border-none bg-transparent" onClick={() => setShowImportOptions(false)} />}
+            {showImportOptions && (
+              <button
+                type="button"
+                aria-label="Close menu"
+                className="fixed inset-0 z-0 w-full h-full cursor-default border-none bg-transparent"
+                onClick={() => setShowImportOptions(false)}
+              />
+            )}
           </div>
 
           {/* Export Dropdown */}
@@ -750,21 +908,34 @@ export default function ExperienceForm({
               <div className="absolute top-full right-0 mt-2 w-48 bg-card border border-border rounded-xl shadow-lg shadow-black/10 overflow-hidden z-10 flex flex-col p-1">
                 <button
                   type="button"
-                  onClick={() => { handleExportJSON(); setShowExportOptions(false); }}
+                  onClick={() => {
+                    handleExportJSON();
+                    setShowExportOptions(false);
+                  }}
                   className="px-4 py-2.5 hover:bg-foreground/5 text-left text-sm font-medium transition-colors text-foreground flex items-center gap-2 rounded-lg"
                 >
                   Export JSON
                 </button>
                 <button
                   type="button"
-                  onClick={() => { handleExportExcel(); setShowExportOptions(false); }}
+                  onClick={() => {
+                    handleExportExcel();
+                    setShowExportOptions(false);
+                  }}
                   className="px-4 py-2.5 hover:bg-foreground/5 text-left text-sm font-medium transition-colors text-foreground flex items-center gap-2 rounded-lg"
                 >
                   Export Excel (.xlsx)
                 </button>
               </div>
             )}
-            {showExportOptions && <button type="button" aria-label="Close menu" className="fixed inset-0 z-0 w-full h-full cursor-default border-none bg-transparent" onClick={() => setShowExportOptions(false)} />}
+            {showExportOptions && (
+              <button
+                type="button"
+                aria-label="Close menu"
+                className="fixed inset-0 z-0 w-full h-full cursor-default border-none bg-transparent"
+                onClick={() => setShowExportOptions(false)}
+              />
+            )}
           </div>
 
           <button
@@ -898,9 +1069,7 @@ export default function ExperienceForm({
                         Meals Included
                       </span>
                       <MealButtons
-                        meals={Array.isArray(day.meals)
-                          ? day.meals
-                          : []}
+                        meals={Array.isArray(day.meals) ? day.meals : []}
                         onToggle={(meal) => {
                           const currentMeals = Array.isArray(day.meals)
                             ? day.meals
@@ -924,7 +1093,11 @@ export default function ExperienceForm({
                         type="text"
                         value={day.accommodation || ""}
                         onChange={(e) =>
-                          handleItineraryChange(ix, "accommodation", e.target.value)
+                          handleItineraryChange(
+                            ix,
+                            "accommodation",
+                            e.target.value,
+                          )
                         }
                         className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:border-primary/50"
                         placeholder="e.g. Alpine Tent"
@@ -1314,17 +1487,41 @@ export default function ExperienceForm({
 
         {/* Sidebar Settings (Right Column) */}
         <div className="space-y-6">
-
           <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
             <div className="border-b border-border pb-2">
-              <h2 className="text-xl font-bold text-foreground">Trip Highlights</h2>
-              <p className="text-sm text-foreground/60">Punchy selling points shown at the top of the page</p>
+              <h2 className="text-xl font-bold text-foreground">
+                Trip Highlights
+              </h2>
+              <p className="text-sm text-foreground/60">
+                Punchy selling points shown at the top of the page
+              </p>
             </div>
             <div className="space-y-3">
               {highlights.map((item) => (
                 <div key={item.id} className="flex gap-2">
-                  <input type="text" value={item.text} onChange={(e) => handleStringArrayChange(setHighlights, item.id, e.target.value)} className="flex-1 bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50" placeholder="e.g. Stargazing at 14,000ft" />
-                  <button type="button" onClick={() => removeStringArrayItem(setHighlights, item.id)} className="p-2 text-foreground/50 hover:text-red-500 transition-colors" > <Trash2 className="w-5 h-5" /> </button>
+                  <input
+                    type="text"
+                    value={item.text}
+                    onChange={(e) =>
+                      handleStringArrayChange(
+                        setHighlights,
+                        item.id,
+                        e.target.value,
+                      )
+                    }
+                    className="flex-1 bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                    placeholder="e.g. Stargazing at 14,000ft"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      removeStringArrayItem(setHighlights, item.id)
+                    }
+                    className="p-2 text-foreground/50 hover:text-red-500 transition-colors"
+                  >
+                    {" "}
+                    <Trash2 className="w-5 h-5" />{" "}
+                  </button>
                 </div>
               ))}
               <button
@@ -1339,14 +1536,37 @@ export default function ExperienceForm({
 
           <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
             <div className="border-b border-border pb-2">
-              <h2 className="text-xl font-bold text-foreground">Vibe Tags / Suitable For</h2>
-              <p className="text-sm text-foreground/60">Badges near the title (e.g. Solo-Safe, Family Friendly)</p>
+              <h2 className="text-xl font-bold text-foreground">
+                Vibe Tags / Suitable For
+              </h2>
+              <p className="text-sm text-foreground/60">
+                Badges near the title (e.g. Solo-Safe, Family Friendly)
+              </p>
             </div>
             <div className="space-y-3">
               {vibeTags.map((item) => (
                 <div key={item.id} className="flex gap-2">
-                  <input type="text" value={item.text} onChange={(e) => handleStringArrayChange(setVibeTags, item.id, e.target.value)} className="flex-1 bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50" placeholder="e.g. Solo-Female Friendly" />
-                  <button type="button" onClick={() => removeStringArrayItem(setVibeTags, item.id)} className="p-2 text-foreground/50 hover:text-red-500 transition-colors" > <Trash2 className="w-5 h-5" /> </button>
+                  <input
+                    type="text"
+                    value={item.text}
+                    onChange={(e) =>
+                      handleStringArrayChange(
+                        setVibeTags,
+                        item.id,
+                        e.target.value,
+                      )
+                    }
+                    className="flex-1 bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                    placeholder="e.g. Solo-Female Friendly"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeStringArrayItem(setVibeTags, item.id)}
+                    className="p-2 text-foreground/50 hover:text-red-500 transition-colors"
+                  >
+                    {" "}
+                    <Trash2 className="w-5 h-5" />{" "}
+                  </button>
                 </div>
               ))}
               <button
@@ -1407,44 +1627,164 @@ export default function ExperienceForm({
             </h2>
             <div className="grid grid-cols-1 gap-4">
               <div>
-                <label htmlFor="meetingPoint" className="block text-sm font-medium text-foreground/80 mb-1">Meeting Point</label>
-                <input id="meetingPoint" type="text" value={meetingPoint} onChange={(e) => setMeetingPoint(e.target.value)} className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50" placeholder="e.g. Dehradun" />
+                <label
+                  htmlFor="meetingPoint"
+                  className="block text-sm font-medium text-foreground/80 mb-1"
+                >
+                  Meeting Point
+                </label>
+                <input
+                  id="meetingPoint"
+                  type="text"
+                  value={meetingPoint}
+                  onChange={(e) => setMeetingPoint(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                  placeholder="e.g. Dehradun"
+                />
               </div>
               <div>
-                <label htmlFor="meetingTime" className="block text-sm font-medium text-foreground/80 mb-1">Meeting Time</label>
-                <input id="meetingTime" type="text" value={meetingTime} onChange={(e) => setMeetingTime(e.target.value)} className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50" placeholder="e.g. 6:00 AM" />
+                <label
+                  htmlFor="meetingTime"
+                  className="block text-sm font-medium text-foreground/80 mb-1"
+                >
+                  Meeting Time
+                </label>
+                <input
+                  id="meetingTime"
+                  type="text"
+                  value={meetingTime}
+                  onChange={(e) => setMeetingTime(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                  placeholder="e.g. 6:00 AM"
+                />
               </div>
               <div>
-                <label htmlFor="maxAltitude" className="block text-sm font-medium text-foreground/80 mb-1">Max Altitude</label>
-                <input id="maxAltitude" type="text" value={maxAltitude} onChange={(e) => setMaxAltitude(e.target.value)} className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50" placeholder="e.g. 14,000 ft" />
+                <label
+                  htmlFor="maxAltitude"
+                  className="block text-sm font-medium text-foreground/80 mb-1"
+                >
+                  Max Altitude
+                </label>
+                <input
+                  id="maxAltitude"
+                  type="text"
+                  value={maxAltitude}
+                  onChange={(e) => setMaxAltitude(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                  placeholder="e.g. 14,000 ft"
+                />
               </div>
               <div>
-                <label htmlFor="trekDistance" className="block text-sm font-medium text-foreground/80 mb-1">Trek Distance</label>
-                <input id="trekDistance" type="text" value={trekDistance} onChange={(e) => setTrekDistance(e.target.value)} className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50" placeholder="e.g. 45 km" />
+                <label
+                  htmlFor="trekDistance"
+                  className="block text-sm font-medium text-foreground/80 mb-1"
+                >
+                  Trek Distance
+                </label>
+                <input
+                  id="trekDistance"
+                  type="text"
+                  value={trekDistance}
+                  onChange={(e) => setTrekDistance(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                  placeholder="e.g. 45 km"
+                />
               </div>
               <div>
-                <label htmlFor="dropoffTime" className="block text-sm font-medium text-foreground/80 mb-1">Drop-off Time</label>
-                <input id="dropoffTime" type="text" value={dropoffTime} onChange={(e) => setDropoffTime(e.target.value)} className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50" placeholder="e.g. 8:00 PM (Day 6)" />
+                <label
+                  htmlFor="dropoffTime"
+                  className="block text-sm font-medium text-foreground/80 mb-1"
+                >
+                  Drop-off Time
+                </label>
+                <input
+                  id="dropoffTime"
+                  type="text"
+                  value={dropoffTime}
+                  onChange={(e) => setDropoffTime(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                  placeholder="e.g. 8:00 PM (Day 6)"
+                />
               </div>
               <div>
-                <label htmlFor="bestTimeToVisit" className="block text-sm font-medium text-foreground/80 mb-1">Best Season</label>
-                <input id="bestTimeToVisit" type="text" value={bestTimeToVisit} onChange={(e) => setBestTimeToVisit(e.target.value)} className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50" placeholder="e.g. Sep - Nov" />
+                <label
+                  htmlFor="bestTimeToVisit"
+                  className="block text-sm font-medium text-foreground/80 mb-1"
+                >
+                  Best Season
+                </label>
+                <input
+                  id="bestTimeToVisit"
+                  type="text"
+                  value={bestTimeToVisit}
+                  onChange={(e) => setBestTimeToVisit(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                  placeholder="e.g. Sep - Nov"
+                />
               </div>
               <div>
-                <label htmlFor="networkConnectivity" className="block text-sm font-medium text-foreground/80 mb-1">Network Connectivity</label>
-                <input id="networkConnectivity" type="text" value={networkConnectivity} onChange={(e) => setNetworkConnectivity(e.target.value)} className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50" placeholder="e.g. Jio/Airtel till basecamp" />
+                <label
+                  htmlFor="networkConnectivity"
+                  className="block text-sm font-medium text-foreground/80 mb-1"
+                >
+                  Network Connectivity
+                </label>
+                <input
+                  id="networkConnectivity"
+                  type="text"
+                  value={networkConnectivity}
+                  onChange={(e) => setNetworkConnectivity(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                  placeholder="e.g. Jio/Airtel till basecamp"
+                />
               </div>
               <div>
-                <label htmlFor="lastAtm" className="block text-sm font-medium text-foreground/80 mb-1">Last ATM</label>
-                <input id="lastAtm" type="text" value={lastAtm} onChange={(e) => setLastAtm(e.target.value)} className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50" placeholder="e.g. Joshimath" />
+                <label
+                  htmlFor="lastAtm"
+                  className="block text-sm font-medium text-foreground/80 mb-1"
+                >
+                  Last ATM
+                </label>
+                <input
+                  id="lastAtm"
+                  type="text"
+                  value={lastAtm}
+                  onChange={(e) => setLastAtm(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                  placeholder="e.g. Joshimath"
+                />
               </div>
               <div>
-                <label htmlFor="fitnessRequirement" className="block text-sm font-medium text-foreground/80 mb-1">Fitness Requirement</label>
-                <input id="fitnessRequirement" type="text" value={fitnessRequirement} onChange={(e) => setFitnessRequirement(e.target.value)} className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50" placeholder="e.g. Jog 5km in 35m" />
+                <label
+                  htmlFor="fitnessRequirement"
+                  className="block text-sm font-medium text-foreground/80 mb-1"
+                >
+                  Fitness Requirement
+                </label>
+                <input
+                  id="fitnessRequirement"
+                  type="text"
+                  value={fitnessRequirement}
+                  onChange={(e) => setFitnessRequirement(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                  placeholder="e.g. Jog 5km in 35m"
+                />
               </div>
               <div>
-                <label htmlFor="ageRange" className="block text-sm font-medium text-foreground/80 mb-1">Age Range</label>
-                <input id="ageRange" type="text" value={ageRange} onChange={(e) => setAgeRange(e.target.value)} className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50" placeholder="e.g. 12-60 Years" />
+                <label
+                  htmlFor="ageRange"
+                  className="block text-sm font-medium text-foreground/80 mb-1"
+                >
+                  Age Range
+                </label>
+                <input
+                  id="ageRange"
+                  type="text"
+                  value={ageRange}
+                  onChange={(e) => setAgeRange(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                  placeholder="e.g. 12-60 Years"
+                />
               </div>
             </div>
           </div>
@@ -1476,17 +1816,32 @@ export default function ExperienceForm({
                     <span>Live Revenue Breakdown (per seat)</span>
                   </div>
                   {taxes.map((tax) => {
-                     const amount = (basePrice * tax.percentage) / 100;
-                     return (
-                        <div key={tax.id} className="flex justify-between text-red-500/80">
-                           <span>{tax.name} ({tax.percentage}%):</span>
-                           <span>- ₹{amount.toFixed(2)}</span>
-                        </div>
-                     );
+                    const amount = (basePrice * tax.percentage) / 100;
+                    return (
+                      <div
+                        key={tax.id}
+                        className="flex justify-between text-red-500/80"
+                      >
+                        <span>
+                          {tax.name} ({tax.percentage}%):
+                        </span>
+                        <span>- ₹{amount.toFixed(2)}</span>
+                      </div>
+                    );
                   })}
                   <div className="flex justify-between font-bold pt-1 border-t border-primary/10 mt-1 text-green-500">
                     <span>Net Base Revenue:</span>
-                    <span>₹{(basePrice - taxes.reduce((acc, tax) => acc + ((basePrice * tax.percentage) / 100), 0)).toFixed(2)}</span>
+                    <span>
+                      ₹
+                      {(
+                        basePrice -
+                        taxes.reduce(
+                          (acc, tax) =>
+                            acc + (basePrice * tax.percentage) / 100,
+                          0,
+                        )
+                      ).toFixed(2)}
+                    </span>
                   </div>
                 </div>
               )}
