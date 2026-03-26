@@ -109,7 +109,7 @@ describe("PATCH /api/admin/leads/[id]", () => {
     } as any);
 
     const response = await PATCH(
-      createRequest({ status: "INTERESTED", adminNotes: null }),
+      createRequest({ status: "CONTACTED", adminNotes: null }),
       {
         params: Promise.resolve({ id: "lead-1" }),
       },
@@ -119,7 +119,7 @@ describe("PATCH /api/admin/leads/[id]", () => {
     expect(mockLeadUpdate).toHaveBeenCalledWith({
       where: { id: "lead-1" },
       data: {
-        status: "INTERESTED",
+        status: "CONTACTED",
         adminNotes: null,
       },
     });

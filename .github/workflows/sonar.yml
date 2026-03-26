@@ -16,8 +16,11 @@ concurrency:
 
 jobs:
   lint:
-    name: Lint & Security Audit
+    name: Lint Check
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -31,19 +34,37 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Run lint
         run: npm run lint
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: 'npm'
 
       - name: Security Audit
         run: npm audit --audit-level=high
 
   test:
-    name: Test Suite (No Coverage)
-    if: github.event_name == 'pull_request'
+    name: Test Suite
     needs: lint
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -57,7 +78,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Generate Prisma Client
         run: npx prisma generate
@@ -69,6 +90,9 @@ jobs:
     name: Build Verification
     needs: lint
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -82,7 +106,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Generate Prisma Client
         run: npx prisma generate
@@ -90,14 +114,17 @@ jobs:
       - name: Run build
         run: npm run build
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/postgres' }}
           NEXT_PUBLIC_APP_URL: http://localhost:3000
 
   sonarcloud:
-    name: Coverage & SonarCloud Scan
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [lint, build]
+    name: SonarCloud Analysis
+    needs: [test, build]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
@@ -111,7 +138,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Generate Prisma Client
         run: npx prisma generate
