@@ -5,8 +5,8 @@ import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
 
-// Lazy-loaded singleton
-const razorpay = getRazorpay();
+// Removed top-level initialization to prevent build-time crashes
+// const razorpay = getRazorpay();
 
 /**
  * POST /api/bookings
@@ -75,6 +75,7 @@ export async function POST(request: NextRequest) {
   const auth = await authorizeRequest(request);
   if (!auth.authorized) return auth.response;
 
+  const razorpay = getRazorpay();
   const userId = auth.userId;
 
   try {
