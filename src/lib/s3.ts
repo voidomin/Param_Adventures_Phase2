@@ -7,6 +7,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 const S3_BUCKET_NAME =
   process.env.AWS_S3_BUCKET_NAME || process.env.S3_BUCKET_NAME;
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
 const isS3Configured =
   process.env.AWS_REGION &&
@@ -32,6 +33,12 @@ export async function generatePresignedUrl(
 ): Promise<{ uploadUrl: string; finalUrl: string }> {
   // --- MOCKED IMPLEMENTATION ---
   if (!s3Client || !S3_BUCKET_NAME) {
+    if (IS_PRODUCTION) {
+      throw new Error(
+        "Media storage is not configured. Configure Cloudinary or S3 in production.",
+      );
+    }
+
     const timestamp = Date.now();
 
     // If it's a video, return a mock video URL, otherwise a picsum image
