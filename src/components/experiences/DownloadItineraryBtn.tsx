@@ -422,18 +422,18 @@ function drawEssentialInfoAndContact(doc: jsPDF, data: ItineraryBookingData) {
     { label: "Last ATM", value: data.lastAtm },
     { label: "Fitness Requirement", value: data.fitnessRequirement },
     { label: "Age Range", value: data.ageRange || (data.minAge ? `${data.minAge}+` : null) },
-  ].filter((l) => l.value);
+  ].filter((l): l is { label: string; value: string } => !!l.value);
 
   if (logistics.length > 0) {
     y = drawSectionHeader(doc, "ESSENTIAL INFORMATION", y);
     y += 2;
     autoTable(doc, {
-      startY: y, head: [["", ""]], body: logistics.map((l) => [l.label, l.value!]), theme: "plain", showHead: false,
+      startY: y, head: [["", ""]], body: logistics.map((l) => [l.label, l.value]), theme: "plain", showHead: false,
       styles: { fontSize: 9, cellPadding: { top: 3, bottom: 3, left: 5, right: 5 } },
       columnStyles: { 0: { fontStyle: "bold", cellWidth: 50, textColor: COLORS.navy }, 1: { textColor: COLORS.darkText } },
       alternateRowStyles: { fillColor: COLORS.warmGray },
     });
-    y = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? y;
+    y = (doc as any).lastAutoTable?.finalY ?? y;
   }
 
   if (data.cancellationPolicy) {

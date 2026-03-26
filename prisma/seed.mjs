@@ -498,8 +498,10 @@ if (
   import.meta.url.endsWith(process.argv[1]) ||
   process.argv[1]?.endsWith("seed.mjs")
 ) {
-  main().catch((err) => {
+  try {
+    await main();
+  } catch (err) {
     console.error(err);
     process.exit(1);
-  });
+  }
 }
