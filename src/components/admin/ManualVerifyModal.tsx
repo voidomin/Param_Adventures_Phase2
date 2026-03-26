@@ -69,9 +69,9 @@ export function ManualVerifyModal({
       if (!uploadResponse.ok) throw new Error(uploadData.error?.message || "Cloudinary upload failed");
 
       setProofUrl(uploadData.secure_url);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Upload error:", err);
-      setError(err.message || "Failed to upload image.");
+      setError(err instanceof Error ? err.message : "Failed to upload image.");
     } finally {
       setUploading(false);
     }
@@ -105,8 +105,8 @@ export function ManualVerifyModal({
         onSuccess();
         onClose();
       }, 1500);
-    } catch (err: any) {
-      setError(err.message || "Something went wrong.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setIsSubmitting(false);
     }

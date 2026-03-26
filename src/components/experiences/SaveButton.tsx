@@ -40,7 +40,7 @@ export default function SaveButton({
           // Adjust based on the actual API format. If it returns `{ saved: [{experience: {id}}, ...] }`
           const savedList = data.saved || [];
           const found = savedList.some(
-            (item: any) => item.experience.id === experienceId,
+            (item: { experience: { id: string } }) => item.experience.id === experienceId,
           );
           setIsSaved(found);
         }

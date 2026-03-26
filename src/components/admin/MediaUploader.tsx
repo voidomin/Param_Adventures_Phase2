@@ -5,7 +5,7 @@ import ImageCropper from "./ImageCropper";
 // ... [rest of the helper functions remain same until MediaUploader] ...
 async function uploadToCloudinaryDirect(
   file: File | Blob,
-  uploadData: Record<string, any>,
+  uploadData: Record<string, unknown>,
   onProgress?: (percent: number) => void,
 ): Promise<string> {
   const CHUNK_SIZE = 99 * 1024 * 1024;
@@ -16,10 +16,10 @@ async function uploadToCloudinaryDirect(
       const xhr = new XMLHttpRequest();
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("api_key", uploadData.apiKey);
-      formData.append("timestamp", uploadData.timestamp.toString());
-      formData.append("signature", uploadData.signature);
-      formData.append("folder", uploadData.folder);
+      formData.append("api_key", String(uploadData.apiKey));
+      formData.append("timestamp", String(uploadData.timestamp));
+      formData.append("signature", String(uploadData.signature));
+      formData.append("folder", String(uploadData.folder));
 
       const resType = file.type.startsWith("video/") ? "video" : "image";
       const url = `https://api.cloudinary.com/v1_1/${uploadData.cloudName}/${resType}/upload`;
@@ -39,10 +39,10 @@ async function uploadToCloudinaryDirect(
             reject(
               new Error(data.error?.message || "Cloudinary upload failed"),
             );
-        } catch (e: any) {
+        } catch (e: unknown) {
           console.error("Cloudinary upload parse error:", e);
           reject(
-            new Error(`Failed to parse Cloudinary response: ${e.message}`),
+            new Error(`Failed to parse Cloudinary response: ${e instanceof Error ? e.message : "Unknown error"}`),
           );
         }
       };
@@ -68,10 +68,10 @@ async function uploadToCloudinaryDirect(
       // For blobs from cropper, we might not have a name, so use a default
       const fileName = (file as File).name || "cropped-image.jpg";
       formData.append("file", chunk, fileName);
-      formData.append("api_key", uploadData.apiKey);
-      formData.append("timestamp", uploadData.timestamp.toString());
-      formData.append("signature", uploadData.signature);
-      formData.append("folder", uploadData.folder);
+      formData.append("api_key", String(uploadData.apiKey));
+      formData.append("timestamp", String(uploadData.timestamp));
+      formData.append("signature", String(uploadData.signature));
+      formData.append("folder", String(uploadData.folder));
 
       const resType = file.type.startsWith("video/") ? "video" : "image";
       const url = `https://api.cloudinary.com/v1_1/${uploadData.cloudName}/${resType}/upload`;
@@ -108,9 +108,9 @@ async function uploadToCloudinaryDirect(
               ),
             );
           }
-        } catch (e: any) {
+        } catch (e: unknown) {
           reject(
-            new Error(`Failed to parse Cloudinary response: ${e.message}`),
+            new Error(`Failed to parse Cloudinary response: ${e instanceof Error ? e.message : "Unknown error"}`),
           );
         }
       };
@@ -127,17 +127,17 @@ async function uploadToCloudinaryDirect(
 
 async function uploadToS3Direct(
   file: File | Blob,
-  uploadData: Record<string, any>,
+  uploadData: Record<string, unknown>,
   onProgress?: (percent: number) => void,
 ): Promise<string> {
   if (uploadData.uploadUrl === "MOCK_UPLOAD") {
     if (onProgress) onProgress(100);
-    return uploadData.finalUrl;
+    return String(uploadData.finalUrl);
   }
 
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("PUT", uploadData.uploadUrl, true);
+    xhr.open("PUT", String(uploadData.uploadUrl), true);
     xhr.setRequestHeader("Content-Type", file.type);
 
     xhr.upload.addEventListener("progress", (e) => {
@@ -148,7 +148,7 @@ async function uploadToS3Direct(
 
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
-        resolve(uploadData.finalUrl);
+        resolve(String(uploadData.finalUrl));
       } else {
         reject(new Error(`S3 upload failed with status ${xhr.status}`));
       }

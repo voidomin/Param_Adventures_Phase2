@@ -19,6 +19,43 @@ const COLORS = {
   lightOrange: [254, 243, 230] as [number, number, number], // #FEF3E6
 };
 
+interface ItineraryBookingData {
+  title: string;
+  location: string;
+  durationDays: number;
+  difficulty?: string;
+  maxAltitude?: string;
+  trekDistance?: string;
+  bestTimeToVisit?: string;
+  maxGroupSize?: number | null;
+  highlights?: string[];
+  description?: string;
+  itinerary?: {
+    title?: string;
+    description?: string;
+    meals?: string | string[];
+    accommodation?: string;
+  }[];
+  inclusions?: string[];
+  exclusions?: string[];
+  thingsToCarry?: string[];
+  meetingPoint?: string;
+  meetingTime?: string;
+  dropoffTime?: string;
+  networkConnectivity?: string;
+  lastAtm?: string;
+  fitnessRequirement?: string;
+  ageRange?: string;
+  minAge?: number | null;
+  cancellationPolicy?: string;
+  company: {
+    name: string;
+    email: string;
+    phone: string;
+    website: string;
+  };
+}
+
 // ─── Helpers ──────────────────────────────────────────
 async function fetchImageAsBase64(url: string): Promise<string | null> {
   try {
@@ -77,7 +114,7 @@ function checkPageBreak(doc: jsPDF, currentY: number, needed: number): number {
 
 // ─── Page Drawing Fragments ────────────────────────────
 
-function drawCoverPage(doc: jsPDF, data: any, logoBase64: string | null, coverBase64: string | null) {
+function drawCoverPage(doc: jsPDF, data: ItineraryBookingData, logoBase64: string | null, coverBase64: string | null) {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
 
@@ -89,7 +126,7 @@ function drawCoverPage(doc: jsPDF, data: any, logoBase64: string | null, coverBa
           const coverHeight = pageHeight * 0.55;
           doc.addImage(coverBase64, "JPEG", 0, 0, pageWidth, coverHeight, undefined, "FAST");
 
-          const GState = (doc as any).GState;
+          const GState = (doc as unknown as { GState: new (options: { opacity: number }) => unknown }).GState;
           for (let i = 0; i < 60; i++) {
             const alpha = i / 60;
             doc.setFillColor(26, 26, 46);
@@ -145,7 +182,7 @@ function drawCoverPage(doc: jsPDF, data: any, logoBase64: string | null, coverBa
   doc.text(data.company.website, pageWidth / 2, pageHeight - 3, { align: "center" });
 }
 
-function drawStatsOverview(doc: jsPDF, data: any, y: number): number {
+function drawStatsOverview(doc: jsPDF, data: ItineraryBookingData, y: number): number {
   const pageWidth = doc.internal.pageSize.getWidth();
   y = drawSectionHeader(doc, "TRIP AT A GLANCE", y);
   y += 2;
@@ -185,10 +222,10 @@ function drawStatsOverview(doc: jsPDF, data: any, y: number): number {
   return y + Math.ceil(stats.length / 2) * (cardH + 6) + 6;
 }
 
-function drawHighlightsAndAbout(doc: jsPDF, data: any, y: number): number {
+function drawHighlightsAndAbout(doc: jsPDF, data: ItineraryBookingData, y: number): number {
   const pageWidth = doc.internal.pageSize.getWidth();
 
-  if (data.highlights?.length > 0) {
+  if (data.highlights && data.highlights.length > 0) {
     y = checkPageBreak(doc, y, 30);
     y = drawSectionHeader(doc, "HIGHLIGHTS", y);
     doc.setFontSize(9);
@@ -222,7 +259,7 @@ function drawHighlightsAndAbout(doc: jsPDF, data: any, y: number): number {
   return y;
 }
 
-function drawItinerary(doc: jsPDF, data: any, y: number): number {
+function drawItinerary(doc: jsPDF, data: ItineraryBookingData, y: number): number {
   if (!Array.isArray(data.itinerary) || data.itinerary.length === 0) return y;
 
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -231,9 +268,10 @@ function drawItinerary(doc: jsPDF, data: any, y: number): number {
   y = drawSectionHeader(doc, "DAY-BY-DAY ITINERARY", y);
   y += 2;
 
-  data.itinerary.forEach((day: any, index: number) => {
+  data.itinerary.forEach((day, index) => {
     const dayNum = index + 1;
-    const neededHeight = 35 + (day.description?.length / 5 || 0); // rough estimate
+    const descLen = day.description?.length ?? 0;
+    const neededHeight = 35 + (descLen / 5); // rough estimate
     y = checkPageBreak(doc, y, neededHeight);
 
     doc.setFillColor(...COLORS.orange);
@@ -269,7 +307,8 @@ function drawItinerary(doc: jsPDF, data: any, y: number): number {
         doc.text("Meals: ", 30, y);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(...COLORS.mutedText);
-        const ml = doc.splitTextToSize(day.meals, midX - 30 - 12);
+        const mealsStr = Array.isArray(day.meals) ? day.meals.join(", ") : (day.meals || "");
+        const ml = doc.splitTextToSize(mealsStr, midX - 30 - 12);
         doc.text(ml, 42, y);
       }
       if (day.accommodation) {
@@ -295,7 +334,7 @@ function drawItinerary(doc: jsPDF, data: any, y: number): number {
   return y;
 }
 
-function drawInclusionsExclusionsPacking(doc: jsPDF, data: any, galleryImages: (string | null)[], y: number): number {
+function drawInclusionsExclusionsPacking(doc: jsPDF, data: ItineraryBookingData, galleryImages: (string | null)[], y: number): number {
   const pageWidth = doc.internal.pageSize.getWidth();
   const inclusions = Array.isArray(data.inclusions) ? data.inclusions : [];
   const exclusions = Array.isArray(data.exclusions) ? data.exclusions : [];
@@ -369,7 +408,7 @@ function drawInclusionsExclusionsPacking(doc: jsPDF, data: any, galleryImages: (
   return y;
 }
 
-function drawEssentialInfoAndContact(doc: jsPDF, data: any) {
+function drawEssentialInfoAndContact(doc: jsPDF, data: ItineraryBookingData) {
   const pageWidth = doc.internal.pageSize.getWidth();
   doc.addPage();
   const startY = 20;
@@ -394,7 +433,7 @@ function drawEssentialInfoAndContact(doc: jsPDF, data: any) {
       columnStyles: { 0: { fontStyle: "bold", cellWidth: 50, textColor: COLORS.navy }, 1: { textColor: COLORS.darkText } },
       alternateRowStyles: { fillColor: COLORS.warmGray },
     });
-    y = (doc as any).lastAutoTable.finalY + 10;
+    y = (doc as unknown as { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? y;
   }
 
   if (data.cancellationPolicy) {

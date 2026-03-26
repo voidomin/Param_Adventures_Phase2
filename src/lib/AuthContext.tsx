@@ -41,13 +41,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-// ─── Helper: get cookie value ────────────────────────────
-
-function getCookie(name: string): string | undefined {
-  const match = new RegExp(`(^| )${name}=([^;]+)`).exec(document.cookie);
-  return match ? match[2] : undefined;
-}
-
 // ─── Provider ────────────────────────────────────────────
 
 export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {

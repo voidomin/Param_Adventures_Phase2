@@ -5,7 +5,7 @@ import { Clock, MapPin, Users, IndianRupee } from "lucide-react";
 import { motion } from "framer-motion";
 import SaveButton from "./SaveButton";
 import ShareButton from "../ui/ShareButton";
-import { getPlainTextFromJSON } from "@/lib/utils/rich-text";
+import { getPlainTextFromJSON, RichTextNode } from "@/lib/utils/rich-text";
 
 interface Category {
   category: {
@@ -20,7 +20,7 @@ interface ExperienceCardProps {
     id: string;
     title: string;
     slug: string;
-    description: any;
+    description: unknown;
     durationDays: number;
     location: string;
     basePrice: number;
@@ -146,7 +146,7 @@ export default function ExperienceCard({
           <p className="text-foreground/70 text-sm line-clamp-2 mb-6 flex-1 min-h-12">
             {typeof experience.description === 'string' 
               ? experience.description 
-              : getPlainTextFromJSON(experience.description)}
+              : getPlainTextFromJSON(experience.description as RichTextNode)}
           </p>
 
           <div className="flex items-center justify-between pt-4 border-t border-border mt-auto">

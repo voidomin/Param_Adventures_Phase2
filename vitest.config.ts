@@ -14,7 +14,7 @@ export default defineConfig({
   },
   test: {
     globals: true,
-    testTimeout: 60000,
+    testTimeout: 30000,
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
@@ -42,6 +42,7 @@ export default defineConfig({
             '@': path.resolve(__dirname, './src'),
           },
           setupFiles: ['./vitest.setup.shared.ts'],
+          testTimeout: 30000,
           include: ['src/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
           exclude: [
             'src/**/__tests__/components/**',
@@ -60,6 +61,7 @@ export default defineConfig({
             '@': path.resolve(__dirname, './src'),
           },
           setupFiles: ['./vitest.setup.shared.ts', './vitest.setup.ui.ts'],
+          testTimeout: 30000,
           include: [
             'src/**/__tests__/components/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}',
             'src/**/*.test.tsx',

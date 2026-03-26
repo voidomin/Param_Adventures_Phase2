@@ -53,6 +53,7 @@ export default function AdminLayout({
 
   // Close sidebar on navigation change (mobile)
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsSidebarOpen(false);
   }, [pathname]);
 

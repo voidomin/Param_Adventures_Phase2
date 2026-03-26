@@ -18,6 +18,7 @@ import Link from "next/link";
 import MediaUploader from "./MediaUploader";
 import { ASPECT_RATIOS } from "@/lib/constants/aspect-ratios";
 import TiptapEditor from "../blog/TiptapEditor";
+import { RichTextNode } from "@/lib/utils/rich-text";
 
 interface Category {
   id: string;
@@ -32,7 +33,60 @@ interface ItineraryDay {
   accommodation?: string;
 }
 
+interface FAQ {
+  question: string;
+  answer: string;
+}
+
+interface ExperienceFormData {
+  id?: string;
+  title: string;
+  description: RichTextNode | string; // ProseMirror/Tiptap JSON
+  basePrice: number;
+  capacity: number;
+  durationDays: number;
+  location: string;
+  difficulty: string;
+  status: string;
+  isFeatured: boolean;
+  coverImage: string;
+  cardImage: string;
+  images: string[];
+  itinerary: ItineraryDay[];
+  categories?: { categoryId: string }[];
+  inclusions?: string[];
+  exclusions?: string[];
+  thingsToCarry?: string[];
+  faqs?: FAQ[];
+  cancellationPolicy?: string;
+  meetingPoint?: string;
+  minAge?: number | string | null;
+  maxAltitude?: string;
+  trekDistance?: string;
+  bestTimeToVisit?: string;
+  maxGroupSize?: number | string | null;
+  highlights?: string[];
+  vibeTags?: string[];
+  networkConnectivity?: string;
+  lastAtm?: string;
+  fitnessRequirement?: string;
+  ageRange?: string;
+  meetingTime?: string;
+  dropoffTime?: string;
+  pickupPoints?: string[];
+}
+
 const MEAL_OPTIONS = ["Breakfast", "Lunch", "Dinner", "Snacks"];
+ 
+interface XLSXUtils {
+  sheet_to_json: <T>(sheet: unknown) => T[];
+}
+interface XLSXLib {
+  utils: XLSXUtils;
+}
+interface WorkBook {
+  Sheets: Record<string, unknown>;
+}
 
 function MealButtons({ 
   meals, 
@@ -67,7 +121,7 @@ function MealButtons({
 export default function ExperienceForm({
   initialData = null,
 }: Readonly<{
-  initialData?: Record<string, any> | null;
+  initialData?: ExperienceFormData | null;
 }>) {
   const router = useRouter();
   const isEditing = !!initialData;
@@ -79,7 +133,7 @@ export default function ExperienceForm({
 
   // Form State
   const [title, setTitle] = useState(initialData?.title || "");
-  const [description, setDescription] = useState<any>(
+  const [description, setDescription] = useState<RichTextNode | string>(
     initialData?.description || {},
   );
   const [basePrice, setBasePrice] = useState(initialData?.basePrice || 0);
@@ -96,7 +150,7 @@ export default function ExperienceForm({
     initialData?.isFeatured || false,
   );
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
-    initialData?.categories?.map((c: Record<string, any>) => c.categoryId) ||
+    initialData?.categories?.map((c) => c.categoryId) ||
       [],
   );
 
@@ -111,11 +165,11 @@ export default function ExperienceForm({
 
   const [itinerary, setItinerary] = useState<ItineraryDay[]>(
     (initialData?.itinerary || [{ title: "", description: "" }]).map(
-      (d: Record<string, any>) => ({
+      (d) => ({
         ...d,
         _id: d._id || crypto.randomUUID(),
       }),
-    ),
+    ) as ItineraryDay[],
   );
 
   // New Array States with stable IDs
@@ -142,7 +196,7 @@ export default function ExperienceForm({
   const [faqs, setFaqs] = useState<
     { id: string; question: string; answer: string }[]
   >(
-    (initialData?.faqs || []).map((faq: any) => ({
+    (initialData?.faqs || []).map((faq: FAQ) => ({
       id: crypto.randomUUID(),
       ...faq,
     })),
@@ -386,16 +440,16 @@ export default function ExperienceForm({
 
       router.push("/admin/experiences");
       router.refresh(); // Ensure the list page shows the new data
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save experience");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const applyBasicData = (data: any) => {
+  const applyBasicData = (data: Partial<ExperienceFormData>) => {
     if (data.title) setTitle(data.title);
-    if (data.description && Object.keys(data.description).length > 0) setDescription(data.description);
+    if (data.description && typeof data.description === 'object' && Object.keys(data.description as object).length > 0) setDescription(data.description);
     if (data.basePrice !== undefined) setBasePrice(data.basePrice);
     if (data.capacity !== undefined) setCapacity(data.capacity);
     if (data.durationDays !== undefined) setDurationDays(data.durationDays);
@@ -406,38 +460,38 @@ export default function ExperienceForm({
     if (data.coverImage) setCoverImage(data.coverImage);
     if (data.cardImage) setCardImage(data.cardImage);
     if (data.images) setImages(data.images);
-    if (data.categories) setSelectedCategories(data.categories);
+    if (data.categories) setSelectedCategories(data.categories.map(c => c.categoryId));
   };
 
-  const applyListData = (data: any) => {
-    if (data.itinerary) setItinerary(data.itinerary.map((d: any) => ({ ...d, _id: crypto.randomUUID() })));
-    const mapToObj = (arr: any[]) => arr?.map((text: string) => ({ id: crypto.randomUUID(), text })) || [];
+  const applyListData = (data: Partial<ExperienceFormData>) => {
+    if (data.itinerary) setItinerary(data.itinerary.map((d: ItineraryDay) => ({ ...d, _id: crypto.randomUUID() })));
+    const mapToObj = (arr: string[] | undefined) => arr?.map((text) => ({ id: crypto.randomUUID(), text })) || [];
     if (data.inclusions) setInclusions(mapToObj(data.inclusions));
     if (data.exclusions) setExclusions(mapToObj(data.exclusions));
     if (data.thingsToCarry) setThingsToCarry(mapToObj(data.thingsToCarry));
     if (data.highlights) setHighlights(mapToObj(data.highlights));
     if (data.vibeTags) setVibeTags(mapToObj(data.vibeTags));
     if (data.pickupPoints) setPickupPoints(mapToObj(data.pickupPoints));
-    if (data.faqs) setFaqs(data.faqs.map((f: any) => ({ ...f, id: crypto.randomUUID() })));
+    if (data.faqs) setFaqs(data.faqs.map((f: FAQ) => ({ ...f, id: crypto.randomUUID() })));
   };
 
-  const applyLogisticsData = (data: any) => {
-    if (data.cancellationPolicy !== undefined) setCancellationPolicy(data.cancellationPolicy);
-    if (data.meetingPoint !== undefined) setMeetingPoint(data.meetingPoint);
-    if (data.minAge !== undefined) setMinAge(data.minAge);
-    if (data.maxAltitude !== undefined) setMaxAltitude(data.maxAltitude);
-    if (data.trekDistance !== undefined) setTrekDistance(data.trekDistance);
-    if (data.bestTimeToVisit !== undefined) setBestTimeToVisit(data.bestTimeToVisit);
-    if (data.maxGroupSize !== undefined) setMaxGroupSize(data.maxGroupSize);
-    if (data.networkConnectivity !== undefined) setNetworkConnectivity(data.networkConnectivity);
-    if (data.lastAtm !== undefined) setLastAtm(data.lastAtm);
-    if (data.fitnessRequirement !== undefined) setFitnessRequirement(data.fitnessRequirement);
-    if (data.ageRange !== undefined) setAgeRange(data.ageRange);
-    if (data.meetingTime !== undefined) setMeetingTime(data.meetingTime);
-    if (data.dropoffTime !== undefined) setDropoffTime(data.dropoffTime);
+  const applyLogisticsData = (data: Partial<ExperienceFormData>) => {
+    if (data.cancellationPolicy !== undefined) setCancellationPolicy(data.cancellationPolicy || "");
+    if (data.meetingPoint !== undefined) setMeetingPoint(data.meetingPoint || "");
+    if (data.minAge !== undefined) setMinAge(data.minAge || "");
+    if (data.maxAltitude !== undefined) setMaxAltitude(data.maxAltitude || "");
+    if (data.trekDistance !== undefined) setTrekDistance(data.trekDistance || "");
+    if (data.bestTimeToVisit !== undefined) setBestTimeToVisit(data.bestTimeToVisit || "");
+    if (data.maxGroupSize !== undefined) setMaxGroupSize(data.maxGroupSize || "");
+    if (data.networkConnectivity !== undefined) setNetworkConnectivity(data.networkConnectivity || "");
+    if (data.lastAtm !== undefined) setLastAtm(data.lastAtm || "");
+    if (data.fitnessRequirement !== undefined) setFitnessRequirement(data.fitnessRequirement || "");
+    if (data.ageRange !== undefined) setAgeRange(data.ageRange || "");
+    if (data.meetingTime !== undefined) setMeetingTime(data.meetingTime || "");
+    if (data.dropoffTime !== undefined) setDropoffTime(data.dropoffTime || "");
   };
 
-  const applyImportedData = (data: any) => {
+  const applyImportedData = (data: Partial<ExperienceFormData>) => {
     applyBasicData(data);
     applyListData(data);
     applyLogisticsData(data);
@@ -480,46 +534,69 @@ export default function ExperienceForm({
     e.target.value = "";
   };
 
-  const parseExcelBasicInfo = (imported: any, wb: any, XLSX: any) => {
+  // Define local interfaces for XLSX and Workbook to avoid 'any'
+  interface WorkSheet {
+    [key: string]: unknown;
+  }
+
+  interface WorkBook {
+    Sheets: { [sheetName: string]: WorkSheet };
+    SheetNames: string[];
+  }
+
+  interface XLSXUtils {
+    sheet_to_json<T>(worksheet: WorkSheet, opts?: unknown): T[];
+    book_new(): WorkBook;
+    book_append_sheet(workbook: WorkBook, worksheet: WorkSheet, sheetName: string): void;
+    json_to_sheet(data: unknown[], opts?: unknown): WorkSheet;
+  }
+
+  interface XLSXLib {
+    utils: XLSXUtils;
+    read(data: Uint8Array, opts?: unknown): WorkBook;
+    writeFile(workbook: WorkBook, filename: string, opts?: unknown): void;
+  }
+
+  const parseExcelBasicInfo = (imported: Partial<Record<string, unknown>>, wb: WorkBook, XLSX: XLSXLib) => {
     if (wb.Sheets["Basic Info"]) {
-      const basicInfo = XLSX.utils.sheet_to_json(wb.Sheets["Basic Info"]);
-      basicInfo.forEach((row: any) => {
-        if (row.Key && row.Value !== undefined) imported[row.Key] = row.Value;
+      const basicInfo = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets["Basic Info"]);
+      basicInfo.forEach((row) => {
+        if (row.Key && row.Value !== undefined) imported[String(row.Key)] = row.Value;
       });
     }
   };
 
-  const parseExcelItinerary = (imported: any, wb: any, XLSX: any) => {
+  const parseExcelItinerary = (imported: Partial<ExperienceFormData>, wb: WorkBook, XLSX: XLSXLib) => {
     if (wb.Sheets["Itinerary"]) {
-      const itinRows = XLSX.utils.sheet_to_json(wb.Sheets["Itinerary"]);
-      imported.itinerary = itinRows.map((row: any) => ({
-        title: row.Title || "",
-        description: row.Description || "",
+      const itinRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets["Itinerary"]);
+      imported.itinerary = itinRows.map((row) => ({
+        title: String(row.Title || ""),
+        description: String(row.Description || ""),
         meals: (typeof row.Meals === 'string') ? row.Meals.split(",").map((m: string) => m.trim()).filter(Boolean) : [],
-        accommodation: row.Accommodation || ""
+        accommodation: String(row.Accommodation || "")
       }));
     }
   };
 
-  const parseExcelFaqs = (imported: any, wb: any, XLSX: any) => {
+  const parseExcelFaqs = (imported: Partial<ExperienceFormData>, wb: WorkBook, XLSX: XLSXLib) => {
     if (wb.Sheets["FAQs"]) {
-      const faqRows = XLSX.utils.sheet_to_json(wb.Sheets["FAQs"]);
-      imported.faqs = faqRows.map((row: any) => ({
-        question: row.Question || "",
-        answer: row.Answer || ""
+      const faqRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets["FAQs"]);
+      imported.faqs = faqRows.map((row) => ({
+        question: String(row.Question || ""),
+        answer: String(row.Answer || "")
       }));
     }
   };
 
-  const parseExcelLists = (imported: any, wb: any, XLSX: any) => {
+  const parseExcelLists = (imported: Partial<ExperienceFormData>, wb: WorkBook, XLSX: XLSXLib) => {
     if (wb.Sheets["Lists"]) {
-      const listRows = XLSX.utils.sheet_to_json(wb.Sheets["Lists"]);
-      imported.inclusions = listRows.map((r: any) => r.Inclusions).filter(Boolean);
-      imported.exclusions = listRows.map((r: any) => r.Exclusions).filter(Boolean);
-      imported.thingsToCarry = listRows.map((r: any) => r.ThingsToCarry).filter(Boolean);
-      imported.highlights = listRows.map((r: any) => r.Highlights).filter(Boolean);
-      imported.vibeTags = listRows.map((r: any) => r.VibeTags).filter(Boolean);
-      imported.pickupPoints = listRows.map((r: any) => r.PickupPoints).filter(Boolean);
+      const listRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets["Lists"]);
+      imported.inclusions = listRows.map((r) => String(r.Inclusions || "")).filter(Boolean);
+      imported.exclusions = listRows.map((r) => String(r.Exclusions || "")).filter(Boolean);
+      imported.thingsToCarry = listRows.map((r) => String(r.ThingsToCarry || "")).filter(Boolean);
+      imported.highlights = listRows.map((r) => String(r.Highlights || "")).filter(Boolean);
+      imported.vibeTags = listRows.map((r) => String(r.VibeTags || "")).filter(Boolean);
+      imported.pickupPoints = listRows.map((r) => String(r.PickupPoints || "")).filter(Boolean);
     }
   };
 
@@ -594,8 +671,8 @@ export default function ExperienceForm({
       const data = new Uint8Array(buffer);
       const wb = XLSX.read(data, { type: 'array' });
       
-      const imported: any = {};
-      parseExcelBasicInfo(imported, wb, XLSX);
+      const imported: Partial<ExperienceFormData> = {};
+      parseExcelBasicInfo(imported as Record<string, unknown>, wb, XLSX);
       parseExcelItinerary(imported, wb, XLSX);
       parseExcelFaqs(imported, wb, XLSX);
       parseExcelLists(imported, wb, XLSX);
@@ -735,7 +812,7 @@ export default function ExperienceForm({
                 Description
               </label>
               <TiptapEditor
-                content={description}
+                content={description as string | object}
                 onChange={setDescription}
                 placeholder="Describe the experience..."
               />
@@ -770,7 +847,7 @@ export default function ExperienceForm({
                   min="1"
                   required
                   value={durationDays}
-                  onChange={(e) => setDurationDays(e.target.value)}
+                  onChange={(e) => setDurationDays(Number(e.target.value))}
                   className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
                 />
               </div>
@@ -945,7 +1022,7 @@ export default function ExperienceForm({
               Gallery Images
             </h2>
             <p className="text-sm text-foreground/60 pb-2">
-              Additional photos to display in the trip's gallery section.
+              Additional photos to display in the trip&apos;s gallery section.
             </p>
 
             <MediaUploader
@@ -1393,10 +1470,6 @@ export default function ExperienceForm({
                     <Info className="w-3.5 h-3.5" />
                     <span>Live Revenue Breakdown (per seat)</span>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Gross Total:</span>
-                    <span>₹{Number(basePrice).toFixed(2)}</span>
-                  </div>
                   {taxes.map((tax) => {
                      const amount = (basePrice * tax.percentage) / 100;
                      return (
@@ -1426,7 +1499,7 @@ export default function ExperienceForm({
                 min="1"
                 required
                 value={capacity}
-                onChange={(e) => setCapacity(e.target.value)}
+                onChange={(e) => setCapacity(Number(e.target.value))}
                 className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
               />
             </div>

@@ -19,7 +19,7 @@ import Image from "@tiptap/extension-image";
 import Youtube from "@tiptap/extension-youtube";
 
 interface TiptapEditorProps {
-  content: object;
+  content: string | object;
   onChange: (content: object) => void;
   placeholder?: string;
   editable?: boolean;

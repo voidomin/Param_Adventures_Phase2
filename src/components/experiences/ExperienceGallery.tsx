@@ -23,13 +23,23 @@ export default function ExperienceGallery({ images }: ExperienceGalleryProps) {
 
   const openLightbox = (index: number) => {
     setSelectedIndex(index);
-    document.body.style.overflow = "hidden";
   };
 
   const closeLightbox = useCallback(() => {
     setSelectedIndex(null);
-    document.body.style.overflow = "unset";
   }, []);
+
+  // Handle body scroll locking
+  useEffect(() => {
+    if (selectedIndex !== null) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [selectedIndex]);
 
   const showNext = useCallback(
     (e?: React.MouseEvent) => {

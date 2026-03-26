@@ -5,6 +5,43 @@ import { Download, Loader2, FileText } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
+interface InvoiceData {
+  booking: {
+    id: string;
+    date: string;
+    status: string;
+    participantCount: number;
+    baseFare: number;
+    totalPrice: number;
+    taxBreakdown: { name: string; percentage: number; amount: number }[];
+  };
+  company: {
+    companyName: string;
+    companyAddress: string;
+    gstNumber: string;
+    stateCode: string;
+    panNumber: string;
+  };
+  experience: {
+    title: string;
+    location: string;
+  };
+  primaryContact: {
+    name: string;
+    email: string;
+    phoneNumber: string;
+  };
+  payment: {
+    providerPaymentId?: string;
+  };
+}
+
+interface JsPDFWithAutoTable extends jsPDF {
+  lastAutoTable: {
+    finalY: number;
+  };
+}
+
 export default function DownloadInvoiceBtn({ bookingId }: Readonly<{ bookingId: string }>) {
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -14,7 +51,7 @@ export default function DownloadInvoiceBtn({ bookingId }: Readonly<{ bookingId: 
       // 1. Fetch data
       const res = await fetch(`/api/bookings/${bookingId}/invoice`);
       if (!res.ok) throw new Error("Failed to fetch invoice data");
-      const data = await res.json();
+      const data: InvoiceData = await res.json();
 
       // 2. Initialize jsPDF
       const doc = new jsPDF();
@@ -83,8 +120,7 @@ export default function DownloadInvoiceBtn({ bookingId }: Readonly<{ bookingId: 
       });
 
       // 7. Tax Breakdown Section
-      // @ts-ignore
-      const finalY = (doc as any).lastAutoTable.finalY || 135;
+      const finalY = (doc as unknown as JsPDFWithAutoTable).lastAutoTable?.finalY || 135;
       
       // We will place the totals on the right side
       const rightColX = pageWidth - 70;
@@ -95,7 +131,7 @@ export default function DownloadInvoiceBtn({ bookingId }: Readonly<{ bookingId: 
 
       let currentY = finalY + 16;
       if (Array.isArray(booking.taxBreakdown)) {
-         booking.taxBreakdown.forEach((tax: any) => {
+         booking.taxBreakdown.forEach((tax) => {
             doc.text(`${tax.name} (${tax.percentage}%):`, rightColX, currentY);
             doc.text(`Rs ${Number(tax.amount || 0).toFixed(2)}`, pageWidth - 14, currentY, { align: "right" });
             currentY += 6;

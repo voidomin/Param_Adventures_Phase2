@@ -22,20 +22,23 @@ vi.mock('next/navigation', () => ({
   notFound: vi.fn(),
 }));
 
+import React from 'react';
+
 vi.mock('framer-motion', () => {
-  const React = require('react');
   const tags = ['div', 'button', 'span', 'p', 'h1', 'h2', 'h3', 'section', 'footer', 'header', 'nav', 'aside', 'main', 'article', 'ul', 'ol', 'li', 'video', 'img'];
 
   const motion: Record<string, (props: any) => unknown> = {};
   tags.forEach((tag) => {
     motion[tag] = (props: any) => {
+      /* eslint-disable @typescript-eslint/no-unused-vars */
       const {
-        initial, animate, exit, transition, variants, whileHover, whileTap, whileInView,
-        whileDrag, whileFocus, viewport, layout, layoutId, custom, inherit, static: _static,
-        onAnimationStart, onAnimationComplete, onUpdate, onHoverStart, onHoverEnd,
-        onTapStart, onTap, onTapCancel, onPan, onPanStart, onPanSessionStart, onPanEnd,
+        initial: _i, animate: _a, exit: _e, transition: _t, variants: _v, whileHover: _wh, whileTap: _wt, whileInView: _wv,
+        whileDrag: _wd, whileFocus: _wf, viewport: _vp, layout: _l, layoutId, custom: _c, inherit: _inh, static: _s,
+        onAnimationStart: _oas, onAnimationComplete: _oac, onUpdate: _ou, onHoverStart: _ohs, onHoverEnd: _ohe,
+        onTapStart: _ots, onTap: _ot, onTapCancel: _otc, onPan: _op, onPanStart: _ops, onPanSessionStart: _opss, onPanEnd: _ope,
         ...rest
       } = props;
+      /* eslint-enable @typescript-eslint/no-unused-vars */
 
       return React.createElement(
         tag,
@@ -78,10 +81,12 @@ vi.mock('jspdf', () => {
   MockJsPDF.prototype.line = vi.fn().mockReturnThis();
   MockJsPDF.prototype.setLineWidth = vi.fn().mockReturnThis();
   MockJsPDF.prototype.setDrawColor = vi.fn().mockReturnThis();
-  MockJsPDF.prototype.splitTextToSize = vi.fn((text) => [text]);
+  MockJsPDF.prototype.splitTextToSize = vi.fn((text: string) => [text]);
   MockJsPDF.prototype.roundedRect = vi.fn().mockReturnThis();
   MockJsPDF.prototype.setGState = vi.fn().mockReturnThis();
   MockJsPDF.prototype.circle = vi.fn().mockReturnThis();
+  
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (MockJsPDF as any).GState = class {
     opacity = 1;
     constructor(public props: any) {}

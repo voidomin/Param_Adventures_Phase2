@@ -1,11 +1,18 @@
-export function getPlainTextFromJSON(json: any): string {
+export interface RichTextNode {
+  type?: string;
+  text?: string;
+  content?: RichTextNode[];
+  html?: string;
+}
+
+export function getPlainTextFromJSON(json: RichTextNode | string | null | undefined): string {
   if (!json) return "";
   
   // Handle string content
   if (typeof json === "string") return json.trim();
 
   // Handle { html: "..." } format from seed data
-  if (json.html && typeof json.html === "string") {
+  if (typeof json === "object" && json.html && typeof json.html === "string") {
     // ReDoS-safe linear-time HTML stripping (O(n))
     let result = "";
     let insideTag = false;
@@ -27,11 +34,11 @@ export function getPlainTextFromJSON(json: any): string {
   }
 
   // Handle Tiptap JSON format
-  if (!json.content || !Array.isArray(json.content)) return "";
+  if (typeof json !== "object" || !json.content || !Array.isArray(json.content)) return "";
   
   let text = "";
   
-  const extractText = (node: any) => {
+  const extractText = (node: RichTextNode) => {
     if (node.text) {
       text += node.text;
     }

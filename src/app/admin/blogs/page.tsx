@@ -113,7 +113,6 @@ export default function AdminBlogsPage() {
 
   useEffect(() => {
     let active = true;
-    setIsLoading(true);
     const q = statusFilter === "ALL" ? "" : `?status=${statusFilter}`;
 
     fetch(`/api/admin/blogs${q}`)
@@ -231,7 +230,10 @@ export default function AdminBlogsPage() {
             {STATUS_OPTIONS.map((s) => (
               <button
                 key={s}
-                onClick={() => setStatusFilter(s)}
+                onClick={() => {
+                  setIsLoading(true);
+                  setStatusFilter(s);
+                }}
                 className={`px-4 py-2 rounded-xl text-sm font-semibold transition-colors border ${
                   statusFilter === s
                     ? "bg-primary text-primary-foreground border-primary"

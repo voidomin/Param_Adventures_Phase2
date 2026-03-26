@@ -196,7 +196,6 @@ export default function AdminBookingsPage() {
     let active = true;
     const params = new URLSearchParams();
     if (statusFilter !== "ALL") params.set("status", statusFilter);
-    setIsLoading(true);
 
     fetch(`/api/admin/bookings?${params}`)
       .then((r) => r.json())
@@ -431,7 +430,10 @@ export default function AdminBookingsPage() {
             {STATUS_FILTERS.map((s) => (
               <button
                 key={s}
-                onClick={() => setStatusFilter(s)}
+                onClick={() => {
+                  setIsLoading(true);
+                  setStatusFilter(s);
+                }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
                   statusFilter === s
                     ? "bg-primary text-primary-foreground border-primary"

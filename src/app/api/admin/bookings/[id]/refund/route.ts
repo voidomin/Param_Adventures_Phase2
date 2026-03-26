@@ -71,7 +71,7 @@ export async function POST(
       userEmail: booking.user.email,
       experienceTitle: booking.experience.title,
       slotDate: booking.slot?.date?.toISOString() ?? new Date().toISOString(),
-      refundPreference: (booking.refundPreference ?? "COUPON") as any,
+      refundPreference: (booking.refundPreference ?? "COUPON") as "COUPON" | "ORIGINAL",
       refundNote,
       totalPrice: Number(booking.totalPrice),
     });

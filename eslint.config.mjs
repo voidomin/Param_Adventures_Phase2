@@ -1,24 +1,36 @@
-import { defineConfig, globalIgnores } from "eslint/config";
+import { defineConfig } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
 
 const eslintConfig = defineConfig([
+  {
+    ignores: [
+      ".next/**",
+      "out/**",
+      "build/**",
+      "next-env.d.ts",
+      "reference/**",
+      "skills/**",
+      "public/**",
+      "dist/**",
+      "vitest.setup.shared.ts",
+      "vitest.setup.ui.ts",
+      "*.setup.ts",
+      "*.setup.*.ts",
+      "lint-results.txt",
+      "lint-final.txt",
+      "backup_current.sql",
+      "generate-tests.mjs",
+    ],
+  },
   ...nextVitals,
   ...nextTs,
-  // Override default ignores of eslint-config-next.
-  globalIgnores([
-    // Default ignores of eslint-config-next:
-    ".next/**",
-    "out/**",
-    "build/**",
-    "next-env.d.ts",
-    "reference/**",
-  ]),
   {
     files: ["**/__tests__/**/*.test.ts", "**/__tests__/**/*.test.tsx"],
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/ban-ts-comment": "off",
+      "react-hooks/exhaustive-deps": "off",
     },
   },
 ]);

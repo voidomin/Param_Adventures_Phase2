@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
+import type { RateLimitResult } from "@/lib/rate-limit";
 import { findMatchingRule } from "@/lib/rate-limit-config";
 
 /**
@@ -20,7 +21,7 @@ export default function proxy(request: NextRequest) {
 
   // ─── 1. Rate Limiting ──────────────────────────────────
   const rule = findMatchingRule(pathname);
-  let rateLimitResult: any = null;
+  let rateLimitResult: RateLimitResult | null = null;
 
   const forwarded = request.headers.get("x-forwarded-for");
   const realIp = request.headers.get("x-real-ip");

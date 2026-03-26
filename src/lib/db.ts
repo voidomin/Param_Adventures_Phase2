@@ -17,8 +17,8 @@ function createPrismaClient() {
 // Extend the PrismaClient type to include the new model explicitly
 // This handles cases where the IDE/runtime might have stale type caches
 export type ExtendedPrismaClient = PrismaClient & {
-  adventureQuote: any;
-  siteSetting: any; // Using any as a fail-safe for the delegate
+  adventureQuote: unknown;
+  siteSetting: unknown; // Using unknown as a fail-safe for the delegate
 };
 
 export const prisma = globalForPrisma.prisma ?? createPrismaClient();

@@ -25,6 +25,7 @@ vi.mock('@/lib/auth', () => ({
   generateRefreshToken: vi.fn().mockReturnValue('mock_refresh_token'),
 }));
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 vi.mock('@/lib/api-auth', () => ({
   authorizeRequest: vi.fn().mockResolvedValue({ authorized: true, user: { id: 'mock-admin-id', role: 'ADMIN' } }),
 }));

@@ -32,10 +32,11 @@ import SimilarTrips from "@/components/experiences/SimilarTrips";
 import ExperienceGallery from "@/components/experiences/ExperienceGallery";
 import MobileBookingBar from "@/components/booking/MobileBookingBar";
 import ExperienceStickyNav from "@/components/experiences/ExperienceStickyNav";
-import DifficultyMeter from "@/components/experiences/DifficultyMeter";
+import DifficultyMeter, { type DifficultyLevel } from "@/components/experiences/DifficultyMeter";
 import RichTextRenderer from "@/components/blog/RichTextRenderer";
 import DownloadItineraryBtn from "@/components/experiences/DownloadItineraryBtn";
 import ShareButton from "@/components/ui/ShareButton";
+import type { RichTextNode } from "@/lib/utils/rich-text";
 
 export const revalidate = 60;
 
@@ -67,7 +68,7 @@ export async function generateMetadata({
 
   const description =
     experience.description && typeof experience.description === "object"
-      ? getPlainTextFromJSON(experience.description)
+      ? getPlainTextFromJSON(experience.description as RichTextNode)
       : String(experience.description || "");
 
   const finalDescription =
@@ -103,8 +104,68 @@ export async function generateMetadata({
   };
 }
 
+interface CategoryWithRelation {
+  category: {
+    id: string;
+    name: string;
+  };
+}
+
+interface ItineraryDay {
+  id?: string;
+  _id?: string;
+  title: string;
+  description: string;
+  meals?: string[] | string;
+  accommodation?: string;
+}
+
+interface FAQ {
+  question: string;
+  answer: string;
+}
+
+interface ExperienceWithInclusions {
+  id: string;
+  title: string;
+  slug: string;
+  description: RichTextNode; // Rich text JSON
+  coverImage: string | null;
+  cardImage: string | null;
+  images: string[];
+  location: string;
+  basePrice: number;
+  durationDays: number;
+  capacity: number;
+  difficulty: DifficultyLevel;
+  status: string;
+  maxGroupSize?: number | null;
+  minAge?: number | null;
+  ageRange?: string | null;
+  highlights?: string[];
+  itinerary: ItineraryDay[];
+  inclusions?: string[];
+  exclusions?: string[];
+  thingsToCarry?: string[];
+  faqs?: FAQ[];
+  cancellationPolicy?: string | null;
+  meetingPoint?: string | null;
+  meetingTime?: string | null;
+  dropoffTime?: string | null;
+  maxAltitude?: string | null;
+  trekDistance?: string | null;
+  bestTimeToVisit?: string | null;
+  networkConnectivity?: string | null;
+  lastAtm?: string | null;
+  fitnessRequirement?: string | null;
+  vibeTags?: string[];
+  pickupPoints?: string[];
+  dropPoints?: string[];
+  categories: CategoryWithRelation[];
+}
+
 type ExperienceJsonLdProps = {
-  experience: any;
+  experience: ExperienceWithInclusions;
   url: string;
   description: string;
 };
@@ -146,10 +207,10 @@ function ExperienceJsonLd({
 }
 
 // Helper components to reduce page complexity
-function HeroTags({ experience }: Readonly<{ experience: any }>) {
+function HeroTags({ experience }: Readonly<{ experience: ExperienceWithInclusions }>) {
   return (
     <div className="flex gap-2 mb-8 bg-foreground/2 p-4 pb-20 md:pb-4 rounded-2xl border border-border/50 overflow-x-auto md:overflow-visible md:flex-wrap no-scrollbar snap-x relative z-30">
-      {experience.categories.map((c: any) => (
+      {experience.categories.map((c: CategoryWithRelation) => (
         <span
           key={c.category.id}
           className="bg-primary text-primary-foreground px-4 py-1.5 rounded-full text-sm font-bold shadow-sm snap-start whitespace-nowrap"
@@ -184,7 +245,7 @@ function HeroTags({ experience }: Readonly<{ experience: any }>) {
   );
 }
 
-function EssentialLogistics({ experience }: Readonly<{ experience: any }>) {
+function EssentialLogistics({ experience }: Readonly<{ experience: ExperienceWithInclusions }>) {
   if (
     !experience.networkConnectivity &&
     !experience.lastAtm &&
@@ -273,7 +334,7 @@ function EssentialLogistics({ experience }: Readonly<{ experience: any }>) {
   );
 }
 
-function ItinerarySection({ itinerary }: Readonly<{ itinerary: any }>) {
+function ItinerarySection({ itinerary }: Readonly<{ itinerary: ItineraryDay[] }>) {
   if (!Array.isArray(itinerary) || itinerary.length === 0) return null;
 
   return (
@@ -283,7 +344,7 @@ function ItinerarySection({ itinerary }: Readonly<{ itinerary: any }>) {
         Detailed Itinerary
       </h2>
       <div className="space-y-6">
-        {itinerary.map((dayItem: any, index: number) => (
+        {itinerary.map((dayItem: ItineraryDay, index: number) => (
           <div
             key={dayItem.id || dayItem._id || `day-${index}`}
             className="relative pl-8 md:pl-0"
@@ -355,8 +416,8 @@ function InclusionsExclusions({
   inclusions,
   exclusions,
 }: Readonly<{
-  inclusions: any;
-  exclusions: any;
+  inclusions: string[] | undefined;
+  exclusions: string[] | undefined;
 }>) {
   const hasInclusions = Array.isArray(inclusions) && inclusions.length > 0;
   const hasExclusions = Array.isArray(exclusions) && exclusions.length > 0;
@@ -420,7 +481,7 @@ export default async function ExperienceDetailPage({
     include: {
       categories: { include: { category: true } },
     },
-  })) as any;
+  })) as unknown as ExperienceWithInclusions;
 
   if (experience?.status !== "PUBLISHED") {
     notFound();
@@ -548,7 +609,7 @@ export default async function ExperienceDetailPage({
               <Mountain className="w-8 h-8 text-primary" />
               The Experience
             </h2>
-            {experience.highlights?.length > 0 && (
+            {experience.highlights && experience.highlights.length > 0 && (
               <div className="mb-6 space-y-3 bg-primary/5 border border-primary/20 p-6 rounded-2xl">
                 <h3 className="font-bold text-lg text-foreground mb-4">
                   Trip Highlights
@@ -645,7 +706,7 @@ export default async function ExperienceDetailPage({
                   Things to Carry
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-8">
-                  {(experience.thingsToCarry as string[]).map((item, ix) => (
+                  {experience.thingsToCarry.map((item, ix) => (
                     <div
                       key={item}
                       className="flex items-center gap-3 border-b border-border/50 pb-2"
@@ -675,9 +736,7 @@ export default async function ExperienceDetailPage({
                 Frequently Asked Questions
               </h2>
               <div className="space-y-4">
-                {(
-                  experience.faqs as { question: string; answer: string }[]
-                ).map((faq, ix) => (
+                {experience.faqs.map((faq, ix) => (
                   <details
                     key={`${ix}-${faq.question}`}
                     className="group bg-card border border-border rounded-2xl overflow-hidden [&_summary::-webkit-details-marker]:hidden"
@@ -748,7 +807,7 @@ export default async function ExperienceDetailPage({
 
             <SimilarTrips
               currentExperienceId={experience.id}
-              categoryIds={experience.categories.map((c: any) => c.category.id)}
+              categoryIds={experience.categories.map((c: CategoryWithRelation) => c.category.id)}
             />
 
             <DownloadItineraryBtn slug={experience.slug} />
