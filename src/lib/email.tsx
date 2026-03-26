@@ -20,29 +20,21 @@ function parseBoolean(value: string | undefined): boolean | undefined {
 
 // ─── SMTP CONFIGURATION ──────────────────────────────────
 const SMTP_HOST = process.env.SMTP_HOST || "smtp.zoho.in";
-const SMTP_PORT = Number.parseInt(process.env.SMTP_PORT || "465", 10);
+const SMTP_PORT = Number.parseInt(process.env.SMTP_PORT || "587", 10);
 const SMTP_SECURE = parseBoolean(process.env.SMTP_SECURE) ?? SMTP_PORT === 465;
 
 const transporter = nodemailer.createTransport({
   host: SMTP_HOST,
   port: SMTP_PORT,
-  secure: SMTP_SECURE,
+  secure: SMTP_SECURE, // true for 465, false for 587/25
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
-  connectionTimeout: Number.parseInt(
-    process.env.SMTP_CONNECTION_TIMEOUT || "15000",
-    10,
-  ),
-  greetingTimeout: Number.parseInt(
-    process.env.SMTP_GREETING_TIMEOUT || "15000",
-    10,
-  ),
-  socketTimeout: Number.parseInt(
-    process.env.SMTP_SOCKET_TIMEOUT || "20000",
-    10,
-  ),
+  // ─── Reliability & Timeouts ────────────────────────────
+  connectionTimeout: 15000, // 15 seconds
+  greetingTimeout: 15000,
+  socketTimeout: 30000,
 });
 
 const FROM_EMAIL =
