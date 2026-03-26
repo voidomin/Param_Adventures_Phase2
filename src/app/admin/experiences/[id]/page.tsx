@@ -59,15 +59,9 @@ export default async function EditExperiencePage({
     thingsToCarry: Array.isArray(experience.thingsToCarry)
       ? (experience.thingsToCarry as string[])
       : [],
-    highlights: Array.isArray(experience.highlights)
-      ? (experience.highlights as string[])
-      : [],
-    vibeTags: Array.isArray(experience.vibeTags)
-      ? (experience.vibeTags as string[])
-      : [],
-    pickupPoints: Array.isArray(experience.pickupPoints)
-      ? (experience.pickupPoints as string[])
-      : [],
+    highlights: experience.highlights,
+    vibeTags: experience.vibeTags,
+    pickupPoints: experience.pickupPoints,
     faqs: Array.isArray(experience.faqs) ? (experience.faqs as unknown as FAQ[]) : [],
   };
 

@@ -68,10 +68,7 @@ declare global {
 
 function loadRazorpayScript(): Promise<boolean> {
   return new Promise((resolve) => {
-    if (
-      typeof globalThis.window !== "undefined" &&
-      globalThis.window.Razorpay !== undefined
-    ) {
+    if (globalThis.window?.Razorpay !== undefined) {
       resolve(true);
       return;
     }
