@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
+import { withBuildSafety } from "@/lib/db-utils";
 import {
   MapPin,
   CalendarDays,
@@ -41,13 +42,17 @@ type Props = Readonly<{ params: Promise<{ slug: string }> }>;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const blog = await prisma.blog.findUnique({
-    where: { slug },
-    select: {
-      title: true,
-      coverImage: { select: { originalUrl: true } },
-    },
-  });
+  const blog = await withBuildSafety(
+    () =>
+      prisma.blog.findUnique({
+        where: { slug },
+        select: {
+          title: true,
+          coverImage: { select: { originalUrl: true } },
+        },
+      }),
+    null,
+  );
 
   if (!blog) return { title: "Blog Not Found" };
 
@@ -74,22 +79,26 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function BlogArticlePage({ params }: Props) {
   const { slug } = await params;
 
-  const blog = await prisma.blog.findUnique({
-    where: { slug },
-    include: {
-      author: { select: { name: true, avatarUrl: true } },
-      experience: {
-        select: {
-          id: true,
-          title: true,
-          slug: true,
-          location: true,
-          basePrice: true,
-          images: true,
+  const blog = await withBuildSafety(
+    () =>
+      prisma.blog.findUnique({
+        where: { slug },
+        include: {
+          author: { select: { name: true, avatarUrl: true } },
+          experience: {
+            select: {
+              id: true,
+              title: true,
+              slug: true,
+              location: true,
+              basePrice: true,
+              images: true,
+            },
+          },
         },
-      },
-    },
-  });
+      }),
+    null,
+  );
 
   // Check authorization for preview
   const cookieStore = await cookies();

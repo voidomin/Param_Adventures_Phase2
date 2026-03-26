@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { prisma } from "@/lib/db";
+import { withBuildSafety } from "@/lib/db-utils";
 import ExperiencesClient from "./ExperiencesClient";
 import { getPlainTextFromJSON, RichTextNode } from "@/lib/utils/rich-text";
 
@@ -33,27 +34,35 @@ export default async function ExperiencesPage({
   const params = await searchParams;
   const initialFilter = (params?.category as string) || "all";
 
-  const experiences = await prisma.experience.findMany({
-    where: { status: "PUBLISHED" },
-    orderBy: { createdAt: "desc" },
-    include: {
-      categories: {
-        include: { category: true },
-      },
-      slots: {
-        where: {
-          date: { gte: new Date() },
-          status: "UPCOMING",
+  const experiences = await withBuildSafety(
+    () =>
+      prisma.experience.findMany({
+        where: { status: "PUBLISHED" },
+        orderBy: { createdAt: "desc" },
+        include: {
+          categories: {
+            include: { category: true },
+          },
+          slots: {
+            where: {
+              date: { gte: new Date() },
+              status: "UPCOMING",
+            },
+            select: { id: true },
+          },
         },
-        select: { id: true },
-      },
-    },
-  });
+      }),
+    [],
+  );
 
-  const dbCategories = await prisma.category.findMany({
-    where: { isActive: true },
-    orderBy: { name: "asc" },
-  });
+  const dbCategories = await withBuildSafety(
+    () =>
+      prisma.category.findMany({
+        where: { isActive: true },
+        orderBy: { name: "asc" },
+      }),
+    [],
+  );
 
   const serializedCategories = dbCategories.map((c) => ({
     id: c.id,

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { withBuildSafety } from "@/lib/db-utils";
 
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -47,17 +48,21 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const experience = await prisma.experience.findUnique({
-    where: { slug },
-    select: {
-      title: true,
-      description: true,
-      coverImage: true,
-      cardImage: true,
-      images: true,
-      location: true,
-    },
-  });
+  const experience = await withBuildSafety(
+    () =>
+      prisma.experience.findUnique({
+        where: { slug },
+        select: {
+          title: true,
+          description: true,
+          coverImage: true,
+          cardImage: true,
+          images: true,
+          location: true,
+        },
+      }),
+    null,
+  );
 
   if (!experience) return { title: "Experience Not Found" };
 
@@ -477,36 +482,50 @@ export default async function ExperienceDetailPage({
 }>) {
   const { slug } = await params;
 
-  const experience = (await prisma.experience.findUnique({
-    where: { slug },
-    include: {
-      categories: { include: { category: true } },
-    },
-  })) as unknown as ExperienceWithInclusions;
+  const experience = await withBuildSafety(
+    () =>
+      prisma.experience.findUnique({
+        where: { slug },
+        include: {
+          categories: { include: { category: true } },
+          slots: {
+            where: {
+              date: { gte: new Date() },
+              status: "UPCOMING",
+            },
+            orderBy: { date: "asc" },
+          },
+        },
+      }),
+    null,
+  );
 
-  if (experience?.status !== "PUBLISHED") {
+  if (!experience) {
     notFound();
   }
 
+  // Cast after null check for type safety
+  const exp = experience as unknown as ExperienceWithInclusions;
+
   const description =
-    experience.description && typeof experience.description === "object"
-      ? getPlainTextFromJSON(experience.description)
-      : String(experience.description || "");
+    exp.description && typeof exp.description === "object"
+      ? getPlainTextFromJSON(exp.description as unknown as RichTextNode)
+      : String(exp.description || "");
 
   const finalDescription =
     description ||
-    `Explore ${experience.title} in ${experience.location || "India"} with Param Adventures.`;
+    `Explore ${exp.title} in ${exp.location || "India"} with Param Adventures.`;
 
   const primaryMedia =
-    experience.coverImage ||
-    experience.images[0] ||
+    exp.coverImage ||
+    exp.images[0] ||
     "https://picsum.photos/seed/placeholder/1920/1080";
   const isVideo = /\.(mp4|webm)$/i.exec(primaryMedia);
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-20">
       <ExperienceJsonLd
-        experience={experience}
+        experience={exp}
         url={`${process.env.NEXT_PUBLIC_APP_URL || ""}/experiences/${slug}`}
         description={finalDescription}
       />
@@ -526,7 +545,7 @@ export default async function ExperienceDetailPage({
             <div className="relative w-full h-full">
               <Image
                 src={primaryMedia}
-                alt={experience.title}
+                alt={exp.title}
                 fill
                 priority
                 className="object-cover"
@@ -542,11 +561,11 @@ export default async function ExperienceDetailPage({
         {/* Action Buttons - Standardized positioning */}
         <div className="absolute top-24 right-6 md:top-28 md:right-8 z-40 flex items-center gap-3">
           <SaveButton
-            experienceId={experience.id}
+            experienceId={exp.id}
             className="scale-110"
           />
           <ShareButton
-            title={experience.title}
+            title={exp.title}
             className="scale-110"
             variant="outline"
           />
@@ -558,16 +577,16 @@ export default async function ExperienceDetailPage({
 
           <div className="flex-1 flex flex-col justify-end pb-12">
             <h1 className="text-4xl md:text-5xl lg:text-7xl font-heading font-black text-white leading-tight drop-shadow-2xl max-w-4xl">
-            {experience.title}
+            {exp.title}
           </h1>
           <div className="flex flex-wrap items-center gap-6 mt-6 text-white font-medium text-lg drop-shadow-md">
             <div className="flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-primary" /> {experience.location}
+              <MapPin className="w-5 h-5 text-primary" /> {exp.location}
             </div>
             <div className="flex items-center gap-2">
               <Clock className="w-5 h-5 text-primary" />{" "}
-              {experience.durationDays} Days /{" "}
-              {experience.durationDays > 1 ? experience.durationDays - 1 : 0}{" "}
+              {exp.durationDays} Days /{" "}
+              {exp.durationDays > 1 ? exp.durationDays - 1 : 0}{" "}
               Nights
             </div>
           </div>
@@ -582,24 +601,24 @@ export default async function ExperienceDetailPage({
           <ExperienceStickyNav
             sections={[
               { id: "about", label: "About" },
-              ...(Array.isArray(experience.itinerary) &&
-              experience.itinerary.length > 0
+              ...(Array.isArray(exp.itinerary) &&
+              exp.itinerary.length > 0
                 ? [{ id: "itinerary", label: "Itinerary" }]
                 : []),
-              ...((Array.isArray(experience.inclusions) &&
-                experience.inclusions.length > 0) ||
-              (Array.isArray(experience.exclusions) &&
-                experience.exclusions.length > 0)
+              ...((Array.isArray(exp.inclusions) &&
+                exp.inclusions.length > 0) ||
+              (Array.isArray(exp.exclusions) &&
+                exp.exclusions.length > 0)
                 ? [{ id: "inclusions", label: "Inclusions" }]
                 : []),
-              ...(Array.isArray(experience.thingsToCarry) &&
-              experience.thingsToCarry.length > 0
+              ...(Array.isArray(exp.thingsToCarry) &&
+              exp.thingsToCarry.length > 0
                 ? [{ id: "things-to-carry", label: "Things to Carry" }]
                 : []),
-              ...(experience.images?.length > 0
+              ...(exp.images?.length > 0
                 ? [{ id: "gallery", label: "Gallery" }]
                 : []),
-              ...(Array.isArray(experience.faqs) && experience.faqs.length > 0
+              ...(Array.isArray(exp.faqs) && exp.faqs.length > 0
                 ? [{ id: "faqs", label: "FAQs" }]
                 : []),
               { id: "reviews", label: "Reviews" },
@@ -608,18 +627,18 @@ export default async function ExperienceDetailPage({
 
           {/* About */}
           <section id="about" className="scroll-mt-32">
-            <HeroTags experience={experience} />
+            <HeroTags experience={exp} />
             <h2 className="text-3xl font-heading font-bold mb-6 flex items-center gap-3">
               <Mountain className="w-8 h-8 text-primary" />
               The Experience
             </h2>
-            {experience.highlights && experience.highlights.length > 0 && (
+            {exp.highlights && exp.highlights.length > 0 && (
               <div className="mb-6 space-y-3 bg-primary/5 border border-primary/20 p-6 rounded-2xl">
                 <h3 className="font-bold text-lg text-foreground mb-4">
                   Trip Highlights
                 </h3>
                 <ul className="space-y-3">
-                  {experience.highlights.map((item: string, i: number) => (
+                  {exp.highlights.map((item: string, i: number) => (
                     <li
                       key={`highlight-${i}-${item.substring(0, 10)}`}
                       className="flex items-start gap-3 text-foreground/80 font-medium"
@@ -632,7 +651,7 @@ export default async function ExperienceDetailPage({
               </div>
             )}
             <div className="text-lg text-foreground/80 leading-relaxed">
-              <RichTextRenderer content={experience.description} />
+              <RichTextRenderer content={exp.description as unknown as RichTextNode} />
             </div>
           </section>
 
@@ -646,7 +665,7 @@ export default async function ExperienceDetailPage({
                 <p className="text-sm text-foreground/60 font-medium whitespace-nowrap">
                   Duration
                 </p>
-                <p className="font-bold">{experience.durationDays} Days</p>
+                <p className="font-bold">{exp.durationDays} Days</p>
               </div>
             </div>
 
@@ -658,7 +677,7 @@ export default async function ExperienceDetailPage({
                 <p className="text-sm text-foreground/60 font-medium whitespace-nowrap">
                   Max Altitude
                 </p>
-                <p className="font-bold">{experience.maxAltitude || "N/A"}</p>
+                <p className="font-bold">{exp.maxAltitude || "N/A"}</p>
               </div>
             </div>
 
@@ -670,7 +689,7 @@ export default async function ExperienceDetailPage({
                 <p className="text-sm text-foreground/60 font-medium whitespace-nowrap">
                   Trek Distance
                 </p>
-                <p className="font-bold">{experience.trekDistance || "N/A"}</p>
+                <p className="font-bold">{exp.trekDistance || "N/A"}</p>
               </div>
             </div>
 
@@ -683,24 +702,24 @@ export default async function ExperienceDetailPage({
                   Best Season
                 </p>
                 <p className="font-bold">
-                  {experience.bestTimeToVisit || "Year Round"}
+                  {exp.bestTimeToVisit || "Year Round"}
                 </p>
               </div>
             </div>
           </section>
 
-          <EssentialLogistics experience={experience} />
+          <EssentialLogistics experience={exp as unknown as ExperienceWithInclusions} />
 
-          <ItinerarySection itinerary={experience.itinerary} />
+          <ItinerarySection itinerary={exp.itinerary as unknown as ItineraryDay[]} />
 
           <InclusionsExclusions
-            inclusions={experience.inclusions}
-            exclusions={experience.exclusions}
+            inclusions={exp.inclusions as unknown as string[]}
+            exclusions={exp.exclusions as unknown as string[]}
           />
 
           {/* Things to Carry */}
-          {Array.isArray(experience.thingsToCarry) &&
-            experience.thingsToCarry.length > 0 && (
+          {Array.isArray(exp.thingsToCarry) &&
+            exp.thingsToCarry.length > 0 && (
               <section
                 id="things-to-carry"
                 className="bg-card border border-border rounded-3xl p-8 shadow-sm scroll-mt-32"
@@ -710,7 +729,7 @@ export default async function ExperienceDetailPage({
                   Things to Carry
                 </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-8">
-                  {experience.thingsToCarry.map((item) => (
+                  {exp.thingsToCarry.map((item) => (
                     <div
                       key={item}
                       className="flex items-center gap-3 border-b border-border/50 pb-2"
@@ -726,21 +745,21 @@ export default async function ExperienceDetailPage({
             )}
 
           {/* Gallery */}
-          {experience.images.length > 0 && (
+          {exp.images.length > 0 && (
             <section id="gallery" className="scroll-mt-32">
-              <ExperienceGallery images={experience.images} />
+              <ExperienceGallery images={exp.images} />
             </section>
           )}
 
           {/* FAQs */}
-          {Array.isArray(experience.faqs) && experience.faqs.length > 0 && (
+          {Array.isArray(exp.faqs) && exp.faqs.length > 0 && (
             <section id="faqs" className="bg-background pt-4 scroll-mt-32">
               <h2 className="text-3xl font-heading font-bold mb-8 flex items-center gap-3">
                 <Info className="w-8 h-8 text-primary" />
                 Frequently Asked Questions
               </h2>
               <div className="space-y-4">
-                {experience.faqs.map((faq, _ix) => (
+                {(exp.faqs as unknown as FAQ[]).map((faq, _ix) => (
                   <details
                     key={`${_ix}-${faq.question}`}
                     className="group bg-card border border-border rounded-2xl overflow-hidden [&_summary::-webkit-details-marker]:hidden"
@@ -759,13 +778,13 @@ export default async function ExperienceDetailPage({
           )}
 
           {/* Policies */}
-          {experience.cancellationPolicy && (
+          {exp.cancellationPolicy && (
             <section className="bg-red-500/5 border border-red-500/20 rounded-3xl p-8 mb-8">
               <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-red-500/90">
                 <Shield className="w-6 h-6" /> Cancellation Policy
               </h2>
               <p className="text-foreground/80 leading-relaxed whitespace-pre-line text-sm">
-                {experience.cancellationPolicy}
+                {exp.cancellationPolicy}
               </p>
             </section>
           )}
@@ -775,7 +794,7 @@ export default async function ExperienceDetailPage({
             id="reviews"
             className="pt-8 border-t border-border scroll-mt-32"
           >
-            <ExperienceReviews slug={experience.slug} />
+            <ExperienceReviews slug={exp.slug} />
           </section>
         </div>
 
@@ -792,7 +811,7 @@ export default async function ExperienceDetailPage({
             <div className="flex items-end gap-2 mb-8 pb-8 border-b border-border">
               <span className="text-4xl font-black flex items-center">
                 <IndianRupee className="w-8 h-8" />
-                {Number(experience.basePrice).toLocaleString("en-IN")}
+                {Number(exp.basePrice).toLocaleString("en-IN")}
               </span>
               <span className="text-foreground/50 font-medium mb-1">
                 / person
@@ -800,31 +819,31 @@ export default async function ExperienceDetailPage({
             </div>
 
             <BookNowButton
-              experienceId={experience.id}
-              experienceTitle={experience.title}
-              experienceSlug={experience.slug}
-              basePrice={Number(experience.basePrice)}
-              maxCapacity={experience.capacity}
-              pickupPoints={experience.pickupPoints || []}
+              experienceId={exp.id}
+              experienceTitle={exp.title}
+              experienceSlug={exp.slug}
+              basePrice={Number(exp.basePrice)}
+              maxCapacity={exp.capacity}
+              pickupPoints={exp.pickupPoints || []}
             />
 
             <SimilarTrips
-              currentExperienceId={experience.id}
-              categoryIds={experience.categories.map((c: CategoryWithRelation) => c.category.id)}
+              currentExperienceId={exp.id}
+              categoryIds={exp.categories.map((c: CategoryWithRelation) => c.category.id)}
             />
 
-            <DownloadItineraryBtn slug={experience.slug} />
+            <DownloadItineraryBtn slug={exp.slug} />
           </div>
         </div>
       </div>
 
       <MobileBookingBar
-        experienceId={experience.id}
-        experienceTitle={experience.title}
-        experienceSlug={experience.slug}
-        basePrice={Number(experience.basePrice)}
-        maxCapacity={experience.capacity}
-        pickupPoints={experience.pickupPoints || []}
+        experienceId={exp.id}
+        experienceTitle={exp.title}
+        experienceSlug={exp.slug}
+        basePrice={Number(exp.basePrice)}
+        maxCapacity={exp.capacity}
+        pickupPoints={exp.pickupPoints || []}
       />
     </div>
   );

@@ -4,6 +4,7 @@ import InfiniMarquee from "@/components/home/InfiniMarquee";
 import ImpactStats from "@/components/home/ImpactStats";
 import Testimonials from "@/components/home/Testimonials";
 import { prisma } from "@/lib/db";
+import { withBuildSafety } from "@/lib/db-utils";
 import ExperienceCard from "@/components/experiences/ExperienceCard";
 import CustomTripForm from "@/components/home/CustomTripForm";
 import { format } from "date-fns";
@@ -14,21 +15,29 @@ import Image from "next/image";
 
 export default async function Home() {
   // Fetch active hero slides for the homepage carousel
-  const heroSlides = await prisma.heroSlide.findMany({
-    where: { isActive: true },
-    orderBy: { order: "asc" },
-  });
+  const heroSlides = await withBuildSafety(
+    () =>
+      prisma.heroSlide.findMany({
+        where: { isActive: true },
+        orderBy: { order: "asc" },
+      }),
+    [],
+  );
 
   // Fetch featured experiences
-  const featuredExperiencesRaw = await prisma.experience.findMany({
-    where: { isFeatured: true, status: "PUBLISHED" },
-    include: {
-      categories: { include: { category: true } },
-      _count: { select: { slots: true } },
-    },
-    take: 10,
-    orderBy: { createdAt: "desc" },
-  });
+  const featuredExperiencesRaw = await withBuildSafety(
+    () =>
+      prisma.experience.findMany({
+        where: { isFeatured: true, status: "PUBLISHED" },
+        include: {
+          categories: { include: { category: true } },
+          _count: { select: { slots: true } },
+        },
+        take: 10,
+        orderBy: { createdAt: "desc" },
+      }),
+    [],
+  );
 
   // Serialize Decimal and Date objects for Client Component compatibility
   const featuredExperiences = featuredExperiencesRaw.map((exp) => ({
@@ -36,23 +45,31 @@ export default async function Home() {
     basePrice: Number(exp.basePrice),
   }));
 
-  const recentBlogs = await prisma.blog.findMany({
-    where: { status: "PUBLISHED" },
-    take: 10,
-    orderBy: { createdAt: "desc" },
-    include: {
-      author: { select: { name: true, avatarUrl: true } },
-      coverImage: { select: { mediumUrl: true, originalUrl: true } },
-      experience: { select: { title: true } },
-    },
-  });
+  const recentBlogs = await withBuildSafety(
+    () =>
+      prisma.blog.findMany({
+        where: { status: "PUBLISHED" },
+        take: 10,
+        orderBy: { createdAt: "desc" },
+        include: {
+          author: { select: { name: true, avatarUrl: true } },
+          coverImage: { select: { mediumUrl: true, originalUrl: true } },
+          experience: { select: { title: true } },
+        },
+      }),
+    [],
+  );
 
   // Fetch dynamic destinations for marquee
-  const uniqueLocationsInfo = await prisma.experience.findMany({
-    where: { status: "PUBLISHED", location: { not: "" } },
-    select: { location: true },
-    distinct: ["location"],
-  });
+  const uniqueLocationsInfo = await withBuildSafety(
+    () =>
+      prisma.experience.findMany({
+        where: { status: "PUBLISHED", location: { not: "" } },
+        select: { location: true },
+        distinct: ["location"],
+      }),
+    [],
+  );
   let marqueeDestinations = uniqueLocationsInfo.map((l) =>
     l.location.toUpperCase(),
   );
@@ -69,13 +86,17 @@ export default async function Home() {
   }
 
   // Calculate dynamic impact stats
-  const confirmedBookings = await prisma.booking.findMany({
-    where: { bookingStatus: "CONFIRMED" },
-    select: {
-      participantCount: true,
-      experience: { select: { trekDistance: true } },
-    },
-  });
+  const confirmedBookings = await withBuildSafety(
+    () =>
+      prisma.booking.findMany({
+        where: { bookingStatus: "CONFIRMED" },
+        select: {
+          participantCount: true,
+          experience: { select: { trekDistance: true } },
+        },
+      }),
+    [],
+  );
 
   let totalAdventurers = 0;
   let totalKmTrekked = 0;
@@ -92,12 +113,20 @@ export default async function Home() {
   });
 
   // Use real data, with small fallbacks just in case the DB is completely empty for a new setup
-  const uniqueRoutesCount = await prisma.experience.count({
-    where: { status: "PUBLISHED" },
-  });
-  const reviewAgg = await prisma.experienceReview.aggregate({
-    _avg: { rating: true },
-  });
+  const uniqueRoutesCount = await withBuildSafety(
+    () =>
+      prisma.experience.count({
+        where: { status: "PUBLISHED" },
+      }),
+    0,
+  );
+  const reviewAgg = await withBuildSafety(
+    () =>
+      prisma.experienceReview.aggregate({
+        _avg: { rating: true },
+      }),
+    { _avg: { rating: null } },
+  );
 
   const dynamicStats = {
     adventurers: totalAdventurers > 0 ? totalAdventurers : 120,

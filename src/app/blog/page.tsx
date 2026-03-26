@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
+import { withBuildSafety } from "@/lib/db-utils";
 import { MapPin, CalendarDays, ArrowRight, PenLine } from "lucide-react";
 import Image from "next/image";
 import { format } from "date-fns";
@@ -7,16 +8,20 @@ import { format } from "date-fns";
 export const revalidate = 60;
 
 export default async function BlogListingPage() {
-  const blogs = await prisma.blog.findMany({
-    where: { status: "PUBLISHED", deletedAt: null },
-    include: {
-      author: { select: { name: true, avatarUrl: true } },
-      experience: { select: { title: true, slug: true, location: true } },
-      coverImage: { select: { originalUrl: true } },
-    },
-    orderBy: { updatedAt: "desc" },
-    take: 24,
-  });
+  const blogs = await withBuildSafety(
+    () =>
+      prisma.blog.findMany({
+        where: { status: "PUBLISHED", deletedAt: null },
+        include: {
+          author: { select: { name: true, avatarUrl: true } },
+          experience: { select: { title: true, slug: true, location: true } },
+          coverImage: { select: { originalUrl: true } },
+        },
+        orderBy: { updatedAt: "desc" },
+        take: 24,
+      }),
+    [],
+  );
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-20">
