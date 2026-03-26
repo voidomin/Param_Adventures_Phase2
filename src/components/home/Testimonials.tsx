@@ -1,17 +1,23 @@
 import { prisma } from "@/lib/db";
+import { withBuildSafety } from "@/lib/db-utils";
 import Link from "next/link";
 import { Star, Quote, ArrowRight } from "lucide-react";
 import Carousel from "@/components/ui/Carousel";
+
 async function getFeaturedHomeReviews() {
-  return prisma.experienceReview.findMany({
-    where: { isFeaturedHome: true },
-    include: {
-      user: { select: { name: true } },
-      experience: { select: { title: true, slug: true } },
-    },
-    orderBy: { updatedAt: "desc" },
-    take: 6,
-  });
+  return withBuildSafety(
+    () =>
+      prisma.experienceReview.findMany({
+        where: { isFeaturedHome: true },
+        include: {
+          user: { select: { name: true } },
+          experience: { select: { title: true, slug: true } },
+        },
+        orderBy: { updatedAt: "desc" },
+        take: 6,
+      }),
+    [],
+  );
 }
 
 export default async function Testimonials() {
