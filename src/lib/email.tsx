@@ -10,18 +10,43 @@ import PasswordResetEmail from "@/components/emails/PasswordResetEmail";
 import AdminInviteEmail from "@/components/emails/AdminInviteEmail";
 import React from "react";
 
+function parseBoolean(value: string | undefined): boolean | undefined {
+  if (value === undefined) return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "true") return true;
+  if (normalized === "false") return false;
+  return undefined;
+}
+
 // ─── SMTP CONFIGURATION ──────────────────────────────────
+const SMTP_HOST = process.env.SMTP_HOST || "smtp.zoho.in";
+const SMTP_PORT = Number.parseInt(process.env.SMTP_PORT || "465", 10);
+const SMTP_SECURE = parseBoolean(process.env.SMTP_SECURE) ?? SMTP_PORT === 465;
+
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || "smtp.zoho.in",
-  port: Number.parseInt(process.env.SMTP_PORT || "465"),
-  secure: Number.parseInt(process.env.SMTP_PORT || "465") === 465, // true for 465, false for other ports
+  host: SMTP_HOST,
+  port: SMTP_PORT,
+  secure: SMTP_SECURE,
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
   },
+  connectionTimeout: Number.parseInt(
+    process.env.SMTP_CONNECTION_TIMEOUT || "15000",
+    10,
+  ),
+  greetingTimeout: Number.parseInt(
+    process.env.SMTP_GREETING_TIMEOUT || "15000",
+    10,
+  ),
+  socketTimeout: Number.parseInt(
+    process.env.SMTP_SOCKET_TIMEOUT || "20000",
+    10,
+  ),
 });
 
-const FROM_EMAIL = process.env.SMTP_FROM || "Param Adventures <booking@paramadventures.in>";
+const FROM_EMAIL =
+  process.env.SMTP_FROM || "Param Adventures <booking@paramadventures.in>";
 
 // check if we are ready to send
 const isReady = !!(process.env.SMTP_USER && process.env.SMTP_PASS);
@@ -88,11 +113,21 @@ interface AdminInviteData {
 
 // ─── SENDERS ───────────────────────────────────────────
 
-async function sendEmail({ to, subject, html }: { to: string; subject: string; html: string }) {
+async function sendEmail({
+  to,
+  subject,
+  html,
+}: {
+  to: string;
+  subject: string;
+  html: string;
+}) {
   if (!isReady) {
     const msg = "SMTP credentials not configured.";
     console.warn(`⚠️ ${msg} Logging email to console.`);
-    console.log(`To: ${to}\nSubject: ${subject}\n--- Content --- \n${html.substring(0, 200)}...\n---`);
+    console.log(
+      `To: ${to}\nSubject: ${subject}\n--- Content --- \n${html.substring(0, 200)}...\n---`,
+    );
 
     // In production we should fail loudly so API handlers can surface the issue.
     if (process.env.NODE_ENV === "production") {
@@ -118,11 +153,11 @@ async function sendEmail({ to, subject, html }: { to: string; subject: string; h
 export async function sendBookingConfirmation(data: BookingEmailData) {
   try {
     const html = await render(
-      <BookingConfirmedEmail 
-        userName={data.userName} 
-        tripName={data.experienceTitle} 
-        bookingId={data.bookingId} 
-      />
+      <BookingConfirmedEmail
+        userName={data.userName}
+        tripName={data.experienceTitle}
+        bookingId={data.bookingId}
+      />,
     );
     await sendEmail({
       to: data.userEmail,
@@ -137,11 +172,11 @@ export async function sendBookingConfirmation(data: BookingEmailData) {
 export async function sendBookingCancellation(data: BookingCancelledData) {
   try {
     const html = await render(
-      <BookingCancelledEmail 
-        userName={data.userName} 
-        tripName={data.experienceTitle} 
-        bookingId="N/A" 
-      />
+      <BookingCancelledEmail
+        userName={data.userName}
+        tripName={data.experienceTitle}
+        bookingId="N/A"
+      />,
     );
     await sendEmail({
       to: data.userEmail,
@@ -156,13 +191,14 @@ export async function sendBookingCancellation(data: BookingCancelledData) {
 export async function sendRefundResolved(data: RefundResolvedData) {
   try {
     const html = await render(
-      <RefundResolvedEmail 
-        userName={data.userName} 
-        bookingId="N/A" 
-        amount={data.totalPrice} 
-      />
+      <RefundResolvedEmail
+        userName={data.userName}
+        bookingId="N/A"
+        amount={data.totalPrice}
+      />,
     );
-    const label = data.refundPreference === "COUPON" ? "Coupon Issued" : "Refund Processed";
+    const label =
+      data.refundPreference === "COUPON" ? "Coupon Issued" : "Refund Processed";
     await sendEmail({
       to: data.userEmail,
       subject: `${label} — ${data.experienceTitle}`,
@@ -188,7 +224,9 @@ export async function sendWelcomeEmail(data: WelcomeEmailData) {
 
 export async function sendRoleAssignedEmail(data: RoleAssignedData) {
   try {
-    const html = await render(<RoleAssignedEmail userName={data.userName} role={data.roleName} />);
+    const html = await render(
+      <RoleAssignedEmail userName={data.userName} role={data.roleName} />,
+    );
     await sendEmail({
       to: data.userEmail,
       subject: `Role Updated: ${data.roleName.replaceAll("_", " ")}`,
@@ -202,10 +240,10 @@ export async function sendRoleAssignedEmail(data: RoleAssignedData) {
 export async function sendTripCompletedEmail(data: TripCompletedData) {
   try {
     const html = await render(
-      <TripCompletedEmail 
-        userName={data.userName} 
-        tripName={data.experienceTitle} 
-      />
+      <TripCompletedEmail
+        userName={data.userName}
+        tripName={data.experienceTitle}
+      />,
     );
     await sendEmail({
       to: data.userEmail,

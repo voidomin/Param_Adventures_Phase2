@@ -21,6 +21,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
+import nodemailer from "nodemailer";
 import { prisma } from "@/lib/db";
 
 export const runtime = "nodejs";
@@ -90,6 +91,72 @@ export async function POST(request: NextRequest) {
             "2. If issue persists, redeploy once from Render dashboard",
             "3. Remove BOOTSTRAP_TOKEN after verification",
           ],
+        },
+        { status: 200 },
+      );
+    }
+
+    // SMTP connectivity diagnostics for hosted environments without shell access.
+    if (mode === "smtp-check") {
+      const host = process.env.SMTP_HOST || "smtp.zoho.in";
+      const port = Number.parseInt(process.env.SMTP_PORT || "465", 10);
+      const secure =
+        (process.env.SMTP_SECURE || "").toLowerCase() === "true" ||
+        port === 465;
+
+      if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+        return NextResponse.json(
+          {
+            error: "SMTP credentials not configured",
+            mode: "smtp-check",
+            diagnostics: {
+              hasUser: Boolean(process.env.SMTP_USER),
+              hasPass: Boolean(process.env.SMTP_PASS),
+              host,
+              port,
+              secure,
+            },
+          },
+          { status: 500 },
+        );
+      }
+
+      const transporter = nodemailer.createTransport({
+        host,
+        port,
+        secure,
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+        connectionTimeout: Number.parseInt(
+          process.env.SMTP_CONNECTION_TIMEOUT || "15000",
+          10,
+        ),
+        greetingTimeout: Number.parseInt(
+          process.env.SMTP_GREETING_TIMEOUT || "15000",
+          10,
+        ),
+        socketTimeout: Number.parseInt(
+          process.env.SMTP_SOCKET_TIMEOUT || "20000",
+          10,
+        ),
+      });
+
+      await transporter.verify();
+
+      return NextResponse.json(
+        {
+          success: true,
+          mode: "smtp-check",
+          message: "SMTP connectivity verified successfully",
+          timestamp: new Date().toISOString(),
+          diagnostics: {
+            host,
+            port,
+            secure,
+            from: process.env.SMTP_FROM || null,
+          },
         },
         { status: 200 },
       );
