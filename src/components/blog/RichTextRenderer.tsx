@@ -19,7 +19,7 @@ export default function RichTextRenderer({
     typeof content === "object" &&
     content !== null &&
     "html" in content &&
-    typeof (content as { html?: unknown }).html !== "undefined"
+    (content as { html?: unknown }).html !== undefined
       ? (content as { html: object }).html
       : content;
 

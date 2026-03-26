@@ -547,11 +547,16 @@ export default function ExperienceForm({
     writeFile(workbook: WorkBook, filename: string, opts?: unknown): void;
   }
 
+  const ensureString = (val: unknown): string => {
+    if (val === null || val === undefined) return "";
+    return String(val);
+  };
+
   const parseExcelBasicInfo = (imported: Partial<Record<string, unknown>>, wb: WorkBook, XLSX: XLSXLib) => {
     if (wb.Sheets["Basic Info"]) {
       const basicInfo = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets["Basic Info"]);
       basicInfo.forEach((row) => {
-        if (row.Key && row.Value !== undefined) imported[String(row.Key)] = row.Value;
+        if (row.Key && row.Value !== undefined) imported[ensureString(row.Key)] = row.Value;
       });
     }
   };
@@ -560,10 +565,10 @@ export default function ExperienceForm({
     if (wb.Sheets["Itinerary"]) {
       const itinRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets["Itinerary"]);
       imported.itinerary = itinRows.map((row) => ({
-        title: String(row.Title || ""),
-        description: String(row.Description || ""),
+        title: ensureString(row.Title),
+        description: ensureString(row.Description),
         meals: (typeof row.Meals === 'string') ? row.Meals.split(",").map((m: string) => m.trim()).filter(Boolean) : [],
-        accommodation: String(row.Accommodation || "")
+        accommodation: ensureString(row.Accommodation)
       }));
     }
   };
@@ -572,8 +577,8 @@ export default function ExperienceForm({
     if (wb.Sheets["FAQs"]) {
       const faqRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets["FAQs"]);
       imported.faqs = faqRows.map((row) => ({
-        question: String(row.Question || ""),
-        answer: String(row.Answer || "")
+        question: ensureString(row.Question),
+        answer: ensureString(row.Answer)
       }));
     }
   };
@@ -581,12 +586,12 @@ export default function ExperienceForm({
   const parseExcelLists = (imported: Partial<ExperienceFormData>, wb: WorkBook, XLSX: XLSXLib) => {
     if (wb.Sheets["Lists"]) {
       const listRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(wb.Sheets["Lists"]);
-      imported.inclusions = listRows.map((r) => String(r.Inclusions || "")).filter(Boolean);
-      imported.exclusions = listRows.map((r) => String(r.Exclusions || "")).filter(Boolean);
-      imported.thingsToCarry = listRows.map((r) => String(r.ThingsToCarry || "")).filter(Boolean);
-      imported.highlights = listRows.map((r) => String(r.Highlights || "")).filter(Boolean);
-      imported.vibeTags = listRows.map((r) => String(r.VibeTags || "")).filter(Boolean);
-      imported.pickupPoints = listRows.map((r) => String(r.PickupPoints || "")).filter(Boolean);
+      imported.inclusions = listRows.map((r) => ensureString(r.Inclusions)).filter(Boolean);
+      imported.exclusions = listRows.map((r) => ensureString(r.Exclusions)).filter(Boolean);
+      imported.thingsToCarry = listRows.map((r) => ensureString(r.ThingsToCarry)).filter(Boolean);
+      imported.highlights = listRows.map((r) => ensureString(r.Highlights)).filter(Boolean);
+      imported.vibeTags = listRows.map((r) => ensureString(r.VibeTags)).filter(Boolean);
+      imported.pickupPoints = listRows.map((r) => ensureString(r.PickupPoints)).filter(Boolean);
     }
   };
 

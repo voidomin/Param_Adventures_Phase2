@@ -69,8 +69,8 @@ declare global {
 function loadRazorpayScript(): Promise<boolean> {
   return new Promise((resolve) => {
     if (
-      typeof window !== "undefined" &&
-      window.Razorpay !== undefined
+      typeof globalThis.window !== "undefined" &&
+      globalThis.window.Razorpay !== undefined
     ) {
       resolve(true);
       return;
@@ -290,7 +290,7 @@ export default function BookingModal({
 
       const { bookingId: bId, orderId, amount, currency, keyId } = bookData;
 
-      const rzp = new window.Razorpay({
+      const rzp = new globalThis.window.Razorpay({
         key: keyId,
         amount,
         currency,

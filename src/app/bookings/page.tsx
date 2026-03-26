@@ -218,7 +218,7 @@ declare global {
 
 function loadRazorpayScript(): Promise<boolean> {
   return new Promise((resolve) => {
-    if (typeof window !== "undefined" && window.Razorpay !== undefined) {
+    if (typeof globalThis.window !== "undefined" && globalThis.window.Razorpay !== undefined) {
       resolve(true);
       return;
     }
@@ -327,7 +327,7 @@ export default function BookingsPage() {
 
     const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "";
 
-    const RazorpayCtor = window.Razorpay;
+    const RazorpayCtor = globalThis.window.Razorpay;
     if (!RazorpayCtor) {
       alert("Payment gateway is unavailable.");
       setProcessingId(null);

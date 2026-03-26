@@ -75,15 +75,17 @@ export async function POST(request: NextRequest) {
       { status: 200 },
     );
   } catch (error: unknown) {
-    const errorMessage =
-      error instanceof Error
-        ? error.message
-        : typeof error === "object" &&
-            error !== null &&
-            "message" in error &&
-            typeof (error as { message: unknown }).message === "string"
-          ? (error as { message: string }).message
-          : "Unknown error";
+    let errorMessage = "Unknown error";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (
+      typeof error === "object" &&
+      error !== null &&
+      "message" in error &&
+      typeof (error as { message: unknown }).message === "string"
+    ) {
+      errorMessage = (error as { message: string }).message;
+    }
 
     console.error("[AUTH] Forgot Password error:", error);
     if (error instanceof Error && error.stack) console.error(error.stack);
