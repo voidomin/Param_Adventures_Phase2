@@ -88,10 +88,8 @@ export async function POST(request: NextRequest) {
     const finalPermissionCount = await prisma.permission.count();
     const superAdminCount = await prisma.user.count({
       where: {
-        roles: {
-          some: {
-            name: 'SUPER_ADMIN',
-          },
+        role: {
+          name: 'SUPER_ADMIN',
         },
       },
     });
