@@ -18,34 +18,83 @@
  * 5. DELETE the BOOTSTRAP_TOKEN from environment variables to prevent abuse
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { NextRequest, NextResponse } from "next/server";
+import { exec } from "child_process";
+import { promisify } from "util";
+import { prisma } from "@/lib/db";
+
+export const runtime = "nodejs";
+
+const execPromise = promisify(exec);
 
 export async function POST(request: NextRequest) {
   try {
     const url = new URL(request.url);
-    const providedToken = url.searchParams.get('token');
+    const providedToken = url.searchParams.get("token");
+    const mode = url.searchParams.get("mode");
     const bootstrapToken = process.env.BOOTSTRAP_TOKEN;
 
     // 1. Validate authorization token
     if (!bootstrapToken) {
       return NextResponse.json(
         {
-          error: 'BOOTSTRAP_TOKEN not configured in environment variables',
+          error: "BOOTSTRAP_TOKEN not configured in environment variables",
           message:
-            'Set BOOTSTRAP_TOKEN in Render environment to enable bootstrap endpoint',
+            "Set BOOTSTRAP_TOKEN in Render environment to enable bootstrap endpoint",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
     if (!providedToken || providedToken !== bootstrapToken) {
       return NextResponse.json(
         {
-          error: 'Unauthorized: Invalid or missing bootstrap token',
-          message: 'Provide correct token: ?token=YOUR_BOOTSTRAP_TOKEN',
+          error: "Unauthorized: Invalid or missing bootstrap token",
+          message: "Provide correct token: ?token=YOUR_BOOTSTRAP_TOKEN",
         },
-        { status: 401 }
+        { status: 401 },
+      );
+    }
+
+    // Optional maintenance mode for free-tier hosting without shell access.
+    if (mode === "repair-schema") {
+      console.log("[BOOTSTRAP] Starting schema repair via prisma db push...");
+      const startTime = Date.now();
+
+      const { stdout, stderr } = await execPromise(
+        "npx prisma db push --skip-generate",
+        {
+          env: process.env,
+        },
+      );
+
+      const duration = Date.now() - startTime;
+
+      const [rolesCount, bookingsCount] = await Promise.all([
+        prisma.role.count(),
+        prisma.booking.count(),
+      ]);
+
+      return NextResponse.json(
+        {
+          success: true,
+          message: "Schema repair completed successfully",
+          timestamp: new Date().toISOString(),
+          duration: `${duration}ms`,
+          mode: "repair-schema",
+          diagnostics: {
+            rolesCount,
+            bookingsCount,
+            prismaOutput: stdout?.slice(0, 1200) || null,
+            prismaWarnings: stderr?.slice(0, 1200) || null,
+          },
+          nextSteps: [
+            "1. Refresh dashboard and bookings pages",
+            "2. If issue persists, redeploy once from Render dashboard",
+            "3. Remove BOOTSTRAP_TOKEN after verification",
+          ],
+        },
+        { status: 200 },
       );
     }
 
@@ -54,22 +103,22 @@ export async function POST(request: NextRequest) {
     if (existingRoles > 0) {
       return NextResponse.json(
         {
-          warning: 'Database already bootstrapped',
+          warning: "Database already bootstrapped",
           message: `Found ${existingRoles} existing roles. Seed was already run.`,
           rolesCount: existingRoles,
           timestamp: new Date().toISOString(),
         },
-        { status: 200 }
+        { status: 200 },
       );
     }
 
     // 3. Run the seed script directly
-    console.log('[BOOTSTRAP] Starting database seed via direct import...');
+    console.log("[BOOTSTRAP] Starting database seed via direct import...");
     const startTime = Date.now();
 
     // Import the seed logic (mjs)
     // @ts-ignore - Importing .mjs in .ts
-    const { main: runSeed } = await import('../../../../../prisma/seed.mjs');
+    const { main: runSeed } = await import("../../../../../prisma/seed.mjs");
 
     await runSeed(prisma);
 
@@ -81,7 +130,7 @@ export async function POST(request: NextRequest) {
     const superAdminCount = await prisma.user.count({
       where: {
         role: {
-          name: 'SUPER_ADMIN',
+          name: "SUPER_ADMIN",
         },
       },
     });
@@ -90,39 +139,39 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(
       {
         success: true,
-        message: 'Database bootstrap completed successfully',
+        message: "Database bootstrap completed successfully",
         timestamp: new Date().toISOString(),
         duration: `${duration}ms`,
         seed: {
           rolesCreated: finalRoleCount,
           permissionsCreated: finalPermissionCount,
           superAdminsCreated: superAdminCount,
-          verifiedBy: ['Role Count', 'Super Admin Check'],
+          verifiedBy: ["Role Count", "Super Admin Check"],
         },
         nextSteps: [
-          '1. DELETE BOOTSTRAP_TOKEN from Render environment variables',
-          '2. Log in to your app with one of the super-admin emails',
-          '3. Verify admin account access and permissions',
-          '4. Test all RBAC-protected features',
+          "1. DELETE BOOTSTRAP_TOKEN from Render environment variables",
+          "2. Log in to your app with one of the super-admin emails",
+          "3. Verify admin account access and permissions",
+          "4. Test all RBAC-protected features",
         ],
-        executionMode: 'Direct Prisma Import (Resilient)',
+        executionMode: "Direct Prisma Import (Resilient)",
       },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
-    console.error('[BOOTSTRAP] Error:', error);
+    console.error("[BOOTSTRAP] Error:", error);
 
     const errorMessage =
       error instanceof Error ? error.message : JSON.stringify(error);
 
     return NextResponse.json(
       {
-        error: 'Bootstrap failed',
+        error: "Bootstrap failed",
         message: errorMessage,
         timestamp: new Date().toISOString(),
-        help: 'Check Render logs for detailed error information',
+        help: "Check Render logs for detailed error information",
       },
-      { status: 500 }
+      { status: 500 },
     );
   } finally {
     await prisma.$disconnect();
