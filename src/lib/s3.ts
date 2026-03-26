@@ -5,11 +5,14 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
+const S3_BUCKET_NAME =
+  process.env.AWS_S3_BUCKET_NAME || process.env.S3_BUCKET_NAME;
+
 const isS3Configured =
   process.env.AWS_REGION &&
   process.env.AWS_ACCESS_KEY_ID &&
   process.env.AWS_SECRET_ACCESS_KEY &&
-  process.env.AWS_S3_BUCKET_NAME;
+  S3_BUCKET_NAME;
 
 // Note: In development (or production) if values are missing,
 // we will fallback to a mocked implementation so testing can continue.
@@ -28,7 +31,7 @@ export async function generatePresignedUrl(
   contentType: string,
 ): Promise<{ uploadUrl: string; finalUrl: string }> {
   // --- MOCKED IMPLEMENTATION ---
-  if (!s3Client || !process.env.AWS_S3_BUCKET_NAME) {
+  if (!s3Client || !S3_BUCKET_NAME) {
     const timestamp = Date.now();
 
     // If it's a video, return a mock video URL, otherwise a picsum image
@@ -48,24 +51,20 @@ export async function generatePresignedUrl(
   const key = `uploads/${Date.now()}-${fileName.replaceAll(/\s+/g, "_")}`;
 
   const command = new PutObjectCommand({
-    Bucket: process.env.AWS_S3_BUCKET_NAME,
+    Bucket: S3_BUCKET_NAME,
     Key: key,
     ContentType: contentType,
   });
 
   const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
-  const finalUrl = `https://${process.env.AWS_S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+  const finalUrl = `https://${S3_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
 
   return { uploadUrl, finalUrl };
 }
 
 export async function deleteFromS3(fileUrl: string): Promise<boolean> {
   // If it's a mocked URL (picsum) or S3 isn't configured, we just pretend it succeeded
-  if (
-    !s3Client ||
-    !process.env.AWS_S3_BUCKET_NAME ||
-    fileUrl.includes("picsum.photos")
-  ) {
+  if (!s3Client || !S3_BUCKET_NAME || fileUrl.includes("picsum.photos")) {
     return true;
   }
 
@@ -75,7 +74,7 @@ export async function deleteFromS3(fileUrl: string): Promise<boolean> {
     const key = urlObj.pathname.substring(1);
 
     const command = new DeleteObjectCommand({
-      Bucket: process.env.AWS_S3_BUCKET_NAME,
+      Bucket: S3_BUCKET_NAME,
       Key: key,
     });
 

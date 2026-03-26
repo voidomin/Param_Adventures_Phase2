@@ -4,6 +4,9 @@ import { generatePresignedUrl } from "@/lib/s3";
 
 import { z } from "zod";
 
+const S3_BUCKET_NAME =
+  process.env.AWS_S3_BUCKET_NAME || process.env.S3_BUCKET_NAME;
+
 const presignSchema = z.object({
   fileName: z.string().min(1, "fileName is required"),
   contentType: z.string().min(1, "contentType is required"),
@@ -44,7 +47,7 @@ export async function POST(request: NextRequest) {
       process.env.AWS_REGION &&
       process.env.AWS_ACCESS_KEY_ID &&
       process.env.AWS_SECRET_ACCESS_KEY &&
-      process.env.AWS_S3_BUCKET_NAME
+      S3_BUCKET_NAME
     );
 
     const { uploadUrl, finalUrl } = await generatePresignedUrl(
