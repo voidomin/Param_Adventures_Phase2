@@ -548,6 +548,7 @@ export default function ExperienceForm({
   }
 
   const ensureString = (val: unknown): string => {
+    if (typeof val === "string") return val;
     if (val === null || val === undefined) return "";
     if (typeof val === "object") return JSON.stringify(val);
     return String(val);
