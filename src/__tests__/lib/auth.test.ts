@@ -22,6 +22,11 @@ vi.mock("@/lib/db", () => ({
 
 const mockUserFindUnique = vi.mocked(prisma.user.findUnique);
 
+const TEST_PASSWORD_A = "mySecurePassword123"; // NOSONAR
+const TEST_PASSWORD_B = "password456"; // NOSONAR
+const TEST_HASH_B = "mock-hash-password456"; // NOSONAR
+
+
 describe("Auth Utilities", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -30,17 +35,17 @@ describe("Auth Utilities", () => {
   describe("Password Hashing", () => {
     it("hashes password and returns a string", async () => {
       const { hashPassword } = await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth");
-      const password = "mySecurePassword123";
+      const password = TEST_PASSWORD_A;
       const hash = await hashPassword(password);
       expect(hash).toBeDefined();
       expect(hash).not.toBe(password);
       expect(typeof hash).toBe("string");
-      expect(hash).toBe("mock-hash-mySecurePassword123");
+      expect(hash).toBe(`mock-hash-${TEST_PASSWORD_A}`);
     }, 15000);
 
     it("verifies a correct password", async () => {
       const { hashPassword, verifyPassword } = await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth");
-      const password = "password456";
+      const password = TEST_PASSWORD_B;
       const hash = await hashPassword(password);
       const isMatch = await verifyPassword(password, hash);
       expect(isMatch).toBe(true);
@@ -48,7 +53,7 @@ describe("Auth Utilities", () => {
 
     it("rejects an incorrect password", async () => {
       const { hashPassword, verifyPassword } = await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth");
-      const password = "password456";
+      const password = TEST_PASSWORD_B;
       const hash = await hashPassword(password);
       const isMatch = await verifyPassword("wrongpassword", hash);
       expect(isMatch).toBe(false);

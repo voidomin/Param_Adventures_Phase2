@@ -16,9 +16,23 @@ import pg from "pg";
 import crypto from "node:crypto";
 import nodemailer from "nodemailer";
 
-const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+// Reuse existing prisma instance if possible, or create new one
+let prisma;
+
+/**
+ * Initializes the prisma client for seeding.
+ * @param {import('@prisma/client').PrismaClient} [existingPrisma]
+ */
+export async function initPrisma(existingPrisma) {
+  if (existingPrisma) {
+    prisma = existingPrisma;
+    return prisma;
+  }
+  const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL });
+  const adapter = new PrismaPg(pool);
+  prisma = new PrismaClient({ adapter });
+  return prisma;
+}
 
 // ─── ROLES & PERMISSIONS ──────────────────────────────────
 
@@ -278,7 +292,7 @@ function resolveSeedAdmins() {
   return DEFAULT_SUPER_ADMINS;
 }
 
-async function seedRolesAndPermissions() {
+export async function seedRolesAndPermissions() {
   console.log("📌 Seeding roles & permissions...");
   for (const roleData of ROLES) {
     await prisma.role.upsert({
@@ -323,7 +337,7 @@ const CATEGORIES = [
   { name: "Water Sports", slug: "water-sports", icon: "Waves" },
 ];
 
-async function seedCategories() {
+export async function seedCategories() {
   console.log("📂 Seeding categories...");
   for (const cat of CATEGORIES) {
     await prisma.category.upsert({
@@ -337,7 +351,7 @@ async function seedCategories() {
 
 // ─── INITIAL ADMIN ────────────────────────────────────────
 
-async function seedAdmin() {
+export async function seedAdmin() {
   const admins = resolveSeedAdmins();
   console.log(`👤 Seeding ${admins.length} super admin(s)...`);
 
@@ -427,7 +441,7 @@ async function seedAdmin() {
 
 // ─── HERO SLIDES ──────────────────────────────────────────
 
-async function seedHeroSlides() {
+export async function seedHeroSlides() {
   console.log("🎬 Seeding initial hero slides...");
   const slidesCount = await prisma.heroSlide.count();
   if (slidesCount > 0) {
@@ -455,16 +469,37 @@ async function seedHeroSlides() {
 
 // ─── MAIN ─────────────────────────────────────────────────
 
-try {
-  await seedRolesAndPermissions();
-  await seedCategories();
-  await seedAdmin();
-  await seedHeroSlides();
-  console.log("\n🚀 Seeding completed successfully!");
-} catch (err) {
-  console.error("\n❌ Seeding failed:", err);
-  process.exit(1);
-} finally {
-  await prisma.$disconnect();
-  await pool.end();
+/**
+ * Main seeding function that orchestrates all seed steps.
+ * @param {import('@prisma/client').PrismaClient} [existingPrisma]
+ */
+export async function main(existingPrisma) {
+  const isInternalPrisma = !existingPrisma;
+  try {
+    await initPrisma(existingPrisma);
+    await seedRolesAndPermissions();
+    await seedCategories();
+    await seedAdmin();
+    await seedHeroSlides();
+    console.log("\n🚀 Seeding completed successfully!");
+    return { success: true };
+  } catch (err) {
+    console.error("\n❌ Seeding failed:", err);
+    throw err;
+  } finally {
+    if (isInternalPrisma && prisma) {
+      await prisma.$disconnect();
+    }
+  }
+}
+
+// Support direct execution via CLI
+if (
+  import.meta.url.endsWith(process.argv[1]) ||
+  process.argv[1]?.endsWith("seed.mjs")
+) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
 }

@@ -21,10 +21,9 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/db';
 
 const execPromise = promisify(exec);
-const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   try {
@@ -68,18 +67,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 3. Run the seed script
-    console.log('[BOOTSTRAP] Starting database seed...');
+    // 3. Run the seed script directly
+    console.log('[BOOTSTRAP] Starting database seed via direct import...');
     const startTime = Date.now();
 
-    // Force seed mode with FORCE_SEED env var
-    const { stdout, stderr } = await execPromise('npm run db:seed:force', {
-      cwd: process.cwd(),
-      env: {
-        ...process.env,
-        FORCE_SEED: 'true',
-      },
-    });
+    // Import the seed logic (mjs)
+    // @ts-ignore - Importing .mjs in .ts
+    const { main: runSeed } = await import('../../../../../prisma/seed.mjs');
+
+    await runSeed(prisma);
 
     const duration = Date.now() - startTime;
 
@@ -105,6 +101,7 @@ export async function POST(request: NextRequest) {
           rolesCreated: finalRoleCount,
           permissionsCreated: finalPermissionCount,
           superAdminsCreated: superAdminCount,
+          verifiedBy: ['Role Count', 'Super Admin Check'],
         },
         nextSteps: [
           '1. DELETE BOOTSTRAP_TOKEN from Render environment variables',
@@ -112,10 +109,7 @@ export async function POST(request: NextRequest) {
           '3. Verify admin account access and permissions',
           '4. Test all RBAC-protected features',
         ],
-        output: {
-          stdout: stdout.substring(0, 500), // First 500 chars of seed output
-          stderr: stderr ? stderr.substring(0, 500) : null,
-        },
+        executionMode: 'Direct Prisma Import (Resilient)',
       },
       { status: 200 }
     );
