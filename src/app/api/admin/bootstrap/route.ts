@@ -19,8 +19,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { exec } from "child_process";
-import { promisify } from "util";
+import { exec } from "node:child_process";
+import { promisify } from "node:util";
 import { prisma } from "@/lib/db";
 
 export const runtime = "nodejs";
@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
     const startTime = Date.now();
 
     // Import the seed logic (mjs)
-    // @ts-ignore - Importing .mjs in .ts
+    // @ts-expect-error - Importing .mjs in .ts
     const { main: runSeed } = await import("../../../../../prisma/seed.mjs");
 
     await runSeed(prisma);
