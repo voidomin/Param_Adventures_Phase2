@@ -21,8 +21,8 @@ function parseBoolean(value: string | undefined): boolean | undefined {
 // ─── SMTP CONFIGURATION ──────────────────────────────────
 // Note: smtp.zoho.com is generally more reliable on cloud platforms than .in
 const SMTP_HOST = process.env.SMTP_HOST || "smtp.zoho.com";
-const SMTP_PORT = Number.parseInt(process.env.SMTP_PORT || "587", 10);
-const SMTP_SECURE = parseBoolean(process.env.SMTP_SECURE) ?? SMTP_PORT === 465;
+const SMTP_PORT = Number.parseInt(process.env.SMTP_PORT || "465", 10);
+const SMTP_SECURE = parseBoolean(process.env.SMTP_SECURE) ?? (SMTP_PORT === 465);
 
 console.log(`[SMTP_INIT] Attempting connection to ${SMTP_HOST}:${SMTP_PORT} (Secure: ${SMTP_SECURE})`);
 
