@@ -35,15 +35,21 @@ const transporter = nodemailer.createTransport({
     pass: process.env.SMTP_PASS,
   },
   // ─── Reliability & Performance ──────────────────────────
-  pool: true,              // Use connection pooling
-  maxConnections: 3,       // Limit concurrent connections
-  connectionTimeout: 20000, // 20 seconds
+  pool: true,
+  maxConnections: 3,
+  connectionTimeout: 20000,
   greetingTimeout: 20000,
   socketTimeout: 45000,
-  // Enable debug logging in production logs to catch the exact failure point
+  // ─── Network Compatibility ──────────────────────────────
+  // @ts-ignore - family is recognized at runtime but may cause issues with certain @types versions
+  family: 4,               
+  tls: {
+    rejectUnauthorized: false,
+    minVersion: "TLSv1.2",
+  },
   debug: true,
   logger: true,
-});
+} as any);
 
 const FROM_EMAIL =
   process.env.SMTP_FROM || "Param Adventures <booking@paramadventures.in>";
