@@ -61,12 +61,9 @@ export async function POST(request: NextRequest) {
       console.log("[BOOTSTRAP] Starting schema repair via prisma db push...");
       const startTime = Date.now();
 
-      const { stdout, stderr } = await execPromise(
-        "npx prisma db push --skip-generate",
-        {
-          env: process.env,
-        },
-      );
+      const { stdout, stderr } = await execPromise("npx prisma db push", {
+        env: process.env,
+      });
 
       const duration = Date.now() - startTime;
 
