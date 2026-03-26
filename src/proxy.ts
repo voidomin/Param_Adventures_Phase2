@@ -78,6 +78,7 @@ export default function proxy(request: NextRequest) {
     "/api/blog",
     "/blog",
     "/our-story",
+    "/api/admin/bootstrap",
   ];
 
   // Check exact match or prefix match for public paths
