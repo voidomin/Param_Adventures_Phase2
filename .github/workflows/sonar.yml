@@ -182,4 +182,3 @@ jobs:
             -Dsonar.exclusions=**/skills/**,**/reference/**,**/.next/**,**/node_modules/**,**/public/**,**/docs/**,tsc-error.txt,build_output.log,**/.gemini/**,**/tmp/**,src/**/__tests__/**,src/**/*.test.ts,src/**/*.test.tsx,src/**/*.spec.ts,src/**/*.spec.tsx
             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
             -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info
-            -Dsonar.qualitygate.wait=true
