@@ -552,11 +552,13 @@ export default function ExperienceForm({
     if (val === null || val === undefined) return "";
     if (typeof val === "object") {
       try {
-        return JSON.stringify(val);
+        const serialized = JSON.stringify(val);
+        return serialized ?? "";
       } catch {
-        return String(val);
+        return "";
       }
     }
+    if (typeof val === "symbol") return val.description ?? "";
     return String(val);
   };
 

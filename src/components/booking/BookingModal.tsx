@@ -72,11 +72,22 @@ function loadRazorpayScript(): Promise<boolean> {
       resolve(true);
       return;
     }
+    const razorpayUrl = new URL("https://checkout.razorpay.com/v1/checkout.js");
+    const isTrustedRazorpayHost =
+      razorpayUrl.protocol === "https:" && razorpayUrl.hostname === "checkout.razorpay.com";
+
+    if (!isTrustedRazorpayHost) {
+      resolve(false);
+      return;
+    }
+
     const script = globalThis.document.createElement("script");
-    // Razorpay does not recommend SRI for checkout.js as it is frequently updated for 
-    // bug fixes and new features. Omitted for platform availability.
-    script.src = "https://checkout.razorpay.com/v1/checkout.js"; // NOSONAR
+    // Razorpay does not recommend SRI for checkout.js because the file is updated frequently.
+    // Mitigation: load only from fixed HTTPS origin and strict referrer policy.
+    script.src = razorpayUrl.toString(); // NOSONAR
     script.crossOrigin = "anonymous";
+    script.referrerPolicy = "strict-origin-when-cross-origin";
+    script.async = true;
     script.onload = () => resolve(true);
     script.onerror = () => resolve(false);
     globalThis.document.body.appendChild(script);
