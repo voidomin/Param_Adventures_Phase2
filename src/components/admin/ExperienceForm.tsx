@@ -25,7 +25,7 @@ interface Category {
   name: string;
 }
 
-interface ItineraryDay {
+export interface ItineraryDay {
   _id?: string;
   title: string;
   description: string;
@@ -33,7 +33,7 @@ interface ItineraryDay {
   accommodation?: string;
 }
 
-interface FAQ {
+export interface FAQ {
   question: string;
   answer: string;
 }

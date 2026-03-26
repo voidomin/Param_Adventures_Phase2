@@ -1,4 +1,8 @@
-import ExperienceForm, { type ExperienceFormData } from "@/components/admin/ExperienceForm";
+import ExperienceForm, { 
+  type ExperienceFormData, 
+  type ItineraryDay, 
+  type FAQ 
+} from "@/components/admin/ExperienceForm";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { RichTextNode } from "@/lib/utils/rich-text";
@@ -28,7 +32,7 @@ export default async function EditExperiencePage({
     description: (experience.description as RichTextNode | string) || "",
     basePrice: Number(experience.basePrice), // Convert Decimal to number
     itinerary: Array.isArray(experience.itinerary)
-      ? (experience.itinerary as any[])
+      ? (experience.itinerary as unknown as ItineraryDay[])
       : [],
     images: experience.images.length > 0 ? experience.images : [""],
     coverImage: experience.coverImage || "",
@@ -64,7 +68,7 @@ export default async function EditExperiencePage({
     pickupPoints: Array.isArray(experience.pickupPoints)
       ? (experience.pickupPoints as string[])
       : [],
-    faqs: Array.isArray(experience.faqs) ? (experience.faqs as any[]) : [],
+    faqs: Array.isArray(experience.faqs) ? (experience.faqs as unknown as FAQ[]) : [],
   };
 
   return (

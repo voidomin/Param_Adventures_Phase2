@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { getPlainTextFromJSON } from "@/lib/utils/rich-text";
+import { getPlainTextFromJSON, RichTextNode } from "@/lib/utils/rich-text";
 
 /**
  * GET /api/experiences/[slug]/itinerary-data
@@ -55,7 +55,7 @@ export async function GET(
     const descriptionText =
       experience.description &&
       typeof experience.description === "object"
-        ? getPlainTextFromJSON(experience.description as any)
+        ? getPlainTextFromJSON(experience.description as unknown as RichTextNode)
         : String(experience.description || "");
 
     return NextResponse.json({
