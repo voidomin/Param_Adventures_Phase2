@@ -8,6 +8,8 @@ import RoleAssignedEmail from "@/components/emails/RoleAssignedEmail";
 import TripCompletedEmail from "@/components/emails/TripCompletedEmail";
 import PasswordResetEmail from "@/components/emails/PasswordResetEmail";
 import AdminInviteEmail from "@/components/emails/AdminInviteEmail";
+import { SESClient, SendRawEmailCommand } from "@aws-sdk/client-ses";
+import { Resend } from "resend";
 import React from "react";
 
 function parseBoolean(value: string | undefined): boolean | undefined {
@@ -18,44 +20,133 @@ function parseBoolean(value: string | undefined): boolean | undefined {
   return undefined;
 }
 
+// ─── TRANSPORT SELECTION ─────────────────────────────────
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const useResend = !!RESEND_API_KEY;
+const useSES = !useResend && !!(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY);
+
 // ─── SMTP CONFIGURATION ──────────────────────────────────
-// Note: smtp.zoho.com is generally more reliable on cloud platforms than .in
 const SMTP_HOST = process.env.SMTP_HOST || "smtp.zoho.com";
 const SMTP_PORT = Number.parseInt(process.env.SMTP_PORT || "465", 10);
 const SMTP_SECURE = parseBoolean(process.env.SMTP_SECURE) ?? (SMTP_PORT === 465);
 
-console.log(`[SMTP_INIT] Initializing SMTP transporter (Secure: ${SMTP_SECURE})`);
+// ─── INITIALIZATION ──────────────────────────────────────
+let sesClient: SESClient | null = null;
+let resendClient: Resend | null = null;
 
-const transporter = nodemailer.createTransport({ // NOSONAR
-  host: SMTP_HOST,
-  port: SMTP_PORT,
-  secure: SMTP_PORT === 465, // Use SMTPS only on 465, else use STARTTLS
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-  // ─── Reliability & Performance ──────────────────────────
-  pool: true,
-  maxConnections: 3,
-  connectionTimeout: 20000,
-  greetingTimeout: 20000,
-  socketTimeout: 45000,
-  // ─── Network Compatibility ──────────────────────────────
-  // family: 4 is recognized at runtime but may cause issues with certain @types versions
-  family: 4,               
-  tls: {
-    rejectUnauthorized: process.env.NODE_ENV === "production",
-    minVersion: "TLSv1.2",
-  },
-  debug: process.env.NODE_ENV !== "production",
-  logger: process.env.NODE_ENV !== "production",
-} as nodemailer.TransportOptions);
+if (useResend) {
+  console.log("[EMAIL_INIT] Using Resend API (HTTPS) for email delivery.");
+  resendClient = new Resend(RESEND_API_KEY);
+} else if (useSES) {
+  console.log("[EMAIL_INIT] Using AWS SES SDK (HTTPS) for email delivery.");
+  sesClient = new SESClient({
+    region: process.env.AWS_REGION || "ap-south-1",
+    credentials: {
+      accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+    },
+  });
+} else {
+  console.log(`[EMAIL_INIT] Using standard SMTP (${SMTP_HOST}:${SMTP_PORT}).`);
+}
 
-const FROM_EMAIL =
-  process.env.SMTP_FROM || "Param Adventures <booking@paramadventures.in>";
+// ─── FROM EMAIL HELPER ──────────────────────────────────
+// Resend is strict: "Name <email@domain.com>" or "email@domain.com"
+function getFromEmail(): string {
+  const envFrom = (process.env.SMTP_FROM || "").trim();
+  if (envFrom) return envFrom;
+  return "Param Adventures <booking@paramadventures.in>";
+}
 
-// check if we are ready to send
-const isReady = !!(process.env.SMTP_USER && process.env.SMTP_PASS);
+const FROM_EMAIL = getFromEmail();
+
+/**
+ * High-performance email dispatcher with multiple fallbacks
+ */
+async function sendEmail({
+  to,
+  subject,
+  html,
+}: {
+  to: string;
+  subject: string;
+  html: string;
+}) {
+  // Check if we have credentials
+  const isReady = useResend || useSES || !!(process.env.SMTP_USER && process.env.SMTP_PASS);
+
+  if (!isReady) {
+    const msg = "Email credentials (Resend, SES, or SMTP) not configured.";
+    console.warn(`⚠️ ${msg} Logging email to console.`);
+    console.log(`To: ${to}\nSubject: ${subject}\n--- Content ---\n${html.substring(0, 200)}...\n---`);
+    if (process.env.NODE_ENV === "production") throw new Error(msg);
+    return;
+  }
+
+  // 1. Resend (Primary Cloud Transport - Bypasses all Port Blocking)
+  if (useResend && resendClient) {
+    try {
+      const { data, error } = await resendClient.emails.send({
+        from: FROM_EMAIL,
+        to,
+        subject,
+        html,
+      });
+      if (error) throw error;
+      console.log(`✅ Email sent via Resend: ${data?.id} to ${to}`);
+      return;
+    } catch (err) {
+      console.error(`❌ Resend Failure:`, err);
+      throw err;
+    }
+  }
+
+  // 2. Standard Transporter (SES or SMTP Fallback)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const transporterArgument: any = useSES && sesClient
+    ? {
+        SES: { ses: sesClient, aws: { SendRawEmailCommand } },
+      }
+    : {
+        host: SMTP_HOST,
+        port: SMTP_PORT,
+        secure: SMTP_SECURE,
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+        pool: true,
+        maxConnections: 5,
+        family: Number.parseInt(process.env.SMTP_FAMILY || "0", 10),
+        tls: {
+          rejectUnauthorized:
+            parseBoolean(process.env.SMTP_REJECT_UNAUTHORIZED) ??
+            process.env.NODE_ENV === "production",
+          minVersion: (process.env.SMTP_TLS_MIN_VERSION || "TLSv1.2") as
+            | "TLSv1.2"
+            | "TLSv1.1"
+            | "TLSv1",
+        },
+      };
+
+  const transporter = nodemailer.createTransport(transporterArgument);
+
+  try {
+    const info = await transporter.sendMail({
+      from: FROM_EMAIL,
+      to,
+      subject,
+      html,
+    });
+    console.log(`✅ Email sent: ${info.messageId} to ${to}`);
+  } catch (err) {
+    console.error(`❌ Failed to send email to ${to}:`, err);
+    throw err;
+  }
+}
+
+// check if we are ready to send (for external checks)
+export const isEmailEnabled = useResend || useSES || !!(process.env.SMTP_USER && process.env.SMTP_PASS);
 
 // ─── TYPES ─────────────────────────────────────────────
 
@@ -118,43 +209,6 @@ interface AdminInviteData {
 }
 
 // ─── SENDERS ───────────────────────────────────────────
-
-async function sendEmail({
-  to,
-  subject,
-  html,
-}: {
-  to: string;
-  subject: string;
-  html: string;
-}) {
-  if (!isReady) {
-    const msg = "SMTP credentials not configured.";
-    console.warn(`⚠️ ${msg} Logging email to console.`);
-    console.log(
-      `To: ${to}\nSubject: ${subject}\n--- Content --- \n${html.substring(0, 200)}...\n---`,
-    );
-
-    // In production we should fail loudly so API handlers can surface the issue.
-    if (process.env.NODE_ENV === "production") {
-      throw new Error(msg);
-    }
-    return;
-  }
-
-  try {
-    const info = await transporter.sendMail({
-      from: FROM_EMAIL,
-      to,
-      subject,
-      html,
-    });
-    console.log(`✅ Email sent: ${info.messageId} to ${to}`);
-  } catch (err) {
-    console.error(`❌ Failed to send email to ${to}:`, err);
-    throw err;
-  }
-}
 
 export async function sendBookingConfirmation(data: BookingEmailData) {
   try {
