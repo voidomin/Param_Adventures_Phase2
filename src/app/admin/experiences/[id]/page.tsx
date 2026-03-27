@@ -29,7 +29,7 @@ export default async function EditExperiencePage({
   // Formatting for the form
   const initialData: ExperienceFormData = {
     ...experience,
-    description: (experience.description as RichTextNode | string) || "",
+    description: experience.description || "",
     basePrice: Number(experience.basePrice), // Convert Decimal to number
     itinerary: Array.isArray(experience.itinerary)
       ? (experience.itinerary as unknown as ItineraryDay[])

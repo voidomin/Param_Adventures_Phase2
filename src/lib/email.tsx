@@ -102,30 +102,34 @@ async function sendEmail({
   }
 
   // 2. Standard Transporter (SES or SMTP Fallback)
-  const transporter = nodemailer.createTransport(
-    (useSES && sesClient
-      ? {
-          SES: { ses: sesClient, aws: { SendRawEmailCommand } },
-        }
-      : {
-          host: SMTP_HOST,
-          port: SMTP_PORT,
-          secure: SMTP_SECURE,
-          auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS,
-          },
-          pool: true,
-          maxConnections: 5,
-          family: Number.parseInt(process.env.SMTP_FAMILY || "0", 10),
-          tls: {
-            rejectUnauthorized:
-              parseBoolean(process.env.SMTP_REJECT_UNAUTHORIZED) ??
-              process.env.NODE_ENV === "production",
-            minVersion: (process.env.SMTP_TLS_MIN_VERSION || "TLSv1.2") as any,
-          },
-        }) as any
-  );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const transporterArgument: any = useSES && sesClient
+    ? {
+        SES: { ses: sesClient, aws: { SendRawEmailCommand } },
+      }
+    : {
+        host: SMTP_HOST,
+        port: SMTP_PORT,
+        secure: SMTP_SECURE,
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+        pool: true,
+        maxConnections: 5,
+        family: Number.parseInt(process.env.SMTP_FAMILY || "0", 10),
+        tls: {
+          rejectUnauthorized:
+            parseBoolean(process.env.SMTP_REJECT_UNAUTHORIZED) ??
+            process.env.NODE_ENV === "production",
+          minVersion: (process.env.SMTP_TLS_MIN_VERSION || "TLSv1.2") as
+            | "TLSv1.2"
+            | "TLSv1.1"
+            | "TLSv1",
+        },
+      };
+
+  const transporter = nodemailer.createTransport(transporterArgument);
 
   try {
     const info = await transporter.sendMail({
