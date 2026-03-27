@@ -42,7 +42,7 @@ describe("Email Utilities", () => {
       bookingId: "b-123",
     });
 
-    expect(consoleWarnSpy).toHaveBeenCalledWith("⚠️ SMTP credentials not configured. Logging email to console.");
+    expect(consoleWarnSpy).toHaveBeenCalledWith("⚠️ Email credentials (Resend, SES, or SMTP) not configured. Logging email to console.");
     expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("To: jane@test.com"));
     expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("Subject: Booking Confirmed — Chadar Trek"));
   });
