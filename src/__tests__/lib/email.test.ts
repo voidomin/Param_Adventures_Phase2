@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   sendBookingConfirmation,
   sendBookingCancellation,
@@ -104,12 +104,12 @@ describe("Email Utilities", () => {
   });
 
   it("logs password reset emails", async () => {
-    await sendResetPasswordEmail({ userName: "Eve", userEmail: "eve@test.com", resetLink: "http://link" });
+    await sendResetPasswordEmail({ userName: "Eve", userEmail: "eve@test.com", resetLink: "https://link" });
     expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("Reset your Param Adventures password"));
   });
 
   it("logs admin invite emails", async () => {
-    await sendAdminInviteEmail({ userName: "Eve", userEmail: "eve@test.com", setupLink: "http://link" });
+    await sendAdminInviteEmail({ userName: "Eve", userEmail: "eve@test.com", setupLink: "https://link" });
     expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("Welcome to Param Adventures Admin Team!"));
   });
 });
