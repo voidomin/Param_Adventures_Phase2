@@ -41,7 +41,7 @@ const transporter = nodemailer.createTransport({
   greetingTimeout: 20000,
   socketTimeout: 45000,
   // ─── Network Compatibility ──────────────────────────────
-  // @ts-ignore - family is recognized at runtime but may cause issues with certain @types versions
+  // family: 4 is recognized at runtime but may cause issues with certain @types versions
   family: 4,               
   tls: {
     rejectUnauthorized: false,
@@ -49,7 +49,7 @@ const transporter = nodemailer.createTransport({
   },
   debug: true,
   logger: true,
-} as any);
+} as nodemailer.TransportOptions);
 
 const FROM_EMAIL =
   process.env.SMTP_FROM || "Param Adventures <booking@paramadventures.in>";

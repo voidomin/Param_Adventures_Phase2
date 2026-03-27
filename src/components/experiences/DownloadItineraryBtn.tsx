@@ -433,6 +433,7 @@ function drawEssentialInfoAndContact(doc: jsPDF, data: ItineraryBookingData) {
       columnStyles: { 0: { fontStyle: "bold", cellWidth: 50, textColor: COLORS.navy }, 1: { textColor: COLORS.darkText } },
       alternateRowStyles: { fillColor: COLORS.warmGray },
     });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     y = (doc as any).lastAutoTable?.finalY ?? y;
   }
 

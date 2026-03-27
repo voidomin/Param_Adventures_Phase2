@@ -24,7 +24,6 @@ const mockUserFindUnique = vi.mocked(prisma.user.findUnique);
 
 const TEST_PASSWORD_A = "mySecurePassword123"; // NOSONAR
 const TEST_PASSWORD_B = "password456"; // NOSONAR
-const TEST_HASH_B = "mock-hash-password456"; // NOSONAR
 
 
 describe("Auth Utilities", () => {
