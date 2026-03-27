@@ -66,7 +66,9 @@ export default async function EditExperiencePage({
 
   return (
     <div>
-      <ExperienceForm initialData={initialData} />
+      <ExperienceForm 
+        initialData={initialData} 
+      />
     </div>
   );
 }
