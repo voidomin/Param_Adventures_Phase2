@@ -34,7 +34,7 @@ const mockSendResetPasswordEmail = vi.mocked(sendResetPasswordEmail);
 const mockFindUnique = vi.mocked(prisma.user.findUnique);
 const mockUpdate = vi.mocked(prisma.user.update);
 
-const createRequest = (body: unknown, origin = "http://localhost:3000") =>
+const createRequest = (body: unknown, origin = "https://localhost:3000") =>
   ({
     json: vi.fn().mockResolvedValue(body),
     headers: {
@@ -104,7 +104,7 @@ describe("POST /api/auth/forgot-password", () => {
     mockUpdate.mockResolvedValue({} as any);
 
     const response = await POST(
-      createRequest({ email: "USER@example.com" }, "http://app.local"),
+      createRequest({ email: "USER@example.com" }, "https://app.local"),
     );
     const data = await response.json();
 
@@ -118,7 +118,7 @@ describe("POST /api/auth/forgot-password", () => {
     expect(mockSendResetPasswordEmail).toHaveBeenCalledWith(
       expect.objectContaining({
         userEmail: "user@example.com",
-        resetLink: "http://app.local/reset-password?token=token123",
+        resetLink: "https://app.local/reset-password?token=token123",
       }),
     );
   });
@@ -137,7 +137,7 @@ describe("POST /api/auth/forgot-password", () => {
     mockUpdate.mockResolvedValue({} as any);
 
     const response = await POST(
-      createRequest({ email: "USER@example.com" }, "http://ignored.local"),
+      createRequest({ email: "USER@example.com" }, "https://ignored.local"),
     );
 
     expect(response.status).toBe(200);
@@ -167,7 +167,7 @@ describe("POST /api/auth/forgot-password", () => {
     expect(response.status).toBe(200);
     expect(mockSendResetPasswordEmail).toHaveBeenCalledWith(
       expect.objectContaining({
-        resetLink: "http://localhost:3000/reset-password?token=token123",
+        resetLink: "https://localhost:3000/reset-password?token=token123",
       }),
     );
   });
