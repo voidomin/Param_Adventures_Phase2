@@ -24,7 +24,7 @@ const SMTP_HOST = process.env.SMTP_HOST || "smtp.zoho.com";
 const SMTP_PORT = Number.parseInt(process.env.SMTP_PORT || "465", 10);
 const SMTP_SECURE = parseBoolean(process.env.SMTP_SECURE) ?? (SMTP_PORT === 465);
 
-console.log(`[SMTP_INIT] Attempting connection to ${SMTP_HOST}:${SMTP_PORT} (Secure: ${SMTP_SECURE})`);
+console.log(`[SMTP_INIT] Initializing SMTP transporter (Secure: ${SMTP_SECURE})`);
 
 const transporter = nodemailer.createTransport({
   host: SMTP_HOST,
@@ -44,11 +44,11 @@ const transporter = nodemailer.createTransport({
   // family: 4 is recognized at runtime but may cause issues with certain @types versions
   family: 4,               
   tls: {
-    rejectUnauthorized: false,
+    rejectUnauthorized: process.env.NODE_ENV === "production",
     minVersion: "TLSv1.2",
   },
-  debug: true,
-  logger: true,
+  debug: process.env.NODE_ENV !== "production",
+  logger: process.env.NODE_ENV !== "production",
 } as nodemailer.TransportOptions);
 
 const FROM_EMAIL =
