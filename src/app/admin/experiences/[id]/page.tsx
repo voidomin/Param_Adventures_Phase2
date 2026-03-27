@@ -5,7 +5,6 @@ import ExperienceForm, {
 } from "@/components/admin/ExperienceForm";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { RichTextNode } from "@/lib/utils/rich-text";
 
 export default async function EditExperiencePage({
   params,
@@ -29,7 +28,7 @@ export default async function EditExperiencePage({
   // Formatting for the form
   const initialData: ExperienceFormData = {
     ...experience,
-    description: experience.description || "",
+    description: (experience.description as unknown as ExperienceFormData["description"]) || "",
     basePrice: Number(experience.basePrice), // Convert Decimal to number
     itinerary: Array.isArray(experience.itinerary)
       ? (experience.itinerary as unknown as ItineraryDay[])
