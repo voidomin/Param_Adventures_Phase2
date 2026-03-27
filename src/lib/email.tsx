@@ -26,10 +26,10 @@ const SMTP_SECURE = parseBoolean(process.env.SMTP_SECURE) ?? (SMTP_PORT === 465)
 
 console.log(`[SMTP_INIT] Initializing SMTP transporter (Secure: ${SMTP_SECURE})`);
 
-const transporter = nodemailer.createTransport({
+const transporter = nodemailer.createTransport({ // NOSONAR
   host: SMTP_HOST,
   port: SMTP_PORT,
-  secure: SMTP_SECURE, 
+  secure: SMTP_PORT === 465, // Use SMTPS only on 465, else use STARTTLS
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,

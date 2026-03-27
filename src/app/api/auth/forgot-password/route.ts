@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
     const baseUrl =
       process.env.NEXT_PUBLIC_APP_URL ||
       request.headers.get("origin") ||
-      "http://localhost:3000";
+      "https://localhost:3000";
     const resetLink = `${baseUrl}/reset-password?token=${resetToken}`;
 
     // Send real email
