@@ -548,6 +548,7 @@ export default async function ExperienceDetailPage({
                 alt={exp.title}
                 fill
                 priority
+                sizes="100vw"
                 className="object-cover"
               />
             </div>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAccessToken } from "@/lib/auth";
-import { generatePresignedUrl } from "@/lib/s3";
+import { mediaFactory } from "@/lib/media/factory";
 import { z } from "zod";
 
 const presignSchema = z.object({
@@ -42,22 +42,11 @@ export async function POST(request: NextRequest) {
     }
     const { fileName, contentType } = parseResult.data;
 
-    // Priority 1: Cloudinary (Direct Upload)
-    if (process.env.CLOUDINARY_API_KEY) {
-      const { generateCloudinarySignature } = await import("@/lib/cloudinary");
-      const cloudData = await generateCloudinarySignature(
-        "param-adventures/users",
-      );
-      return NextResponse.json({ provider: "cloudinary", ...cloudData });
-    }
+    // Request presign url from the dynamically active provider
+    const provider = await mediaFactory.getProvider();
+    const presignData = await provider.getPresignData(fileName, contentType);
 
-    // Priority 2: AWS S3 (Direct Upload/Mock)
-    const { uploadUrl, finalUrl } = await generatePresignedUrl(
-      fileName,
-      contentType,
-    );
-
-    return NextResponse.json({ provider: "s3", uploadUrl, finalUrl });
+    return NextResponse.json(presignData);
   } catch (error: unknown) {
     console.error("User presign error:", error);
     return NextResponse.json(

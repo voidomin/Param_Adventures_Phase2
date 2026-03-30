@@ -220,6 +220,7 @@ export default function ExperienceGallery({ images }: ExperienceGalleryProps) {
                     src={galleryImages[selectedIndex]}
                     alt={`Item detail ${selectedIndex + 1}`}
                     fill
+                    sizes="100vw"
                     className="object-contain"
                   />
                 </div>

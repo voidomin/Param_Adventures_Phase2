@@ -15,7 +15,13 @@ import {
   Save,
   Loader2,
   RefreshCw,
-  AlertTriangle
+  AlertTriangle,
+  Activity,
+  Cloud,
+  Video,
+  Globe,
+  Shield,
+  DollarSign
 } from "lucide-react";
 
 interface Setting {
@@ -31,6 +37,7 @@ export default function SystemSettingsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("communications");
+  const [dbStats, setDbStats] = useState<any>(null);
 
   // ─── Whitelist Security Check ──────────────────────────
   const isWhitelisted = user && SYSTEM_ADMIN_EMAILS.includes(user.email);
@@ -54,6 +61,16 @@ export default function SystemSettingsPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Fetch DB stats when the database tab is active
+  useEffect(() => {
+    if (activeTab === "database" && isWhitelisted) {
+      fetch("/api/admin/settings/system/database/stats")
+        .then(res => res.json())
+        .then(data => setDbStats(data))
+        .catch(err => console.error("Stats fetch error:", err));
+    }
+  }, [activeTab, isWhitelisted]);
 
   const handleUpdate = async () => {
     setIsSaving(true);
@@ -81,9 +98,17 @@ export default function SystemSettingsPage() {
 
   const updateSetting = (type: "PLATFORM" | "SITE", key: string, value: string) => {
     if (type === "PLATFORM") {
-      setPlatformSettings(prev => prev.map(s => s.key === key ? { ...s, value } : s));
+      setPlatformSettings(prev => {
+        const exists = prev.some(s => s.key === key);
+        if (exists) return prev.map(s => s.key === key ? { ...s, value } : s);
+        return [...prev, { key, value }];
+      });
     } else {
-      setSiteSettings(prev => prev.map(s => s.key === key ? { ...s, value } : s));
+      setSiteSettings(prev => {
+        const exists = prev.some(s => s.key === key);
+        if (exists) return prev.map(s => s.key === key ? { ...s, value } : s);
+        return [...prev, { key, value }];
+      });
     }
   };
 
@@ -142,15 +167,15 @@ export default function SystemSettingsPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={async () => {
-              if (window.confirm("CRITICAL: Are you sure you want to RESTORE ALL DEFAULT SETTINGS? This will overwrite your current configuration including API keys. This action cannot be undone.")) {
+              if (globalThis.confirm?.("CRITICAL: Are you sure you want to RESTORE ALL DEFAULT SETTINGS? This will overwrite your current configuration including API keys. This action cannot be undone.")) {
                 setIsSaving(true);
                 try {
                   const res = await fetch("/api/admin/settings/system/reset", { method: "POST" });
                   if (res.ok) {
-                    alert("Factory defaults restored! 🏔️ Updating UI...");
+                    globalThis.alert?.("Factory defaults restored! 🏔️ Updating UI...");
                     await fetchData();
                   } else {
-                    alert("Failed to reset. Check console.");
+                    globalThis.alert?.("Failed to reset. Check console.");
                   }
                 } catch (e) {
                   console.error(e);
@@ -209,6 +234,7 @@ export default function SystemSettingsPage() {
 
         {/* Content Area */}
         <div className="lg:col-span-3 bg-foreground/[0.02] border border-border rounded-3xl p-8 min-h-[500px]">
+          {/* Communications Tab */}
           {activeTab === "communications" && (
             <div className="space-y-8 animate-in slide-in-from-left-4 duration-300">
               <SectionTitle 
@@ -298,7 +324,7 @@ export default function SystemSettingsPage() {
                 </div>
                 <button 
                   onClick={async () => {
-                    const email = window.prompt("Enter recipient email for test:");
+                    const email = globalThis.prompt?.("Enter recipient email for test:");
                     if (email) {
                       try {
                         const res = await fetch("/api/admin/settings/system/test-email", {
@@ -306,8 +332,8 @@ export default function SystemSettingsPage() {
                           headers: { "Content-Type": "application/json" },
                           body: JSON.stringify({ to: email }),
                         });
-                        if (res.ok) alert("Test email sent! 🏔️");
-                        else alert("Failed to send test email. Check logs.");
+                        if (res.ok) globalThis.alert?.("Test email sent! 🏔️");
+                        else globalThis.alert?.("Failed to send test email. Check logs.");
                       } catch (e) {
                         console.error(e);
                       }
@@ -321,8 +347,9 @@ export default function SystemSettingsPage() {
             </div>
           )}
 
+          {/* Finance Tab */}
           {activeTab === "finance" && (
-            <div className="space-y-8">
+            <div className="space-y-8 animate-in slide-in-from-left-4 duration-300">
               <SectionTitle 
                 title="Financial Governance" 
                 subtitle="Manage payments, taxes, and customer invoicing." 
@@ -364,7 +391,7 @@ export default function SystemSettingsPage() {
           )}
 
           {activeTab === "media" && (
-            <div className="space-y-8">
+            <div className="space-y-8 animate-in slide-in-from-left-4 duration-300">
               <SectionTitle 
                 title="Media Storage Cloud" 
                 subtitle="Configure where your photos and videos are stored." 
@@ -381,11 +408,63 @@ export default function SystemSettingsPage() {
                     { label: "Cloudinary (Managed)", value: "CLOUDINARY" },
                   ]}
                 />
-                <InputGroup
-                  label="AWS Bucket Name"
-                  value={getVal("PLATFORM", "s3_bucket")}
-                  onChange={(v: string) => updateSetting("PLATFORM", "s3_bucket", v)}
-                />
+              </div>
+
+              <div className="p-8 bg-foreground/5 rounded-3xl space-y-6 border border-border/50">
+                <h4 className="font-bold text-sm text-primary uppercase tracking-widest flex items-center gap-2">
+                  <Settings2 className="w-4 h-4" /> 
+                  {getVal("PLATFORM", "media_provider") === "AWS_S3" ? "AWS S3" : "Cloudinary"} Credentials
+                </h4>
+
+                {getVal("PLATFORM", "media_provider") === "AWS_S3" && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <InputGroup
+                      label="AWS Bucket Name"
+                      value={getVal("PLATFORM", "s3_bucket")}
+                      onChange={(v: string) => updateSetting("PLATFORM", "s3_bucket", v)}
+                    />
+                    <InputGroup
+                      label="AWS Region"
+                      value={getVal("PLATFORM", "s3_region")}
+                      onChange={(v: string) => updateSetting("PLATFORM", "s3_region", v)}
+                      placeholder="e.g. ap-south-1"
+                    />
+                    <InputGroup
+                      label="AWS Access Key ID"
+                      value={getVal("PLATFORM", "s3_access_key")}
+                      onChange={(v: string) => updateSetting("PLATFORM", "s3_access_key", v)}
+                      type="password"
+                    />
+                    <InputGroup
+                      label="AWS Secret Access Key"
+                      value={getVal("PLATFORM", "s3_secret_key")}
+                      onChange={(v: string) => updateSetting("PLATFORM", "s3_secret_key", v)}
+                      type="password"
+                    />
+                  </div>
+                )}
+
+                {getVal("PLATFORM", "media_provider") !== "AWS_S3" && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <InputGroup
+                      label="Cloud Name"
+                      value={getVal("PLATFORM", "cloudinary_cloud_name")}
+                      onChange={(v: string) => updateSetting("PLATFORM", "cloudinary_cloud_name", v)}
+                    />
+                    <InputGroup
+                      label="API Key"
+                      value={getVal("PLATFORM", "cloudinary_api_key")}
+                      onChange={(v: string) => updateSetting("PLATFORM", "cloudinary_api_key", v)}
+                      type="password"
+                    />
+                    <InputGroup
+                      label="API Secret"
+                      value={getVal("PLATFORM", "cloudinary_api_secret")}
+                      onChange={(v: string) => updateSetting("PLATFORM", "cloudinary_api_secret", v)}
+                      type="password"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -461,29 +540,84 @@ export default function SystemSettingsPage() {
             </div>
           )}
 
+          {/* Database Tab */}
           {activeTab === "database" && (
-            <div className="space-y-8">
+            <div className="space-y-8 animate-in slide-in-from-left-4 duration-300">
               <SectionTitle 
-                title="Database Sovereignty" 
-                subtitle="Health stats and automated snapshots." 
+                title="Data Sovereignty" 
+                subtitle="Monitor platform health and download secure data archives." 
                 icon={Database} 
               />
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <StatCard label="Connectivity" value="Stable 12ms" color="text-green-500" />
-                <StatCard label="Schema Version" value="v1.4.2" />
-                <StatCard label="Last Backup" value="9h ago" />
+                <StatCard 
+                  label="Database Status" 
+                  value={dbStats?.status === "HEALTHY" ? "Healthy" : "Fetching..."} 
+                  color={dbStats?.status === "HEALTHY" ? "text-green-500" : "text-foreground/30"} 
+                />
+                <StatCard label="Total Bookings" value={dbStats?.stats?.bookings?.toString() || "..."} />
+                <StatCard label="Registered Users" value={dbStats?.stats?.users?.toString() || "..."} />
               </div>
 
-              <div className="p-8 border border-dashed border-border rounded-3xl flex flex-col items-center justify-center text-center gap-4">
-                <Database className="w-12 h-12 text-foreground/20" />
-                <div>
-                  <h4 className="font-bold">Manual Backup Snapshot</h4>
-                  <p className="text-sm text-foreground/50 max-w-sm mx-auto mt-1">This will generate a full PG-Dump and upload it to your designated S3 bucket.</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="p-8 bg-foreground/5 rounded-3xl border border-border/50 space-y-4">
+                  <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-4">
+                    <Database className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-xl font-bold font-heading">Manual Snapshot</h4>
+                  <p className="text-sm text-foreground/50 leading-relaxed italic">
+                    Generate a full JSON archive containing all Experiences, Bookings, Users, and Transactions. Use this for offline backups or migrations.
+                  </p>
+                  <button 
+                    onClick={async () => {
+                      setIsSaving(true);
+                      try {
+                        const res = await fetch("/api/admin/settings/system/database/snapshot");
+                        if (res.ok) {
+                          const blob = await res.blob();
+                          const url = globalThis.URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = `param_adventures_backup_${new Date().toISOString().split('T')[0]}.json`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          globalThis.URL.revokeObjectURL(url);
+                        } else {
+                          globalThis.alert?.("Failed to generate snapshot.");
+                        }
+                      } catch (e) {
+                        console.error(e);
+                      } finally {
+                        setIsSaving(false);
+                      }
+                    }}
+                    className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-foreground text-background rounded-2xl font-bold hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-foreground/10"
+                  >
+                    <Save className="w-4 h-4" /> Download Snapshot
+                  </button>
                 </div>
-                <button className="px-6 py-3 bg-foreground text-background rounded-2xl font-bold flex items-center gap-2 hover:scale-105 active:scale-95 transition-all">
-                  <Save className="w-4 h-4" /> Trigger S3 Backup
-                </button>
+
+                <div className="p-8 bg-primary/5 rounded-3xl border border-primary/10 space-y-4">
+                  <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-4">
+                    <Activity className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-xl font-bold font-heading">Infrastructure Stats</h4>
+                  <div className="space-y-3">
+                    <div className="flex justify-between text-sm py-2 border-b border-primary/10">
+                      <span className="text-foreground/50 italic">Total Experiences</span>
+                      <span className="font-bold">{dbStats?.stats?.experiences || "..."}</span>
+                    </div>
+                    <div className="flex justify-between text-sm py-2 border-b border-primary/10">
+                      <span className="text-foreground/50 italic">Audit Log Entries</span>
+                      <span className="font-bold">{dbStats?.stats?.auditLogs || "..."}</span>
+                    </div>
+                    <div className="flex justify-between text-sm py-2">
+                    <span className="text-foreground/50 italic">Platform Latency</span>
+                    <span className="text-green-500 font-bold">Stable</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
