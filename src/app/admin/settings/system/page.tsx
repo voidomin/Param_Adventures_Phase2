@@ -16,12 +16,7 @@ import {
   Loader2,
   RefreshCw,
   AlertTriangle,
-  Activity,
-  Cloud,
-  Video,
-  Globe,
-  Shield,
-  DollarSign
+  Activity
 } from "lucide-react";
 
 interface Setting {
@@ -581,7 +576,7 @@ export default function SystemSettingsPage() {
                           a.download = `param_adventures_backup_${new Date().toISOString().split('T')[0]}.json`;
                           document.body.appendChild(a);
                           a.click();
-                          document.body.removeChild(a);
+                          a.remove();
                           globalThis.URL.revokeObjectURL(url);
                         } else {
                           globalThis.alert?.("Failed to generate snapshot.");
@@ -627,7 +622,7 @@ export default function SystemSettingsPage() {
   );
 }
 
-function SectionTitle({ title, subtitle, icon: Icon }: { title: string; subtitle: string; icon: any }) {
+function SectionTitle({ title, subtitle, icon: Icon }: Readonly<{ title: string; subtitle: string; icon: any }>) {
   return (
     <div className="space-y-1 mb-8">
       <div className="flex items-center gap-2 text-primary font-bold text-sm">
@@ -646,7 +641,7 @@ function InputGroup({
   options = [], 
   placeholder, 
   description 
-}: { 
+}: Readonly<{ 
   label: string; 
   value: string; 
   onChange: (v: string) => void; 
@@ -654,7 +649,7 @@ function InputGroup({
   options?: { label: string; value: string }[]; 
   placeholder?: string; 
   description?: string; 
-}) {
+}>) {
   return (
     <div className="space-y-2">
       <label className="text-xs font-bold text-foreground/40 uppercase tracking-widest pl-1">{label}</label>
@@ -682,7 +677,7 @@ function InputGroup({
   );
 }
 
-function StatCard({ label, value, color = "text-foreground" }: { label: string; value: string; color?: string }) {
+function StatCard({ label, value, color = "text-foreground" }: Readonly<{ label: string; value: string; color?: string }>) {
   return (
     <div className="p-6 bg-background border border-border rounded-2xl space-y-1">
       <p className="text-[10px] font-black uppercase tracking-widest text-foreground/30">{label}</p>

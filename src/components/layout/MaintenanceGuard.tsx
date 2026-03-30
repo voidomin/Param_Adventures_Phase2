@@ -6,7 +6,7 @@ import { SYSTEM_ADMIN_EMAILS } from "@/lib/constants/auth";
 import MaintenanceScreen from "./MaintenanceScreen";
 import { usePathname } from "next/navigation";
 
-export default function MaintenanceGuard({ children }: { children: React.ReactNode }) {
+export default function MaintenanceGuard({ children }: Readonly<{ children: React.ReactNode }>) {
   const { user, isLoading: authLoading } = useAuth();
   const [maintenanceMode, setMaintenanceMode] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState(true);
