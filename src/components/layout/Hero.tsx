@@ -133,6 +133,7 @@ export default function Hero({
                 alt={currentSlide.title}
                 fill
                 priority
+                sizes="100vw"
                 className="object-cover"
               />
             )}

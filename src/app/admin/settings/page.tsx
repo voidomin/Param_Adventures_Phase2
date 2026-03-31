@@ -22,6 +22,10 @@ export default function AdminSettingsPage() {
     gstNumber: "",
     panNumber: "",
     stateCode: "05",
+    razorpay_mode: "TEST",
+    razorpay_key_id: "",
+    razorpay_key_secret: "",
+    razorpay_webhook_secret: "",
   });
   
   const [isLoadingData, setIsLoadingData] = useState(true);
@@ -211,38 +215,37 @@ export default function AdminSettingsPage() {
         </div>
 
         {/* Company Identity Section */}
-        <div className="p-8">
-           <h2 className="text-xl font-bold text-foreground mb-6">
+        <div className="p-8 border-b border-border/50">
+           <h2 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
              Company Identity (For GST Invoice)
            </h2>
            <div className="space-y-6">
               <div>
                  <label htmlFor="companyName" className="block text-sm font-semibold text-foreground/70 mb-2">Company Name</label>
-                 <input id="companyName" type="text" name="companyName" value={settings.companyName} onChange={handleChange} className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary" />
+                 <input id="companyName" type="text" name="companyName" value={settings.companyName} onChange={handleChange} className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-all" />
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
-                  <label htmlFor="gstNumber" className="block text-sm font-semibold text-foreground/70 mb-2">GSTIN</label>
-                  <input id="gstNumber" type="text" name="gstNumber" value={settings.gstNumber} onChange={handleChange} className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary uppercase" />
+                   <label htmlFor="gstNumber" className="block text-sm font-semibold text-foreground/70 mb-2">GSTIN</label>
+                   <input id="gstNumber" type="text" name="gstNumber" value={settings.gstNumber} onChange={handleChange} className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary uppercase transition-all" />
                 </div>
                 <div>
-                  <label htmlFor="panNumber" className="block text-sm font-semibold text-foreground/70 mb-2">PAN</label>
-                  <input id="panNumber" type="text" name="panNumber" value={settings.panNumber} onChange={handleChange} className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary uppercase" />
+                   <label htmlFor="panNumber" className="block text-sm font-semibold text-foreground/70 mb-2">PAN</label>
+                   <input id="panNumber" type="text" name="panNumber" value={settings.panNumber} onChange={handleChange} className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary uppercase transition-all" />
                 </div>
                 <div>
-                  <label htmlFor="stateCode" className="block text-sm font-semibold text-foreground/70 mb-2">State Code (e.g., 05 for UK)</label>
-                  <input id="stateCode" type="text" name="stateCode" value={settings.stateCode} onChange={handleChange} className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary" />
+                   <label htmlFor="stateCode" className="block text-sm font-semibold text-foreground/70 mb-2">State Code</label>
+                   <input id="stateCode" type="text" name="stateCode" value={settings.stateCode} onChange={handleChange} className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary transition-all" />
                 </div>
               </div>
 
               <div>
                  <label htmlFor="companyAddress" className="block text-sm font-semibold text-foreground/70 mb-2">Company Address</label>
-                 <textarea id="companyAddress" name="companyAddress" value={settings.companyAddress} onChange={handleChange} rows={3} className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary resize-none"></textarea>
+                 <textarea id="companyAddress" name="companyAddress" value={settings.companyAddress} onChange={handleChange} rows={3} className="w-full bg-background border border-border rounded-xl px-4 py-3 focus:outline-none focus:border-primary resize-none transition-all"></textarea>
               </div>
            </div>
         </div>
-
       </div>
     </div>
   );

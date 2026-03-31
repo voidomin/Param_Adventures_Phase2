@@ -207,6 +207,7 @@ export default function AuthLayout({
               src={bgSrc}
               alt="Adventure landscape"
               fill
+              sizes="50vw"
               className="object-cover"
               priority
               quality={90}

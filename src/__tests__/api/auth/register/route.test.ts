@@ -10,12 +10,17 @@ vi.mock("@/lib/db", () => ({
     role: {
       findUnique: vi.fn(),
     },
+    platformSetting: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+    },
   },
 }));
 vi.mock("@/lib/auth", () => ({
   hashPassword: vi.fn(),
   generateAccessToken: vi.fn(),
   generateRefreshToken: vi.fn(),
+  parseExpiryToSeconds: vi.fn().mockReturnValue(3600),
 }));
 vi.mock("@/lib/email", () => ({
   sendWelcomeEmail: vi.fn(() => Promise.resolve()),
@@ -37,6 +42,8 @@ const mockHashPassword = vi.mocked(hashPassword);
 const mockGenerateAccessToken = vi.mocked(generateAccessToken);
 const mockGenerateRefreshToken = vi.mocked(generateRefreshToken);
 const mockSendWelcomeEmail = vi.mocked(sendWelcomeEmail);
+const mockPlatformSettingFindUnique = vi.mocked(prisma.platformSetting.findUnique);
+const mockPlatformSettingFindMany = vi.mocked(prisma.platformSetting.findMany);
 
 const createRequest = (body: unknown) =>
   new NextRequest("http://localhost/api/auth/register", {
@@ -47,6 +54,11 @@ const createRequest = (body: unknown) =>
 describe("POST /api/auth/register", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPlatformSettingFindUnique.mockResolvedValue({ key: "registration_enabled", value: "true" } as any);
+    mockPlatformSettingFindMany.mockResolvedValue([
+      { key: "jwt_expiry", value: "1h" },
+      { key: "refresh_token_expiry", value: "7d" },
+    ] as any);
   });
 
   it("returns 400 for invalid payload", async () => {

@@ -88,4 +88,24 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+import { withSentryConfig } from "@sentry/nextjs";
+
+export default withSentryConfig(nextConfig, {
+  // For all available options, see:
+  // https://github.com/getsentry/sentry-javascript/blob/master/packages/nextjs/src/config/types.ts
+
+  // Suppresses source map uploading logs during bundling
+  silent: true,
+  org: "param-adventures",
+  project: "javascript-nextjs",
+  // Source map upload auth token
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+
+  sourcemaps: {
+    // Automatically delete source maps after uploading to Sentry
+    deleteSourcemapsAfterUpload: true,
+  },
+
+  // Routes HTTP requests through Sentry's tunnel endpoint to avoid ad-blockers
+  tunnelRoute: "/monitoring",
+});

@@ -5,7 +5,12 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Mail, Phone, MapPin, X } from "lucide-react";
 
-export default function Footer() {
+interface FooterProps {
+  supportEmail?: string;
+  supportPhone?: string;
+}
+
+export default function Footer({ supportEmail, supportPhone }: FooterProps) {
   const pathname = usePathname();
 
   // Hide footer on admin, auth, and specific dashboard operational routes if desired.
@@ -191,16 +196,16 @@ export default function Footer() {
               </li>
               <li className="flex items-center gap-3">
                 <Phone className="w-5 h-5 text-primary shrink-0" />
-                <span>+91 98765 43210</span>
+                <span>{supportPhone || "+91 98765 43210"}</span>
               </li>
               <li className="flex items-center gap-3">
                 <Mail className="w-5 h-5 text-primary shrink-0" />
                 <div className="flex flex-col gap-1">
                   <a
-                    href="mailto:info@paramadventures.in"
+                    href={`mailto:${supportEmail || "info@paramadventures.in"}`}
                     className="hover:text-primary transition-colors"
                   >
-                    info@paramadventures.in
+                    {supportEmail || "info@paramadventures.in"}
                   </a>
                   <span className="text-[10px] uppercase tracking-wider text-foreground/40 font-bold">
                     For Bug Reports:{" "}

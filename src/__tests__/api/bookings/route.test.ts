@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
 
 const {
@@ -35,7 +35,7 @@ vi.mock("@/lib/db", () => ({
   prisma: {
     experience: { findUnique: vi.fn() },
     slot: { findUnique: vi.fn(), update: vi.fn() },
-    platformSetting: { findUnique: vi.fn() },
+    platformSetting: { findUnique: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]) },
     booking: { create: vi.fn(), delete: vi.fn() },
     payment: { create: vi.fn() },
     $transaction: vi.fn(),

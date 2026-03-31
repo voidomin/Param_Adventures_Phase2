@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { SYSTEM_ADMIN_EMAILS } from "@/lib/constants/auth";
 import {
   Compass,
   LayoutDashboard,
@@ -145,6 +146,12 @@ export default function AdminLayout({
       icon: Star,
       permission: "trip:create",
     },
+    {
+      name: "System Governance",
+      href: "/admin/settings/system",
+      icon: ScrollText,
+      role: "SUPER_ADMIN",
+    },
   ] satisfies {
     name: string;
     href: string;
@@ -208,21 +215,21 @@ export default function AdminLayout({
         </div>
 
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto mt-4 md:mt-0">
-          <div className="md:hidden mb-4 pb-4 border-b border-border/50">
-            <p className="px-4 text-[10px] font-bold text-foreground/40 uppercase tracking-widest">
-              Navigation
-            </p>
-          </div>
           {navItems.map((item) => {
-            // Role-based guard (check user.role directly)
+            // 1. Role-based guard (check user.role directly)
             if (item.role && user.role !== item.role) return null;
 
-            // Permission-based guard
+            // 2. Permission-based guard
             if (item.permission) {
               const perms = Array.isArray(item.permission)
                 ? item.permission
                 : [item.permission];
               if (!perms.some((p) => hasPermission(p))) return null;
+            }
+
+            // 3. High-Security Email Whitelist Check (for System Governance)
+            if (item.href === "/admin/settings/system" && !SYSTEM_ADMIN_EMAILS.includes(user.email)) {
+              return null;
             }
 
             const isActive =

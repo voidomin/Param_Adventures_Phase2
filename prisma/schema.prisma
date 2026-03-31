@@ -1,7 +1,3 @@
-// Param Adventure Phase 2 — Prisma Schema
-// Aligned with docs/data-schema.md and docs/02-roles-access.md
-// RBAC: One role per user via User.roleId → Role table
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,7 +6,373 @@ datasource db {
   provider = "postgresql"
 }
 
-// ─── ENUMS ───────────────────────────────────────────────
+model Role {
+  id          String           @id @default(uuid())
+  name        String           @unique
+  description String?
+  isSystem    Boolean          @default(false)
+  createdAt   DateTime         @default(now())
+  permissions RolePermission[]
+  users       User[]
+}
+
+model Permission {
+  id          String           @id @default(uuid())
+  key         String           @unique
+  description String?
+  category    String?
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model User {
+  id                     String             @id @default(uuid())
+  email                  String             @unique
+  password               String?
+  name                   String             @default("")
+  phoneNumber            String?
+  avatarUrl              String?
+  roleId                 String
+  isVerified             Boolean            @default(false)
+  status                 UserStatus         @default(ACTIVE)
+  googleId               String?            @unique
+  deletedAt              DateTime?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  age                    Int?
+  bloodGroup             String?
+  emergencyContactName   String?
+  emergencyContactNumber String?
+  emergencyRelationship  String?
+  gender                 String?
+  resetToken             String?
+  resetTokenExpiry       DateTime?
+  tokenVersion           Int                @default(0)
+  blogs                  Blog[]
+  bookings               Booking[]
+  reviews                ExperienceReview[]
+  uploads                Image[]
+  savedExperiences       SavedExperience[]
+  managedSlots           Slot[]             @relation("SlotManager")
+  assignments            TripAssignment[]   @relation("TrekLeadAssignments")
+  auditLogs              AuditLog[]
+  role                   Role               @relation(fields: [roleId], references: [id])
+}
+
+model Category {
+  id          String               @id @default(uuid())
+  name        String
+  slug        String               @unique
+  isActive    Boolean              @default(true)
+  createdAt   DateTime             @default(now())
+  icon        String?
+  experiences ExperienceCategory[]
+}
+
+model Experience {
+  id                  String               @id @default(uuid())
+  title               String
+  slug                String               @unique
+  itinerary           Json
+  basePrice           Decimal              @db.Decimal(10, 2)
+  durationDays        Int                  @default(1)
+  location            String               @default("")
+  difficulty          Difficulty           @default(EASY)
+  capacity            Int
+  status              ExperienceStatus     @default(DRAFT)
+  images              String[]
+  isFeatured          Boolean              @default(false)
+  startDate           DateTime?
+  endDate             DateTime?
+  deletedAt           DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  ageRange            String?
+  bestTimeToVisit     String?
+  cancellationPolicy  String?
+  cardImage           String?
+  coverImage          String?
+  dropPoints          String[]             @default([])
+  dropoffTime         String?
+  exclusions          Json?
+  faqs                Json?
+  fitnessRequirement  String?
+  highlights          String[]             @default([])
+  inclusions          Json?
+  lastAtm             String?
+  maxAltitude         String?
+  maxGroupSize        Int?
+  meetingPoint        String?
+  meetingTime         String?
+  minAge              Int?
+  networkConnectivity String?
+  pickupPoints        String[]             @default([])
+  thingsToCarry       Json?
+  trekDistance        String?
+  vibeTags            String[]             @default([])
+  description         Json                 @default("{}")
+  blogs               Blog[]
+  bookings            Booking[]
+  categories          ExperienceCategory[]
+  reviews             ExperienceReview[]
+  savedBy             SavedExperience[]
+  slots               Slot[]
+}
+
+model ExperienceCategory {
+  experienceId String
+  categoryId   String
+  category     Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+
+  @@id([experienceId, categoryId])
+}
+
+model Slot {
+  id                String           @id @default(uuid())
+  experienceId      String
+  date              DateTime
+  capacity          Int
+  remainingCapacity Int
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  completedAt       DateTime?
+  managerId         String?
+  startedAt         DateTime?
+  status            TripStatus       @default(UPCOMING)
+  trekEndedAt       DateTime?
+  trekStartedAt     DateTime?
+  vendorContacts    Json?
+  bookings          Booking[]
+  experience        Experience       @relation(fields: [experienceId], references: [id])
+  manager           User?            @relation("SlotManager", fields: [managerId], references: [id])
+  assignments       TripAssignment[]
+  tripLog           TripLog?
+}
+
+model Booking {
+  id                 String               @id @default(uuid())
+  userId             String
+  experienceId       String
+  slotId             String?
+  participantCount   Int                  @default(1)
+  totalPrice         Decimal              @db.Decimal(10, 2)
+  bookingStatus      BookingStatus        @default(REQUESTED)
+  paymentStatus      PaymentStatus        @default(PENDING)
+  deletedAt          DateTime?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  attended           Boolean              @default(false)
+  baseFare           Decimal              @default(0) @db.Decimal(10, 2)
+  canReview          Boolean              @default(false)
+  taxBreakdown       Json?
+  cancellationReason String?
+  cancelledAt        DateTime?
+  cancelledByUserId  String?
+  refundNote         String?
+  refundPreference   String?
+  experience         Experience           @relation(fields: [experienceId], references: [id])
+  slot               Slot?                @relation(fields: [slotId], references: [id])
+  user               User                 @relation(fields: [userId], references: [id])
+  participants       BookingParticipant[]
+  payments           Payment[]
+}
+
+model Payment {
+  id                String          @id @default(uuid())
+  bookingId         String
+  provider          PaymentProvider @default(RAZORPAY)
+  providerOrderId   String?
+  providerPaymentId String?         @unique
+  amount            Decimal         @db.Decimal(10, 2)
+  currency          String          @default("INR")
+  method            PaymentMethod?
+  status            PaymentStatus   @default(PENDING)
+  fullPayload       Json?
+  createdAt         DateTime        @default(now())
+  booking           Booking         @relation(fields: [bookingId], references: [id])
+}
+
+model BookingParticipant {
+  id                     String   @id @default(uuid())
+  bookingId              String
+  isPrimary              Boolean  @default(false)
+  name                   String
+  email                  String?
+  phoneNumber            String?
+  gender                 String?
+  age                    Int?
+  bloodGroup             String?
+  emergencyContactName   String?
+  emergencyContactNumber String?
+  emergencyRelationship  String?
+  pickupPoint            String?
+  dropPoint              String?
+  attended               Boolean  @default(false)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+  booking                Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+}
+
+model TripAssignment {
+  id         String @id @default(uuid())
+  slotId     String
+  trekLeadId String
+  slot       Slot   @relation(fields: [slotId], references: [id])
+  trekLead   User   @relation("TrekLeadAssignments", fields: [trekLeadId], references: [id])
+
+  @@unique([slotId, trekLeadId])
+}
+
+model TripLog {
+  id           String   @id @default(uuid())
+  slotId       String   @unique
+  attendees    Json?
+  photoUrls    String[]
+  trekLeadNote String?
+  managerNote  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  slot         Slot     @relation(fields: [slotId], references: [id])
+}
+
+model Blog {
+  id              String      @id @default(uuid())
+  title           String
+  slug            String      @unique
+  content         Json
+  authorId        String
+  experienceId    String?
+  coverImageId    String?
+  status          BlogStatus  @default(DRAFT)
+  rejectionReason String?
+  deletedAt       DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  authorSocials   Json?
+  coverImageUrl   String?
+  theme           String      @default("CLASSIC")
+  author          User        @relation(fields: [authorId], references: [id])
+  coverImage      Image?      @relation(fields: [coverImageId], references: [id])
+  experience      Experience? @relation(fields: [experienceId], references: [id])
+}
+
+model Image {
+  id           String    @id @default(uuid())
+  originalUrl  String
+  mediumUrl    String?
+  thumbUrl     String?
+  type         MediaType @default(IMAGE)
+  uploadedById String
+  createdAt    DateTime  @default(now())
+  fileHash     String?   @unique
+  blogCovers   Blog[]
+  uploadedBy   User      @relation(fields: [uploadedById], references: [id])
+}
+
+model HeroSlide {
+  id       String  @id @default(uuid())
+  title    String
+  subtitle String?
+  videoUrl String
+  ctaLink  String?
+  order    Int
+  isActive Boolean @default(true)
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?
+  action     String
+  targetType String
+  targetId   String?
+  metadata   Json?
+  timestamp  DateTime @default(now())
+
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+}
+
+model SiteSetting {
+  id    String @id @default(uuid())
+  key   String @unique
+  value String
+}
+
+model AdventureQuote {
+  id        String   @id @default(uuid())
+  text      String
+  author    String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model ExperienceReview {
+  id                   String     @id @default(uuid())
+  rating               Int        @db.SmallInt
+  reviewText           String
+  experienceId         String
+  userId               String
+  isFeaturedHome       Boolean    @default(false)
+  isFeaturedExperience Boolean    @default(false)
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+  experience           Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  user                 User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([experienceId, userId])
+}
+
+model SavedExperience {
+  id           String     @id @default(uuid())
+  userId       String
+  experienceId String
+  savedAt      DateTime   @default(now())
+  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, experienceId])
+}
+
+model CustomLead {
+  id           String     @id @default(uuid())
+  name         String
+  email        String
+  phone        String
+  requirements String
+  status       LeadStatus @default(NEW)
+  adminNotes   String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model PlatformSetting {
+  key         String   @id
+  value       String
+  description String?
+  updatedAt   DateTime @updatedAt
+}
+
+model StoryBlock {
+  id        String   @id @default(uuid())
+  type      String
+  title     String
+  subtitle  String?
+  body      String?
+  imageUrl  String?
+  stat      String?
+  order     Int
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
 
 enum UserStatus {
   ACTIVE
@@ -65,11 +427,11 @@ enum BlogStatus {
 }
 
 enum TripStatus {
-  UPCOMING // Slot created, not yet started
-  ACTIVE // Manager has started; trek leads notified
-  TREK_STARTED // Trek Lead kicked off on D-Day
-  TREK_ENDED // Trek Lead ended; awaiting manager approval
-  COMPLETED // Manager approved end; reviews unlocked
+  UPCOMING
+  ACTIVE
+  TREK_STARTED
+  TREK_ENDED
+  COMPLETED
 }
 
 enum MediaType {
@@ -83,428 +445,4 @@ enum LeadStatus {
   CONVERTED
   CLOSED
   DISCARDED
-}
-
-// ─── RBAC ────────────────────────────────────────────────
-
-model Role {
-  id          String   @id @default(uuid())
-  name        String   @unique // SUPER_ADMIN, ADMIN, TRIP_MANAGER, etc.
-  description String?
-  isSystem    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-
-  users       User[]
-  permissions RolePermission[]
-}
-
-model Permission {
-  id          String  @id @default(uuid())
-  key         String  @unique // e.g. "trip:create", "booking:approve"
-  description String?
-  category    String? // grouping: trip, booking, media, user, etc.
-
-  roles RolePermission[]
-}
-
-model RolePermission {
-  roleId       String
-  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  permissionId String
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-
-  @@id([roleId, permissionId])
-}
-
-// ─── USER ────────────────────────────────────────────────
-
-model User {
-  id          String  @id @default(uuid())
-  email       String  @unique
-  password         String? // bcrypt-hashed
-  resetToken       String?
-  resetTokenExpiry DateTime?
-  name             String  @default("")
-  phoneNumber      String?
-  avatarUrl   String?
-
-  // Profile Expansion
-  gender                  String?
-  age                     Int?
-  bloodGroup              String?
-  emergencyContactName    String?
-  emergencyContactNumber  String?
-  emergencyRelationship   String?
-
-  roleId String
-  role   Role   @relation(fields: [roleId], references: [id])
-
-  isVerified Boolean    @default(false)
-  status     UserStatus @default(ACTIVE)
-  tokenVersion Int @default(0)
-  googleId   String?    @unique
-
-  deletedAt DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  bookings     Booking[]
-  blogs        Blog[]
-  assignments  TripAssignment[]   @relation("TrekLeadAssignments")
-  managedSlots Slot[]             @relation("SlotManager")
-  uploads      Image[]
-  reviews      ExperienceReview[]
-  savedExperiences SavedExperience[]
-}
-
-// ─── EXPERIENCE MANAGEMENT ───────────────────────────────
-
-model Category {
-  id        String   @id @default(uuid())
-  name      String
-  slug      String   @unique
-  icon      String? // lucide-react icon name, e.g. "Mountain"
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-
-  experiences ExperienceCategory[]
-}
-
-model Experience {
-  id           String           @id @default(uuid())
-  title        String
-  slug         String           @unique
-  description  Json             @default("{}")
-  itinerary    Json
-  basePrice    Decimal          @db.Decimal(10, 2)
-  durationDays Int              @default(1)
-  location     String           @default("")
-  difficulty   Difficulty       @default(EASY)
-  capacity     Int
-  status       ExperienceStatus @default(DRAFT)
-  coverImage   String?
-  cardImage    String?
-  images       String[] // S3 URLs
-  isFeatured   Boolean          @default(false)
-  startDate    DateTime?
-  endDate      DateTime?
-
-  // Detailed Logistics
-  inclusions         Json?
-  exclusions         Json?
-  thingsToCarry      Json?
-  faqs               Json?
-  cancellationPolicy String?          @db.Text
-  meetingPoint       String?
-  minAge             Int?
-  maxAltitude        String?
-  trekDistance       String?
-  bestTimeToVisit    String?
-  maxGroupSize       Int?
-  pickupPoints       String[] @default([])
-  dropPoints         String[] @default([])
-
-  // Comprehensive Metadata
-  highlights          String[] @default([])
-  networkConnectivity String?
-  lastAtm             String?
-  fitnessRequirement  String?
-  ageRange            String?
-  meetingTime         String?
-  dropoffTime         String?
-  vibeTags            String[] @default([])
-
-  deletedAt    DateTime?
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
-
-  categories ExperienceCategory[]
-  slots      Slot[]
-  bookings   Booking[]
-  blogs      Blog[]
-  reviews    ExperienceReview[]
-  savedBy    SavedExperience[]
-}
-
-model ExperienceCategory {
-  experienceId String
-  categoryId   String
-  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
-  category     Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-
-  @@id([experienceId, categoryId])
-}
-
-model Slot {
-  id                String     @id @default(uuid())
-  experienceId      String
-  experience        Experience @relation(fields: [experienceId], references: [id])
-  date              DateTime
-  capacity          Int
-  remainingCapacity Int
-
-  // Trip lifecycle
-  status         TripStatus @default(UPCOMING)
-  managerId      String? // Trip Manager assigned by admin
-  manager        User?      @relation("SlotManager", fields: [managerId], references: [id])
-  vendorContacts Json? // [{label: "Driver", value: "+91..."}, ...]
-  startedAt      DateTime? // When manager started the trip
-  trekStartedAt  DateTime? // When trek lead started trek
-  trekEndedAt    DateTime? // When trek lead ended trek
-  completedAt    DateTime? // When manager completed the trip
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  bookings    Booking[]
-  assignments TripAssignment[]
-  tripLog     TripLog?
-}
-
-// ─── BOOKING & PAYMENTS ──────────────────────────────────
-
-model Booking {
-  id               String        @id @default(uuid())
-  userId           String
-  user             User          @relation(fields: [userId], references: [id])
-  experienceId     String
-  experience       Experience    @relation(fields: [experienceId], references: [id])
-  slotId           String?
-  slot             Slot?         @relation(fields: [slotId], references: [id])
-  participantCount Int           @default(1)
-  totalPrice       Decimal       @db.Decimal(10, 2) // Frozen Gross Total
-  baseFare         Decimal       @default(0) @db.Decimal(10, 2)
-  taxBreakdown     Json?         // Stores the array of deductibles applied at booking time
-  bookingStatus    BookingStatus @default(REQUESTED)
-  paymentStatus    PaymentStatus @default(PENDING)
-  attended         Boolean       @default(false) // Marked by trek lead on D-Day
-  canReview        Boolean       @default(false) // Unlocked when trip COMPLETED
-
-  // Cancellation fields
-  cancelledAt        DateTime?
-  cancelledByUserId  String?
-  cancellationReason String?       @db.Text
-  refundPreference   String?       // "COUPON" or "BANK_REFUND"
-  refundNote         String?       @db.Text // Admin fills: coupon code or bank UTR
-
-  deletedAt        DateTime?
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
-
-  payments     Payment[]
-  participants BookingParticipant[]
-}
-
-model Payment {
-  id                String          @id @default(uuid())
-  bookingId         String
-  booking           Booking         @relation(fields: [bookingId], references: [id])
-  provider          PaymentProvider @default(RAZORPAY)
-  providerOrderId   String?
-  providerPaymentId String?         @unique
-  amount            Decimal         @db.Decimal(10, 2)
-  currency          String          @default("INR")
-  method            PaymentMethod?
-  status            PaymentStatus   @default(PENDING)
-  fullPayload       Json? // Raw gateway response
-  createdAt         DateTime        @default(now())
-}
-
-model BookingParticipant {
-  id               String   @id @default(uuid())
-  bookingId        String
-  booking          Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  
-  isPrimary        Boolean  @default(false) // True if this participant is the person who made the booking
-
-  // Participant Data
-  name                   String
-  email                  String?
-  phoneNumber            String?
-  gender                 String?
-  age                    Int?
-  bloodGroup             String?
-  emergencyContactName   String?
-  emergencyContactNumber String?
-  emergencyRelationship  String?
-  pickupPoint            String?
-  dropPoint              String?
-
-  attended         Boolean  @default(false)
-
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-}
-
-// ─── OPERATIONS ──────────────────────────────────────────
-
-model TripAssignment {
-  id         String @id @default(uuid())
-  slotId     String
-  slot       Slot   @relation(fields: [slotId], references: [id])
-  trekLeadId String
-  trekLead   User   @relation("TrekLeadAssignments", fields: [trekLeadId], references: [id])
-
-  @@unique([slotId, trekLeadId])
-}
-
-// One TripLog per slot — attendance, photos, notes
-model TripLog {
-  id           String   @id @default(uuid())
-  slotId       String   @unique
-  slot         Slot     @relation(fields: [slotId], references: [id])
-  attendees    Json? // [{ bookingId, userName, present: bool }]
-  photoUrls    String[] // Docs/photos uploaded by trek lead
-  trekLeadNote String?  @db.Text // Trek lead end-of-trip review
-  managerNote  String?  @db.Text // Manager reply/feedback
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-}
-
-// ─── CONTENT & MEDIA ─────────────────────────────────────
-
-model Blog {
-  id              String      @id @default(uuid())
-  title           String
-  slug            String      @unique
-  content         Json // Rich text editor output
-  authorId        String
-  author          User        @relation(fields: [authorId], references: [id])
-  experienceId    String? // Optional: linked to an experience
-  experience      Experience? @relation(fields: [experienceId], references: [id])
-  
-  // New Enhancements
-  coverImageUrl   String?
-  authorSocials   Json?       // e.g. { instagram: "", twitter: "", youtube: "" }
-  theme           String      @default("CLASSIC") // CLASSIC, MODERN, MINIMAL
-
-  coverImageId    String?
-  coverImage      Image?      @relation(fields: [coverImageId], references: [id])
-  status          BlogStatus  @default(DRAFT)
-  rejectionReason String?
-  deletedAt       DateTime?
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-}
-
-model Image {
-  id           String    @id @default(uuid())
-  originalUrl  String // Full-size S3 / Cloudinary URL
-  fileHash     String?   @unique // SHA-256 content hash for dedup
-  mediumUrl    String? // Optimized for display
-  thumbUrl     String? // Thumbnail
-  type         MediaType @default(IMAGE)
-  uploadedById String
-  uploadedBy   User      @relation(fields: [uploadedById], references: [id])
-  createdAt    DateTime  @default(now())
-
-  blogCovers Blog[] // Blogs using this as cover image
-}
-
-model HeroSlide {
-  id       String  @id @default(uuid())
-  title    String
-  subtitle String?
-  videoUrl String // Background video URL
-  ctaLink  String? // CTA button target
-  order    Int // Display sequence
-  isActive Boolean @default(true)
-}
-
-// ─── SYSTEM ──────────────────────────────────────────────
-
-model AuditLog {
-  id         String   @id @default(uuid())
-  actorId    String?
-  action     String // e.g. TRIP_CREATED, USER_LOGIN, ROLE_ASSIGNED
-  targetType String // e.g. "User", "Trip", "Booking"
-  targetId   String?
-  metadata   Json? // Extra context
-  timestamp  DateTime @default(now())
-}
-
-model SiteSetting {
-  id    String @id @default(uuid())
-  key   String @unique // e.g. "auth_login_bg", "auth_register_bg"
-  value String // URL to the media
-}
-
-model AdventureQuote {
-  id        String   @id @default(uuid())
-  text      String   @db.Text
-  author    String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-}
-
-model ExperienceReview {
-  id         String @id @default(uuid())
-  rating     Int    @db.SmallInt // 1 to 5
-  reviewText String @db.Text
-
-  experienceId String
-  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  isFeaturedHome       Boolean @default(false) // Shown in homepage testimonials section
-  isFeaturedExperience Boolean @default(false) // Shown as pull-quote on the experience page
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([experienceId, userId]) // One review per user per experience
-}
-
-// ─── WISHLIST / SAVED ────────────────────────────────────
-
-model SavedExperience {
-  id           String     @id @default(uuid())
-  userId       String
-  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  experienceId String
-  experience   Experience @relation(fields: [experienceId], references: [id], onDelete: Cascade)
-  savedAt      DateTime   @default(now())
-
-  @@unique([userId, experienceId])
-}
-
-// ─── CUSTOM LEADS ────────────────────────────────────────
-
-model CustomLead {
-  id           String     @id @default(uuid())
-  name         String
-  email        String
-  phone        String
-  requirements String     @db.Text
-  status       LeadStatus @default(NEW)
-  adminNotes   String?    @db.Text
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-}
-
-// ─── PLATFORM SETTINGS ──────────────────────────────────────────
-
-model PlatformSetting {
-  key         String   @id // e.g. 'cgstPercent', 'sgstPercent', 'platformFeePercent', 'gstNumber', 'companyName'
-  value       String   @db.Text
-  description String?
-  updatedAt   DateTime @updatedAt
-}
-
-// ─── OUR STORY / ABOUT ──────────────────────────────────────
-
-model StoryBlock {
-  id        String   @id @default(uuid())
-  type      String   // "hero", "milestone", "value", "team", "cta"
-  title     String
-  subtitle  String?  @db.Text
-  body      String?  @db.Text
-  imageUrl  String?
-  stat      String?  // e.g. "500+" or "2019"
-  order     Int
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }

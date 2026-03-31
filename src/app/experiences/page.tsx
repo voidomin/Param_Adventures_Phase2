@@ -34,6 +34,26 @@ export default async function ExperiencesPage({
   const params = await searchParams;
   const initialFilter = (params?.category as string) || "all";
 
+  const dbPlatformSettings = await withBuildSafety(
+    () => prisma.platformSetting.findMany({
+      where: {
+        key: {
+          in: ["media_provider", "cloudinary_cloud_name", "s3_bucket", "s3_region", "media_quality", "media_high_fidelity"]
+        }
+      }
+    }),
+    []
+  );
+
+  const mediaSettings = {
+    provider: dbPlatformSettings.find(s => s.key === "media_provider")?.value || "CLOUDINARY",
+    cloudinaryCloudName: dbPlatformSettings.find(s => s.key === "cloudinary_cloud_name")?.value,
+    s3Bucket: dbPlatformSettings.find(s => s.key === "s3_bucket")?.value,
+    s3Region: dbPlatformSettings.find(s => s.key === "s3_region")?.value,
+    globalQuality: parseInt(dbPlatformSettings.find(s => s.key === "media_quality")?.value || "100"),
+    highFidelity: dbPlatformSettings.find(s => s.key === "media_high_fidelity")?.value === "true"
+  };
+
   const experiences = await withBuildSafety(
     () =>
       prisma.experience.findMany({
@@ -107,6 +127,7 @@ export default async function ExperiencesPage({
         initialExperiences={serializedExperiences}
         categories={serializedCategories}
         initialFilter={initialFilter}
+        mediaSettings={mediaSettings}
       />
 
       {/* Footer Placeholder */}

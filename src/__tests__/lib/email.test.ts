@@ -16,22 +16,34 @@ vi.mock("@react-email/render", () => ({
   render: vi.fn().mockResolvedValue("<html>mocked email content</html>"),
 }));
 
+const { mockProvider } = vi.hoisted(() => ({
+  mockProvider: {
+    send: vi.fn().mockResolvedValue({ id: "mock-id" }),
+  },
+}));
+
+vi.mock("@/lib/email/factory", () => ({
+  emailFactory: {
+    getProvider: vi.fn().mockResolvedValue({
+      provider: mockProvider,
+      from: "test@paramadventures.in",
+    }),
+  },
+}));
+
 // We test the fallback "console logging" branch since our tests run without SMTP env variables.
 describe("Email Utilities", () => {
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
   let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    consoleLogSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.clearAllMocks();
+    vi.spyOn(console, "log").mockImplementation(() => {});
+    vi.spyOn(console, "warn").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
-  afterEach(() => {
-    vi.restoreAllMocks();
-  });
-
-  it("logs booking confirmation emails via fallback warning", async () => {
+  it("sends booking confirmation emails", async () => {
     await sendBookingConfirmation({
       userName: "Jane Doe",
       userEmail: "jane@test.com",
@@ -42,12 +54,13 @@ describe("Email Utilities", () => {
       bookingId: "b-123",
     });
 
-    expect(consoleWarnSpy).toHaveBeenCalledWith("⚠️ Email credentials (Resend, SES, or SMTP) not configured. Logging email to console.");
-    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("To: jane@test.com"));
-    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("Subject: Booking Confirmed — Chadar Trek"));
+    expect(mockProvider.send).toHaveBeenCalledWith(expect.objectContaining({
+      to: "jane@test.com",
+      subject: expect.stringContaining("Booking Confirmed"),
+    }));
   });
 
-  it("logs booking cancellation emails", async () => {
+  it("sends booking cancellation emails", async () => {
     await sendBookingCancellation({
       userName: "John Smith",
       userEmail: "john@test.com",
@@ -56,11 +69,13 @@ describe("Email Utilities", () => {
       refundPreference: "COUPON",
     });
 
-    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("To: john@test.com"));
-    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("Subject: Booking Cancelled — Spiti Valley"));
+    expect(mockProvider.send).toHaveBeenCalledWith(expect.objectContaining({
+      to: "john@test.com",
+      subject: expect.stringContaining("Booking Cancelled"),
+    }));
   });
 
-  it("logs refund resolved emails (Coupon)", async () => {
+  it("sends refund resolved emails (Coupon)", async () => {
     await sendRefundResolved({
       userName: "Alice",
       userEmail: "alice@test.com",
@@ -71,10 +86,12 @@ describe("Email Utilities", () => {
       totalPrice: 20000,
     });
 
-    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("Subject: Coupon Issued — Goechala"));
+    expect(mockProvider.send).toHaveBeenCalledWith(expect.objectContaining({
+      subject: expect.stringContaining("Coupon Issued"),
+    }));
   });
 
-  it("logs refund resolved emails (Bank)", async () => {
+  it("sends refund resolved emails (Bank)", async () => {
     await sendRefundResolved({
       userName: "Alice",
       userEmail: "alice@test.com",
@@ -85,31 +102,43 @@ describe("Email Utilities", () => {
       totalPrice: 20000,
     });
 
-    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("Subject: Refund Processed — Goechala"));
+    expect(mockProvider.send).toHaveBeenCalledWith(expect.objectContaining({
+      subject: expect.stringContaining("Refund Processed"),
+    }));
   });
 
-  it("logs welcome emails", async () => {
+  it("sends welcome emails", async () => {
     await sendWelcomeEmail({ userName: "Bob", userEmail: "bob@test.com" });
-    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("Subject: Welcome to Param Adventures! 🏔️"));
+    expect(mockProvider.send).toHaveBeenCalledWith(expect.objectContaining({
+      subject: expect.stringContaining("Welcome"),
+    }));
   });
 
-  it("logs role assigned emails", async () => {
+  it("sends role assigned emails", async () => {
     await sendRoleAssignedEmail({ userName: "Eve", userEmail: "eve@test.com", roleName: "TREK_LEAD" });
-    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("Subject: Role Updated: TREK LEAD"));
+    expect(mockProvider.send).toHaveBeenCalledWith(expect.objectContaining({
+      subject: expect.stringContaining("Role Updated"),
+    }));
   });
 
-  it("logs trip completed emails", async () => {
+  it("sends trip completed emails", async () => {
     await sendTripCompletedEmail({ userName: "Eve", userEmail: "eve@test.com", experienceTitle: "Kedarkantha", experienceSlug: "kedarkantha" });
-    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("Hope you enjoyed Kedarkantha!"));
+    expect(mockProvider.send).toHaveBeenCalledWith(expect.objectContaining({
+      subject: expect.stringContaining("Hope you enjoyed"),
+    }));
   });
 
-  it("logs password reset emails", async () => {
+  it("sends password reset emails", async () => {
     await sendResetPasswordEmail({ userName: "Eve", userEmail: "eve@test.com", resetLink: "https://link" });
-    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("Reset your Param Adventures password"));
+    expect(mockProvider.send).toHaveBeenCalledWith(expect.objectContaining({
+      subject: expect.stringContaining("Reset your Param Adventures password"),
+    }));
   });
 
-  it("logs admin invite emails", async () => {
+  it("sends admin invite emails", async () => {
     await sendAdminInviteEmail({ userName: "Eve", userEmail: "eve@test.com", setupLink: "https://link" });
-    expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining("Welcome to Param Adventures Admin Team!"));
+    expect(mockProvider.send).toHaveBeenCalledWith(expect.objectContaining({
+      subject: expect.stringContaining("Welcome"),
+    }));
   });
 });

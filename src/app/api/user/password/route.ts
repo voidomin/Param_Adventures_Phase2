@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { verifyAccessToken, generateAccessToken, generateRefreshToken } from "@/lib/auth";
+import { verifyAccessToken, generateAccessToken, generateRefreshToken, parseExpiryToSeconds } from "@/lib/auth";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -10,7 +10,7 @@ const passwordUpdateSchema = z.object({
   newPassword: z.string().min(8, "New password must be at least 8 characters long"),
 });
 
-export async function PATCH(request: Request) {
+export async function PATCH(request: NextRequest) {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get("accessToken")?.value;
@@ -39,67 +39,70 @@ export async function PATCH(request: Request) {
     // Fetch the user to get the current password hash
     const user = await prisma.user.findUnique({
       where: { id: payload.userId },
+      include: { role: true },
     });
 
-    if (!user?.password) {
+    if (!user || !user.password) {
       return NextResponse.json(
-        { error: "User not found or no password set" },
+        { error: "User or password not found" },
         { status: 404 },
       );
     }
 
     // Verify current password
-    const isPasswordValid = await bcrypt.compare(
-      currentPassword,
-      user.password,
-    );
-    if (!isPasswordValid) {
+    const isCorrect = await bcrypt.compare(currentPassword, user.password);
+    if (!isCorrect) {
       return NextResponse.json(
-        { error: "Incorrect current password" },
+        { error: "Current password is incorrect" },
         { status: 400 },
       );
     }
 
-    // Hash the new password
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-
-    // Update the password and increment tokenVersion to invalidate other sessions
+    // Hash the new password and update user (incrementing tokenVersion to invalidate old tokens)
+    const newHashedPassword = await bcrypt.hash(newPassword, 10);
     const updatedUser = await prisma.user.update({
       where: { id: user.id },
-      data: { 
-        password: hashedPassword,
-        tokenVersion: { increment: 1 }
+      data: {
+        password: newHashedPassword,
+        tokenVersion: { increment: 1 },
       },
       include: { role: true },
     });
 
-    const newAccessToken = generateAccessToken(updatedUser.id, updatedUser.role.name, updatedUser.tokenVersion);
-    const newRefreshToken = generateRefreshToken(updatedUser.id, updatedUser.tokenVersion);
+    // ─── Token Rotation ──────────────────────────────────
+    const expirySetting = await prisma.platformSetting.findUnique({ where: { key: "jwt_expiry" } });
+    const refreshExpirySetting = await prisma.platformSetting.findUnique({ where: { key: "refresh_token_expiry" } });
+    
+    const accessToken = generateAccessToken(updatedUser.id, updatedUser.role.name, updatedUser.tokenVersion, expirySetting?.value);
+    const refreshToken = generateRefreshToken(updatedUser.id, updatedUser.tokenVersion, refreshExpirySetting?.value);
 
-    const response = NextResponse.json(
-      { message: "Password updated successfully" },
-      { status: 200 },
-    );
+    const response = NextResponse.json({ message: "Password updated successfully" });
 
-    response.cookies.set("accessToken", newAccessToken, {
+    // Set new tokens in cookies
+    const accessTokenExpiry = parseExpiryToSeconds(expirySetting?.value || "15m");
+    const refreshTokenExpiry = parseExpiryToSeconds(refreshExpirySetting?.value || "7d");
+
+    response.cookies.set("accessToken", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60, // 1 hour
+      maxAge: accessTokenExpiry,
     });
 
-    response.cookies.set("refreshToken", newRefreshToken, {
+    response.cookies.set("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "lax",
       path: "/",
-      maxAge: 7 * 24 * 60 * 60, // 7 days
+      maxAge: refreshTokenExpiry,
     });
 
     return response;
   } catch (error) {
     console.error("[PASSWORD_UPDATE_ERROR]", error);
+    // In production, we don't want to expose internal errors, but for testing debugging we might.
+    // However, we'll keep it standard here.
     return NextResponse.json(
       { error: "Failed to update password" },
       { status: 500 },

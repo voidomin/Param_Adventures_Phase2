@@ -1,9 +1,8 @@
 import { NextResponse, NextRequest } from "next/server";
 import { authorizeRequest } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
-import { z } from "zod";
 
-// GET /api/admin/settings?key=auth_login_bg
+// GET /api/admin/settings
 export async function GET(request: NextRequest) {
   try {
     const auth = await authorizeRequest(request, ["system:config"]);
@@ -14,13 +13,31 @@ export async function GET(request: NextRequest) {
     const key = request.nextUrl.searchParams.get("key");
 
     if (key) {
-      const setting = await prisma.siteSetting.findUnique({ where: { key } });
-      return NextResponse.json({ setting });
+      const siteSetting = await prisma.siteSetting.findUnique({ where: { key } });
+      if (siteSetting) return NextResponse.json({ setting: siteSetting });
+      
+      const platformSetting = await prisma.platformSetting.findUnique({ where: { key } });
+      return NextResponse.json({ setting: platformSetting });
     }
 
-    // Return all settings if no key specified
-    const settings = await prisma.siteSetting.findMany();
-    return NextResponse.json({ settings });
+    // Return all site settings + specific platform settings allowed for the dashboard
+    const siteSettings = await prisma.siteSetting.findMany();
+    const platformKeys = [
+      "razorpay_mode", 
+      "razorpay_key_id", 
+      "razorpay_key_secret", 
+      "razorpay_webhook_secret"
+    ];
+    const platformSettings = await prisma.platformSetting.findMany({
+      where: { key: { in: platformKeys } }
+    });
+
+    // Merge into a flat dictionary for the frontend
+    const merged: Record<string, string> = {};
+    siteSettings.forEach(s => merged[s.key] = s.value);
+    platformSettings.forEach(s => merged[s.key] = s.value);
+
+    return NextResponse.json({ settings: merged });
   } catch (error: unknown) {
     console.error("Fetch settings error:", error);
     return NextResponse.json(
@@ -30,12 +47,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-const settingSchema = z.object({
-  key: z.string().min(1),
-  value: z.string().min(1),
-});
-
-// PUT /api/admin/settings — upsert a setting
+// PUT /api/admin/settings — Bulk update settings
 export async function PUT(request: NextRequest) {
   try {
     const auth = await authorizeRequest(request, ["system:config"]);
@@ -44,27 +56,42 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const parseResult = settingSchema.safeParse(body);
-    if (!parseResult.success) {
-      return NextResponse.json(
-        { error: parseResult.error.issues[0].message },
-        { status: 400 },
-      );
+    const settings = body.settings; // Frontend sends { settings: { ... } }
+
+    if (!settings || typeof settings !== "object") {
+      return NextResponse.json({ error: "Invalid settings format" }, { status: 400 });
     }
 
-    const { key, value } = parseResult.data;
+    const platformKeys = new Set([
+      "razorpay_mode", 
+      "razorpay_key_id", 
+      "razorpay_key_secret", 
+      "razorpay_webhook_secret"
+    ]);
 
-    const setting = await prisma.siteSetting.upsert({
-      where: { key },
-      update: { value },
-      create: { key, value },
-    });
+    // Transactionally update all settings
+    await prisma.$transaction(
+      Object.entries(settings).map(([key, value]) => {
+        if (platformKeys.has(key)) {
+          return prisma.platformSetting.upsert({
+            where: { key },
+            update: { value: String(value) },
+            create: { key, value: String(value) }
+          });
+        }
+        return prisma.siteSetting.upsert({
+          where: { key },
+          update: { value: String(value) },
+          create: { key, value: String(value) }
+        });
+      })
+    );
 
-    return NextResponse.json({ setting });
+    return NextResponse.json({ success: true });
   } catch (error: unknown) {
-    console.error("Update setting error:", error);
+    console.error("Update settings error:", error);
     return NextResponse.json(
-      { error: "Failed to update setting" },
+      { error: "Failed to update settings" },
       { status: 500 },
     );
   }

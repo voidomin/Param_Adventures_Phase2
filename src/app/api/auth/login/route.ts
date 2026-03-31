@@ -4,6 +4,7 @@ import {
   verifyPassword,
   generateAccessToken,
   generateRefreshToken,
+  parseExpiryToSeconds,
 } from "@/lib/auth";
 import { z } from "zod";
 
@@ -57,9 +58,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ─── Fetch Dynamic Settings ─────────────────────────
+    const settings = await prisma.platformSetting.findMany({
+      where: { key: { in: ["jwt_expiry", "refresh_token_expiry"] } }
+    });
+    const getVal = (key: string, fallback: string) => settings.find(s => s.key === key)?.value || fallback;
+
+    const jwtExpiry = getVal("jwt_expiry", "1h");
+    const refreshExpiry = getVal("refresh_token_expiry", "7d");
+
     // ─── Generate tokens ─────────────────────────────────
-    const accessToken = generateAccessToken(user.id, user.role.name, user.tokenVersion);
-    const refreshToken = generateRefreshToken(user.id, user.tokenVersion);
+    const accessToken = generateAccessToken(user.id, user.role.name, user.tokenVersion, jwtExpiry);
+    const refreshToken = generateRefreshToken(user.id, user.tokenVersion, refreshExpiry);
 
     // ─── Response with refresh cookie ────────────────────
     const response = NextResponse.json({
@@ -77,7 +87,7 @@ export async function POST(request: NextRequest) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
       path: "/",
-      maxAge: 60 * 60, // 1 hour
+      maxAge: parseExpiryToSeconds(jwtExpiry),
     });
 
     response.cookies.set("refreshToken", refreshToken, {
@@ -85,7 +95,7 @@ export async function POST(request: NextRequest) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
       path: "/",
-      maxAge: 7 * 24 * 60 * 60,
+      maxAge: parseExpiryToSeconds(refreshExpiry),
     });
 
     return response;
