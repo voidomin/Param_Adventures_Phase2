@@ -556,6 +556,38 @@ export default function SystemSettingsPage() {
                   description="Used for absolute links in sitemaps, metadata, and emails."
                 />
               </div>
+
+              <div className="mt-8 pt-8 border-t border-white/10 space-y-6">
+                <h3 className="text-lg font-medium text-white flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-red-400" />{" "}
+                  Error Monitoring & Logs (Sentry)
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <InputGroup
+                    label="Monitoring Switch"
+                    type="select"
+                    value={getVal("PLATFORM", "sentry_enabled")}
+                    onChange={(v: string) => updateSetting("PLATFORM", "sentry_enabled", v)}
+                    options={[
+                      { label: "ENABLED (Live Error Tracking)", value: "true" },
+                      { label: "DISABLED (Local Logs Only)", value: "false" },
+                    ]}
+                    description="When disabled, errors are logged to the console but not sent to Sentry.io."
+                  />
+                  <InputGroup
+                    label="Sentry Environment"
+                    type="select"
+                    value={getVal("PLATFORM", "sentry_environment")}
+                    onChange={(v: string) => updateSetting("PLATFORM", "sentry_environment", v)}
+                    options={[
+                      { label: "Production", value: "production" },
+                      { label: "Staging", value: "staging" },
+                      { label: "Development", value: "development" },
+                    ]}
+                    description="Tags your errors for easier filtering in the dashboard."
+                  />
+                </div>
+              </div>
             </div>
           )}
 

@@ -492,6 +492,8 @@ const PLATFORM_SETTINGS = [
   { key: "jwt_expiry", value: "1h", description: "Access token duration" },
   { key: "refresh_token_expiry", value: "7d", description: "Refresh token duration" },
   { key: "google_analytics_id", value: "", description: "G-XXXXXX Tracking ID" },
+  { key: "sentry_enabled", value: "true", description: "Master kill-switch for error tracking" },
+  { key: "sentry_environment", value: "production", description: "Sentry environment (production | staging)" },
   { key: "razorpay_mode", value: "TEST", description: "TEST | LIVE" },
   { key: "razorpay_key_id", value: "", description: "Razorpay Public Key ID" },
   { key: "razorpay_key_secret", value: "", description: "Razorpay Secret Key" },
