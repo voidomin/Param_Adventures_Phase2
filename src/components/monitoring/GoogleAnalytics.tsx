@@ -34,6 +34,7 @@ export default async function GoogleAnalytics() {
           gtag('js', new Date());
           gtag('config', '${measurementId}', {
             page_path: window.location.pathname,
+            debug_mode: true
           });
         `}
       </Script>
