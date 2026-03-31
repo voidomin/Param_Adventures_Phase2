@@ -63,6 +63,7 @@ model User {
   savedExperiences       SavedExperience[]
   managedSlots           Slot[]             @relation("SlotManager")
   assignments            TripAssignment[]   @relation("TrekLeadAssignments")
+  auditLogs              AuditLog[]
   role                   Role               @relation(fields: [roleId], references: [id])
 }
 
@@ -295,6 +296,8 @@ model AuditLog {
   targetId   String?
   metadata   Json?
   timestamp  DateTime @default(now())
+
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
 }
 
 model SiteSetting {

@@ -16,8 +16,24 @@ import {
   RefreshCw,
   AlertTriangle,
   Activity,
-  CreditCard
+  CreditCard,
+  History,
+  User as UserIcon,
+  ArrowRight
 } from "lucide-react";
+
+const maskValue = (key: string, value: any) => {
+  if (value === undefined || value === null) return "n/a";
+  const str = String(value);
+  const sensitiveKeys = ["secret", "key", "token", "password", "auth", "dsn"];
+  const isSensitive = sensitiveKeys.some(sk => key.toLowerCase().includes(sk));
+  
+  if (isSensitive && str.length > 8) {
+    return `${str.substring(0, 4)}••••${str.substring(str.length - 4)}`;
+  }
+  if (isSensitive) return "••••••••";
+  return str;
+};
 
 interface Setting {
   key: string;
@@ -31,6 +47,10 @@ export default function SystemSettingsPage() {
   const [siteSettings, setSiteSettings] = useState<Setting[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [isLogsLoading, setIsLogsLoading] = useState(false);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [hasMoreLogs, setHasMoreLogs] = useState(true);
   const [activeTab, setActiveTab] = useState("communications");
   const [dbStats, setDbStats] = useState<any>(null);
 
@@ -52,6 +72,51 @@ export default function SystemSettingsPage() {
       setIsLoading(false);
     }
   }, [isWhitelisted]);
+
+  const fetchAuditLogs = async (cursor?: string) => {
+    if (isLogsLoading || (!hasMoreLogs && cursor)) return;
+    setIsLogsLoading(true);
+    try {
+      const url = cursor 
+        ? `/api/admin/settings/system/audit?cursor=${cursor}` 
+        : "/api/admin/settings/system/audit";
+        
+      const res = await fetch(url);
+      const data = await res.json();
+      
+      if (data.logs) {
+        if (cursor) {
+          setAuditLogs(prev => [...prev, ...data.logs]);
+        } else {
+          setAuditLogs(data.logs);
+        }
+        setNextCursor(data.nextCursor);
+        setHasMoreLogs(data.hasMore);
+      }
+    } catch (error) {
+      console.error("Audit log fetch error:", error);
+    } finally {
+      setIsLogsLoading(false);
+    }
+  };
+
+  const handleAuditScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    if (target.scrollHeight - target.scrollTop <= target.clientHeight + 100) {
+      if (hasMoreLogs && !isLogsLoading && nextCursor) {
+        fetchAuditLogs(nextCursor);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "audit") {
+      setAuditLogs([]);
+      setNextCursor(null);
+      setHasMoreLogs(true);
+      fetchAuditLogs();
+    }
+  }, [activeTab]);
 
   useEffect(() => {
     fetchData();
@@ -145,6 +210,7 @@ export default function SystemSettingsPage() {
     { id: "finance", name: "Finance & Payments", icon: CreditCard },
     { id: "security", name: "Security & Ops", icon: Lock },
     { id: "database", name: "Database & Snapshots", icon: Database },
+    { id: "audit", name: "Audit History", icon: History },
   ];
 
   return (
@@ -586,6 +652,117 @@ export default function SystemSettingsPage() {
                     ]}
                     description="Tags your errors for easier filtering in the dashboard."
                   />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "audit" && (
+            <div className="space-y-8 animate-in slide-in-from-left-4 duration-300">
+              <SectionTitle 
+                title="Infrastructure Audit Ledger" 
+                subtitle="Track identity-linked changes to the platform's core infrastructure." 
+                icon={History} 
+              />
+
+              <div className="bg-foreground/5 rounded-3xl border border-border overflow-hidden">
+                <div className="p-6 border-b border-border bg-foreground/[0.02] flex items-center justify-between">
+                  <h3 className="font-heading font-bold text-lg">Platform Change History</h3>
+                  <button 
+                    onClick={() => fetchAuditLogs()}
+                    className="p-2 hover:bg-foreground/10 rounded-xl transition-colors"
+                  >
+                    <Loader2 className={`w-4 h-4 ${isLogsLoading ? 'animate-spin' : ''}`} />
+                  </button>
+                </div>
+
+                <div 
+                  className="divide-y divide-border max-h-[600px] overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent"
+                  onScroll={handleAuditScroll}
+                >
+                  {(() => {
+                    if (isLogsLoading && auditLogs.length === 0) {
+                      return (
+                        <div className="p-20 text-center space-y-4">
+                          <Loader2 className="w-10 h-10 animate-spin mx-auto text-primary" />
+                          <p className="text-foreground/50">Retrieving secure logs...</p>
+                        </div>
+                      );
+                    }
+
+                    if (auditLogs.length === 0) {
+                      return (
+                        <div className="p-20 text-center text-foreground/30 italic">
+                          No matching audit records found.
+                        </div>
+                      );
+                    }
+
+                    return auditLogs.map((log) => (
+                      <div key={log.id} className="p-6 hover:bg-foreground/[0.01] transition-colors group">
+                        <div className="flex flex-col md:flex-row md:items-start gap-4">
+                          {/* Actor */}
+                          <div className="flex items-center gap-3 min-w-[200px]">
+                            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20 overflow-hidden">
+                              {log.actor?.avatarUrl ? (
+                                <img src={log.actor.avatarUrl} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <UserIcon className="w-5 h-5" />
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-bold text-sm leading-none mb-1 text-white">{log.actor?.name || "System"}</p>
+                              <p className="text-xs text-foreground/50">{log.actor?.email || "internal action"}</p>
+                            </div>
+                          </div>
+
+                          {/* Action */}
+                          <div className="flex-1 space-y-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 text-[10px] font-black uppercase tracking-wider border border-blue-500/20">
+                                {log.action.replace("UPDATE_", "")}
+                              </span>
+                              <span className="text-sm font-mono text-primary font-bold">
+                                {log.targetId}
+                              </span>
+                              <span className="text-[10px] text-foreground/30 font-medium ml-auto">
+                                {new Date(log.timestamp).toLocaleString()}
+                              </span>
+                            </div>
+
+                            {/* Diff */}
+                            {log.metadata && (log.metadata.from !== undefined || log.metadata.to !== undefined) && (
+                              <div className="flex items-center gap-4 py-2 px-4 rounded-xl bg-black/20 border border-white/5 text-sm">
+                                <div className="flex-1 truncate text-red-400/80 line-through font-mono text-xs">
+                                  {maskValue(log.targetId, log.metadata.from)}
+                                </div>
+                                <ArrowRight className="w-4 h-4 text-foreground/20 flex-shrink-0" />
+                                <div className="flex-1 truncate text-green-400 font-mono text-xs font-bold">
+                                  {maskValue(log.targetId, log.metadata.to)}
+                                </div>
+                              </div>
+                            )}
+
+                            {log.metadata?.ip && (
+                              <p className="text-[10px] text-foreground/20 font-mono">IP: {log.metadata.ip}</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ));
+                  })()}
+
+                  {isLogsLoading && auditLogs.length > 0 && (
+                    <div className="p-6 text-center">
+                      <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary/50" />
+                    </div>
+                  )}
+
+                  {!hasMoreLogs && auditLogs.length > 0 && (
+                    <div className="p-6 text-center text-[10px] text-foreground/20 font-medium uppercase tracking-widest whitespace-nowrap">
+                      End of Audit Trail
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
