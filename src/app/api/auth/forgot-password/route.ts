@@ -61,9 +61,9 @@ export async function POST(request: NextRequest) {
     
     const baseUrl =
       siteSettings[0]?.value ||
-      request.headers.get("origin") ||
       process.env.NEXT_PUBLIC_APP_URL ||
-      "http://localhost:3000";
+      request.headers.get("origin") ||
+      "https://localhost:3000";
       
     const resetLink = `${baseUrl}/reset-password?token=${resetToken}`;
 

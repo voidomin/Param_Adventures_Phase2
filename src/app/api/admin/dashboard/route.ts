@@ -69,6 +69,7 @@ export async function GET(request: NextRequest) {
     const revenueByMonth: { month: string; revenue: number }[] = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now);
+      d.setDate(1);
       d.setMonth(d.getMonth() - i);
       const label = d.toLocaleString("en-IN", {
         month: "short",
@@ -126,6 +127,7 @@ export async function GET(request: NextRequest) {
     const userGrowth: { month: string; users: number }[] = [];
     for (let i = 5; i >= 0; i--) {
       const d = new Date(now);
+      d.setDate(1);
       d.setMonth(d.getMonth() - i);
       const label = d.toLocaleString("en-IN", {
         month: "short",

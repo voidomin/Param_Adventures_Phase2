@@ -6,12 +6,16 @@ vi.mock("@/lib/db", () => ({
     user: {
       findUnique: vi.fn(),
     },
+    platformSetting: {
+      findMany: vi.fn(),
+    },
   },
 }));
 vi.mock("@/lib/auth", () => ({
   verifyPassword: vi.fn(),
   generateAccessToken: vi.fn(),
   generateRefreshToken: vi.fn(),
+  parseExpiryToSeconds: vi.fn().mockReturnValue(3600),
 }));
 
 import { POST } from "@/app/api/auth/login/route";
@@ -26,6 +30,7 @@ const mockFindUnique = vi.mocked(prisma.user.findUnique);
 const mockVerifyPassword = vi.mocked(verifyPassword);
 const mockGenerateAccessToken = vi.mocked(generateAccessToken);
 const mockGenerateRefreshToken = vi.mocked(generateRefreshToken);
+const mockPlatformSettingFindMany = vi.mocked(prisma.platformSetting.findMany);
 
 const createRequest = (body: unknown) =>
   new NextRequest("http://localhost/api/auth/login", {
@@ -39,6 +44,10 @@ const TEST_HASHED = "hashed"; // NOSONAR
 describe("POST /api/auth/login", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPlatformSettingFindMany.mockResolvedValue([
+      { key: "jwt_expiry", value: "15m" },
+      { key: "refresh_token_expiry", value: "7d" },
+    ] as any);
   });
 
   it("returns 400 for invalid payload", async () => {

@@ -5,22 +5,18 @@ vi.mock("@/lib/auth", () => ({
   verifyAccessToken: vi.fn(),
 }));
 
-vi.mock("@/lib/s3", () => ({
-  generatePresignedUrl: vi.fn(),
-}));
-
-vi.mock("@/lib/cloudinary", () => ({
-  generateCloudinarySignature: vi.fn(),
+vi.mock("@/lib/media/factory", () => ({
+  mediaFactory: {
+    getProvider: vi.fn(),
+  },
 }));
 
 import { POST } from "@/app/api/user/media/presign/route";
 import { verifyAccessToken } from "@/lib/auth";
-import { generatePresignedUrl } from "@/lib/s3";
-import { generateCloudinarySignature } from "@/lib/cloudinary";
+import { mediaFactory } from "@/lib/media/factory";
 
 const mockVerifyAccessToken = vi.mocked(verifyAccessToken);
-const mockGeneratePresignedUrl = vi.mocked(generatePresignedUrl);
-const mockGenerateCloudinarySignature = vi.mocked(generateCloudinarySignature);
+const mockMediaFactory = vi.mocked(mediaFactory);
 
 afterEach(() => {
   vi.unstubAllEnvs();
@@ -46,7 +42,6 @@ const createRequest = (opts: ReqOpts = {}) =>
 describe("POST /api/user/media/presign", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.stubEnv("CLOUDINARY_API_KEY", "");
   });
 
   it("returns 401 when token is missing", async () => {
@@ -86,14 +81,14 @@ describe("POST /api/user/media/presign", () => {
     expect(typeof data.error).toBe("string");
   });
 
-  it("returns cloudinary payload when cloudinary key exists", async () => {
-    vi.stubEnv("CLOUDINARY_API_KEY", "present");
+  it("returns presign payload from active provider", async () => {
     mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
-    mockGenerateCloudinarySignature.mockResolvedValue({
-      signature: "sig",
-      timestamp: 123,
-      apiKey: "k",
-      cloudName: "c",
+    mockMediaFactory.getProvider.mockResolvedValue({
+      getPresignData: vi.fn().mockResolvedValue({
+        provider: "mock-p",
+        uploadUrl: "https://mock/upload",
+        finalUrl: "https://mock/final",
+      }),
     } as any);
 
     const response = await POST(
@@ -105,38 +100,12 @@ describe("POST /api/user/media/presign", () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data.provider).toBe("cloudinary");
-    expect(mockGenerateCloudinarySignature).toHaveBeenCalledWith(
-      "param-adventures/users",
-    );
-    expect(mockGeneratePresignedUrl).not.toHaveBeenCalled();
-  });
-
-  it("returns s3 payload when cloudinary is not configured", async () => {
-    mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
-    mockGeneratePresignedUrl.mockResolvedValue({
-      uploadUrl: "https://s3/upload",
-      finalUrl: "https://s3/final",
-    } as any);
-
-    const response = await POST(
-      createRequest({
-        token: "ok",
-        body: { fileName: "a.jpg", contentType: "image/jpeg" },
-      }),
-    );
-    const data = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(data).toEqual({
-      provider: "s3",
-      uploadUrl: "https://s3/upload",
-      finalUrl: "https://s3/final",
-    });
+    expect(data.provider).toBe("mock-p");
+    expect(data.uploadUrl).toBe("https://mock/upload");
   });
 
   it("returns 500 on unexpected error", async () => {
-    mockVerifyAccessToken.mockRejectedValue(new Error("token parse failed"));
+    mockVerifyAccessToken.mockRejectedValue(new Error("boom"));
 
     const response = await POST(
       createRequest({
@@ -150,4 +119,3 @@ describe("POST /api/user/media/presign", () => {
     expect(data.error).toBe("Failed to generate upload authorization");
   });
 });
-
