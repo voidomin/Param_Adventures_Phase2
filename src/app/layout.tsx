@@ -99,6 +99,9 @@ export default async function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <GoogleAnalytics />
+      </head>
       <body
         className={`${outfit.variable} ${inter.variable} font-body antialiased`}
         suppressHydrationWarning
@@ -123,7 +126,6 @@ export default async function RootLayout({
             </MaintenanceGuard>
           </AuthProvider>
         </ThemeProvider>
-        <GoogleAnalytics />
       </body>
     </html>
   );
