@@ -8,16 +8,45 @@ export async function GET() {
       prisma.platformSetting.findMany(),
     ]);
 
-    const getVal = (arr: any[], key: string, fallback: string) => arr.find(s => s.key === key)?.value || fallback;
+    const keys = [
+      "site_title",
+      "support_email",
+      "support_phone",
+      "auth_login_bg",
+      "auth_register_bg",
+      "auth_common_tagline",
+      "auth_login_image_heading",
+      "auth_login_image_subheading",
+      "auth_login_form_heading",
+      "auth_login_form_subheading",
+      "auth_register_image_heading",
+      "auth_register_image_subheading",
+      "auth_register_form_heading",
+      "auth_register_form_subheading"
+    ];
 
-    const settings = {
-      site_title: getVal(site, "site_title", "Param Adventures"),
-      support_email: getVal(site, "support_email", "info@paramadventures.in"),
-      support_phone: getVal(site, "support_phone", "+91 98765 43210"),
-      maintenance_mode: getVal(platform, "maintenance_mode", "false") === "true",
+    const settingsData = await prisma.siteSetting.findMany({
+      where: { key: { in: keys } }
+    });
+
+    const getVal = (key: string, fallback: string) => 
+      settingsData.find(s => s.key === key)?.value || fallback;
+
+    const config = {
+      site_title: getVal("site_title", "Param Adventures"),
+      support_email: getVal("support_email", "info@paramadventures.in"),
+      support_phone: getVal("support_phone", "+91 98765 43210"),
+      maintenance_mode: (await prisma.platformSetting.findUnique({ where: { key: "maintenance_mode" } }))?.value === "true",
+      branding: {} as Record<string, string>
     };
 
-    return NextResponse.json(settings);
+    keys.forEach(k => {
+      if (k.startsWith("auth_") || k.includes("site_title")) {
+        config.branding[k] = getVal(k, "");
+      }
+    });
+
+    return NextResponse.json(config);
   } catch (error) {
     console.error("Public settings fetch error:", error);
     return NextResponse.json(

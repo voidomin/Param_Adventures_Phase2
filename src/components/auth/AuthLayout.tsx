@@ -52,21 +52,16 @@ export default function AuthLayout({
   const [quote, setQuote] = useState<{ text: string; author?: string | null } | null>(null);
 
   useEffect(() => {
-    // Fetch background
-    if (settingsKey) {
-      fetch(`/api/settings?key=${settingsKey}`, { cache: "no-store" })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.value) setDynamicBg(data.value);
-        })
-        .catch(() => {});
-    }
-
-    // Fetch all auth text settings
-    fetch("/api/settings/auth", { cache: "no-store" })
+    // Single consolidated fetch for all public branding and site settings
+    fetch("/api/settings/public", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
-        if (data.settings) setAuthSettings(data.settings);
+        if (data.branding) {
+          setAuthSettings(data.branding);
+          if (settingsKey && data.branding[settingsKey]) {
+            setDynamicBg(data.branding[settingsKey]);
+          }
+        }
       })
       .catch(() => {});
 
