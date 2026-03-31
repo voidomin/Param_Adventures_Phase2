@@ -499,13 +499,13 @@ const PLATFORM_SETTINGS = [
   { key: "razorpay_key_secret", value: "", description: "Razorpay Secret Key" },
   { key: "razorpay_webhook_secret", value: "", description: "Razorpay Webhook Secret" },
   { key: "convenience_fee_percent", value: "2.5", description: "Percentage fee per booking" },
+  { key: "app_url", value: "http://localhost:3000", description: "Base domain for sitemaps and SEO" },
 ];
 
 const SITE_SETTINGS = [
   { key: "site_title", value: "Param Adventures" },
   { key: "site_description", value: "Curated outdoor experiences across India" },
   { key: "site_favicon_url", value: "/favicon.ico" },
-  { key: "app_url", value: "http://localhost:3000" },
   { key: "company_name", value: "Param Adventures Private Limited" },
   { key: "company_address", value: "" },
   { key: "company_gst", value: "" },

@@ -498,16 +498,74 @@ export default function SystemSettingsPage() {
               />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <InputGroup
-                  label="Site Title"
+                  label="Site Primary Title"
                   value={getVal("SITE", "site_title")}
                   onChange={(v: string) => updateSetting("SITE", "site_title", v)}
+                  placeholder="e.g. Param Adventures"
                 />
                 <InputGroup
-                  label="Google Analytics ID"
+                  label="Google Analytics 4 ID"
                   value={getVal("PLATFORM", "google_analytics_id")}
                   onChange={(v: string) => updateSetting("PLATFORM", "google_analytics_id", v)}
-                  placeholder="G-XXXXXX"
+                  placeholder="G-XXXXXXXXXX"
+                  type="password"
                 />
+              </div>
+
+              <div className="grid grid-cols-1 gap-6">
+                <InputGroup
+                  label="Global Meta Description"
+                  value={getVal("SITE", "site_description")}
+                  onChange={(v: string) => updateSetting("SITE", "site_description", v)}
+                  textarea
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="p-6 rounded-2xl bg-foreground/5 border border-border flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-lg ${getVal("PLATFORM", "google_analytics_id").startsWith('G-') ? 'bg-green-500/10 text-green-400' : 'bg-foreground/10 text-foreground/30'}`}>
+                      <Activity className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm">Tracking Status</p>
+                      <p className="text-xs text-foreground/50">
+                        {getVal("PLATFORM", "google_analytics_id").startsWith('G-') ? 'Script is ACTIVE and injecting tags' : 'No valid ID found'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-6 rounded-2xl bg-foreground/5 border border-border flex items-center justify-between">
+                   <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
+                      <Search className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-sm">Sitemap Pulse</p>
+                      <a href="/sitemap.xml" target="_blank" className="text-xs text-primary hover:underline flex items-center gap-1">
+                        View generated sitemap <ArrowRight className="w-3 h-3" />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <InputGroup
+                  label="App URL (Base Domain)"
+                  value={getVal("PLATFORM", "app_url")}
+                  onChange={(v: string) => updateSetting("PLATFORM", "app_url", v)}
+                  placeholder="https://paramadventures.in"
+                />
+                <InputGroup
+                  label="Site Logo (Favicon URL)"
+                  value={getVal("SITE", "site_favicon_url")}
+                  onChange={(v: string) => updateSetting("SITE", "site_favicon_url", v)}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-border/20 pt-8">
                 <InputGroup
                   label="Support Phone"
                   value={getVal("SITE", "support_phone")}
@@ -873,7 +931,8 @@ function InputGroup({
   type = "text", 
   options = [], 
   placeholder, 
-  description 
+  description,
+  textarea
 }: Readonly<{ 
   label: string; 
   value: string; 
@@ -882,29 +941,46 @@ function InputGroup({
   options?: { label: string; value: string }[]; 
   placeholder?: string; 
   description?: string; 
+  textarea?: boolean;
 }>) {
+  let inputElement;
+  if (type === "select") {
+    inputElement = (
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full h-12 bg-background border border-border rounded-2xl px-4 focus:ring-2 focus:ring-primary/20 appearance-none outline-none font-medium transition-all"
+      >
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+    );
+  } else if (textarea) {
+    inputElement = (
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full min-h-[120px] py-3 bg-background border border-border rounded-2xl px-4 focus:ring-2 focus:ring-primary/20 outline-none font-medium transition-all resize-none"
+      />
+    );
+  } else {
+    inputElement = (
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="w-full h-12 bg-background border border-border rounded-2xl px-4 focus:ring-2 focus:ring-primary/20 outline-none font-medium transition-all"
+      />
+    );
+  }
+
   return (
     <div className="space-y-2">
       <label className="text-xs font-bold text-foreground/40 uppercase tracking-widest pl-1">{label}</label>
-      {type === "select" ? (
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-full h-12 bg-background border border-border rounded-2xl px-4 focus:ring-2 focus:ring-primary/20 appearance-none outline-none font-medium transition-all"
-        >
-          {options.map((opt) => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-      ) : (
-        <input
-          type={type}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="w-full h-12 bg-background border border-border rounded-2xl px-4 focus:ring-2 focus:ring-primary/20 outline-none font-medium transition-all"
-        />
-      )}
+      {inputElement}
       {description && <p className="text-[10px] text-foreground/40 pl-2 leading-relaxed">{description}</p>}
     </div>
   );

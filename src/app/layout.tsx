@@ -76,6 +76,7 @@ export async function generateMetadata(): Promise<Metadata> {
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import MaintenanceGuard from "@/components/layout/MaintenanceGuard";
+import GoogleAnalytics from "@/components/monitoring/GoogleAnalytics";
 
 export default async function RootLayout({
   children,
@@ -91,7 +92,6 @@ export default async function RootLayout({
   const getSiteVal = (key: string, fallback: string) => siteSettings.find(s => s.key === key)?.value || fallback;
   const getPlatformVal = (key: string, fallback: string) => platformSettings.find(s => s.key === key)?.value || fallback;
 
-  const gaId = getPlatformVal("google_analytics_id", "");
   const maintenanceMode = getPlatformVal("maintenance_mode", "false") === "true";
   const supportEmail = getSiteVal("support_email", "info@paramadventures.in");
   const supportPhone = getSiteVal("support_phone", "+91 98765 43210");
@@ -117,21 +117,7 @@ export default async function RootLayout({
             </MaintenanceGuard>
           </AuthProvider>
         </ThemeProvider>
-        {gaId && (
-          <>
-            <script async src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`} />
-            <script
-              dangerouslySetInnerHTML={{
-                __html: `
-                  window.dataLayer = window.dataLayer || [];
-                  function gtag(){dataLayer.push(arguments);}
-                  gtag('js', new Date());
-                  gtag('config', '${gaId}');
-                `,
-              }}
-            />
-          </>
-        )}
+        <GoogleAnalytics />
       </body>
     </html>
   );

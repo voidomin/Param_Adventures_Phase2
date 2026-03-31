@@ -3,9 +3,9 @@ import { prisma } from "@/lib/db";
 import { withBuildSafety } from "@/lib/db-utils";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  // Fetch dynamic base URL from settings
+  // Fetch dynamic base URL from platform settings
   const siteSettings = await withBuildSafety(
-    () => prisma.siteSetting.findMany({ where: { key: "app_url" } }),
+    () => prisma.platformSetting.findMany({ where: { key: "app_url" } }),
     []
   );
   
