@@ -106,6 +106,7 @@ export default withSentryConfig(nextConfig, {
     deleteSourcemapsAfterUpload: true,
   },
 
+  // [STABILIZATION FIX] Disabling tunnelRoute to break the infinite /monitoring auth loop.
   // Routes HTTP requests through Sentry's tunnel endpoint to avoid ad-blockers
-  tunnelRoute: "/monitoring",
+  // tunnelRoute: "/monitoring",
 });

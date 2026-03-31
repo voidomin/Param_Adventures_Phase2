@@ -38,8 +38,8 @@ export default function AdminLayout({
 
   useEffect(() => {
     if (!isLoading) {
-      if (!user) {
-        router.push("/login?redirect=/admin");
+      if (!user && pathname !== "/monitoring" && !pathname.startsWith("/login")) {
+        router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
       } else if (
         !hasPermission("system:config") &&
         !hasPermission("trip:manage-categories") &&

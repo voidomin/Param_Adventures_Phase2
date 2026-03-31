@@ -32,11 +32,11 @@ interface User {
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
+  register: (email: string, password: string, name: string) => Promise<User>;
   logout: () => Promise<void>;
   hasPermission: (key: string) => boolean;
-  mutateUser: () => Promise<void>;
+  mutateUser: () => Promise<User | null>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -55,11 +55,14 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);
+        return data.user as User;
       } else {
         setUser(null);
+        return null;
       }
     } catch {
       setUser(null);
+      return null;
     } finally {
       setIsLoading(false);
     }
@@ -84,7 +87,9 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       }
 
       // Cookie is set by the API response — refetch user
-      await fetchUser();
+      const userData = await fetchUser();
+      if (!userData) throw new Error("Could not retrieve user session.");
+      return userData;
     },
     [fetchUser],
   );
@@ -103,7 +108,9 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
         throw new Error(data.error || "Registration failed.");
       }
 
-      await fetchUser();
+      const userData = await fetchUser();
+      if (!userData) throw new Error("Could not retrieve user session after registration.");
+      return userData;
     },
     [fetchUser],
   );

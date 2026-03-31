@@ -100,6 +100,7 @@ export default async function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
         className={`${outfit.variable} ${inter.variable} font-body antialiased`}
+        suppressHydrationWarning
       >
         <ThemeProvider
           attribute="class"

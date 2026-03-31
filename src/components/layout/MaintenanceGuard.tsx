@@ -17,7 +17,8 @@ export default function MaintenanceGuard({ children, isMaintenanceMode }: Readon
   const pathname = usePathname();
 
   useEffect(() => {
-    setIsAdminPath(pathname?.startsWith("/admin") || pathname?.startsWith("/api/admin"));
+    const isMon = pathname === "/monitoring" || pathname?.startsWith("/monitoring/");
+    setIsAdminPath(pathname?.startsWith("/admin") || pathname?.startsWith("/api/admin") || isMon);
   }, [pathname]);
 
   const isWhitelisted = user && SYSTEM_ADMIN_EMAILS.includes(user.email);
