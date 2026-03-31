@@ -2,15 +2,18 @@ import { prisma } from "@/lib/db";
 import Link from "next/link";
 import { MapPin, IndianRupee, Clock } from "lucide-react";
 import Image from "next/image";
+import { getMediaUrl } from "@/lib/media/media-gateway";
 
 interface SimilarTripsProps {
   currentExperienceId: string;
   categoryIds: string[];
+  mediaSettings?: any;
 }
 
 export default async function SimilarTrips({
   currentExperienceId,
   categoryIds,
+  mediaSettings,
 }: Readonly<SimilarTripsProps>) {
   if (!categoryIds || categoryIds.length === 0) return null;
 
@@ -59,12 +62,18 @@ export default async function SimilarTrips({
           >
             <div className="w-20 h-20 rounded-xl overflow-hidden bg-muted shrink-0 relative">
               <Image
-                src={
-                  exp.cardImage ||
-                  exp.coverImage ||
-                  exp.images?.[0] ||
-                  "/placeholder.jpg"
-                }
+                src={getMediaUrl(
+                  exp.cardImage || exp.coverImage || exp.images?.[0] || "/placeholder.jpg",
+                  mediaSettings?.provider || "CLOUDINARY",
+                  {
+                    cloudinaryCloudName: mediaSettings?.cloudinaryCloudName,
+                    s3Bucket: mediaSettings?.s3Bucket,
+                    s3Region: mediaSettings?.s3Region,
+                    globalQuality: mediaSettings?.globalQuality || 95,
+                    highFidelity: mediaSettings?.highFidelity ?? true
+                  },
+                  { width: 200, crop: "fill" }
+                )}
                 alt=""
                 fill
                 sizes="(max-width: 768px) 100vw, 33vw"

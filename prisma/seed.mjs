@@ -500,6 +500,8 @@ const PLATFORM_SETTINGS = [
   { key: "razorpay_webhook_secret", value: "", description: "Razorpay Webhook Secret" },
   { key: "convenience_fee_percent", value: "2.5", description: "Percentage fee per booking" },
   { key: "app_url", value: "http://localhost:3000", description: "Base domain for sitemaps and SEO" },
+  { key: "media_quality", value: "100", description: "Global image quality (1-100)" },
+  { key: "media_high_fidelity", value: "true", description: "Prioritize original quality over bandwidth (true/false)" },
 ];
 
 const SITE_SETTINGS = [

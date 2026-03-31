@@ -145,10 +145,12 @@ export default function ExperiencesClient({
   initialExperiences,
   categories,
   initialFilter,
+  mediaSettings,
 }: Readonly<{
   initialExperiences: Experience[];
   categories: DBCategory[];
   initialFilter: string;
+  mediaSettings: any;
 }>) {
   const [activeFilter, setActiveFilter] = useState(initialFilter);
   const [searchQuery, setSearchQuery] = useState("");
@@ -678,7 +680,10 @@ export default function ExperiencesClient({
             {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
             {filteredExperiences.map((exp: any) => (
               <motion.div key={exp.id} variants={itemVariants}>
-                <ExperienceCard experience={exp} />
+                <ExperienceCard 
+                  experience={exp} 
+                  mediaSettings={mediaSettings} 
+                />
               </motion.div>
             ))}
           </motion.div>
