@@ -23,6 +23,11 @@ import {
 } from "lucide-react";
 import { getMediaUrl } from "@/lib/media/media-gateway";
 
+interface TabProps {
+  getVal: (type: "PLATFORM" | "SITE", key: string) => string;
+  updateSetting: (type: "PLATFORM" | "SITE", key: string, value: string) => void;
+}
+
 const maskValue = (key: string, value: any) => {
   if (value === undefined || value === null) return "n/a";
   const str = String(value);
@@ -180,491 +185,11 @@ export default function SystemSettingsPage() {
 
   // ─── Sub-components to reduce main complexity ──────────
 
-  const CommunicationsTab = () => (
-    <div className="space-y-8 animate-in slide-in-from-left-4 duration-300">
-      <SectionTitle 
-        title="Email Strategy" 
-        subtitle="Configure the multi-channel email delivery engine with automatic failsafe." 
-        icon={Mail} 
-      />
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <InputGroup
-          label="Primary Provider"
-          value={getVal("PLATFORM", "email_provider")}
-          onChange={(v: string) => updateSetting("PLATFORM", "email_provider", v)}
-          type="select"
-          options={[
-            { label: "Zoho API (HTTPS)", value: "ZOHO_API" },
-            { label: "Zoho SMTP (Traditional)", value: "ZOHO_SMTP" },
-            { label: "Resend API (Cloud)", value: "RESEND" },
-          ]}
-          description="Choose ZOHO_API for Render environments to bypass port blocks."
-        />
-        <InputGroup
-          label="Sender Identity (From)"
-          value={getVal("PLATFORM", "smtp_from")}
-          onChange={(v: string) => updateSetting("PLATFORM", "smtp_from", v)}
-          placeholder="Param Adventures <booking@paramadventures.in>"
-        />
-      </div>
+  // ... Component rendering starts here ...
 
-      <div className="p-8 bg-foreground/5 rounded-3xl space-y-6 border border-border/50">
-        <h4 className="font-bold text-sm text-primary uppercase tracking-widest flex items-center gap-2">
-          <Settings2 className="w-4 h-4" /> 
-          {getVal("PLATFORM", "email_provider").replace("_", " ")} Credentials
-        </h4>
 
-        {getVal("PLATFORM", "email_provider") === "ZOHO_SMTP" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <InputGroup
-              label="SMTP Host"
-              value={getVal("PLATFORM", "smtp_host")}
-              onChange={(v: string) => updateSetting("PLATFORM", "smtp_host", v)}
-            />
-            <InputGroup
-              label="SMTP Port"
-              value={getVal("PLATFORM", "smtp_port")}
-              onChange={(v: string) => updateSetting("PLATFORM", "smtp_port", v)}
-            />
-            <InputGroup
-              label="SMTP User"
-              value={getVal("PLATFORM", "smtp_user")}
-              onChange={(v: string) => updateSetting("PLATFORM", "smtp_user", v)}
-            />
-            <InputGroup
-              label="SMTP Password"
-              value={getVal("PLATFORM", "smtp_pass")}
-              onChange={(v: string) => updateSetting("PLATFORM", "smtp_pass", v)}
-              type="password"
-            />
-          </div>
-        )}
+  // ... Sub-components removed ...
 
-        {getVal("PLATFORM", "email_provider") === "ZOHO_API" && (
-          <InputGroup
-            label="ZeptoMail API Key"
-            value={getVal("PLATFORM", "zoho_api_key")}
-            onChange={(v: string) => updateSetting("PLATFORM", "zoho_api_key", v)}
-            type="password"
-            description="Enter your Zoho ZeptoMail 'Send Mail' API key."
-          />
-        )}
-
-        {getVal("PLATFORM", "email_provider") === "RESEND" && (
-          <InputGroup
-            label="Resend API Key"
-            value={getVal("PLATFORM", "resend_api_key")}
-            onChange={(v: string) => updateSetting("PLATFORM", "resend_api_key", v)}
-            type="password"
-          />
-        )}
-      </div>
-
-      <div className="p-6 bg-primary/5 rounded-2xl border border-primary/10 flex items-center justify-between">
-        <div>
-          <h4 className="font-bold text-sm italic">Connectivity Test</h4>
-          <p className="text-xs text-foreground/50">Send a test email using the currently SAVED settings.</p>
-        </div>
-        <button 
-          onClick={async () => {
-            const email = globalThis.prompt?.("Enter recipient email for test:");
-            if (email) {
-              try {
-                const res = await fetch("/api/admin/settings/system/test-email", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ to: email }),
-                });
-                if (res.ok) globalThis.alert?.("Test email sent! 🏔️");
-                else globalThis.alert?.("Failed to send test email. Check logs.");
-              } catch (e) {
-                console.error(e);
-              }
-            }
-          }}
-          className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-bold transition-all hover:scale-105 active:scale-95"
-        >
-          <RefreshCw className="w-4 h-4" /> Send Test Email
-        </button>
-      </div>
-    </div>
-  );
-
-  const MediaTab = () => (
-    <div className="space-y-8 animate-in slide-in-from-left-4 duration-300">
-      <SectionTitle 
-        title="Media Sovereignty" 
-        subtitle="Configure high-fidelity delivery and provider independence." 
-        icon={ImageIcon} 
-      />
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <InputGroup
-          label="Active Infrastructure"
-          value={getVal("PLATFORM", "media_provider")}
-          onChange={(v: string) => updateSetting("PLATFORM", "media_provider", v)}
-          type="select"
-          options={[
-            { label: "AWS S3 (Standard Storage)", value: "AWS_S3" },
-            { label: "Cloudinary (High-Fidelity)", value: "CLOUDINARY" },
-          ]}
-        />
-        <InputGroup
-          label="Global Quality Dial"
-          value={getVal("PLATFORM", "media_quality") || "100"}
-          onChange={(v: string) => updateSetting("PLATFORM", "media_quality", v)}
-          description="80% to 100% recommended for trekking photography."
-        />
-        <InputGroup
-          label="High Fidelity Mode"
-          value={getVal("PLATFORM", "media_high_fidelity") || "true"}
-          onChange={(v: string) => updateSetting("PLATFORM", "media_high_fidelity", v)}
-          type="select"
-          options={[
-            { label: "ON (Original Clarity)", value: "true" },
-            { label: "OFF (Auto Optimize)", value: "false" },
-          ]}
-        />
-      </div>
-
-      <div className="p-8 bg-foreground/5 rounded-3xl space-y-6 border border-border/50">
-        <div className="flex items-center justify-between">
-          <h4 className="font-bold text-sm text-primary uppercase tracking-widest flex items-center gap-2">
-            <Settings2 className="w-4 h-4" /> 
-            {getVal("PLATFORM", "media_provider") === "AWS_S3" ? "AWS S3" : "Cloudinary"} Configuration
-          </h4>
-          <div className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-bold uppercase tracking-tighter">
-            {getVal("PLATFORM", "media_high_fidelity") === "true" ? "Lossless" : "Optimized"} @ {getVal("PLATFORM", "media_quality")}%
-          </div>
-        </div>
-
-        {getVal("PLATFORM", "media_provider") === "AWS_S3" ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <InputGroup
-              label="S3 Bucket Name"
-              value={getVal("PLATFORM", "s3_bucket")}
-              onChange={(v: string) => updateSetting("PLATFORM", "s3_bucket", v)}
-            />
-            <InputGroup
-              label="S3 Region"
-              value={getVal("PLATFORM", "s3_region")}
-              onChange={(v: string) => updateSetting("PLATFORM", "s3_region", v)}
-              placeholder="e.g. ap-south-1"
-            />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <InputGroup
-              label="Cloud Name"
-              value={getVal("PLATFORM", "cloudinary_cloud_name")}
-              onChange={(v: string) => updateSetting("PLATFORM", "cloudinary_cloud_name", v)}
-            />
-            <InputGroup
-              label="API Key"
-              value={getVal("PLATFORM", "cloudinary_api_key")}
-              onChange={(v: string) => updateSetting("PLATFORM", "cloudinary_api_key", v)}
-              type="password"
-            />
-            <InputGroup
-              label="API Secret"
-              value={getVal("PLATFORM", "cloudinary_api_secret")}
-              onChange={(v: string) => updateSetting("PLATFORM", "cloudinary_api_secret", v)}
-              type="password"
-            />
-          </div>
-        )}
-      </div>
-
-      <div className="p-8 bg-foreground/5 rounded-3xl border border-border/50 overflow-hidden relative group">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-          <div className="space-y-4">
-            <div className="aspect-video rounded-2xl overflow-hidden bg-background border border-border flex items-center justify-center relative">
-              <div className="absolute top-4 right-4 z-10">
-                 <div className="bg-background/80 backdrop-blur-md px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest border border-border">
-                   Real-time Preview
-                 </div>
-              </div>
-              {getVal("PLATFORM", "cloudinary_cloud_name") ? (
-                <img 
-                  src={getMediaUrl(
-                    "v1711884000/sample-trek.jpg", 
-                    getVal("PLATFORM", "media_provider"),
-                    {
-                      cloudinaryCloudName: getVal("PLATFORM", "cloudinary_cloud_name"),
-                      s3Bucket: getVal("PLATFORM", "s3_bucket"),
-                      globalQuality: Number.parseInt(getVal("PLATFORM", "media_quality") || "100"),
-                      highFidelity: getVal("PLATFORM", "media_high_fidelity") === "true"
-                    },
-                    { width: 800, crop: "fill" }
-                  )} 
-                  alt="Transformation Preview"
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.src = "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80";
-                  }}
-                />
-              ) : (
-                <span className="text-foreground/20 italic text-sm">Add Cloudinary credentials for preview</span>
-              )}
-            </div>
-            <p className="text-[10px] text-foreground/40 font-mono break-all line-clamp-1">
-              {getMediaUrl(
-                "sample-trek.jpg", 
-                getVal("PLATFORM", "media_provider"),
-                {
-                  cloudinaryCloudName: getVal("PLATFORM", "cloudinary_cloud_name"),
-                  s3Bucket: getVal("PLATFORM", "s3_bucket"),
-                  globalQuality: Number.parseInt(getVal("PLATFORM", "media_quality") || "100"),
-                  highFidelity: getVal("PLATFORM", "media_high_fidelity") === "true"
-                }
-              )}
-            </p>
-          </div>
-
-          <div className="space-y-6">
-            <div className="space-y-2">
-               <h5 className="font-bold text-sm">Infrastructure Analysis</h5>
-               <p className="text-xs text-foreground/50 leading-relaxed">
-                 Images are currently delivered via <strong>{getVal("PLATFORM", "media_provider").replace("_", " ")}</strong>. 
-                 The engine is {getVal("PLATFORM", "media_high_fidelity") === "true" ? 'injecting high-fidelity (f_auto, q_auto:best)' : 'applying regulation quality (q_' + getVal("PLATFORM", "media_quality") + ')'} transformations.
-               </p>
-            </div>
-            <div className="p-4 bg-primary/10 rounded-2xl border border-primary/20">
-               <p className="text-[10px] font-black text-primary uppercase mb-1">S3 Migration Ready</p>
-               <p className="text-xs text-primary/70">Building for your future move to S3. All components will automatically switch URLs when the provider dial is flipped.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const SEOTab = () => (
-    <div className="space-y-8">
-      <SectionTitle 
-        title="Identity & Metrics" 
-        subtitle="Visual branding and traffic measurement." 
-        icon={Search} 
-      />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <InputGroup
-          label="Site Primary Title"
-          value={getVal("SITE", "site_title")}
-          onChange={(v: string) => updateSetting("SITE", "site_title", v)}
-          placeholder="e.g. Param Adventures"
-        />
-        <InputGroup
-          label="Google Analytics 4 ID"
-          value={getVal("PLATFORM", "google_analytics_id")}
-          onChange={(v: string) => updateSetting("PLATFORM", "google_analytics_id", v)}
-          placeholder="G-XXXXXXXXXX"
-          type="password"
-        />
-      </div>
-
-      <div className="grid grid-cols-1 gap-6">
-        <InputGroup
-          label="Global Meta Description"
-          value={getVal("SITE", "site_description")}
-          onChange={(v: string) => updateSetting("SITE", "site_description", v)}
-          textarea
-        />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="p-6 rounded-2xl bg-foreground/5 border border-border flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-lg ${getVal("PLATFORM", "google_analytics_id").startsWith('G-') ? 'bg-green-500/10 text-green-400' : 'bg-foreground/10 text-foreground/30'}`}>
-              <Activity className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="font-bold text-sm">Tracking Status</p>
-              <p className="text-xs text-foreground/50">
-                {getVal("PLATFORM", "google_analytics_id").startsWith('G-') ? 'Script is ACTIVE and injecting tags' : 'No valid ID found'}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="p-6 rounded-2xl bg-foreground/5 border border-border flex items-center justify-between">
-           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
-              <Search className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="font-bold text-sm">Sitemap Pulse</p>
-              <a href="/sitemap.xml" target="_blank" className="text-xs text-primary hover:underline flex items-center gap-1">
-                View generated sitemap <ArrowRight className="w-3 h-3" />
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <InputGroup
-          label="App URL (Base Domain)"
-          value={getVal("PLATFORM", "app_url")}
-          onChange={(v: string) => updateSetting("PLATFORM", "app_url", v)}
-          placeholder="https://paramadventures.in"
-        />
-        <InputGroup
-          label="Site Logo (Favicon URL)"
-          value={getVal("SITE", "site_favicon_url")}
-          onChange={(v: string) => updateSetting("SITE", "site_favicon_url", v)}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-border/20 pt-8">
-        <InputGroup
-          label="Support Phone"
-          value={getVal("SITE", "support_phone")}
-          onChange={(v: string) => updateSetting("SITE", "support_phone", v)}
-        />
-        <InputGroup
-          label="Support Email"
-          value={getVal("SITE", "support_email")}
-          onChange={(v: string) => updateSetting("SITE", "support_email", v)}
-        />
-      </div>
-    </div>
-  );
-
-  const FinanceTab = () => (
-    <div className="space-y-8 animate-in slide-in-from-left-4 duration-300">
-      <SectionTitle 
-        title="Payment Infrastructure" 
-        subtitle="Configure the gateway used for processing trip payments." 
-        icon={CreditCard} 
-      />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <InputGroup
-          label="Transaction Mode"
-          value={getVal("PLATFORM", "razorpay_mode")}
-          onChange={(v: string) => updateSetting("PLATFORM", "razorpay_mode", v)}
-          type="select"
-          options={[
-            { label: "Test Mode (Simulation)", value: "TEST" },
-            { label: "Live Mode (Production)", value: "LIVE" },
-          ]}
-        />
-      </div>
-
-      <div className="p-8 bg-foreground/5 rounded-3xl space-y-6 border border-border/50">
-        <h4 className="font-bold text-sm text-primary uppercase tracking-widest flex items-center gap-2">
-          <Settings2 className="w-4 h-4" /> 
-          Razorpay Credentials
-        </h4>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <InputGroup
-            label="Key ID"
-            value={getVal("PLATFORM", "razorpay_key_id")}
-            onChange={(v: string) => updateSetting("PLATFORM", "razorpay_key_id", v)}
-            placeholder="rzp_test_..."
-          />
-          <InputGroup
-            label="Key Secret"
-            value={getVal("PLATFORM", "razorpay_key_secret")}
-            onChange={(v: string) => updateSetting("PLATFORM", "razorpay_key_secret", v)}
-            type="password"
-          />
-          <InputGroup
-            label="Webhook Secret"
-            value={getVal("PLATFORM", "razorpay_webhook_secret")}
-            onChange={(v: string) => updateSetting("PLATFORM", "razorpay_webhook_secret", v)}
-            type="password"
-          />
-        </div>
-      </div>
-    </div>
-  );
-
-  const SecurityTab = () => (
-    <div className="space-y-8">
-      <SectionTitle 
-        title="Security & Uptime" 
-        subtitle="Access rules and maintenance controls." 
-        icon={Lock} 
-      />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <InputGroup
-          label="Maintenance Mode"
-          value={getVal("PLATFORM", "maintenance_mode")}
-          onChange={(v: string) => updateSetting("PLATFORM", "maintenance_mode", v)}
-          type="select"
-          options={[
-            { label: "OFF (Site Online)", value: "false" },
-            { label: "ON (Emergency Lockdown)", value: "true" },
-          ]}
-        />
-        <InputGroup
-          label="Registration"
-          value={getVal("PLATFORM", "registration_enabled")}
-          onChange={(v: string) => updateSetting("PLATFORM", "registration_enabled", v)}
-          type="select"
-          options={[
-            { label: "Public Enabled", value: "true" },
-            { label: "Invite Only", value: "false" },
-          ]}
-        />
-        <InputGroup
-          label="Session TTL (Access)"
-          value={getVal("PLATFORM", "jwt_expiry")}
-          onChange={(v: string) => updateSetting("PLATFORM", "jwt_expiry", v)}
-          placeholder="e.g. 1h, 24h, 7d"
-          description="Initial validity of the secure access token."
-        />
-        <InputGroup
-          label="Refresh Token Validity"
-          value={getVal("PLATFORM", "refresh_token_expiry")}
-          onChange={(v: string) => updateSetting("PLATFORM", "refresh_token_expiry", v)}
-          placeholder="e.g. 7d, 30d"
-          description="Duration before a user is completely logged out."
-        />
-        <InputGroup
-          label="Global App URL"
-          value={getVal("SITE", "app_url")}
-          onChange={(v: string) => updateSetting("SITE", "app_url", v)}
-          placeholder="https://paramadventures.in"
-          description="Used for absolute links in sitemaps, metadata, and emails."
-        />
-      </div>
-
-      <div className="mt-8 pt-8 border-t border-white/10 space-y-6">
-        <h3 className="text-lg font-medium text-white flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-red-400" />{" "}
-          Error Monitoring & Logs (Sentry)
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <InputGroup
-            label="Monitoring Switch"
-            type="select"
-            value={getVal("PLATFORM", "sentry_enabled")}
-            onChange={(v: string) => updateSetting("PLATFORM", "sentry_enabled", v)}
-            options={[
-              { label: "ENABLED (Live Error Tracking)", value: "true" },
-              { label: "DISABLED (Local Logs Only)", value: "false" },
-            ]}
-            description="When disabled, errors are logged to the console but not sent to Sentry.io."
-          />
-          <InputGroup
-            label="Sentry Environment"
-            type="select"
-            value={getVal("PLATFORM", "sentry_environment")}
-            onChange={(v: string) => updateSetting("PLATFORM", "sentry_environment", v)}
-            options={[
-              { label: "Production", value: "production" },
-              { label: "Staging", value: "staging" },
-              { label: "Development", value: "development" },
-            ]}
-            description="Tags your errors for easier filtering in the dashboard."
-          />
-        </div>
-      </div>
-    </div>
-  );
 
   if (authLoading || (isWhitelisted && isLoading)) {
     return (
@@ -784,11 +309,11 @@ export default function SystemSettingsPage() {
 
         {/* Content Area */}
         <div className="lg:col-span-3 bg-foreground/[0.02] border border-border rounded-3xl p-8 min-h-[500px]">
-          {activeTab === "communications" && <CommunicationsTab />}
-          {activeTab === "media" && <MediaTab />}
-          {activeTab === "seo" && <SEOTab />}
-          {activeTab === "finance" && <FinanceTab />}
-          {activeTab === "security" && <SecurityTab />}
+          {activeTab === "communications" && <CommunicationsTab getVal={getVal} updateSetting={updateSetting} />}
+          {activeTab === "media" && <MediaTab getVal={getVal} updateSetting={updateSetting} />}
+          {activeTab === "seo" && <SEOTab getVal={getVal} updateSetting={updateSetting} />}
+          {activeTab === "finance" && <FinanceTab getVal={getVal} updateSetting={updateSetting} />}
+          {activeTab === "security" && <SecurityTab getVal={getVal} updateSetting={updateSetting} />}
 
           {activeTab === "audit" && (
             <div className="space-y-8 animate-in slide-in-from-left-4 duration-300">
@@ -988,6 +513,504 @@ export default function SystemSettingsPage() {
   );
 }
 
+// ─── Sub-components extracted to resolve Sonar warnings ─────
+
+function CommunicationsTab({ getVal, updateSetting }: Readonly<TabProps>) {
+  return (
+    <div className="space-y-8 animate-in slide-in-from-left-4 duration-300">
+      <SectionTitle 
+        title="Email Strategy" 
+        subtitle="Configure the multi-channel email delivery engine with automatic failsafe." 
+        icon={Mail} 
+      />
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <InputGroup
+          label="Primary Provider"
+          value={getVal("PLATFORM", "email_provider")}
+          onChange={(v: string) => updateSetting("PLATFORM", "email_provider", v)}
+          type="select"
+          options={[
+            { label: "Zoho API (HTTPS)", value: "ZOHO_API" },
+            { label: "Zoho SMTP (Traditional)", value: "ZOHO_SMTP" },
+            { label: "Resend API (Cloud)", value: "RESEND" },
+          ]}
+          description="Choose ZOHO_API for Render environments to bypass port blocks."
+        />
+        <InputGroup
+          label="Sender Identity (From)"
+          value={getVal("PLATFORM", "smtp_from")}
+          onChange={(v: string) => updateSetting("PLATFORM", "smtp_from", v)}
+          placeholder="Param Adventures <booking@paramadventures.in>"
+        />
+      </div>
+
+      <div className="p-8 bg-foreground/5 rounded-3xl space-y-6 border border-border/50">
+        <h4 className="font-bold text-sm text-primary uppercase tracking-widest flex items-center gap-2">
+          <Settings2 className="w-4 h-4" /> 
+          {(getVal("PLATFORM", "email_provider") || "").replace("_", " ")} Credentials
+        </h4>
+
+        {getVal("PLATFORM", "email_provider") === "ZOHO_SMTP" && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <InputGroup
+              label="SMTP Host"
+              value={getVal("PLATFORM", "smtp_host")}
+              onChange={(v: string) => updateSetting("PLATFORM", "smtp_host", v)}
+            />
+            <InputGroup
+              label="SMTP Port"
+              value={getVal("PLATFORM", "smtp_port")}
+              onChange={(v: string) => updateSetting("PLATFORM", "smtp_port", v)}
+            />
+            <InputGroup
+              label="SMTP User"
+              value={getVal("PLATFORM", "smtp_user")}
+              onChange={(v: string) => updateSetting("PLATFORM", "smtp_user", v)}
+            />
+            <InputGroup
+              label="SMTP Password"
+              value={getVal("PLATFORM", "smtp_pass")}
+              onChange={(v: string) => updateSetting("PLATFORM", "smtp_pass", v)}
+              type="password"
+            />
+          </div>
+        )}
+
+        {getVal("PLATFORM", "email_provider") === "ZOHO_API" && (
+          <InputGroup
+            label="ZeptoMail API Key"
+            value={getVal("PLATFORM", "zoho_api_key")}
+            onChange={(v: string) => updateSetting("PLATFORM", "zoho_api_key", v)}
+            type="password"
+            description="Enter your Zoho ZeptoMail 'Send Mail' API key."
+          />
+        )}
+
+        {getVal("PLATFORM", "email_provider") === "RESEND" && (
+          <InputGroup
+            label="Resend API Key"
+            value={getVal("PLATFORM", "resend_api_key")}
+            onChange={(v: string) => updateSetting("PLATFORM", "resend_api_key", v)}
+            type="password"
+          />
+        )}
+      </div>
+
+      <div className="p-6 bg-primary/5 rounded-2xl border border-primary/10 flex items-center justify-between">
+        <div>
+          <h4 className="font-bold text-sm italic">Connectivity Test</h4>
+          <p className="text-xs text-foreground/50">Send a test email using the currently SAVED settings.</p>
+        </div>
+        <button 
+          onClick={async () => {
+            const email = globalThis.prompt?.("Enter recipient email for test:");
+            if (email) {
+              try {
+                const res = await fetch("/api/admin/settings/system/test-email", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ to: email }),
+                });
+                if (res.ok) globalThis.alert?.("Test email sent! 🏔️");
+                else globalThis.alert?.("Failed to send test email. Check logs.");
+              } catch (e) {
+                console.error(e);
+              }
+            }
+          }}
+          className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-bold transition-all hover:scale-105 active:scale-95"
+        >
+          <RefreshCw className="w-4 h-4" /> Send Test Email
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function MediaTab({ getVal, updateSetting }: Readonly<TabProps>) {
+  return (
+    <div className="space-y-8 animate-in slide-in-from-left-4 duration-300">
+      <SectionTitle 
+        title="Media Sovereignty" 
+        subtitle="Configure high-fidelity delivery and provider independence." 
+        icon={ImageIcon} 
+      />
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <InputGroup
+          label="Active Infrastructure"
+          value={getVal("PLATFORM", "media_provider")}
+          onChange={(v: string) => updateSetting("PLATFORM", "media_provider", v)}
+          type="select"
+          options={[
+            { label: "AWS S3 (Standard Storage)", value: "AWS_S3" },
+            { label: "Cloudinary (High-Fidelity)", value: "CLOUDINARY" },
+          ]}
+        />
+        <InputGroup
+          label="Global Quality Dial"
+          value={getVal("PLATFORM", "media_quality") || "100"}
+          onChange={(v: string) => updateSetting("PLATFORM", "media_quality", v)}
+          description="80% to 100% recommended for trekking photography."
+        />
+        <InputGroup
+          label="High Fidelity Mode"
+          value={getVal("PLATFORM", "media_high_fidelity") || "true"}
+          onChange={(v: string) => updateSetting("PLATFORM", "media_high_fidelity", v)}
+          type="select"
+          options={[
+            { label: "ON (Original Clarity)", value: "true" },
+            { label: "OFF (Auto Optimize)", value: "false" },
+          ]}
+        />
+      </div>
+
+      <div className="p-8 bg-foreground/5 rounded-3xl space-y-6 border border-border/50">
+        <div className="flex items-center justify-between">
+          <h4 className="font-bold text-sm text-primary uppercase tracking-widest flex items-center gap-2">
+            <Settings2 className="w-4 h-4" /> 
+            {getVal("PLATFORM", "media_provider") === "AWS_S3" ? "AWS S3" : "Cloudinary"} Configuration
+          </h4>
+          <div className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-bold uppercase tracking-tighter">
+            {getVal("PLATFORM", "media_high_fidelity") === "true" ? "Lossless" : "Optimized"} @ {getVal("PLATFORM", "media_quality")}%
+          </div>
+        </div>
+
+        {getVal("PLATFORM", "media_provider") === "AWS_S3" ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <InputGroup
+              label="S3 Bucket Name"
+              value={getVal("PLATFORM", "s3_bucket")}
+              onChange={(v: string) => updateSetting("PLATFORM", "s3_bucket", v)}
+            />
+            <InputGroup
+              label="S3 Region"
+              value={getVal("PLATFORM", "s3_region")}
+              onChange={(v: string) => updateSetting("PLATFORM", "s3_region", v)}
+              placeholder="e.g. ap-south-1"
+            />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <InputGroup
+              label="Cloud Name"
+              value={getVal("PLATFORM", "cloudinary_cloud_name")}
+              onChange={(v: string) => updateSetting("PLATFORM", "cloudinary_cloud_name", v)}
+            />
+            <InputGroup
+              label="API Key"
+              value={getVal("PLATFORM", "cloudinary_api_key")}
+              onChange={(v: string) => updateSetting("PLATFORM", "cloudinary_api_key", v)}
+              type="password"
+            />
+            <InputGroup
+              label="API Secret"
+              value={getVal("PLATFORM", "cloudinary_api_secret")}
+              onChange={(v: string) => updateSetting("PLATFORM", "cloudinary_api_secret", v)}
+              type="password"
+            />
+          </div>
+        )}
+      </div>
+
+      <div className="p-8 bg-foreground/5 rounded-3xl border border-border/50 overflow-hidden relative group">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+          <div className="space-y-4">
+            <div className="aspect-video rounded-2xl overflow-hidden bg-background border border-border flex items-center justify-center relative">
+              <div className="absolute top-4 right-4 z-10">
+                 <div className="bg-background/80 backdrop-blur-md px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest border border-border">
+                   Real-time Preview
+                 </div>
+              </div>
+              {getVal("PLATFORM", "cloudinary_cloud_name") ? (
+                <img 
+                  src={getMediaUrl(
+                    "v1711884000/sample-trek.jpg", 
+                    getVal("PLATFORM", "media_provider"),
+                    {
+                      cloudinaryCloudName: getVal("PLATFORM", "cloudinary_cloud_name"),
+                      s3Bucket: getVal("PLATFORM", "s3_bucket"),
+                      globalQuality: Number.parseInt(getVal("PLATFORM", "media_quality") || "100"),
+                      highFidelity: getVal("PLATFORM", "media_high_fidelity") === "true"
+                    },
+                    { width: 800, crop: "fill" }
+                  )} 
+                  alt="Transformation Preview"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.src = "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80";
+                  }}
+                />
+              ) : (
+                <span className="text-foreground/20 italic text-sm">Add Cloudinary credentials for preview</span>
+              )}
+            </div>
+            <p className="text-[10px] text-foreground/40 font-mono break-all line-clamp-1">
+              {getMediaUrl(
+                "sample-trek.jpg", 
+                getVal("PLATFORM", "media_provider"),
+                {
+                  cloudinaryCloudName: getVal("PLATFORM", "cloudinary_cloud_name"),
+                  s3Bucket: getVal("PLATFORM", "s3_bucket"),
+                  globalQuality: Number.parseInt(getVal("PLATFORM", "media_quality") || "100"),
+                  highFidelity: getVal("PLATFORM", "media_high_fidelity") === "true"
+                }
+              )}
+            </p>
+          </div>
+
+          <div className="space-y-6">
+            <div className="space-y-2">
+               <h5 className="font-bold text-sm">Infrastructure Analysis</h5>
+               <p className="text-xs text-foreground/50 leading-relaxed">
+                 Images are currently delivered via <strong>{(getVal("PLATFORM", "media_provider") || "").replace("_", " ")}</strong>. 
+                 The engine is {getVal("PLATFORM", "media_high_fidelity") === "true" ? 'injecting high-fidelity (f_auto, q_auto:best)' : 'applying regulation quality (q_' + getVal("PLATFORM", "media_quality") + ')'} transformations.
+               </p>
+            </div>
+            <div className="p-4 bg-primary/10 rounded-2xl border border-primary/20">
+               <p className="text-[10px] font-black text-primary uppercase mb-1">S3 Migration Ready</p>
+               <p className="text-xs text-primary/70">Building for your future move to S3. All components will automatically switch URLs when the provider dial is flipped.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SEOTab({ getVal, updateSetting }: Readonly<TabProps>) {
+  return (
+    <div className="space-y-8">
+      <SectionTitle 
+        title="Identity & Metrics" 
+        subtitle="Visual branding and traffic measurement." 
+        icon={Search} 
+      />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <InputGroup
+          label="Site Primary Title"
+          value={getVal("SITE", "site_title")}
+          onChange={(v: string) => updateSetting("SITE", "site_title", v)}
+          placeholder="e.g. Param Adventures"
+        />
+        <InputGroup
+          label="Google Analytics 4 ID"
+          value={getVal("PLATFORM", "google_analytics_id")}
+          onChange={(v: string) => updateSetting("PLATFORM", "google_analytics_id", v)}
+          placeholder="G-XXXXXXXXXX"
+          type="password"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-6">
+        <InputGroup
+          label="Global Meta Description"
+          value={getVal("SITE", "site_description")}
+          onChange={(v: string) => updateSetting("SITE", "site_description", v)}
+          textarea
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="p-6 rounded-2xl bg-foreground/5 border border-border flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${(getVal("PLATFORM", "google_analytics_id") || "").startsWith('G-') ? 'bg-green-500/10 text-green-400' : 'bg-foreground/10 text-foreground/30'}`}>
+              <Activity className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="font-bold text-sm">Tracking Status</p>
+              <p className="text-xs text-foreground/50">
+                {(getVal("PLATFORM", "google_analytics_id") || "").startsWith('G-') ? 'Script is ACTIVE and injecting tags' : 'No valid ID found'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-6 rounded-2xl bg-foreground/5 border border-border flex items-center justify-between">
+           <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-blue-500/10 text-blue-400">
+              <Search className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="font-bold text-sm">Sitemap Pulse</p>
+              <a href="/sitemap.xml" target="_blank" className="text-xs text-primary hover:underline flex items-center gap-1">
+                View generated sitemap <ArrowRight className="w-3 h-3" />
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <InputGroup
+          label="App URL (Base Domain)"
+          value={getVal("PLATFORM", "app_url")}
+          onChange={(v: string) => updateSetting("PLATFORM", "app_url", v)}
+          placeholder="https://paramadventures.in"
+        />
+        <InputGroup
+          label="Site Logo (Favicon URL)"
+          value={getVal("SITE", "site_favicon_url")}
+          onChange={(v: string) => updateSetting("SITE", "site_favicon_url", v)}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-border/20 pt-8">
+        <InputGroup
+          label="Support Phone"
+          value={getVal("SITE", "support_phone")}
+          onChange={(v: string) => updateSetting("SITE", "support_phone", v)}
+        />
+        <InputGroup
+          label="Support Email"
+          value={getVal("SITE", "support_email")}
+          onChange={(v: string) => updateSetting("SITE", "support_email", v)}
+        />
+      </div>
+    </div>
+  );
+}
+
+function FinanceTab({ getVal, updateSetting }: Readonly<TabProps>) {
+  return (
+    <div className="space-y-8 animate-in slide-in-from-left-4 duration-300">
+      <SectionTitle 
+        title="Payment Infrastructure" 
+        subtitle="Configure the gateway used for processing trip payments." 
+        icon={CreditCard} 
+      />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <InputGroup
+          label="Transaction Mode"
+          value={getVal("PLATFORM", "razorpay_mode")}
+          onChange={(v: string) => updateSetting("PLATFORM", "razorpay_mode", v)}
+          type="select"
+          options={[
+            { label: "Test Mode (Simulation)", value: "TEST" },
+            { label: "Live Mode (Production)", value: "LIVE" },
+          ]}
+        />
+      </div>
+
+      <div className="p-8 bg-foreground/5 rounded-3xl space-y-6 border border-border/50">
+        <h4 className="font-bold text-sm text-primary uppercase tracking-widest flex items-center gap-2">
+          <Settings2 className="w-4 h-4" /> 
+          Razorpay Credentials
+        </h4>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <InputGroup
+            label="Key ID"
+            value={getVal("PLATFORM", "razorpay_key_id")}
+            onChange={(v: string) => updateSetting("PLATFORM", "razorpay_key_id", v)}
+            placeholder="rzp_test_..."
+          />
+          <InputGroup
+            label="Key Secret"
+            value={getVal("PLATFORM", "razorpay_key_secret")}
+            onChange={(v: string) => updateSetting("PLATFORM", "razorpay_key_secret", v)}
+            type="password"
+          />
+          <InputGroup
+            label="Webhook Secret"
+            value={getVal("PLATFORM", "razorpay_webhook_secret")}
+            onChange={(v: string) => updateSetting("PLATFORM", "razorpay_webhook_secret", v)}
+            type="password"
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SecurityTab({ getVal, updateSetting }: Readonly<TabProps>) {
+  return (
+    <div className="space-y-8">
+      <SectionTitle 
+        title="Security & Uptime" 
+        subtitle="Access rules and maintenance controls." 
+        icon={Lock} 
+      />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <InputGroup
+          label="Maintenance Mode"
+          value={getVal("PLATFORM", "maintenance_mode")}
+          onChange={(v: string) => updateSetting("PLATFORM", "maintenance_mode", v)}
+          type="select"
+          options={[
+            { label: "OFF (Site Online)", value: "false" },
+            { label: "ON (Emergency Lockdown)", value: "true" },
+          ]}
+        />
+        <InputGroup
+          label="Registration"
+          value={getVal("PLATFORM", "registration_enabled")}
+          onChange={(v: string) => updateSetting("PLATFORM", "registration_enabled", v)}
+          type="select"
+          options={[
+            { label: "Public Enabled", value: "true" },
+            { label: "Invite Only", value: "false" },
+          ]}
+        />
+        <InputGroup
+          label="Session TTL (Access)"
+          value={getVal("PLATFORM", "jwt_expiry")}
+          onChange={(v: string) => updateSetting("PLATFORM", "jwt_expiry", v)}
+          placeholder="e.g. 1h, 24h, 7d"
+          description="Initial validity of the secure access token."
+        />
+        <InputGroup
+          label="Refresh Token Validity"
+          value={getVal("PLATFORM", "refresh_token_expiry")}
+          onChange={(v: string) => updateSetting("PLATFORM", "refresh_token_expiry", v)}
+          placeholder="e.g. 7d, 30d"
+          description="Duration before a user is completely logged out."
+        />
+        <InputGroup
+          label="Global App URL"
+          value={getVal("SITE", "app_url")}
+          onChange={(v: string) => updateSetting("SITE", "app_url", v)}
+          placeholder="https://paramadventures.in"
+          description="Used for absolute links in sitemaps, metadata, and emails."
+        />
+      </div>
+
+      <div className="mt-8 pt-8 border-t border-white/10 space-y-6">
+        <h3 className="text-lg font-medium text-white flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-red-400" />{" "}
+          Error Monitoring & Logs (Sentry)
+        </h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <InputGroup
+            label="Monitoring Switch"
+            type="select"
+            value={getVal("PLATFORM", "sentry_enabled")}
+            onChange={(v: string) => updateSetting("PLATFORM", "sentry_enabled", v)}
+            options={[
+              { label: "ENABLED (Live Error Tracking)", value: "true" },
+              { label: "DISABLED (Local Logs Only)", value: "false" },
+            ]}
+            description="When disabled, errors are logged to the console but not sent to Sentry.io."
+          />
+          <InputGroup
+            label="Sentry Environment"
+            type="select"
+            value={getVal("PLATFORM", "sentry_environment")}
+            onChange={(v: string) => updateSetting("PLATFORM", "sentry_environment", v)}
+            options={[
+              { label: "Production", value: "production" },
+              { label: "Staging", value: "staging" },
+              { label: "Development", value: "development" },
+            ]}
+            description="Tags your errors for easier filtering in the dashboard."
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SectionTitle({ title, subtitle, icon: Icon }: Readonly<{ title: string; subtitle: string; icon: any }>) {
   return (
     <div className="space-y-1 mb-8">
@@ -1069,3 +1092,4 @@ function StatCard({ label, value, color = "text-foreground" }: Readonly<{ label:
     </div>
   );
 }
+
