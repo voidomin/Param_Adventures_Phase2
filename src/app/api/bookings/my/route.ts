@@ -53,11 +53,18 @@ export async function GET(request: NextRequest) {
     const pending = bookings.filter((b) => b.bookingStatus === "REQUESTED");
     const cancelled = bookings.filter((b) => b.bookingStatus === "CANCELLED");
 
+    // Fetch the public key for the frontend
+    const keyIdSetting = await prisma.platformSetting.findUnique({
+      where: { key: "razorpay_key_id" }
+    });
+    const razorpayKeyId = keyIdSetting?.value || process.env.RAZORPAY_KEY_ID;
+
     return NextResponse.json({
       upcoming,
       past,
       pending,
       cancelled,
+      razorpayKeyId,
     });
   } catch (error) {
     console.error("Fetch my bookings error:", error);

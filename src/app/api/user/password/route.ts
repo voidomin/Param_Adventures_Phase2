@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { verifyAccessToken, generateAccessToken, generateRefreshToken } from "@/lib/auth";
+import { verifyAccessToken, generateAccessToken, generateRefreshToken, parseExpiryToSeconds } from "@/lib/auth";
 import { cookies } from "next/headers";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -73,7 +73,11 @@ export async function PATCH(request: Request) {
       include: { role: true },
     });
 
-    const newAccessToken = generateAccessToken(updatedUser.id, updatedUser.role.name, updatedUser.tokenVersion);
+    // ─── Fetch Dynamic Settings ─────────────────────────
+    const expirySetting = await prisma.platformSetting.findUnique({ where: { key: "jwt_expiry" } });
+    const jwtExpiry = expirySetting?.value || "1h";
+
+    const newAccessToken = generateAccessToken(updatedUser.id, updatedUser.role.name, updatedUser.tokenVersion, jwtExpiry);
     const newRefreshToken = generateRefreshToken(updatedUser.id, updatedUser.tokenVersion);
 
     const response = NextResponse.json(
@@ -86,7 +90,7 @@ export async function PATCH(request: Request) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
       path: "/",
-      maxAge: 60 * 60, // 1 hour
+      maxAge: parseExpiryToSeconds(jwtExpiry),
     });
 
     response.cookies.set("refreshToken", newRefreshToken, {

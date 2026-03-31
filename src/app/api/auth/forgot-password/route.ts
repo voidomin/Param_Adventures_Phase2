@@ -54,11 +54,17 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Determine base URL dynamically or fallback to localhost
+    // Determine base URL dynamically from settings or headers
+    const siteSettings = await prisma.siteSetting.findMany({
+      where: { key: "app_url" }
+    });
+    
     const baseUrl =
-      process.env.NEXT_PUBLIC_APP_URL ||
+      siteSettings[0]?.value ||
       request.headers.get("origin") ||
-      "https://localhost:3000";
+      process.env.NEXT_PUBLIC_APP_URL ||
+      "http://localhost:3000";
+      
     const resetLink = `${baseUrl}/reset-password?token=${resetToken}`;
 
     // Send real email

@@ -6,17 +6,17 @@ import { useState, useEffect, useCallback } from "react";
 import { 
   ShieldAlert, 
   Settings2, 
-  Mail, 
-  CreditCard, 
-  HardDrive, 
-  Search, 
-  Lock, 
+  Mail,
+  HardDrive,
+  Search,
+  Lock,
   Database,
   Save,
   Loader2,
   RefreshCw,
   AlertTriangle,
-  Activity
+  Activity,
+  CreditCard
 } from "lucide-react";
 
 interface Setting {
@@ -140,9 +140,9 @@ export default function SystemSettingsPage() {
 
   const tabs = [
     { id: "communications", name: "Communications", icon: Mail },
-    { id: "finance", name: "Finance & Payments", icon: CreditCard },
     { id: "media", name: "Media Cloud", icon: HardDrive },
     { id: "seo", name: "Site Identity & SEO", icon: Search },
+    { id: "finance", name: "Finance & Payments", icon: CreditCard },
     { id: "security", name: "Security & Ops", icon: Lock },
     { id: "database", name: "Database & Snapshots", icon: Database },
   ];
@@ -342,48 +342,7 @@ export default function SystemSettingsPage() {
             </div>
           )}
 
-          {/* Finance Tab */}
-          {activeTab === "finance" && (
-            <div className="space-y-8 animate-in slide-in-from-left-4 duration-300">
-              <SectionTitle 
-                title="Financial Governance" 
-                subtitle="Manage payments, taxes, and customer invoicing." 
-                icon={CreditCard} 
-              />
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <InputGroup
-                  label="Razorpay Mode"
-                  value={getVal("PLATFORM", "razorpay_mode")}
-                  onChange={(v: string) => updateSetting("PLATFORM", "razorpay_mode", v)}
-                  type="select"
-                  options={[
-                    { label: "Test Mode", value: "TEST" },
-                    { label: "Live Mode", value: "LIVE" },
-                  ]}
-                />
-                <InputGroup
-                  label="Razorpay Key ID"
-                  value={getVal("PLATFORM", "razorpay_key_id")}
-                  onChange={(v: string) => updateSetting("PLATFORM", "razorpay_key_id", v)}
-                />
-                <div className="grid grid-cols-2 gap-4">
-                  <InputGroup
-                    label="CGST (%)"
-                    value={getVal("PLATFORM", "cgst_percent")}
-                    onChange={(v: string) => updateSetting("PLATFORM", "cgst_percent", v)}
-                    type="number"
-                  />
-                  <InputGroup
-                    label="SGST (%)"
-                    value={getVal("PLATFORM", "sgst_percent")}
-                    onChange={(v: string) => updateSetting("PLATFORM", "sgst_percent", v)}
-                    type="number"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
+
 
           {activeTab === "media" && (
             <div className="space-y-8 animate-in slide-in-from-left-4 duration-300">
@@ -497,6 +456,56 @@ export default function SystemSettingsPage() {
             </div>
           )}
 
+          {activeTab === "finance" && (
+            <div className="space-y-8 animate-in slide-in-from-left-4 duration-300">
+              <SectionTitle 
+                title="Payment Infrastructure" 
+                subtitle="Configure the gateway used for processing trip payments." 
+                icon={CreditCard} 
+              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <InputGroup
+                  label="Transaction Mode"
+                  value={getVal("PLATFORM", "razorpay_mode")}
+                  onChange={(v: string) => updateSetting("PLATFORM", "razorpay_mode", v)}
+                  type="select"
+                  options={[
+                    { label: "Test Mode (Simulation)", value: "TEST" },
+                    { label: "Live Mode (Production)", value: "LIVE" },
+                  ]}
+                />
+              </div>
+
+              <div className="p-8 bg-foreground/5 rounded-3xl space-y-6 border border-border/50">
+                <h4 className="font-bold text-sm text-primary uppercase tracking-widest flex items-center gap-2">
+                  <Settings2 className="w-4 h-4" /> 
+                  Razorpay Credentials
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <InputGroup
+                    label="Key ID"
+                    value={getVal("PLATFORM", "razorpay_key_id")}
+                    onChange={(v: string) => updateSetting("PLATFORM", "razorpay_key_id", v)}
+                    placeholder="rzp_test_..."
+                  />
+                  <InputGroup
+                    label="Key Secret"
+                    value={getVal("PLATFORM", "razorpay_key_secret")}
+                    onChange={(v: string) => updateSetting("PLATFORM", "razorpay_key_secret", v)}
+                    type="password"
+                  />
+                  <InputGroup
+                    label="Webhook Secret"
+                    value={getVal("PLATFORM", "razorpay_webhook_secret")}
+                    onChange={(v: string) => updateSetting("PLATFORM", "razorpay_webhook_secret", v)}
+                    type="password"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === "security" && (
             <div className="space-y-8">
               <SectionTitle 
@@ -526,10 +535,25 @@ export default function SystemSettingsPage() {
                   ]}
                 />
                 <InputGroup
-                  label="Session TTL"
+                  label="Session TTL (Access)"
                   value={getVal("PLATFORM", "jwt_expiry")}
                   onChange={(v: string) => updateSetting("PLATFORM", "jwt_expiry", v)}
                   placeholder="e.g. 1h, 24h, 7d"
+                  description="Initial validity of the secure access token."
+                />
+                <InputGroup
+                  label="Refresh Token Validity"
+                  value={getVal("PLATFORM", "refresh_token_expiry")}
+                  onChange={(v: string) => updateSetting("PLATFORM", "refresh_token_expiry", v)}
+                  placeholder="e.g. 7d, 30d"
+                  description="Duration before a user is completely logged out."
+                />
+                <InputGroup
+                  label="Global App URL"
+                  value={getVal("SITE", "app_url")}
+                  onChange={(v: string) => updateSetting("SITE", "app_url", v)}
+                  placeholder="https://paramadventures.in"
+                  description="Used for absolute links in sitemaps, metadata, and emails."
                 />
               </div>
             </div>

@@ -14,68 +14,88 @@ const outfit = Outfit({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL || "https://localhost:3000",
-  ),
-  title: {
-    default: "Param Adventures | Curated Trekking & Adventure Experiences",
-    template: "%s | Param Adventures",
-  },
-  description:
-    "Discover curated treks, spiritual journeys, and experiential adventures across India's most breathtaking landscapes. Book your next adventure with Param Adventures.",
-  keywords: [
-    "trekking",
-    "adventure",
-    "India treks",
-    "hiking",
-    "spiritual journeys",
-    "outdoor experiences",
-    "Param Adventures",
-  ],
-  authors: [{ name: "Param Adventures" }],
-  openGraph: {
-    type: "website",
-    locale: "en_IN",
-    siteName: "Param Adventures",
-    title: "Param Adventures | Curated Trekking & Adventure Experiences",
-    description:
-      "Discover curated treks, spiritual journeys, and experiential adventures across India.",
-    images: [
-      {
-        url: "/param-logo.png",
-        width: 512,
-        height: 512,
-        alt: "Param Adventures Logo",
-      },
+export async function generateMetadata(): Promise<Metadata> {
+  const { prisma } = await import("@/lib/db");
+  const siteSettings = await prisma.siteSetting.findMany();
+  const getVal = (key: string, fallback: string) => siteSettings.find(s => s.key === key)?.value || fallback;
+
+  const siteTitle = getVal("site_title", "Param Adventures");
+  const siteDescription = getVal("site_description", "Discover curated treks, spiritual journeys, and experiential adventures across India.");
+  const siteFavicon = getVal("site_favicon_url", "/param-logo.png");
+  const appUrl = getVal("app_url", process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000");
+
+  return {
+    metadataBase: new URL(appUrl),
+    title: {
+      default: `${siteTitle} | Curated Trekking & Adventure Experiences`,
+      template: `%s | ${siteTitle}`,
+    },
+    description: siteDescription,
+    keywords: [
+      "trekking",
+      "adventure",
+      "India treks",
+      "hiking",
+      "spiritual journeys",
+      "outdoor experiences",
+      siteTitle,
     ],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Param Adventures",
-    description:
-      "Discover curated treks and adventure experiences across India.",
-    images: ["/param-logo.png"],
-  },
-  icons: {
-    icon: "/param-logo.png",
-    apple: "/param-logo.png",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-};
+    authors: [{ name: siteTitle }],
+    openGraph: {
+      type: "website",
+      locale: "en_IN",
+      siteName: siteTitle,
+      title: `${siteTitle} | Curated Trekking & Adventure Experiences`,
+      description: siteDescription,
+      images: [
+        {
+          url: siteFavicon,
+          width: 512,
+          height: 512,
+          alt: `${siteTitle} Logo`,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: siteTitle,
+      description: siteDescription,
+      images: [siteFavicon],
+    },
+    icons: {
+      icon: siteFavicon,
+      apple: siteFavicon,
+    },
+    robots: {
+      index: true,
+      follow: true,
+    },
+  };
+}
 
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import MaintenanceGuard from "@/components/layout/MaintenanceGuard";
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const { prisma } = await import("@/lib/db");
+  const [platformSettings, siteSettings] = await Promise.all([
+    prisma.platformSetting.findMany(),
+    prisma.siteSetting.findMany(),
+  ]);
+
+  const getSiteVal = (key: string, fallback: string) => siteSettings.find(s => s.key === key)?.value || fallback;
+  const getPlatformVal = (key: string, fallback: string) => platformSettings.find(s => s.key === key)?.value || fallback;
+
+  const gaId = getPlatformVal("google_analytics_id", "");
+  const maintenanceMode = getPlatformVal("maintenance_mode", "false") === "true";
+  const supportEmail = getSiteVal("support_email", "info@paramadventures.in");
+  const supportPhone = getSiteVal("support_phone", "+91 98765 43210");
+
   return (
     <html lang="en" suppressHydrationWarning>
       <body
@@ -88,15 +108,30 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            <MaintenanceGuard>
+            <MaintenanceGuard isMaintenanceMode={maintenanceMode}>
               <div className="flex flex-col min-h-screen">
                 <Navbar />
                 <main className="flex-1 flex flex-col">{children}</main>
-                <Footer />
+                <Footer supportEmail={supportEmail} supportPhone={supportPhone} />
               </div>
             </MaintenanceGuard>
           </AuthProvider>
         </ThemeProvider>
+        {gaId && (
+          <>
+            <script async src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`} />
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `
+                  window.dataLayer = window.dataLayer || [];
+                  function gtag(){dataLayer.push(arguments);}
+                  gtag('js', new Date());
+                  gtag('config', '${gaId}');
+                `,
+              }}
+            />
+          </>
+        )}
       </body>
     </html>
   );

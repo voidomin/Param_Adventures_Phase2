@@ -8,7 +8,7 @@ export interface CloudinaryConfig {
 }
 
 export class CloudinaryProvider implements MediaProvider {
-  private config: CloudinaryConfig;
+  private readonly config: CloudinaryConfig;
 
   constructor(config: CloudinaryConfig) {
     this.config = config;

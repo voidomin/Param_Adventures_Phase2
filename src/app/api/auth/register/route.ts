@@ -4,6 +4,7 @@ import {
   hashPassword,
   generateAccessToken,
   generateRefreshToken,
+  parseExpiryToSeconds,
 } from "@/lib/auth";
 import { sendWelcomeEmail } from "@/lib/email";
 import { z } from "zod";
@@ -27,6 +28,15 @@ export async function POST(request: NextRequest) {
       );
     }
     const { email, password, name } = parseResult.data;
+
+    // ─── Check Registration Status ───────────────────────
+    const regSetting = await prisma.platformSetting.findUnique({ where: { key: "registration_enabled" } });
+    if (regSetting?.value === "false") {
+      return NextResponse.json(
+        { error: "New user registrations are currently disabled by the administrator." },
+        { status: 403 },
+      );
+    }
 
     // ─── Check for existing user ─────────────────────────
     const existingUser = await prisma.user.findUnique({
@@ -66,9 +76,18 @@ export async function POST(request: NextRequest) {
       include: { role: true },
     });
 
+    // ─── Fetch Dynamic Settings ─────────────────────────
+    const settings = await prisma.platformSetting.findMany({
+      where: { key: { in: ["jwt_expiry", "refresh_token_expiry"] } }
+    });
+    const getVal = (key: string, fallback: string) => settings.find(s => s.key === key)?.value || fallback;
+
+    const jwtExpiry = getVal("jwt_expiry", "1h");
+    const refreshExpiry = getVal("refresh_token_expiry", "7d");
+
     // ─── Generate tokens ─────────────────────────────────
-    const accessToken = generateAccessToken(user.id, user.role.name, user.tokenVersion);
-    const refreshToken = generateRefreshToken(user.id, user.tokenVersion);
+    const accessToken = generateAccessToken(user.id, user.role.name, user.tokenVersion, jwtExpiry);
+    const refreshToken = generateRefreshToken(user.id, user.tokenVersion, refreshExpiry);
 
     // ─── Set refresh token as HTTP-only cookie ───────────
     const response = NextResponse.json(
@@ -89,7 +108,7 @@ export async function POST(request: NextRequest) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
       path: "/",
-      maxAge: 15 * 60, // 15 minutes
+      maxAge: parseExpiryToSeconds(jwtExpiry),
     });
 
     response.cookies.set("refreshToken", refreshToken, {
@@ -97,7 +116,7 @@ export async function POST(request: NextRequest) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
       path: "/",
-      maxAge: 7 * 24 * 60 * 60, // 7 days
+      maxAge: parseExpiryToSeconds(refreshExpiry),
     });
 
     // Send welcome email (fire-and-forget)
