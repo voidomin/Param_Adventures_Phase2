@@ -18,6 +18,12 @@ vi.mock("@/lib/auth", () => ({
   parseExpiryToSeconds: vi.fn().mockReturnValue(3600),
 }));
 
+vi.mock("@/lib/bootstrap", () => ({
+  ensureBasicSettings: vi.fn().mockResolvedValue(undefined),
+  ensureRoles: vi.fn().mockResolvedValue(undefined),
+  emergencyAdminRecovery: vi.fn().mockResolvedValue(null),
+}));
+
 import { POST } from "@/app/api/auth/login/route";
 import { prisma } from "@/lib/db";
 import {
