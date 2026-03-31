@@ -95,6 +95,7 @@ export default async function RootLayout({
   const maintenanceMode = getPlatformVal("maintenance_mode", "false") === "true";
   const supportEmail = getSiteVal("support_email", "info@paramadventures.in");
   const supportPhone = getSiteVal("support_phone", "+91 98765 43210");
+  const siteTitle = getSiteVal("site_title", "Param Adventures");
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -113,7 +114,11 @@ export default async function RootLayout({
               <div className="flex flex-col min-h-screen">
                 <Navbar />
                 <main className="flex-1 flex flex-col">{children}</main>
-                <Footer supportEmail={supportEmail} supportPhone={supportPhone} />
+                <Footer 
+                  supportEmail={supportEmail} 
+                  supportPhone={supportPhone} 
+                  siteTitle={siteTitle}
+                />
               </div>
             </MaintenanceGuard>
           </AuthProvider>

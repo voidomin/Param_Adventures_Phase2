@@ -1,20 +1,26 @@
 import { Metadata } from "next";
 import LegalLayout from "@/components/layout/LegalLayout";
+import { prisma } from "@/lib/db";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
-  description:
-    "Privacy policy and data handling practices for Param Adventures.",
+  description: "Privacy policy and data handling practices.",
 };
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  const siteTitle = await prisma.siteSetting.findUnique({ where: { key: "site_title" } });
+  const supportEmail = await prisma.siteSetting.findUnique({ where: { key: "support_email" } });
+  
+  const title = siteTitle?.value || "Param Adventures";
+  const email = supportEmail?.value || "info@paramadventures.in";
+
   return (
     <LegalLayout title="Privacy Policy">
       <section className="mb-8">
         <h2 className="text-2xl font-bold mb-4">1. Information We Collect</h2>
         <p>
-          When you register, book an experience, or interact with our
-          platform, we may collect the following types of information:
+          When you register, book an experience, or interact with {title}, 
+          we may collect the following types of information:
         </p>
         <ul className="list-disc pl-6 mb-4">
           <li>
@@ -112,8 +118,7 @@ export default function PrivacyPage() {
         <h2 className="text-2xl font-bold mb-4">6. Contact Us</h2>
         <p>
           If you have any questions or concerns about this Privacy Policy or
-          our data practices, please contact us at
-          privacy@paramadventures.com.
+          our data practices, please contact us at {email}.
         </p>
       </section>
     </LegalLayout>

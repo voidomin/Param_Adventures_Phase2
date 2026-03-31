@@ -8,10 +8,14 @@ import { Mail, Phone, MapPin, X } from "lucide-react";
 interface FooterProps {
   supportEmail?: string;
   supportPhone?: string;
+  siteTitle?: string;
 }
 
-export default function Footer({ supportEmail, supportPhone }: FooterProps) {
+export default function Footer({ supportEmail, supportPhone, siteTitle }: Readonly<FooterProps>) {
   const pathname = usePathname();
+  const brandName = siteTitle || "Param Adventures";
+  const brandPrefix = brandName.split(" ")[0].toUpperCase();
+  const brandSuffix = brandName.split(" ").slice(1).join(" ");
 
   // Hide footer on admin, auth, and specific dashboard operational routes if desired.
   // The user requested Manager and Trek Lead to have the global header/footer,
@@ -35,13 +39,13 @@ export default function Footer({ supportEmail, supportPhone }: FooterProps) {
             <Link href="/" className="flex items-center gap-3">
               <Image
                 src="/param-logo.png"
-                alt="Param Adventures"
+                alt={brandName}
                 width={40}
                 height={40}
                 className="rounded-full"
               />
               <span className="text-xl font-heading font-bold text-foreground">
-                <span className="text-primary">PARAM</span> Adventures
+                <span className="text-primary">{brandPrefix}</span> {brandSuffix}
               </span>
             </Link>
             <p className="text-sm text-foreground/60 leading-relaxed">
@@ -189,7 +193,7 @@ export default function Footer({ supportEmail, supportPhone }: FooterProps) {
               <li className="flex items-start gap-3">
                 <MapPin className="w-5 h-5 text-primary shrink-0" />
                 <span>
-                  123 Adventure Lane, Himalayas,
+                  Kullu, Himachal Pradesh,
                   <br />
                   India 175131
                 </span>
@@ -224,7 +228,7 @@ export default function Footer({ supportEmail, supportPhone }: FooterProps) {
 
         <div className="mt-16 pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-xs text-foreground/40">
-            © {new Date().getFullYear()} Param Adventures. All rights reserved.
+            © {new Date().getFullYear()} {brandName}. All rights reserved.
           </p>
           <div className="flex items-center gap-2 text-xs text-foreground/40">
             <span>Powered by</span>
