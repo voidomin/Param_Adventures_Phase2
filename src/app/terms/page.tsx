@@ -2,14 +2,22 @@ import { Metadata } from "next";
 import LegalLayout from "@/components/layout/LegalLayout";
 import { prisma } from "@/lib/db";
 
+import { withBuildSafety } from "@/lib/db-utils";
+
 export const metadata: Metadata = {
   title: "Terms and Conditions",
   description: "Terms and conditions for booking experiences.",
 };
 
 export default async function TermsPage() {
-  const siteTitle = await prisma.siteSetting.findUnique({ where: { key: "site_title" } });
-  const supportEmail = await prisma.siteSetting.findUnique({ where: { key: "support_email" } });
+  const siteTitle = await withBuildSafety(
+    () => prisma.siteSetting.findUnique({ where: { key: "site_title" } }),
+    null
+  );
+  const supportEmail = await withBuildSafety(
+    () => prisma.siteSetting.findUnique({ where: { key: "support_email" } }),
+    null
+  );
 
   const title = siteTitle?.value || "Param Adventures";
   const email = supportEmail?.value || "support@paramadventures.in";
