@@ -1,12 +1,15 @@
 import React, { Suspense } from 'react';
 import Script from 'next/script';
 import { prisma } from '@/lib/db';
+import { withBuildSafety } from '@/lib/db-utils';
 import GoogleAnalyticsTracker from './GoogleAnalyticsTracker';
 
 export default async function GoogleAnalytics() {
-  const gaSetting = await prisma.platformSetting.findUnique({
-    where: { key: 'google_analytics_id' },
-  });
+  const gaSetting = await withBuildSafety(() =>
+    prisma.platformSetting.findUnique({
+      where: { key: 'google_analytics_id' },
+    }), null
+  );
 
   const measurementId = gaSetting?.value;
 

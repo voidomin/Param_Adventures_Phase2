@@ -111,7 +111,7 @@ describe("app/register/page", () => {
   });
 
   it("registers successfully and redirects home", async () => {
-    mockRegister.mockResolvedValue(undefined);
+    mockRegister.mockResolvedValue({ id: "1" });
 
     render(<RegisterPage />);
 
