@@ -33,9 +33,6 @@ vi.mock("@/lib/email/factory", () => ({
 
 // We test the fallback "console logging" branch since our tests run without SMTP env variables.
 describe("Email Utilities", () => {
-  let consoleLogSpy: ReturnType<typeof vi.spyOn>;
-  let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
-
   beforeEach(() => {
     vi.clearAllMocks();
     vi.spyOn(console, "log").mockImplementation(() => {});

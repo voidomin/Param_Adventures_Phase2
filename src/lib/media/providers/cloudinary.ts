@@ -67,7 +67,7 @@ export class CloudinaryProvider implements MediaProvider {
     }
   }
 
-  async getPresignData(_fileName: string, _contentType: string): Promise<Record<string, unknown>> {
+  async getPresignData(): Promise<Record<string, unknown>> {
     const timestamp = Math.round(Date.now() / 1000);
     const folder = "param-adventures";
     const signature = cloudinary.utils.api_sign_request(

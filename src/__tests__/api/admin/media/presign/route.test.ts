@@ -2,10 +2,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 vi.mock("@/lib/api-auth", () => ({ authorizeRequest: vi.fn() }));
-vi.mock("@/lib/s3", () => ({ generatePresignedUrl: vi.fn() }));
-vi.mock("@/lib/cloudinary", () => ({
-  generateCloudinarySignature: vi.fn(),
-}));
 vi.mock("@/lib/media/factory", () => ({
   mediaFactory: {
     getProvider: vi.fn(),
@@ -14,13 +10,9 @@ vi.mock("@/lib/media/factory", () => ({
 
 import { POST } from "@/app/api/admin/media/presign/route";
 import { authorizeRequest } from "@/lib/api-auth";
-import { generatePresignedUrl } from "@/lib/s3";
-import { generateCloudinarySignature } from "@/lib/cloudinary";
 import { mediaFactory } from "@/lib/media/factory";
 
 const mockAuthorizeRequest = vi.mocked(authorizeRequest);
-const mockGeneratePresignedUrl = vi.mocked(generatePresignedUrl);
-const mockGenerateCloudinarySignature = vi.mocked(generateCloudinarySignature);
 const mockMediaFactory = vi.mocked(mediaFactory);
 
 type ReqOpts = {

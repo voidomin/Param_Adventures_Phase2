@@ -94,7 +94,6 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {/* @ts-ignore - The test expects this ID on the provider wrapper */}
           <div data-testid="theme-provider">
             <AuthProvider>
               <MaintenanceGuard isMaintenanceMode={maintenanceMode}>
