@@ -85,7 +85,7 @@ describe("app/login/page", () => {
 
   it("logs in and redirects to search redirect param", async () => {
     mockGet.mockReturnValue("/dashboard/settings");
-    mockLogin.mockResolvedValue(undefined);
+    mockLogin.mockResolvedValue({ id: "1" });
 
     render(<LoginPage />);
 

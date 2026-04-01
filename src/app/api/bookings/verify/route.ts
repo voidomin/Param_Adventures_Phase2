@@ -66,9 +66,13 @@ export async function POST(request: NextRequest) {
     } = parseResult.data;
 
     // ─── Verification ────────────────────────────────────
-    const secret = process.env.RAZORPAY_KEY_SECRET;
+    const secretSetting = await prisma.platformSetting.findUnique({
+      where: { key: "razorpay_key_secret" }
+    });
+    const secret = secretSetting?.value || process.env.RAZORPAY_KEY_SECRET;
+    
     if (!secret) {
-      console.error("RAZORPAY_KEY_SECRET is not defined");
+      console.error("Razorpay secret is missing in both database and environment");
       return NextResponse.json(
         { error: "Server configuration error" },
         { status: 500 },

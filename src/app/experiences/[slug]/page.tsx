@@ -1,30 +1,32 @@
 import { prisma } from "@/lib/db";
 import { withBuildSafety } from "@/lib/db-utils";
+import { getMediaUrl } from "@/lib/media/media-gateway";
 
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import {
-  Clock,
-  MapPin,
-  Users,
-  IndianRupee,
-  Mountain,
-  Check,
+import { 
+  Mountain, 
+  MapPin, 
+  Clock, 
+  Check, 
+  Users, 
+  Baby, 
+  Backpack, 
+  Info, 
+  Shield, 
+  IndianRupee, 
+  Wifi, 
+  Banknote, 
+  Activity, 
+  CarFront, 
+  Tent, 
+  X, 
+  ChevronDown, 
   CalendarDays,
-  Info,
-  Shield,
-  X,
   Footprints,
-  Baby,
-  Backpack,
-  ChevronDown,
-  Utensils,
-  Tent,
-  Wifi,
-  Banknote,
-  Activity,
-  CarFront,
+  Utensils
 } from "lucide-react";
+import type { MediaSettings } from "@/types/media";
 import { getPlainTextFromJSON } from "@/lib/utils/rich-text";
 import BookNowButton from "@/components/booking/BookNowButton";
 import ExperienceReviews from "@/components/experiences/ExperienceReviews";
@@ -482,6 +484,26 @@ export default async function ExperienceDetailPage({
 }>) {
   const { slug } = await params;
 
+  const dbPlatformSettings = await withBuildSafety(
+    () => prisma.platformSetting.findMany({
+      where: {
+        key: {
+          in: ["media_provider", "cloudinary_cloud_name", "s3_bucket", "s3_region", "media_quality", "media_high_fidelity"]
+        }
+      }
+    }),
+    []
+  );
+
+  const mediaSettings: MediaSettings = {
+    provider: (dbPlatformSettings.find(s => s.key === "media_provider")?.value || "CLOUDINARY") as "CLOUDINARY" | "AWS_S3",
+    cloudinaryCloudName: dbPlatformSettings.find(s => s.key === "cloudinary_cloud_name")?.value,
+    s3Bucket: dbPlatformSettings.find(s => s.key === "s3_bucket")?.value,
+    s3Region: dbPlatformSettings.find(s => s.key === "s3_region")?.value,
+    globalQuality: Number.parseInt(dbPlatformSettings.find(s => s.key === "media_quality")?.value || "100"),
+    highFidelity: dbPlatformSettings.find(s => s.key === "media_high_fidelity")?.value === "true"
+  };
+
   const experience = await withBuildSafety(
     () =>
       prisma.experience.findUnique({
@@ -520,7 +542,20 @@ export default async function ExperienceDetailPage({
     exp.coverImage ||
     exp.images[0] ||
     "https://picsum.photos/seed/placeholder/1920/1080";
+  
   const isVideo = /\.(mp4|webm)$/i.exec(primaryMedia);
+
+  const heroMediaUrl = getMediaUrl(
+    primaryMedia,
+    mediaSettings.provider,
+    {
+       cloudinaryCloudName: mediaSettings.cloudinaryCloudName,
+       s3Bucket: mediaSettings.s3Bucket,
+       s3Region: mediaSettings.s3Region,
+       globalQuality: mediaSettings.globalQuality,
+       highFidelity: mediaSettings.highFidelity
+    }
+  );
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-20">
@@ -534,7 +569,7 @@ export default async function ExperienceDetailPage({
         <div className="absolute inset-0 z-0 bg-black">
           {isVideo ? (
             <video
-              src={primaryMedia}
+              src={heroMediaUrl}
               className="w-full h-full object-cover"
               muted
               loop
@@ -544,10 +579,11 @@ export default async function ExperienceDetailPage({
           ) : (
             <div className="relative w-full h-full">
               <Image
-                src={primaryMedia}
+                src={heroMediaUrl}
                 alt={exp.title}
                 fill
                 priority
+                sizes="100vw"
                 className="object-cover"
               />
             </div>
@@ -747,7 +783,10 @@ export default async function ExperienceDetailPage({
           {/* Gallery */}
           {exp.images.length > 0 && (
             <section id="gallery" className="scroll-mt-32">
-              <ExperienceGallery images={exp.images} />
+              <ExperienceGallery 
+                images={exp.images} 
+                mediaSettings={mediaSettings} 
+              />
             </section>
           )}
 
@@ -830,6 +869,7 @@ export default async function ExperienceDetailPage({
             <SimilarTrips
               currentExperienceId={exp.id}
               categoryIds={exp.categories.map((c: CategoryWithRelation) => c.category.id)}
+              mediaSettings={mediaSettings}
             />
 
             <DownloadItineraryBtn slug={exp.slug} />

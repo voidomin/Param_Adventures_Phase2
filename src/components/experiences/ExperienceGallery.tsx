@@ -4,12 +4,18 @@ import React, { useState, useEffect, useCallback } from "react";
 import { X, ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
+import { getMediaUrl } from "@/lib/media/media-gateway";
+import type { MediaSettings } from "@/types/media";
 
 interface ExperienceGalleryProps {
   readonly images: string[];
+  readonly mediaSettings: MediaSettings;
 }
 
-export default function ExperienceGallery({ images }: ExperienceGalleryProps) {
+export default function ExperienceGallery({ 
+  images, 
+  mediaSettings 
+}: ExperienceGalleryProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -88,6 +94,19 @@ export default function ExperienceGallery({ images }: ExperienceGalleryProps) {
       <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2">
         {visibleImages.map((url, index) => {
           const isVideo = /\.(mp4|webm)$/i.exec(url);
+          const thumbnailUrl = getMediaUrl(
+            url,
+            mediaSettings?.provider || "CLOUDINARY",
+            {
+              cloudinaryCloudName: mediaSettings?.cloudinaryCloudName,
+              s3Bucket: mediaSettings?.s3Bucket,
+              s3Region: mediaSettings?.s3Region,
+              globalQuality: mediaSettings?.globalQuality || 95,
+              highFidelity: mediaSettings?.highFidelity ?? true
+            },
+            { width: 400, crop: "fill" }
+          );
+
           return (
             <motion.div
               key={url}
@@ -108,7 +127,7 @@ export default function ExperienceGallery({ images }: ExperienceGalleryProps) {
             >
               {isVideo ? (
                 <video
-                  src={url}
+                  src={thumbnailUrl}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                   muted
                   loop
@@ -117,7 +136,7 @@ export default function ExperienceGallery({ images }: ExperienceGalleryProps) {
                 />
               ) : (
                 <Image
-                  src={url}
+                  src={thumbnailUrl}
                   alt={`Item ${index + 1}`}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                   loading="lazy"
@@ -204,25 +223,43 @@ export default function ExperienceGallery({ images }: ExperienceGalleryProps) {
               onClick={(e) => e.stopPropagation()}
               transition={{ duration: 0.3, ease: [0.32, 0.72, 0, 1] }}
             >
-              {/\.(mp4|webm)$/i.exec(galleryImages[selectedIndex]) ? (
-                <video
-                  src={galleryImages[selectedIndex]}
-                  className="max-w-full max-h-[80vh] rounded-lg shadow-2xl"
-                  controls
-                  autoPlay
-                  playsInline
-                >
-                  <track kind="captions" />
-                </video>
-              ) : (
-                <div className="relative w-full h-[80vh]">
-                  <Image
-                    src={galleryImages[selectedIndex]}
-                    alt={`Item detail ${selectedIndex + 1}`}
-                    fill
-                    className="object-contain"
-                  />
-                </div>
+              {selectedIndex !== null && (
+                (() => {
+                  const currentImage = galleryImages[selectedIndex];
+                  const fullUrl = getMediaUrl(
+                    currentImage,
+                    mediaSettings?.provider || "CLOUDINARY",
+                    {
+                      cloudinaryCloudName: mediaSettings?.cloudinaryCloudName,
+                      s3Bucket: mediaSettings?.s3Bucket,
+                      s3Region: mediaSettings?.s3Region,
+                      globalQuality: mediaSettings?.globalQuality || 100,
+                      highFidelity: mediaSettings?.highFidelity ?? true
+                    }
+                  );
+
+                  return /\.(mp4|webm)$/i.exec(currentImage) ? (
+                    <video
+                      src={fullUrl}
+                      className="max-w-full max-h-[80vh] rounded-lg shadow-2xl"
+                      controls
+                      autoPlay
+                      playsInline
+                    >
+                      <track kind="captions" />
+                    </video>
+                  ) : (
+                    <div className="relative w-full h-[80vh]">
+                      <Image
+                        src={fullUrl}
+                        alt={`Item detail ${selectedIndex + 1}`}
+                        fill
+                        sizes="100vw"
+                        className="object-contain"
+                      />
+                    </div>
+                  );
+                })()
               )}
             </motion.div>
 

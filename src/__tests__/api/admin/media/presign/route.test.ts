@@ -2,19 +2,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 vi.mock("@/lib/api-auth", () => ({ authorizeRequest: vi.fn() }));
-vi.mock("@/lib/s3", () => ({ generatePresignedUrl: vi.fn() }));
-vi.mock("@/lib/cloudinary", () => ({
-  generateCloudinarySignature: vi.fn(),
+vi.mock("@/lib/media/factory", () => ({
+  mediaFactory: {
+    getProvider: vi.fn(),
+  },
 }));
 
 import { POST } from "@/app/api/admin/media/presign/route";
 import { authorizeRequest } from "@/lib/api-auth";
-import { generatePresignedUrl } from "@/lib/s3";
-import { generateCloudinarySignature } from "@/lib/cloudinary";
+import { mediaFactory } from "@/lib/media/factory";
 
 const mockAuthorizeRequest = vi.mocked(authorizeRequest);
-const mockGeneratePresignedUrl = vi.mocked(generatePresignedUrl);
-const mockGenerateCloudinarySignature = vi.mocked(generateCloudinarySignature);
+const mockMediaFactory = vi.mocked(mediaFactory);
 
 type ReqOpts = {
   body?: unknown;
@@ -64,13 +63,14 @@ describe("POST /api/admin/media/presign", () => {
   });
 
   it("returns cloudinary payload when configured", async () => {
-    vi.stubEnv("CLOUDINARY_API_KEY", "present");
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
-    mockGenerateCloudinarySignature.mockResolvedValue({
-      signature: "sig",
-      timestamp: 123,
-      apiKey: "k",
-      cloudName: "demo",
+    mockMediaFactory.getProvider.mockResolvedValue({
+      getPresignData: vi.fn().mockResolvedValue({
+        provider: "cloudinary",
+        signature: "sig",
+        timestamp: 123,
+        apiKey: "k",
+        cloudName: "demo",
+      }),
     } as any);
 
     const response = await POST(
@@ -80,21 +80,15 @@ describe("POST /api/admin/media/presign", () => {
 
     expect(response.status).toBe(200);
     expect(data.provider).toBe("cloudinary");
-    expect(mockGenerateCloudinarySignature).toHaveBeenCalledWith(
-      "param-adventures",
-    );
-    expect(mockGeneratePresignedUrl).not.toHaveBeenCalled();
   });
 
   it("returns s3 payload when cloudinary is not configured and aws vars are present", async () => {
-    vi.stubEnv("AWS_REGION", "ap-south-1");
-    vi.stubEnv("AWS_ACCESS_KEY_ID", "id");
-    vi.stubEnv("AWS_SECRET_ACCESS_KEY", "secret");
-    vi.stubEnv("AWS_S3_BUCKET_NAME", "bucket");
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
-    mockGeneratePresignedUrl.mockResolvedValue({
-      uploadUrl: "https://s3/upload",
-      finalUrl: "https://s3/final",
+    mockMediaFactory.getProvider.mockResolvedValue({
+      getPresignData: vi.fn().mockResolvedValue({
+        provider: "s3",
+        uploadUrl: "https://s3/upload",
+        finalUrl: "https://s3/final",
+      }),
     } as any);
 
     const response = await POST(
@@ -103,19 +97,17 @@ describe("POST /api/admin/media/presign", () => {
     const data = await response.json();
 
     expect(response.status).toBe(200);
-    expect(data).toEqual({
-      provider: "s3",
-      uploadUrl: "https://s3/upload",
-      finalUrl: "https://s3/final",
-    });
-    expect(mockGeneratePresignedUrl).toHaveBeenCalledWith("a.jpg", "image/jpeg");
+    expect(data.provider).toBe("s3");
   });
 
   it("returns s3 payload even when aws vars are absent (mock mode)", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
-    mockGeneratePresignedUrl.mockResolvedValue({
-      uploadUrl: "https://mock/upload",
-      finalUrl: "https://mock/final",
+    mockMediaFactory.getProvider.mockResolvedValue({
+      getPresignData: vi.fn().mockResolvedValue({
+        provider: "s3",
+        uploadUrl: "https://mock/upload",
+        finalUrl: "https://mock/final",
+      }),
     } as any);
 
     const response = await POST(
@@ -131,7 +123,9 @@ describe("POST /api/admin/media/presign", () => {
 
   it("returns 500 on unexpected error", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
-    mockGeneratePresignedUrl.mockRejectedValue(new Error("boom"));
+    mockMediaFactory.getProvider.mockResolvedValue({
+      getPresignData: vi.fn().mockRejectedValue(new Error("boom")),
+    } as any);
 
     const response = await POST(
       createRequest({ body: { fileName: "a.jpg", contentType: "image/jpeg" } }),

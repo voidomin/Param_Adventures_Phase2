@@ -5,7 +5,21 @@ import React from "react";
 
 describe("CustomTripForm Smoke Test", () => {
   beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn());
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url) => {
+        if (url === "/api/settings/public") {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ support_phone: "999999999" }),
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ success: true }),
+        });
+      })
+    );
   });
 
   it("renders initial form state correctly", () => {
@@ -37,11 +51,7 @@ describe("CustomTripForm Smoke Test", () => {
   });
 
   it("shows success state after successful submission", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ success: true }),
-    } as Response);
-
+    // Rely on default mock in beforeEach for success
     render(<CustomTripForm />);
     
     fireEvent.change(screen.getByLabelText(/Full Name/i), { target: { value: "John Doe" } });
@@ -57,10 +67,15 @@ describe("CustomTripForm Smoke Test", () => {
   });
 
   it("shows error state on API failure", async () => {
-    vi.mocked(fetch).mockResolvedValueOnce({
-      ok: false,
-      json: async () => ({ error: "System overload" }),
-    } as Response);
+    vi.mocked(fetch).mockImplementation(async (url) => {
+      if (url === "/api/settings/public") {
+        return { ok: true, json: async () => ({}) } as Response;
+      }
+      return {
+        ok: false,
+        json: async () => ({ error: "System overload" }),
+      } as Response;
+    });
 
     render(<CustomTripForm />);
     

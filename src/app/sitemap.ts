@@ -2,9 +2,15 @@ import type { MetadataRoute } from "next";
 import { prisma } from "@/lib/db";
 import { withBuildSafety } from "@/lib/db-utils";
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "https://localhost:3000";
-
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // Fetch dynamic base URL from platform settings
+  const siteSettings = await withBuildSafety(
+    () => prisma.platformSetting.findMany({ where: { key: "app_url" } }),
+    []
+  );
+  
+  const BASE_URL = siteSettings[0]?.value || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+
   // Static pages
   const staticPages: MetadataRoute.Sitemap = [
     {

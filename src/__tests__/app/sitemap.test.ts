@@ -4,6 +4,7 @@ vi.mock("@/lib/db", () => ({
   prisma: {
     experience: { findMany: vi.fn() },
     blog: { findMany: vi.fn() },
+    platformSetting: { findMany: vi.fn().mockResolvedValue([]) },
   },
 }));
 

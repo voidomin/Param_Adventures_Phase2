@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authorizeRequest } from "@/lib/api-auth";
-import { generatePresignedUrl } from "@/lib/s3";
-
+import { mediaFactory } from "@/lib/media/factory";
 import { z } from "zod";
-
-const S3_BUCKET_NAME =
-  process.env.AWS_S3_BUCKET_NAME || process.env.S3_BUCKET_NAME;
 
 const presignSchema = z.object({
   fileName: z.string().min(1, "fileName is required"),
@@ -34,31 +30,11 @@ export async function POST(request: NextRequest) {
     }
     const { fileName, contentType } = parseResult.data;
 
-    // Priority 1: Cloudinary (Direct Upload)
-    if (process.env.CLOUDINARY_API_KEY) {
-      console.log("Using Cloudinary for direct upload presign");
-      const { generateCloudinarySignature } = await import("@/lib/cloudinary");
-      const cloudData = await generateCloudinarySignature("param-adventures");
-      return NextResponse.json({ provider: "cloudinary", ...cloudData });
-    }
+    // Request presign url from the dynamically active provider
+    const provider = await mediaFactory.getProvider();
+    const presignData = await provider.getPresignData(fileName, contentType);
 
-    // Priority 2: AWS S3 (Direct Upload)
-    const isS3Configured = !!(
-      process.env.AWS_REGION &&
-      process.env.AWS_ACCESS_KEY_ID &&
-      process.env.AWS_SECRET_ACCESS_KEY &&
-      S3_BUCKET_NAME
-    );
-
-    const { uploadUrl, finalUrl } = await generatePresignedUrl(
-      fileName,
-      contentType,
-    );
-
-    console.log(
-      `Using ${isS3Configured ? "S3" : "Mock"} for direct upload presign`,
-    );
-    return NextResponse.json({ provider: "s3", uploadUrl, finalUrl });
+    return NextResponse.json(presignData);
   } catch (error: unknown) {
     console.error("Presign error:", error);
     return NextResponse.json(

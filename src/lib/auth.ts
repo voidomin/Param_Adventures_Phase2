@@ -35,25 +35,39 @@ export interface RefreshPayload {
   tokenVersion: number;
 }
 
-/**
- * Generate a short-lived access token (default: 15 minutes).
- */
-export function generateAccessToken(userId: string, roleName: string, tokenVersion: number): string {
+export function generateAccessToken(userId: string, roleName: string, tokenVersion: number, expiresIn?: string): string {
   return jwt.sign({ userId, roleName, tokenVersion } satisfies TokenPayload, JWT_SECRET, {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expiresIn: JWT_EXPIRY as any,
+    expiresIn: (expiresIn || JWT_EXPIRY) as any,
   });
+}
+
+/**
+ * Helper to parse a JWT expiry string (e.g., "1h", "7d") into seconds for cookie maxAge.
+ */
+export function parseExpiryToSeconds(expiry: string): number {
+  const match = /^(\d+)([dhms])$/.exec(expiry);
+  if (!match) return 60 * 60;
+  const val = Number.parseInt(match[1]);
+  const unit = match[2];
+  switch (unit) {
+    case "d": return val * 24 * 60 * 60;
+    case "h": return val * 60 * 60;
+    case "m": return val * 60;
+    case "s": return val;
+    default: return 60 * 60;
+  }
 }
 
 /**
  * Generate a long-lived refresh token (default: 7 days).
  */
-export function generateRefreshToken(userId: string, tokenVersion: number): string {
+export function generateRefreshToken(userId: string, tokenVersion: number, expiresIn?: string): string {
   return jwt.sign(
     { userId, type: "refresh", tokenVersion } satisfies RefreshPayload,
     JWT_SECRET,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    { expiresIn: REFRESH_TOKEN_EXPIRY as any },
+    { expiresIn: (expiresIn || REFRESH_TOKEN_EXPIRY) as any },
   );
 }
 

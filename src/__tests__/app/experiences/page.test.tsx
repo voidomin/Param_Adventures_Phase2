@@ -16,6 +16,9 @@ vi.mock("@/lib/db", () => ({
     category: {
       findMany: mockCategoryFindMany,
     },
+    platformSetting: {
+      findMany: vi.fn().mockResolvedValue([]),
+    },
   },
 }));
 

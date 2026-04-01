@@ -10,6 +10,9 @@ vi.mock("@/lib/db", () => ({
     booking: {
       findMany: vi.fn(),
     },
+    platformSetting: {
+      findUnique: vi.fn(),
+    },
   },
 }));
 
@@ -19,10 +22,12 @@ import { prisma } from "@/lib/db";
 
 const mockAuthorizeRequest = vi.mocked(authorizeRequest);
 const mockFindMany = vi.mocked(prisma.booking.findMany);
+const mockPlatformSettingFindUnique = vi.mocked(prisma.platformSetting.findUnique);
 
 describe("GET /api/bookings/my", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPlatformSettingFindUnique.mockResolvedValue({ key: "razorpay_key_id", value: "rzp_test_123" } as any);
   });
 
   it("returns auth response when unauthorized", async () => {

@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef } from "react";
 import { motion, Variants, AnimatePresence } from "framer-motion";
 import ExperienceCard from "@/components/experiences/ExperienceCard";
+import type { MediaSettings } from "@/types/media";
 import {
   Mountain,
   Tent,
@@ -145,10 +146,12 @@ export default function ExperiencesClient({
   initialExperiences,
   categories,
   initialFilter,
+  mediaSettings,
 }: Readonly<{
   initialExperiences: Experience[];
   categories: DBCategory[];
   initialFilter: string;
+  mediaSettings: MediaSettings;
 }>) {
   const [activeFilter, setActiveFilter] = useState(initialFilter);
   const [searchQuery, setSearchQuery] = useState("");
@@ -675,10 +678,12 @@ export default function ExperiencesClient({
             animate="show"
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
           >
-            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            {filteredExperiences.map((exp: any) => (
+            {filteredExperiences.map((exp: Experience) => (
               <motion.div key={exp.id} variants={itemVariants}>
-                <ExperienceCard experience={exp} />
+                <ExperienceCard 
+                  experience={exp} 
+                  mediaSettings={mediaSettings} 
+                />
               </motion.div>
             ))}
           </motion.div>

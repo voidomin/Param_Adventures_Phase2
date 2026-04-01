@@ -3,10 +3,12 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Clock, MapPin, Users, IndianRupee } from "lucide-react";
+import type { MediaSettings } from "@/types/media";
 import { motion } from "framer-motion";
 import SaveButton from "./SaveButton";
 import ShareButton from "../ui/ShareButton";
 import { getPlainTextFromJSON, RichTextNode } from "@/lib/utils/rich-text";
+import { getMediaUrl } from "@/lib/media/media-gateway";
 
 interface Category {
   category: {
@@ -32,10 +34,12 @@ interface ExperienceCardProps {
     images: string[];
     categories: Category[];
   };
+  mediaSettings?: MediaSettings;
 }
 
 export default function ExperienceCard({
   experience,
+  mediaSettings,
 }: Readonly<ExperienceCardProps>) {
   const getDifficultyColor = (diff: string) => {
     switch (diff) {
@@ -52,12 +56,26 @@ export default function ExperienceCard({
     }
   };
 
-  const primaryImage =
+  const rawImage =
     experience.cardImage ||
     experience.coverImage ||
     experience.images[0] ||
     "https://picsum.photos/seed/placeholder/800/600";
-  const isVideo = /\.(mp4|webm)$/i.test(primaryImage);
+
+  const primaryImage = getMediaUrl(
+    rawImage,
+    mediaSettings?.provider || "CLOUDINARY",
+    {
+      cloudinaryCloudName: mediaSettings?.cloudinaryCloudName,
+      s3Bucket: mediaSettings?.s3Bucket,
+      s3Region: mediaSettings?.s3Region,
+      globalQuality: mediaSettings?.globalQuality || 100,
+      highFidelity: mediaSettings?.highFidelity ?? true
+    },
+    { width: 800, crop: "fill" }
+  );
+
+  const isVideo = /\.(mp4|webm)$/i.test(rawImage);
 
   return (
     <Link
@@ -83,6 +101,7 @@ export default function ExperienceCard({
               src={primaryImage}
               alt={experience.title}
               fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               className="object-cover group-hover:scale-105 transition-transform duration-700"
             />
           )}
