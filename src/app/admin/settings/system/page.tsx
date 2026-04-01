@@ -22,6 +22,7 @@ import {
   ArrowRight,
   Activity as ActivityIcon
 } from "lucide-react";
+import Image from "next/image";
 import { getMediaUrl } from "@/lib/media/media-gateway";
 
 interface TabProps {
@@ -48,18 +49,45 @@ interface Setting {
   description?: string | null;
 }
 
+interface AuditLog {
+  id: string;
+  action: string;
+  targetId: string;
+  timestamp: string;
+  actor?: {
+    name: string;
+    email: string;
+    avatarUrl?: string;
+  };
+  metadata?: {
+    from?: string | number | null;
+    to?: string | number | null;
+    ip?: string;
+  };
+}
+
+interface DBStats {
+  status: string;
+  stats: {
+    bookings: number;
+    users: number;
+    experiences: number;
+    auditLogs: number;
+  };
+}
+
 export default function SystemSettingsPage() {
   const { user, isLoading: authLoading } = useAuth();
   const [platformSettings, setPlatformSettings] = useState<Setting[]>([]);
   const [siteSettings, setSiteSettings] = useState<Setting[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [auditLogs, setAuditLogs] = useState<Record<string, unknown>[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [isLogsLoading, setIsLogsLoading] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMoreLogs, setHasMoreLogs] = useState(true);
   const [activeTab, setActiveTab] = useState("communications");
-  const [dbStats, setDbStats] = useState<Record<string, unknown> | null>(null);
+  const [dbStats, setDbStats] = useState<DBStats | null>(null);
 
   // ─── Whitelist Security Check ──────────────────────────
   const isWhitelisted = user && SYSTEM_ADMIN_EMAILS.includes(user.email);
@@ -356,7 +384,14 @@ export default function SystemSettingsPage() {
                           <div className="flex items-center gap-3 min-w-[200px]">
                             <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary border border-primary/20 overflow-hidden">
                               {log.actor?.avatarUrl ? (
-                                <img src={log.actor.avatarUrl} alt="" className="w-full h-full object-cover" />
+                                <div className="relative w-full h-full">
+                                  <Image 
+                                    src={log.actor.avatarUrl} 
+                                    alt="" 
+                                    fill 
+                                    className="object-cover" 
+                                  />
+                                </div>
                               ) : (
                                 <UserIcon className="w-5 h-5" />
                               )}

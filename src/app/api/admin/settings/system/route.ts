@@ -35,19 +35,28 @@ async function updateSettings(
   settings: { key: string; value: string }[],
   ip: string
 ) {
-  const model = type === "PLATFORM" ? tx.platformSetting : tx.siteSetting;
   const action = type === "PLATFORM" ? "UPDATE_PLATFORM_SETTING" : "UPDATE_SITE_SETTING";
 
   for (const { key, value } of settings) {
     if (!key) continue;
 
-    const oldSetting = await model.findUnique({ where: { key } });
-    
-    await model.upsert({
-      where: { key },
-      update: { value },
-      create: { key, value },
-    });
+    // Use explicit model calls to avoid union type signature mismatches
+    let oldSetting;
+    if (type === "PLATFORM") {
+      oldSetting = await tx.platformSetting.findUnique({ where: { key } });
+      await tx.platformSetting.upsert({
+        where: { key },
+        update: { value },
+        create: { key, value },
+      });
+    } else {
+      oldSetting = await tx.siteSetting.findUnique({ where: { key } });
+      await tx.siteSetting.upsert({
+        where: { key },
+        update: { value },
+        create: { key, value },
+      });
+    }
 
     if (oldSetting?.value !== value) {
       const logMetadata: Record<string, unknown> = { 
@@ -81,6 +90,7 @@ export async function PATCH(request: NextRequest) {
     const ip = forwarded ? forwarded.split(",")[0] : "127.0.0.1";
 
     await prisma.$transaction(async (tx) => {
+      // Explicitly pass PLATFORM vs SITE settings to ensure typesafety
       if (platform && Array.isArray(platform)) {
         await updateSettings(tx, auth.userId, "PLATFORM", platform, ip);
       }
