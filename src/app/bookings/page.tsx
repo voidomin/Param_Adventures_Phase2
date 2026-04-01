@@ -268,6 +268,7 @@ export default function BookingsPage() {
   const [dataLoading, setDataLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [cancellingBooking, setCancellingBooking] = useState<BookingItem | null>(null);
+  const [razorpayKeyId, setRazorpayKeyId] = useState<string>("");
 
   const fetchData = async () => {
     setDataLoading(true);
@@ -289,6 +290,9 @@ export default function BookingsPage() {
           past: bookData.past || [],
           cancelled: bookData.cancelled || [],
         });
+        if (bookData.razorpayKeyId) {
+          setRazorpayKeyId(bookData.razorpayKeyId);
+        }
       }
     } catch (err) {
       console.error("Failed to fetch bookings data:", err);
@@ -339,7 +343,7 @@ export default function BookingsPage() {
       return;
     }
 
-    const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "";
+    const keyId = razorpayKeyId || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "";
 
     const RazorpayCtor = globalThis.window.Razorpay;
     if (!RazorpayCtor) {

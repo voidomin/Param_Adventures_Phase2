@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authorizeRequest } from "@/lib/api-auth";
-import { uploadToCloudinary } from "@/lib/cloudinary";
+import { mediaFactory } from "@/lib/media/factory";
 import { prisma } from "@/lib/db";
 import { createHash } from "node:crypto";
 
@@ -58,16 +58,21 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Upload to Cloudinary
+    // 4. Resolve the active media provider
+    const provider = await mediaFactory.getProvider();
+
+    // 5. Upload to Provider (Cloudinary or S3)
     const folder = isVideo
       ? "param-adventures/videos"
       : "param-adventures/images";
-    const result = await uploadToCloudinary(buffer, {
+    
+    const result = await provider.upload(buffer, {
       folder,
       resource_type: isVideo ? "video" : "image",
+      public_id: fileHash.substring(0, 32), // Use hash as ID for dedup safety
     });
 
-    // Save to Image table with hash
+    // 6. Save to Image table with hash
     const image = await prisma.image.create({
       data: {
         originalUrl: result.secure_url,

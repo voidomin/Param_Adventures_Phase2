@@ -8,6 +8,8 @@ import Link from "next/link";
 import DownloadInvoiceBtn from "@/components/booking/DownloadInvoiceBtn";
 import DownloadItineraryBtn from "@/components/experiences/DownloadItineraryBtn";
 
+import { withBuildSafety } from "@/lib/db-utils";
+
 type Props = { params: Promise<{ id: string }> };
 
 export default async function BookingSuccessPage({
@@ -22,27 +24,30 @@ export default async function BookingSuccessPage({
     redirect("/login");
   }
 
-  const booking = await prisma.booking.findUnique({
-    where: { id },
-    include: {
-      experience: true,
-      slot: {
-        include: {
-          manager: true,
-          assignments: {
-            include: {
-              trekLead: true,
+  const booking = await withBuildSafety(
+    () => prisma.booking.findUnique({
+      where: { id },
+      include: {
+        experience: true,
+        slot: {
+          include: {
+            manager: true,
+            assignments: {
+              include: {
+                trekLead: true,
+              },
             },
           },
         },
+        participants: true,
+        payments: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
       },
-      participants: true,
-      payments: {
-        orderBy: { createdAt: "desc" },
-        take: 1,
-      },
-    },
-  });
+    }),
+    null
+  );
 
   if (!booking) {
     redirect("/dashboard");

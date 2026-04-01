@@ -9,18 +9,27 @@ vi.mock("@/lib/db", () => ({
       findFirst: vi.fn(),
       create: vi.fn(),
     },
+    platformSetting: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+  },
+}));
+vi.mock("@/lib/media/factory", () => ({
+  mediaFactory: {
+    getProvider: vi.fn(),
   },
 }));
 
 import { POST } from "@/app/api/admin/media/upload/route";
 import { authorizeRequest } from "@/lib/api-auth";
-import { uploadToCloudinary } from "@/lib/cloudinary";
 import { prisma } from "@/lib/db";
+import { mediaFactory } from "@/lib/media/factory";
 
 const mockAuthorizeRequest = vi.mocked(authorizeRequest);
-const mockUploadToCloudinary = vi.mocked(uploadToCloudinary);
 const mockFindFirst = vi.mocked(prisma.image.findFirst);
 const mockCreate = vi.mocked(prisma.image.create);
+const mockMediaFactory = vi.mocked(mediaFactory);
 
 type FileLike = {
   type: string;
@@ -92,7 +101,7 @@ describe("POST /api/admin/media/upload", () => {
       type: "IMAGE",
       deduplicated: true,
     });
-    expect(mockUploadToCloudinary).not.toHaveBeenCalled();
+    expect(mockMediaFactory.getProvider).not.toHaveBeenCalled();
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
@@ -102,9 +111,11 @@ describe("POST /api/admin/media/upload", () => {
       userId: "admin-1",
     } as any);
     mockFindFirst.mockResolvedValue(null);
-    mockUploadToCloudinary.mockResolvedValue({
-      secure_url: "https://cdn.example.com/new.jpg",
-      public_id: "pub-1",
+    mockMediaFactory.getProvider.mockResolvedValue({
+      upload: vi.fn().mockResolvedValue({
+        secure_url: "https://cdn.example.com/new.jpg",
+        public_id: "pub-1",
+      }),
     } as any);
     mockCreate.mockResolvedValue({ id: "img-2", type: "IMAGE" } as any);
 
@@ -116,9 +127,11 @@ describe("POST /api/admin/media/upload", () => {
     expect(response.status).toBe(200);
     expect(data.id).toBe("img-2");
     expect(data.public_id).toBe("pub-1");
-    expect(mockUploadToCloudinary).toHaveBeenCalledWith(expect.any(Buffer), {
+    const provider = await mockMediaFactory.getProvider();
+    expect(provider.upload).toHaveBeenCalledWith(expect.any(Buffer), {
       folder: "param-adventures/images",
       resource_type: "image",
+      public_id: expect.any(String),
     });
     expect(mockCreate).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -138,9 +151,11 @@ describe("POST /api/admin/media/upload", () => {
       userId: "admin-1",
     } as any);
     mockFindFirst.mockResolvedValue(null);
-    mockUploadToCloudinary.mockResolvedValue({
-      secure_url: "https://cdn.example.com/new.mp4",
-      public_id: "pub-2",
+    mockMediaFactory.getProvider.mockResolvedValue({
+      upload: vi.fn().mockResolvedValue({
+        secure_url: "https://cdn.example.com/new.mp4",
+        public_id: "pub-2",
+      }),
     } as any);
     mockCreate.mockResolvedValue({ id: "vid-1", type: "VIDEO" } as any);
 
@@ -149,9 +164,11 @@ describe("POST /api/admin/media/upload", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(mockUploadToCloudinary).toHaveBeenCalledWith(expect.any(Buffer), {
+    const provider = await mockMediaFactory.getProvider();
+    expect(provider.upload).toHaveBeenCalledWith(expect.any(Buffer), {
       folder: "param-adventures/videos",
       resource_type: "video",
+      public_id: expect.any(String),
     });
     expect(mockCreate).toHaveBeenCalledWith(
       expect.objectContaining({

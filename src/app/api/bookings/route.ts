@@ -75,7 +75,6 @@ export async function POST(request: NextRequest) {
   const auth = await authorizeRequest(request);
   if (!auth.authorized) return auth.response;
 
-  const razorpay = getRazorpay();
   const userId = auth.userId;
 
   try {
@@ -166,6 +165,14 @@ export async function POST(request: NextRequest) {
 
     // Create Razorpay order
     try {
+      const razorpay = await getRazorpay();
+      
+      // Fetch the public key for the frontend response
+      const keyIdSetting = await prisma.platformSetting.findUnique({
+        where: { key: "razorpay_key_id" }
+      });
+      const keyId = keyIdSetting?.value || process.env.RAZORPAY_KEY_ID;
+
       const order = await razorpay.orders.create({
         amount: amountPaise,
         currency: "INR",
@@ -203,7 +210,7 @@ export async function POST(request: NextRequest) {
         orderId: order.id,
         amount: amountPaise,
         currency: "INR",
-        keyId: process.env.RAZORPAY_KEY_ID,
+        keyId: keyId,
       });
     } catch (razorpayError) {
       // Revert the booking and capacity atomically if Razorpay fails

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { z } from "zod";
 
 const customTripFormSchema = z.object({
@@ -25,6 +25,16 @@ export default function CustomTripForm() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+  const [supportPhone, setSupportPhone] = useState("+91 98765 43210");
+
+  useEffect(() => {
+    fetch("/api/settings/public")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.support_phone) setSupportPhone(data.support_phone);
+      })
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -168,7 +178,7 @@ export default function CustomTripForm() {
                 name="phone"
                 required
                 suppressHydrationWarning
-                placeholder="+91 98765 43210"
+                placeholder={supportPhone}
                 className="w-full bg-background border border-border rounded-xl pl-12 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none font-medium text-foreground"
               />
             </div>

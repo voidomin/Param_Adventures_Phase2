@@ -73,13 +73,14 @@ const nextConfig: NextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://s.ytimg.com https://checkout.razorpay.com",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://s.ytimg.com https://checkout.razorpay.com https://www.googletagmanager.com",
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              "img-src 'self' data: blob: https://res.cloudinary.com https://picsum.photos https://images.unsplash.com https://lh3.googleusercontent.com https://checkout.razorpay.com",
+              "img-src 'self' data: blob: https://res.cloudinary.com https://picsum.photos https://images.unsplash.com https://lh3.googleusercontent.com https://checkout.razorpay.com https://www.google-analytics.com",
               "font-src 'self' https://fonts.gstatic.com",
-              "connect-src 'self' https://res.cloudinary.com https://api.cloudinary.com https://api.razorpay.com https://lumberjack.razorpay.com",
+              "connect-src 'self' https://res.cloudinary.com https://api.cloudinary.com https://api.razorpay.com https://lumberjack.razorpay.com https://*.sentry.io https://www.google-analytics.com",
               "frame-src 'self' https://www.youtube.com https://api.razorpay.com https://checkout.razorpay.com",
               "media-src 'self' https://res.cloudinary.com",
+              "worker-src 'self' blob:",
             ].join("; "),
           },
         ],
@@ -88,4 +89,25 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+import { withSentryConfig } from "@sentry/nextjs";
+
+export default withSentryConfig(nextConfig, {
+  // For all available options, see:
+  // https://github.com/getsentry/sentry-javascript/blob/master/packages/nextjs/src/config/types.ts
+
+  // Suppresses source map uploading logs during bundling
+  silent: true,
+  org: "param-adventures",
+  project: "javascript-nextjs",
+  // Source map upload auth token
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+
+  sourcemaps: {
+    // Automatically delete source maps after uploading to Sentry
+    deleteSourcemapsAfterUpload: true,
+  },
+
+  // [STABILIZATION FIX] Disabling tunnelRoute to break the infinite /monitoring auth loop.
+  // Routes HTTP requests through Sentry's tunnel endpoint to avoid ad-blockers
+  // tunnelRoute: "/monitoring",
+});

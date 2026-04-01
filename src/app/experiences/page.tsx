@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { withBuildSafety } from "@/lib/db-utils";
 import ExperiencesClient from "./ExperiencesClient";
 import { getPlainTextFromJSON, RichTextNode } from "@/lib/utils/rich-text";
+import type { MediaSettings } from "@/types/media";
 
 export const revalidate = 60; // Revalidate every minute
 
@@ -33,6 +34,26 @@ export default async function ExperiencesPage({
 }: Readonly<Props>) {
   const params = await searchParams;
   const initialFilter = (params?.category as string) || "all";
+
+  const dbPlatformSettings = await withBuildSafety(
+    () => prisma.platformSetting.findMany({
+      where: {
+        key: {
+          in: ["media_provider", "cloudinary_cloud_name", "s3_bucket", "s3_region", "media_quality", "media_high_fidelity"]
+        }
+      }
+    }),
+    []
+  );
+
+  const mediaSettings: MediaSettings = {
+    provider: (dbPlatformSettings.find(s => s.key === "media_provider")?.value || "CLOUDINARY") as "CLOUDINARY" | "AWS_S3",
+    cloudinaryCloudName: dbPlatformSettings.find(s => s.key === "cloudinary_cloud_name")?.value,
+    s3Bucket: dbPlatformSettings.find(s => s.key === "s3_bucket")?.value,
+    s3Region: dbPlatformSettings.find(s => s.key === "s3_region")?.value,
+    globalQuality: Number.parseInt(dbPlatformSettings.find(s => s.key === "media_quality")?.value || "100"),
+    highFidelity: dbPlatformSettings.find(s => s.key === "media_high_fidelity")?.value === "true"
+  };
 
   const experiences = await withBuildSafety(
     () =>
@@ -107,6 +128,7 @@ export default async function ExperiencesPage({
         initialExperiences={serializedExperiences}
         categories={serializedCategories}
         initialFilter={initialFilter}
+        mediaSettings={mediaSettings}
       />
 
       {/* Footer Placeholder */}

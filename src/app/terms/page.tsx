@@ -1,19 +1,33 @@
 import { Metadata } from "next";
 import LegalLayout from "@/components/layout/LegalLayout";
+import { prisma } from "@/lib/db";
+
+import { withBuildSafety } from "@/lib/db-utils";
 
 export const metadata: Metadata = {
   title: "Terms and Conditions",
-  description:
-    "Terms and conditions for booking experiences with Param Adventures.",
+  description: "Terms and conditions for booking experiences.",
 };
 
-export default function TermsPage() {
+export default async function TermsPage() {
+  const siteTitle = await withBuildSafety(
+    () => prisma.siteSetting.findUnique({ where: { key: "site_title" } }),
+    null
+  );
+  const supportEmail = await withBuildSafety(
+    () => prisma.siteSetting.findUnique({ where: { key: "support_email" } }),
+    null
+  );
+
+  const title = siteTitle?.value || "Param Adventures";
+  const email = supportEmail?.value || "support@paramadventures.in";
+
   return (
     <LegalLayout title="Terms and Conditions">
       <section className="mb-8">
         <h2 className="text-2xl font-bold mb-4">1. Agreement to Terms</h2>
         <p>
-          By accessing or using Param Adventures website and booking our
+          By accessing or using {title} website and booking our
           trekking or adventure services, you agree to be bound by these Terms
           and Conditions. If you disagree with any part of these terms, you
           may not access our services.
@@ -72,7 +86,7 @@ export default function TermsPage() {
       <section className="mb-8">
         <h2 className="text-2xl font-bold mb-4">6. Liability Waiver</h2>
         <p>
-          While we prioritize safety, Param Adventures and its vendors/leads
+          While we prioritize safety, {title} and its vendors/leads
           shall not be liable for any injury, loss, damage, or death occurring
           during the trip, except where such liability cannot be excluded by
           law. Participants must sign a physical liability waiver before the
@@ -83,8 +97,7 @@ export default function TermsPage() {
       <section>
         <h2 className="text-2xl font-bold mb-4">7. Contact Information</h2>
         <p>
-          For any questions regarding these Terms, please contact us at
-          support@paramadventures.com.
+          For any questions regarding these Terms, please contact us at {email}.
         </p>
       </section>
     </LegalLayout>

@@ -35,12 +35,14 @@ export const AuthInput = React.forwardRef<HTMLInputElement, AuthInputProps>(
             id={id}
             ref={ref}
             type={inputType}
+            suppressHydrationWarning
             className="w-full px-4 py-3 bg-white/4 border border-white/8 rounded-xl text-white placeholder-white/25 focus:outline-none focus:ring-2 focus:ring-amber-500/40 focus:border-amber-500/40 transition-all duration-300"
           />
           {showPasswordToggle && (
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
+              suppressHydrationWarning
               className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
             >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -65,6 +67,7 @@ export const AuthButton = ({ isSubmitting, loadingText, text, ...props }: AuthBu
       {...props}
       type={props.type ?? "submit"}
       disabled={isSubmitting}
+      suppressHydrationWarning
       className="group relative w-full py-3.5 px-4 bg-linear-to-r from-amber-500 to-orange-500 text-white font-bold rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-amber-500/20 hover:shadow-xl hover:shadow-amber-500/30 overflow-hidden"
       whileHover={{ y: -2 }}
       whileTap={{ scale: 0.98 }}

@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { NextRequest } from "next/server";
 
 vi.mock("next/headers", () => ({
   cookies: vi.fn(),
@@ -8,6 +9,7 @@ vi.mock("@/lib/auth", () => ({
   verifyAccessToken: vi.fn(),
   generateAccessToken: vi.fn(),
   generateRefreshToken: vi.fn(),
+  parseExpiryToSeconds: vi.fn().mockReturnValue(900),
 }));
 
 vi.mock("bcryptjs", () => ({
@@ -17,14 +19,18 @@ vi.mock("bcryptjs", () => ({
   },
 }));
 
-vi.mock("@/lib/db", () => ({
-  prisma: {
+vi.mock("@/lib/db", () => {
+  const mockPrisma = {
     user: {
       findUnique: vi.fn(),
       update: vi.fn(),
     },
-  },
-}));
+    platformSetting: {
+      findUnique: vi.fn(),
+    },
+  };
+  return { prisma: mockPrisma };
+});
 
 import { PATCH } from "@/app/api/user/password/route";
 import { cookies } from "next/headers";
@@ -40,9 +46,13 @@ const mockCompare = vi.mocked(bcrypt.compare);
 const mockHash = vi.mocked(bcrypt.hash);
 const mockFindUnique = vi.mocked(prisma.user.findUnique);
 const mockUpdate = vi.mocked(prisma.user.update);
+const mockPlatformSettingFindUnique = vi.mocked(prisma.platformSetting.findUnique);
 
 const createRequest = (body: unknown) =>
-  ({ json: vi.fn().mockResolvedValue(body) }) as unknown as Request;
+  new NextRequest("http://localhost/api/user/password", {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
 
 const setCookieToken = (token?: string) => {
   mockCookies.mockResolvedValue({
@@ -53,6 +63,7 @@ const setCookieToken = (token?: string) => {
 describe("PATCH /api/user/password", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPlatformSettingFindUnique.mockResolvedValue({ key: "jwt_expiry", value: "15m" } as any);
   });
 
   it("returns 401 when token is missing", async () => {

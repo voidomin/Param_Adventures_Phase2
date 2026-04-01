@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
@@ -11,22 +11,40 @@ import { AuthInput, AuthButton } from "@/components/auth/AuthShared";
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login } = useAuth();
+  const { login, user, isLoading: authLoading } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [lastSubmitTime, setLastSubmitTime] = useState(0);
+
+  // ─── Auto-Redirect if Already Logged In ──────────────────
+  useEffect(() => {
+    if (!authLoading && user) {
+      const redirect = searchParams.get("redirect") || "/";
+      router.push(redirect);
+    }
+  }, [user, authLoading, router, searchParams]);
+
+  // Ghost Mode: If authenticated, we render nothing (stops loops)
+  if (user) return null;
 
   const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
+    const now = Date.now();
+    if (isSubmitting || (now - lastSubmitTime < 2000)) return;
+    
     setError("");
     setIsSubmitting(true);
+    setLastSubmitTime(now);
 
     try {
-      await login(email, password);
-      const redirect = searchParams.get("redirect") || "/";
-      router.push(redirect);
+      const user = await login(email, password);
+      if (user) {
+        const redirect = searchParams.get("redirect") || "/";
+        router.push(redirect);
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Login failed.");
     } finally {

@@ -1,4 +1,3 @@
-import nodemailer from "nodemailer";
 import { render } from "@react-email/render";
 import BookingConfirmedEmail from "@/components/emails/BookingConfirmedEmail";
 import BookingCancelledEmail from "@/components/emails/BookingCancelledEmail";
@@ -9,57 +8,11 @@ import TripCompletedEmail from "@/components/emails/TripCompletedEmail";
 import PasswordResetEmail from "@/components/emails/PasswordResetEmail";
 import AdminInviteEmail from "@/components/emails/AdminInviteEmail";
 import React from "react";
+import { emailFactory } from "./email/factory";
 
-function parseBoolean(value: string | undefined): boolean | undefined {
-  if (value === undefined) return undefined;
-  const normalized = value.trim().toLowerCase();
-  if (normalized === "true") return true;
-  if (normalized === "false") return false;
-  return undefined;
-}
+// ─── EMAIL TYPES ───────────────────────────────────────
 
-// ─── SMTP CONFIGURATION ──────────────────────────────────
-// Note: smtp.zoho.com is generally more reliable on cloud platforms than .in
-const SMTP_HOST = process.env.SMTP_HOST || "smtp.zoho.com";
-const SMTP_PORT = Number.parseInt(process.env.SMTP_PORT || "465", 10);
-const SMTP_SECURE = parseBoolean(process.env.SMTP_SECURE) ?? (SMTP_PORT === 465);
-
-console.log(`[SMTP_INIT] Initializing SMTP transporter (Secure: ${SMTP_SECURE})`);
-
-const transporter = nodemailer.createTransport({ // NOSONAR
-  host: SMTP_HOST,
-  port: SMTP_PORT,
-  secure: SMTP_PORT === 465, // Use SMTPS only on 465, else use STARTTLS
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-  // ─── Reliability & Performance ──────────────────────────
-  pool: true,
-  maxConnections: 3,
-  connectionTimeout: 20000,
-  greetingTimeout: 20000,
-  socketTimeout: 45000,
-  // ─── Network Compatibility ──────────────────────────────
-  // family: 4 is recognized at runtime but may cause issues with certain @types versions
-  family: 4,               
-  tls: {
-    rejectUnauthorized: process.env.NODE_ENV === "production",
-    minVersion: "TLSv1.2",
-  },
-  debug: process.env.NODE_ENV !== "production",
-  logger: process.env.NODE_ENV !== "production",
-} as nodemailer.TransportOptions);
-
-const FROM_EMAIL =
-  process.env.SMTP_FROM || "Param Adventures <booking@paramadventures.in>";
-
-// check if we are ready to send
-const isReady = !!(process.env.SMTP_USER && process.env.SMTP_PASS);
-
-// ─── TYPES ─────────────────────────────────────────────
-
-interface BookingEmailData {
+export interface BookingEmailData {
   userName: string;
   userEmail: string;
   experienceTitle: string;
@@ -69,7 +22,7 @@ interface BookingEmailData {
   bookingId: string;
 }
 
-interface BookingCancelledData {
+export interface BookingCancelledData {
   userName: string;
   userEmail: string;
   experienceTitle: string;
@@ -77,7 +30,7 @@ interface BookingCancelledData {
   refundPreference: "COUPON" | "BANK_REFUND";
 }
 
-interface RefundResolvedData {
+export interface RefundResolvedData {
   userName: string;
   userEmail: string;
   experienceTitle: string;
@@ -87,31 +40,31 @@ interface RefundResolvedData {
   totalPrice: number;
 }
 
-interface WelcomeEmailData {
+export interface WelcomeEmailData {
   userName: string;
   userEmail: string;
 }
 
-interface RoleAssignedData {
+export interface RoleAssignedData {
   userName: string;
   userEmail: string;
   roleName: string;
 }
 
-interface TripCompletedData {
+export interface TripCompletedData {
   userName: string;
   userEmail: string;
   experienceTitle: string;
   experienceSlug: string;
 }
 
-interface PasswordResetData {
+export interface PasswordResetData {
   userName: string;
   userEmail: string;
   resetLink: string;
 }
 
-interface AdminInviteData {
+export interface AdminInviteData {
   userName: string;
   userEmail: string;
   setupLink: string;
@@ -128,31 +81,15 @@ async function sendEmail({
   subject: string;
   html: string;
 }) {
-  if (!isReady) {
-    const msg = "SMTP credentials not configured.";
-    console.warn(`⚠️ ${msg} Logging email to console.`);
-    console.log(
-      `To: ${to}\nSubject: ${subject}\n--- Content --- \n${html.substring(0, 200)}...\n---`,
-    );
-
-    // In production we should fail loudly so API handlers can surface the issue.
-    if (process.env.NODE_ENV === "production") {
-      throw new Error(msg);
-    }
-    return;
-  }
-
   try {
-    const info = await transporter.sendMail({
-      from: FROM_EMAIL,
-      to,
-      subject,
-      html,
-    });
-    console.log(`✅ Email sent: ${info.messageId} to ${to}`);
+    const { provider, from } = await emailFactory.getProvider();
+    await provider.send({ to, subject, html, from });
   } catch (err) {
     console.error(`❌ Failed to send email to ${to}:`, err);
-    throw err;
+    // In production we throw to allow callers to handle/log failure
+    if (process.env.NODE_ENV === "production") {
+      throw err;
+    }
   }
 }
 

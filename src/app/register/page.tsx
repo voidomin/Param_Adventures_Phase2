@@ -19,10 +19,15 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [lastSubmitTime, setLastSubmitTime] = useState(0);
 
   const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
+    const now = Date.now();
+    if (isSubmitting || (now - lastSubmitTime < 2000)) return;
+    
     setError("");
+    setLastSubmitTime(now);
 
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
@@ -34,11 +39,14 @@ export default function RegisterPage() {
       return;
     }
 
+    if (isSubmitting) return;
     setIsSubmitting(true);
 
     try {
-      await register(email, password, name);
-      router.push("/");
+      const user = await register(email, password, name);
+      if (user) {
+        router.push("/");
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Registration failed.");
     } finally {

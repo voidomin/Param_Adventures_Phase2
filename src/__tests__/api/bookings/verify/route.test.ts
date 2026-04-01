@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 vi.mock("next/cache", () => ({
@@ -32,6 +32,9 @@ vi.mock("@/lib/db", () => ({
     },
     payment: {
       updateMany: vi.fn(),
+    },
+    platformSetting: {
+      findUnique: vi.fn().mockResolvedValue({ value: "test_secret" }),
     },
     $transaction: vi.fn(),
   },

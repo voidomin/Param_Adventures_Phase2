@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyAccessToken } from "@/lib/auth";
+import { SYSTEM_ADMIN_EMAILS } from "@/lib/constants/auth";
 
 /**
  * Verify the request has a valid access token and (optionally) the required permission.
@@ -114,4 +115,38 @@ export async function authorizeRequest(
       ),
     };
   }
+}
+
+/**
+ * Highest security authorization level for System Configuration.
+ * Requires BOTH a valid SUPER_ADMIN session AND an email from the whitelist.
+ */
+export async function authorizeSystemRequest(request: NextRequest): Promise<
+  | { authorized: true; userId: string; roleName: string }
+  | { authorized: false; response: NextResponse }
+> {
+  // 1. First, check standard SUPER_ADMIN authorization
+  const auth = await authorizeRequest(request, "system:config");
+  if (!auth.authorized) {
+    return auth;
+  }
+
+  // 2. Fetch the user email to check against whitelist
+  const user = await prisma.user.findUnique({
+    where: { id: auth.userId },
+    select: { email: true },
+  });
+
+  if (!user || !SYSTEM_ADMIN_EMAILS.includes(user.email)) {
+    console.warn(`🛑 Unauthorized System Config access attempt by: ${user?.email || "unknown"}`);
+    return {
+      authorized: false,
+      response: NextResponse.json(
+        { error: "Access Denied: You do not have permission to manage system-level settings." },
+        { status: 403 },
+      ),
+    };
+  }
+
+  return auth;
 }

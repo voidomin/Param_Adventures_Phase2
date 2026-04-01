@@ -68,7 +68,7 @@ describe("AuthLayout", () => {
     expect(screen.getByText("Form body")).toBeInTheDocument();
 
     await waitFor(() => {
-      expect(globalThis.fetch).toHaveBeenCalledWith("/api/settings/auth", {
+      expect(globalThis.fetch).toHaveBeenCalledWith("/api/settings/public", {
         cache: "no-store",
       });
       expect(globalThis.fetch).toHaveBeenCalledWith("/api/quotes", {
@@ -81,12 +81,9 @@ describe("AuthLayout", () => {
     (globalThis.fetch as any)
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ value: "https://example.com/video/upload/login.mp4" }),
-      })
-      .mockResolvedValueOnce({
-        ok: true,
         json: async () => ({
-          settings: {
+          branding: {
+            auth_login_bg: "https://example.com/video/upload/login.mp4",
             auth_common_tagline: "Explore Wild",
             auth_login_image_heading: "Login Hero",
             auth_login_image_subheading: "Login sub",
@@ -119,7 +116,7 @@ describe("AuthLayout", () => {
       expect(screen.getByText(/Adventure first/)).toBeInTheDocument();
     });
 
-    expect(globalThis.fetch).toHaveBeenCalledWith("/api/settings?key=auth_login_bg", {
+    expect(globalThis.fetch).toHaveBeenCalledWith("/api/settings/public", {
       cache: "no-store",
     });
     expect(document.querySelector("video")).toBeInTheDocument();
@@ -127,11 +124,10 @@ describe("AuthLayout", () => {
 
   it("supports register prefix values and compact mode", async () => {
     (globalThis.fetch as any)
-      .mockResolvedValueOnce({ ok: true, json: async () => ({}) })
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          settings: {
+          branding: {
             auth_register_form_heading: "Create account",
             auth_register_form_subheading: "Join us",
             auth_register_image_heading: "Register Hero",
