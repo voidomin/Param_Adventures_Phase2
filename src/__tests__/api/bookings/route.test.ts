@@ -10,7 +10,6 @@ const {
     mockOrdersCreate,
     MockRazorpay: class {
       orders = { create: mockOrdersCreate };
-      constructor() {}
     },
   };
 });

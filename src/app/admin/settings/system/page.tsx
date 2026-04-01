@@ -15,13 +15,11 @@ import {
   Loader2,
   RefreshCw,
   AlertTriangle,
-  Activity,
   CreditCard,
   History,
   Image as ImageIcon,
   User as UserIcon,
   ArrowRight,
-  User as User,
   Activity as ActivityIcon
 } from "lucide-react";
 import { getMediaUrl } from "@/lib/media/media-gateway";
