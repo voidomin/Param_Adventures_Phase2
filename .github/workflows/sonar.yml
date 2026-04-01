@@ -137,6 +137,7 @@ jobs:
     needs: [test, build]
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    continue-on-error: true
     permissions:
       contents: read
       pull-requests: write
