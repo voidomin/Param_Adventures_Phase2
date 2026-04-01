@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Clock, MapPin, Users, IndianRupee } from "lucide-react";
+import type { MediaSettings } from "@/types/media";
 import { motion } from "framer-motion";
 import SaveButton from "./SaveButton";
 import ShareButton from "../ui/ShareButton";
@@ -15,15 +16,6 @@ interface Category {
     name: string;
     slug: string;
   };
-}
-
-interface MediaSettings {
-  provider: "CLOUDINARY" | "AWS_S3";
-  cloudinaryCloudName?: string;
-  s3Bucket?: string;
-  s3Region?: string;
-  globalQuality?: number;
-  highFidelity?: boolean;
 }
 
 interface ExperienceCardProps {

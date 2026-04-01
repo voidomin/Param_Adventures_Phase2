@@ -5,19 +5,11 @@ import { X, ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { getMediaUrl } from "@/lib/media/media-gateway";
-
-interface MediaSettings {
-  provider: "CLOUDINARY" | "AWS_S3";
-  cloudinaryCloudName?: string;
-  s3Bucket?: string;
-  s3Region?: string;
-  globalQuality?: number;
-  highFidelity?: boolean;
-}
+import type { MediaSettings } from "@/types/media";
 
 interface ExperienceGalleryProps {
   readonly images: string[];
-  readonly mediaSettings?: MediaSettings;
+  readonly mediaSettings: MediaSettings;
 }
 
 export default function ExperienceGallery({ 

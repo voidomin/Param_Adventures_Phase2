@@ -4,28 +4,29 @@ import { getMediaUrl } from "@/lib/media/media-gateway";
 
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import {
-  Clock,
-  MapPin,
-  Users,
-  IndianRupee,
-  Mountain,
-  Check,
+import { 
+  Mountain, 
+  MapPin, 
+  Clock, 
+  Check, 
+  Users, 
+  Baby, 
+  Backpack, 
+  Info, 
+  Shield, 
+  IndianRupee, 
+  Wifi, 
+  Banknote, 
+  Activity, 
+  CarFront, 
+  Tent, 
+  X, 
+  ChevronDown, 
   CalendarDays,
-  Info,
-  Shield,
-  X,
   Footprints,
-  Baby,
-  Backpack,
-  ChevronDown,
-  Utensils,
-  Tent,
-  Wifi,
-  Banknote,
-  Activity,
-  CarFront,
+  Utensils
 } from "lucide-react";
+import type { MediaSettings } from "@/types/media";
 import { getPlainTextFromJSON } from "@/lib/utils/rich-text";
 import BookNowButton from "@/components/booking/BookNowButton";
 import ExperienceReviews from "@/components/experiences/ExperienceReviews";
@@ -494,8 +495,8 @@ export default async function ExperienceDetailPage({
     []
   );
 
-  const mediaSettings = {
-    provider: dbPlatformSettings.find(s => s.key === "media_provider")?.value || "CLOUDINARY",
+  const mediaSettings: MediaSettings = {
+    provider: (dbPlatformSettings.find(s => s.key === "media_provider")?.value || "CLOUDINARY") as "CLOUDINARY" | "AWS_S3",
     cloudinaryCloudName: dbPlatformSettings.find(s => s.key === "cloudinary_cloud_name")?.value,
     s3Bucket: dbPlatformSettings.find(s => s.key === "s3_bucket")?.value,
     s3Region: dbPlatformSettings.find(s => s.key === "s3_region")?.value,

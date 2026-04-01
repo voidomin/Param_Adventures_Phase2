@@ -1,17 +1,9 @@
 import { prisma } from "@/lib/db";
 import Link from "next/link";
-import { MapPin, IndianRupee, Clock } from "lucide-react";
+import { IndianRupee, MapPin, Clock } from "lucide-react";
+import type { MediaSettings } from "@/types/media";
 import Image from "next/image";
 import { getMediaUrl } from "@/lib/media/media-gateway";
-
-interface MediaSettings {
-  provider: "CLOUDINARY" | "AWS_S3";
-  cloudinaryCloudName?: string;
-  s3Bucket?: string;
-  s3Region?: string;
-  globalQuality?: number;
-  highFidelity?: boolean;
-}
 
 interface SimilarTripsProps {
   currentExperienceId: string;

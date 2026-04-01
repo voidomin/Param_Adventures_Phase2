@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef } from "react";
 import { motion, Variants, AnimatePresence } from "framer-motion";
 import ExperienceCard from "@/components/experiences/ExperienceCard";
+import type { MediaSettings } from "@/types/media";
 import {
   Mountain,
   Tent,
@@ -140,15 +141,6 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: "duration_asc", label: "Duration: Shortest" },
   { value: "duration_desc", label: "Duration: Longest" },
 ];
-
-interface MediaSettings {
-  provider: "CLOUDINARY" | "AWS_S3";
-  cloudinaryCloudName?: string;
-  s3Bucket?: string;
-  s3Region?: string;
-  globalQuality?: number;
-  highFidelity?: boolean;
-}
 
 export default function ExperiencesClient({
   initialExperiences,

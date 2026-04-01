@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { withBuildSafety } from "@/lib/db-utils";
 import ExperiencesClient from "./ExperiencesClient";
 import { getPlainTextFromJSON, RichTextNode } from "@/lib/utils/rich-text";
+import type { MediaSettings } from "@/types/media";
 
 export const revalidate = 60; // Revalidate every minute
 
@@ -45,8 +46,8 @@ export default async function ExperiencesPage({
     []
   );
 
-  const mediaSettings = {
-    provider: dbPlatformSettings.find(s => s.key === "media_provider")?.value || "CLOUDINARY",
+  const mediaSettings: MediaSettings = {
+    provider: (dbPlatformSettings.find(s => s.key === "media_provider")?.value || "CLOUDINARY") as "CLOUDINARY" | "AWS_S3",
     cloudinaryCloudName: dbPlatformSettings.find(s => s.key === "cloudinary_cloud_name")?.value,
     s3Bucket: dbPlatformSettings.find(s => s.key === "s3_bucket")?.value,
     s3Region: dbPlatformSettings.find(s => s.key === "s3_region")?.value,
