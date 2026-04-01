@@ -134,7 +134,6 @@ jobs:
 
   sonarcloud:
     name: SonarCloud Analysis
-    needs: [test, build]
     runs-on: ubuntu-latest
     steps:
       - name: Skip SonarCloud
