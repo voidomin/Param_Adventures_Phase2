@@ -1,5 +1,6 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
 import { useAuth } from "@/lib/AuthContext";
 import { SYSTEM_ADMIN_EMAILS } from "@/lib/constants/auth";
 import { useState, useEffect, useCallback } from "react";
@@ -14,12 +15,12 @@ import {
   Loader2,
   RefreshCw,
   AlertTriangle,
-  Activity,
   CreditCard,
   History,
   Image as ImageIcon,
   User as UserIcon,
-  ArrowRight
+  ArrowRight,
+  Activity as ActivityIcon
 } from "lucide-react";
 import { getMediaUrl } from "@/lib/media/media-gateway";
 
@@ -182,14 +183,6 @@ export default function SystemSettingsPage() {
     const list = type === "PLATFORM" ? platformSettings : siteSettings;
     return list.find(s => s.key === key)?.value || "";
   };
-
-  // ─── Sub-components to reduce main complexity ──────────
-
-  // ... Component rendering starts here ...
-
-
-  // ... Sub-components removed ...
-
 
   if (authLoading || (isWhitelisted && isLoading)) {
     return (
@@ -486,7 +479,7 @@ export default function SystemSettingsPage() {
 
                 <div className="p-8 bg-primary/5 rounded-3xl border border-primary/10 space-y-4">
                   <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-4">
-                    <Activity className="w-6 h-6" />
+                    <ActivityIcon className="w-6 h-6" />
                   </div>
                   <h4 className="text-xl font-bold font-heading">Infrastructure Stats</h4>
                   <div className="space-y-3">
@@ -513,7 +506,7 @@ export default function SystemSettingsPage() {
   );
 }
 
-// ─── Sub-components extracted to resolve Sonar warnings ─────
+// ─── Sub-components ─────
 
 function CommunicationsTab({ getVal, updateSetting }: Readonly<TabProps>) {
   return (
@@ -720,14 +713,14 @@ function MediaTab({ getVal, updateSetting }: Readonly<TabProps>) {
             <div className="aspect-video rounded-2xl overflow-hidden bg-background border border-border flex items-center justify-center relative">
               <div className="absolute top-4 right-4 z-10">
                  <div className="bg-background/80 backdrop-blur-md px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest border border-border">
-                   Real-time Preview
+                    Real-time Preview
                  </div>
               </div>
               {getVal("PLATFORM", "cloudinary_cloud_name") ? (
                 <img 
                   src={getMediaUrl(
                     "v1711884000/sample-trek.jpg", 
-                    getVal("PLATFORM", "media_provider"),
+                    getVal("PLATFORM", "media_provider") as any,
                     {
                       cloudinaryCloudName: getVal("PLATFORM", "cloudinary_cloud_name"),
                       s3Bucket: getVal("PLATFORM", "s3_bucket"),
@@ -749,7 +742,7 @@ function MediaTab({ getVal, updateSetting }: Readonly<TabProps>) {
             <p className="text-[10px] text-foreground/40 font-mono break-all line-clamp-1">
               {getMediaUrl(
                 "sample-trek.jpg", 
-                getVal("PLATFORM", "media_provider"),
+                getVal("PLATFORM", "media_provider") as any,
                 {
                   cloudinaryCloudName: getVal("PLATFORM", "cloudinary_cloud_name"),
                   s3Bucket: getVal("PLATFORM", "s3_bucket"),
@@ -816,7 +809,7 @@ function SEOTab({ getVal, updateSetting }: Readonly<TabProps>) {
         <div className="p-6 rounded-2xl bg-foreground/5 border border-border flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className={`p-2 rounded-lg ${(getVal("PLATFORM", "google_analytics_id") || "").startsWith('G-') ? 'bg-green-500/10 text-green-400' : 'bg-foreground/10 text-foreground/30'}`}>
-              <Activity className="w-5 h-5" />
+              <ActivityIcon className="w-5 h-5" />
             </div>
             <div>
               <p className="font-bold text-sm">Tracking Status</p>
@@ -1005,6 +998,32 @@ function SecurityTab({ getVal, updateSetting }: Readonly<TabProps>) {
             ]}
             description="Tags your errors for easier filtering in the dashboard."
           />
+          <InputGroup
+            label="Sentry DSN"
+            value={getVal("PLATFORM", "sentry_dsn")}
+            onChange={(v: string) => updateSetting("PLATFORM", "sentry_dsn", v)}
+            placeholder="https://xxx@o0.ingest.sentry.io/xxx"
+            description="Your public DSN from Sentry Project Settings."
+          />
+          <div className="md:col-span-2 pt-4">
+            <button
+              onClick={() => {
+                if (confirm("This will trigger a real error to verify your Sentry connection. Continue?")) {
+                  try {
+                    Sentry.captureException(new Error("Param Adventures: Sentry Test Connection successful!"));
+                    alert("Test error triggered! Please check your Sentry dashboard under 'Issues'.");
+                  } catch (e) {
+                    console.error("Sentry test failed:", e);
+                    alert("Failed to trigger Sentry error. Check console and configuration.");
+                  }
+                }
+              }}
+              className="flex items-center gap-2 px-6 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-2xl font-bold transition-all text-sm group"
+            >
+              <ShieldAlert className="w-4 h-4 group-hover:animate-pulse" />
+              Trigger Test Error
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1092,4 +1111,3 @@ function StatCard({ label, value, color = "text-foreground" }: Readonly<{ label:
     </div>
   );
 }
-
