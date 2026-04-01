@@ -50,11 +50,20 @@ export default function AdminSettingsPage() {
       .then((res) => res.json())
       .then((data) => {
         if (data.settings && Object.keys(data.settings).length > 0) {
-          // Destructure out the taxConfig array to manage it separately
+          // Destructure out the taxConfig to manage it separately
           const { taxConfig: remoteTaxConfig, ...otherSettings } = data.settings;
           
           if (Array.isArray(remoteTaxConfig)) {
              setTaxConfig(remoteTaxConfig);
+          } else if (typeof remoteTaxConfig === "string" && remoteTaxConfig.trim()) {
+            try {
+              const parsed = JSON.parse(remoteTaxConfig);
+              if (Array.isArray(parsed)) {
+                setTaxConfig(parsed);
+              }
+            } catch (e) {
+              console.error("Failed to parse taxConfig string:", e);
+            }
           }
           
           setSettings((prev) => ({ ...prev, ...otherSettings }));
