@@ -17,5 +17,5 @@ export interface MediaUploadResult {
 export interface MediaProvider {
   upload(buffer: Buffer, options?: UploadOptions): Promise<MediaUploadResult>;
   delete(publicId: string, resourceType?: string): Promise<boolean>;
-  getPresignData(fileName: string, contentType: string): Promise<any>;
+  getPresignData(fileName: string, contentType: string): Promise<Record<string, unknown>>;
 }

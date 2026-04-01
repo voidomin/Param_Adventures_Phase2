@@ -4,10 +4,19 @@ import { MapPin, IndianRupee, Clock } from "lucide-react";
 import Image from "next/image";
 import { getMediaUrl } from "@/lib/media/media-gateway";
 
+interface MediaSettings {
+  provider: "CLOUDINARY" | "AWS_S3";
+  cloudinaryCloudName?: string;
+  s3Bucket?: string;
+  s3Region?: string;
+  globalQuality?: number;
+  highFidelity?: boolean;
+}
+
 interface SimilarTripsProps {
   currentExperienceId: string;
   categoryIds: string[];
-  mediaSettings?: any;
+  mediaSettings?: MediaSettings;
 }
 
 export default async function SimilarTrips({

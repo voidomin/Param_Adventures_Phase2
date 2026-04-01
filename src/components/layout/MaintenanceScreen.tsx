@@ -22,7 +22,7 @@ export default function MaintenanceScreen() {
             Preparing the <span className="text-primary italic underline-offset-8 decoration-wavy">Next Trail</span>
           </h1>
           <p className="text-foreground/50 font-medium leading-relaxed">
-            Param Adventures is currently under scheduled maintenance to bring you a smoother trekking experience. We'll be back on the peaks shortly!
+            Param Adventures is currently under scheduled maintenance to bring you a smoother trekking experience. We&apos;ll be back on the peaks shortly!
           </p>
         </div>
 

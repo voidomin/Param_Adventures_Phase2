@@ -141,6 +141,15 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: "duration_desc", label: "Duration: Longest" },
 ];
 
+interface MediaSettings {
+  provider: "CLOUDINARY" | "AWS_S3";
+  cloudinaryCloudName?: string;
+  s3Bucket?: string;
+  s3Region?: string;
+  globalQuality?: number;
+  highFidelity?: boolean;
+}
+
 export default function ExperiencesClient({
   initialExperiences,
   categories,
@@ -150,7 +159,7 @@ export default function ExperiencesClient({
   initialExperiences: Experience[];
   categories: DBCategory[];
   initialFilter: string;
-  mediaSettings: any;
+  mediaSettings: MediaSettings;
 }>) {
   const [activeFilter, setActiveFilter] = useState(initialFilter);
   const [searchQuery, setSearchQuery] = useState("");
@@ -677,8 +686,7 @@ export default function ExperiencesClient({
             animate="show"
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
           >
-            {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-            {filteredExperiences.map((exp: any) => (
+            {filteredExperiences.map((exp: Experience) => (
               <motion.div key={exp.id} variants={itemVariants}>
                 <ExperienceCard 
                   experience={exp} 

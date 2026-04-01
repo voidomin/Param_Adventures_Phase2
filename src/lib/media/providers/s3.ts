@@ -39,7 +39,7 @@ export class S3Provider implements MediaProvider {
     return {
       public_id: key,
       secure_url: `https://${this.bucket}.s3.${this.region}.amazonaws.com/${key}`,
-      resource_type: options.resource_type || "auto" as any,
+      resource_type: (options.resource_type || "auto") as "image" | "video" | "raw",
       format: "unknown",
       bytes: buffer.length,
     };
@@ -58,7 +58,7 @@ export class S3Provider implements MediaProvider {
     }
   }
 
-  async getPresignData(fileName: string, contentType: string): Promise<any> {
+  async getPresignData(fileName: string, contentType: string): Promise<Record<string, unknown>> {
     const key = `uploads/${Date.now()}-${fileName.replaceAll(/\s+/g, "_")}`;
     const command = new PutObjectCommand({
       Bucket: this.bucket,

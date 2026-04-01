@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { SYSTEM_ADMIN_EMAILS } from "@/lib/constants/auth";
 import MaintenanceScreen from "./MaintenanceScreen";
@@ -13,13 +13,9 @@ interface MaintenanceGuardProps {
 
 export default function MaintenanceGuard({ children, isMaintenanceMode }: Readonly<MaintenanceGuardProps>) {
   const { user, isLoading: authLoading } = useAuth();
-  const [isAdminPath, setIsAdminPath] = useState(false);
   const pathname = usePathname();
-
-  useEffect(() => {
-    const isMon = pathname === "/monitoring" || pathname?.startsWith("/monitoring/");
-    setIsAdminPath(pathname?.startsWith("/admin") || pathname?.startsWith("/api/admin") || isMon);
-  }, [pathname]);
+  const isMon = pathname === "/monitoring" || pathname?.startsWith("/monitoring/");
+  const isAdminPath = pathname?.startsWith("/admin") || pathname?.startsWith("/api/admin") || isMon;
 
   const isWhitelisted = user && SYSTEM_ADMIN_EMAILS.includes(user.email);
 

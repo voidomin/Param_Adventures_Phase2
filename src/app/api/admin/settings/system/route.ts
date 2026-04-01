@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { Prisma } from "@prisma/client";
 import { authorizeSystemRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
 
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
 }
 
 async function updateSettings(
-  tx: any,
+  tx: Prisma.TransactionClient,
   userId: string,
   type: "PLATFORM" | "SITE",
   settings: { key: string; value: string }[],
@@ -40,7 +41,7 @@ async function updateSettings(
   for (const { key, value } of settings) {
     if (!key) continue;
 
-    const old = await model.findUnique({ where: { key } });
+    const oldSetting = await model.findUnique({ where: { key } });
     
     await model.upsert({
       where: { key },
@@ -48,8 +49,12 @@ async function updateSettings(
       create: { key, value },
     });
 
-    if (old?.value !== value) {
-      const logMetadata: Record<string, unknown> = { from: old?.value, to: value, ip };
+    if (oldSetting?.value !== value) {
+      const logMetadata: Record<string, unknown> = { 
+        from: oldSetting?.value ?? null, 
+        to: value, 
+        ip 
+      };
       await logActivity(
         action,
         userId,

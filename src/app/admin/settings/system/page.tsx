@@ -29,7 +29,7 @@ interface TabProps {
   updateSetting: (type: "PLATFORM" | "SITE", key: string, value: string) => void;
 }
 
-const maskValue = (key: string, value: any) => {
+const maskValue = (key: string, value: string | number | undefined | null) => {
   if (value === undefined || value === null) return "n/a";
   const str = String(value);
   const sensitiveKeys = ["secret", "key", "token", "password", "auth", "dsn"];
@@ -54,12 +54,12 @@ export default function SystemSettingsPage() {
   const [siteSettings, setSiteSettings] = useState<Setting[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [auditLogs, setAuditLogs] = useState<Record<string, unknown>[]>([]);
   const [isLogsLoading, setIsLogsLoading] = useState(false);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [hasMoreLogs, setHasMoreLogs] = useState(true);
   const [activeTab, setActiveTab] = useState("communications");
-  const [dbStats, setDbStats] = useState<any>(null);
+  const [dbStats, setDbStats] = useState<Record<string, unknown> | null>(null);
 
   // ─── Whitelist Security Check ──────────────────────────
   const isWhitelisted = user && SYSTEM_ADMIN_EMAILS.includes(user.email);
@@ -80,7 +80,7 @@ export default function SystemSettingsPage() {
     }
   }, [isWhitelisted]);
 
-  const fetchAuditLogs = async (cursor?: string) => {
+  const fetchAuditLogs = useCallback(async (cursor?: string) => {
     if (isLogsLoading || (!hasMoreLogs && cursor)) return;
     setIsLogsLoading(true);
     try {
@@ -105,7 +105,7 @@ export default function SystemSettingsPage() {
     } finally {
       setIsLogsLoading(false);
     }
-  };
+  }, [isLogsLoading, hasMoreLogs]);
 
   const handleAuditScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const target = e.currentTarget;
@@ -123,7 +123,7 @@ export default function SystemSettingsPage() {
       setHasMoreLogs(true);
       fetchAuditLogs();
     }
-  }, [activeTab]);
+  }, [activeTab, fetchAuditLogs]);
 
   useEffect(() => {
     fetchData();
@@ -717,24 +717,25 @@ function MediaTab({ getVal, updateSetting }: Readonly<TabProps>) {
                  </div>
               </div>
               {getVal("PLATFORM", "cloudinary_cloud_name") ? (
-                <img 
-                  src={getMediaUrl(
-                    "v1711884000/sample-trek.jpg", 
-                    getVal("PLATFORM", "media_provider") as any,
-                    {
-                      cloudinaryCloudName: getVal("PLATFORM", "cloudinary_cloud_name"),
-                      s3Bucket: getVal("PLATFORM", "s3_bucket"),
-                      globalQuality: Number.parseInt(getVal("PLATFORM", "media_quality") || "100"),
-                      highFidelity: getVal("PLATFORM", "media_high_fidelity") === "true"
-                    },
-                    { width: 800, crop: "fill" }
-                  )} 
-                  alt="Transformation Preview"
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.src = "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800&q=80";
-                  }}
-                />
+                  <Image 
+                    src={getMediaUrl(
+                      "v1711884000/sample-trek.jpg", 
+                      getVal("PLATFORM", "media_provider") as "CLOUDINARY" | "AWS_S3",
+                      {
+                        cloudinaryCloudName: getVal("PLATFORM", "cloudinary_cloud_name"),
+                        s3Bucket: getVal("PLATFORM", "s3_bucket"),
+                        globalQuality: Number.parseInt(getVal("PLATFORM", "media_quality") || "100"),
+                        highFidelity: getVal("PLATFORM", "media_high_fidelity") === "true"
+                      },
+                      { width: 800, crop: "fill" }
+                    )} 
+                    alt="Transformation Preview"
+                    fill
+                    className="object-cover"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=800";
+                    }}
+                  />
               ) : (
                 <span className="text-foreground/20 italic text-sm">Add Cloudinary credentials for preview</span>
               )}
@@ -742,7 +743,7 @@ function MediaTab({ getVal, updateSetting }: Readonly<TabProps>) {
             <p className="text-[10px] text-foreground/40 font-mono break-all line-clamp-1">
               {getMediaUrl(
                 "sample-trek.jpg", 
-                getVal("PLATFORM", "media_provider") as any,
+                getVal("PLATFORM", "media_provider") as "CLOUDINARY" | "AWS_S3",
                 {
                   cloudinaryCloudName: getVal("PLATFORM", "cloudinary_cloud_name"),
                   s3Bucket: getVal("PLATFORM", "s3_bucket"),
@@ -1030,7 +1031,7 @@ function SecurityTab({ getVal, updateSetting }: Readonly<TabProps>) {
   );
 }
 
-function SectionTitle({ title, subtitle, icon: Icon }: Readonly<{ title: string; subtitle: string; icon: any }>) {
+function SectionTitle({ title, subtitle, icon: Icon }: Readonly<{ title: string; subtitle: string; icon: React.ElementType }>) {
   return (
     <div className="space-y-1 mb-8">
       <div className="flex items-center gap-2 text-primary font-bold text-sm">

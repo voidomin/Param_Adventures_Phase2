@@ -5,6 +5,12 @@ import { render } from "@react-email/render";
 import WelcomeEmail from "@/components/emails/WelcomeEmail";
 import React from "react";
 
+// Move the template rendering out of the try/catch handler to satisfy strict JSX linting.
+const renderTestEmail = async (userName: string) => {
+  const element = <WelcomeEmail userName={userName} />;
+  return render(element);
+};
+
 /**
  * POST /api/admin/settings/system/test-email
  * Sends a test email to the specified address using the currently SAVED settings in the DB.
@@ -22,12 +28,8 @@ export async function POST(request: NextRequest) {
     // Resolve the current provider from the DB
     const { provider, from } = await emailFactory.getProvider();
 
-    // Render a simple template for the test
-    const html = await render(
-      <WelcomeEmail 
-        userName="Admin Tester" 
-      />
-    );
+    // Render the template using the safe helper
+    const html = await renderTestEmail("Admin Tester");
 
     await provider.send({
       to,
@@ -37,10 +39,11 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ message: "Test email sent successfully!" });
-  } catch (error: any) {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
     console.error("Test email error:", error);
     return NextResponse.json(
-      { error: `Failed to send test email: ${error.message || "Unknown error"}` },
+      { error: `Failed to send test email: ${message}` },
       { status: 500 },
     );
   }

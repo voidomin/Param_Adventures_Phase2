@@ -29,7 +29,7 @@ export default function GoogleAnalyticsTracker({ measurementId }: { measurementI
 // Add global type for gtag
 declare global {
   interface Window {
-    dataLayer: any[];
-    gtag: (...args: any[]) => void;
+    dataLayer: unknown[];
+    gtag: (command: string, ...args: unknown[]) => void;
   }
 }

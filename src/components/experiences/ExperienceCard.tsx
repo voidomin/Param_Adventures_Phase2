@@ -17,6 +17,15 @@ interface Category {
   };
 }
 
+interface MediaSettings {
+  provider: "CLOUDINARY" | "AWS_S3";
+  cloudinaryCloudName?: string;
+  s3Bucket?: string;
+  s3Region?: string;
+  globalQuality?: number;
+  highFidelity?: boolean;
+}
+
 interface ExperienceCardProps {
   experience: {
     id: string;
@@ -33,7 +42,7 @@ interface ExperienceCardProps {
     images: string[];
     categories: Category[];
   };
-  mediaSettings?: any;
+  mediaSettings?: MediaSettings;
 }
 
 export default function ExperienceCard({

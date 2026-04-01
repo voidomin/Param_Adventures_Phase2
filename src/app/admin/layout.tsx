@@ -51,7 +51,7 @@ export default function AdminLayout({
         router.push("/");
       }
     }
-  }, [user, isLoading, hasPermission, router]);
+  }, [user, isLoading, hasPermission, router, pathname]);
 
   // Close sidebar on navigation change (mobile)
   useEffect(() => {

@@ -42,7 +42,7 @@ export class CloudinaryProvider implements MediaProvider {
             resolve({
               public_id: result.public_id,
               secure_url: result.secure_url,
-              resource_type: result.resource_type as any,
+              resource_type: result.resource_type as "image" | "video" | "raw",
               format: result.format,
               bytes: result.bytes,
               width: result.width,
@@ -67,7 +67,7 @@ export class CloudinaryProvider implements MediaProvider {
     }
   }
 
-  async getPresignData(fileName: string, contentType: string): Promise<any> {
+  async getPresignData(_fileName: string, _contentType: string): Promise<Record<string, unknown>> {
     const timestamp = Math.round(Date.now() / 1000);
     const folder = "param-adventures";
     const signature = cloudinary.utils.api_sign_request(

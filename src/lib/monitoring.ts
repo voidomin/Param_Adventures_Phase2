@@ -32,7 +32,7 @@ export async function isSentryEnabled(): Promise<boolean> {
  * Standardized error logger for Param Adventures.
  * Automatically respects the database kill switch.
  */
-export async function logError(error: Error | string, context: Record<string, any> = {}) {
+export async function logError(error: Error | string, context: Record<string, unknown> = {}) {
   const enabled = await isSentryEnabled();
   
   if (!enabled) {

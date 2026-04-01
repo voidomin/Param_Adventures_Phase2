@@ -6,9 +6,18 @@ import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { getMediaUrl } from "@/lib/media/media-gateway";
 
+interface MediaSettings {
+  provider: "CLOUDINARY" | "AWS_S3";
+  cloudinaryCloudName?: string;
+  s3Bucket?: string;
+  s3Region?: string;
+  globalQuality?: number;
+  highFidelity?: boolean;
+}
+
 interface ExperienceGalleryProps {
   readonly images: string[];
-  readonly mediaSettings?: any;
+  readonly mediaSettings?: MediaSettings;
 }
 
 export default function ExperienceGallery({ 

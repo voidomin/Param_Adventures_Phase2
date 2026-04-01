@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
   try {
     // Fetch logs with cursor pagination
-    const logs = await (prisma.auditLog.findMany as any)({
+    const logs = await prisma.auditLog.findMany({
       where: {
         targetType: "SYSTEM",
       },
