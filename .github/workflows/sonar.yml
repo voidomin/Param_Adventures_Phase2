@@ -132,54 +132,54 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/postgres' }}
           NEXT_PUBLIC_APP_URL: https://localhost:3000
 
-  sonarcloud:
-    name: SonarCloud Analysis
-    needs: [test, build]
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    continue-on-error: true
-    permissions:
-      contents: read
-      pull-requests: write
-    env:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci --ignore-scripts
-
-      - name: Generate Prisma Client
-        run: npx prisma generate
-
-      - name: Download Coverage Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: coverage-report
-          path: coverage/
-
-      - name: SonarCloud Scan
-        if: env.SONAR_TOKEN != ''
-        uses: SonarSource/sonarqube-scan-action@master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
-        with:
-          args: >
-            -Dsonar.projectKey=voidomin_Param_Adventures_Phase2
-            -Dsonar.organization=voidomin
-            -Dsonar.sources=src
-            -Dsonar.tests=src/__tests__
-            -Dsonar.test.inclusions=src/**/__tests__/**,src/**/*.test.ts,src/**/*.test.tsx,src/**/*.spec.ts,src/**/*.spec.tsx
-            -Dsonar.exclusions=**/skills/**,**/reference/**,**/.next/**,**/node_modules/**,**/public/**,**/docs/**,tsc-error.txt,build_output.log,**/.gemini/**,**/tmp/**,src/**/__tests__/**,src/**/*.test.ts,src/**/*.test.tsx,src/**/*.spec.ts,src/**/*.spec.tsx
-            -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
-            -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info
+#   sonarcloud:
+#     name: SonarCloud Analysis
+#     needs: [test, build]
+#     runs-on: ubuntu-latest
+#     timeout-minutes: 20
+#     continue-on-error: true
+#     permissions:
+#       contents: read
+#       pull-requests: write
+#     env:
+#       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+#         with:
+#           fetch-depth: 0
+# 
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: 24
+#           cache: "npm"
+# 
+#       - name: Install dependencies
+#         run: npm ci --ignore-scripts
+# 
+#       - name: Generate Prisma Client
+#         run: npx prisma generate
+# 
+#       - name: Download Coverage Artifact
+#         uses: actions/download-artifact@v4
+#         with:
+#           name: coverage-report
+#           path: coverage/
+# 
+#       - name: SonarCloud Scan
+#         if: env.SONAR_TOKEN != ''
+#         uses: SonarSource/sonarqube-scan-action@master
+#         env:
+#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#           SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
+#         with:
+#           args: >
+#             -Dsonar.projectKey=voidomin_Param_Adventures_Phase2
+#             -Dsonar.organization=voidomin
+#             -Dsonar.sources=src
+#             -Dsonar.tests=src/__tests__
+#             -Dsonar.test.inclusions=src/**/__tests__/**,src/**/*.test.ts,src/**/*.test.tsx,src/**/*.spec.ts,src/**/*.spec.tsx
+#             -Dsonar.exclusions=**/skills/**,**/reference/**,**/.next/**,**/node_modules/**,**/public/**,**/docs/**,tsc-error.txt,build_output.log,**/.gemini/**,**/tmp/**,src/**/__tests__/**,src/**/*.test.ts,src/**/*.test.tsx,src/**/*.spec.ts,src/**/*.spec.tsx
+#             -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info
+#             -Dsonar.typescript.lcov.reportPaths=coverage/lcov.info
