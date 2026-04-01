@@ -39,13 +39,10 @@ export async function POST(request: NextRequest) {
       user = await emergencyAdminRecovery(email, password, bootstrapToken);
     }
 
-    if (!user) {
-      // ─── Find user (Standard Mode) ──────────────────────
-      user = await prisma.user.findUnique({
-        where: { email: email.toLowerCase().trim() },
-        include: { role: true },
-      });
-    }
+    user ??= await prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+      include: { role: true },
+    });
 
     if (!user?.password) {
       return NextResponse.json(

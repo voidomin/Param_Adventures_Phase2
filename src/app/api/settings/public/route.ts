@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 
 export async function GET() {
   try {
-    const [site, platform] = await Promise.all([
+    await Promise.all([
       prisma.siteSetting.findMany(),
       prisma.platformSetting.findMany(),
     ]);

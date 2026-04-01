@@ -10,7 +10,7 @@ export default async function GoogleAnalytics() {
 
   const measurementId = gaSetting?.value;
 
-  if (!measurementId || !measurementId.startsWith('G-')) {
+  if (!measurementId?.startsWith('G-')) {
     return null;
   }
 

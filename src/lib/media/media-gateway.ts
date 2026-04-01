@@ -71,8 +71,7 @@ function getCloudinaryUrl(
   return `${baseUrl}/${transformPath}${cleanPath}`;
 }
 
-function getS3Url(path: string, bucket: string, region?: string): string {
-  const s3Region = region || 'ap-south-1';
+function getS3Url(path: string, bucket: string, region: string = 'ap-south-1'): string {
   const cleanPath = path.startsWith('/') ? path.substring(1) : path;
-  return `https://${bucket}.s3.${s3Region}.amazonaws.com/${cleanPath}`;
+  return `https://${bucket}.s3.${region}.amazonaws.com/${cleanPath}`;
 }

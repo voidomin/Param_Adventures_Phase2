@@ -50,7 +50,7 @@ export default async function ExperiencesPage({
     cloudinaryCloudName: dbPlatformSettings.find(s => s.key === "cloudinary_cloud_name")?.value,
     s3Bucket: dbPlatformSettings.find(s => s.key === "s3_bucket")?.value,
     s3Region: dbPlatformSettings.find(s => s.key === "s3_region")?.value,
-    globalQuality: parseInt(dbPlatformSettings.find(s => s.key === "media_quality")?.value || "100"),
+    globalQuality: Number.parseInt(dbPlatformSettings.find(s => s.key === "media_quality")?.value || "100"),
     highFidelity: dbPlatformSettings.find(s => s.key === "media_high_fidelity")?.value === "true"
   };
 

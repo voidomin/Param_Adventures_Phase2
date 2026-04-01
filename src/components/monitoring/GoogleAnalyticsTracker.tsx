@@ -13,12 +13,12 @@ export default function GoogleAnalyticsTracker({ measurementId }: { measurementI
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    if (!measurementId || typeof window === "undefined" || !window.gtag) return;
+    if (!measurementId || !globalThis.window?.gtag) return;
 
     const url = pathname + (searchParams?.toString() ? `?${searchParams.toString()}` : "");
     
     // Trigger the page_view manually for every route transition
-    window.gtag("config", measurementId, {
+    globalThis.window.gtag("config", measurementId, {
       page_path: url,
     });
   }, [pathname, searchParams, measurementId]);

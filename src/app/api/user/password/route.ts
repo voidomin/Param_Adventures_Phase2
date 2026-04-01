@@ -42,7 +42,7 @@ export async function PATCH(request: NextRequest) {
       include: { role: true },
     });
 
-    if (!user || !user.password) {
+    if (!user?.password) {
       return NextResponse.json(
         { error: "User or password not found" },
         { status: 404 },

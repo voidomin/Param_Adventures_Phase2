@@ -46,9 +46,9 @@ export function generateAccessToken(userId: string, roleName: string, tokenVersi
  * Helper to parse a JWT expiry string (e.g., "1h", "7d") into seconds for cookie maxAge.
  */
 export function parseExpiryToSeconds(expiry: string): number {
-  const match = expiry.match(/^(\d+)([dhms])$/);
+  const match = /^(\d+)([dhms])$/.exec(expiry);
   if (!match) return 60 * 60;
-  const val = parseInt(match[1]);
+  const val = Number.parseInt(match[1]);
   const unit = match[2];
   switch (unit) {
     case "d": return val * 24 * 60 * 60;
