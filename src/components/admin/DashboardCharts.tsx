@@ -148,8 +148,8 @@ export default function DashboardCharts({
                       paddingAngle={3}
                       strokeWidth={0}
                     >
-                      {charts.bookingsByStatus.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      {charts.bookingsByStatus.map((entry) => (
+                        <Cell key={`cell-${entry.status}`} fill={entry.color} />
                       ))}
                     </Pie>
                     <Tooltip content={<PieTooltip />} />
