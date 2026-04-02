@@ -1,9 +1,9 @@
 # Product Requirements Document (PRD)
 
 **Product:** Param Adventures  
-**Version:** 1.3 (Final — Awaiting Approval)  
-**Status:** Draft for Approval  
-**Last Updated:** February 2026
+**Version:** 1.3.1 (Stable — Release Candidate)  
+**Status:** Ready for Final UAT  
+**Last Updated:** April 2, 2026
 
 ---
 
@@ -13,10 +13,10 @@
 | ----------------- | ----------------------------------------------------- |
 | Product Name      | Param Adventures                                      |
 | Product Type      | Multi-category outdoor & experiential events platform |
-| Current Version   | V1                                                    |
-| Payment Gateway   | Razorpay                                              |
+| Current Version   | V1.0.0-RC                                             |
+| Payment Gateway   | Razorpay (UPI, Netbanking, Cards)                     |
 | Target Region     | Pan-India                                             |
-| Deployment Target | AWS                                                   |
+| Deployment Target | Render (Current Staging) / AWS (Future Production)    |
 
 ---
 
@@ -29,10 +29,9 @@ The platform combines:
 - Curated, categorized experience listings with fixed and flexible scheduling
 - Group and individual booking with Razorpay payment
 - Content-driven trust through blogs and storytelling
-- Real-time email and SMS notifications to users and admins
+- Real-time email notifications (Resend/Zoho) to users and admins
 - A fully mobile-first experience across every surface
-
-This is not a travel blog. It is not just a booking tool. It is a complete experience platform built for real operations, real users, and real payments.
+- Integrated monitoring and performance tracking (Sentry + GA)
 
 ---
 
@@ -79,14 +78,6 @@ People looking for organized, trustworthy outdoor and experiential events in Ind
 
 Pan-India at launch. No restriction on user location.
 
-### Budget Segment
-
-Mid-range. Users are paying for safety, organization, and quality of experience — not the cheapest option, not luxury.
-
-### Device Behavior
-
-The majority of Indian users will access the platform via mobile. Mobile is the primary use case. All decisions are made with mobile first.
-
 ---
 
 ## 6. Experience Categories
@@ -115,32 +106,25 @@ The following are starting categories only — not a fixed or exhaustive list:
 | Educational Trips    | Nature education, cultural visits, learning experiences |
 | Small Events         | One-day events, workshops, community gatherings         |
 
-New categories will be added by admin as the business evolves.
-
 ---
 
 ## 7. Experience Scheduling
 
-Each experience supports one of two scheduling models, configured by admin per experience:
+Each experience supports one of two scheduling models:
 
-| Scheduling Type       | Description                                                      | Example                              |
-| --------------------- | ---------------------------------------------------------------- | ------------------------------------ |
-| Fixed-date slots      | Admin defines specific dates. Users book into an available slot. | Trek on 15 March, 22 March           |
-| Flexible / on-request | No fixed dates. User submits interest and admin confirms dates.  | Corporate outing, private group walk |
-
-Both models must be supported in V1. The booking flow adapts based on which scheduling type the experience uses.
+| Scheduling Type       | Description                                                      |
+| --------------------- | ---------------------------------------------------------------- |
+| Fixed-date slots      | Admin defines specific dates. Users book into an available slot. |
+| Flexible / on-request | No fixed dates. User submits interest and admin confirms dates.  |
 
 ---
 
 ## 8. Capacity Management
 
-- Every experience and every fixed-date slot has a **maximum participant capacity** set by admin
-- Capacity is **strictly enforced** — no overbooking is allowed under any circumstance
-- Group bookings reduce available capacity by the number of participants booked
-- When an experience or slot reaches full capacity it is automatically marked **Sold Out**
-- Sold Out experiences remain visible to users but cannot be booked
-- Admin cannot override capacity in V1 — this is a hard system rule
-- Flexible / on-request experiences also have a capacity limit per confirmed session
+- Every experience and every fixed-date slot has a **maximum participant capacity** set by admin.
+- Capacity is **strictly enforced** — no overbooking is allowed.
+- Group bookings reduce available capacity by the number of participants booked.
+- When an experience or slot reaches full capacity it is automatically marked **Sold Out**.
 
 ---
 
@@ -148,28 +132,16 @@ Both models must be supported in V1. The booking flow adapts based on which sche
 
 ### Group Booking
 
-- A single user can book for multiple participants in one transaction
-- User specifies the number of participants at time of booking
-- Total price is calculated as: **price per person × number of participants**
-- One booking confirmation covers all participants in the group
-- One payment transaction covers the full group amount
-
-### Pricing Model
-
-- Pricing is always **per person** for all experience types in V1
-- No flat group pricing in V1
-- Admin sets the per-person price per experience (and per slot if fixed-date)
+- A single user can book for multiple participants in one transaction.
+- Total price is calculated as: **price per person × number of participants**.
 
 ### Payment Flow
 
-1. User selects experience and number of participants
-2. Total amount calculated and displayed clearly before payment
-3. System checks capacity — if insufficient spots remain, booking is blocked
-4. Razorpay payment initiated
-5. On payment success → booking instantly confirmed, capacity reduced, notifications sent
-6. On payment failure → booking marked as failed, user notified, capacity not reduced
-7. Razorpay webhook drives all booking state transitions
-8. All payment records are immutable after completion
+1. User selects experience and number of participants.
+2. System checks capacity — if insufficient spots remain, booking is blocked.
+3. Razorpay payment initiated.
+4. On payment success → booking instantly confirmed, capacity reduced, notifications sent.
+5. on payment failure → booking marked as failed, user notified, capacity not reduced.
 
 ---
 
@@ -177,184 +149,67 @@ Both models must be supported in V1. The booking flow adapts based on which sche
 
 ### 10.1 Public (No Login Required)
 
-- Browse all published experiences with dynamic category filtering
-- Search experiences by name or keyword
-- View full experience detail pages including:
-  - Title, description, and highlights
-  - Full itinerary
-  - Pricing per person
-  - Available dates or flexible scheduling indicator
-  - Remaining capacity or Sold Out status
-  - Difficulty level
-  - Experience images
-  - Category tags
-- Read published blog posts and stories
-- Submit contact and enquiry forms
-- Social share buttons on experience detail pages and blog posts
-- All public pages must be SEO-friendly with proper meta tags
-- Sitemap (sitemap.xml) and robots.txt present at launch
+- Browse all published experiences with dynamic category filtering.
+- View full experience detail pages with itinerary, pricing, and images.
+- Read published blog posts and stories.
+- Submit contact and enquiry forms.
+- All public pages are SEO-friendly with proper meta tags (Sitemap and Robots.txt included).
 
 ### 10.2 User Accounts
 
-- Register with email — email verification required before first booking
-- Login and logout securely
-- Session expiry enforced — users are logged out after inactivity
-- View and manage personal profile
-- Browse and book experiences (individual or group)
-- Complete payment via Razorpay
-- Receive instant booking confirmation on payment success
-- View personal booking history with participant count and payment status
-- View payment status for own bookings only
-- Write and submit blog posts for admin approval
-- View approval status of submitted blogs
+- Register and login securely via Custom JWT.
+- View and manage personal profile and booking history.
+- Complete payment via Razorpay.
+- Write and submit blog posts for admin approval.
 
 ### 10.3 Notifications
 
-All major events trigger both Email and SMS.
+All major events trigger Email notifications via **Resend** or **Zoho API**.
 
 | Event                          | User Notified  | Admin Notified |
 | ------------------------------ | -------------- | -------------- |
-| Booking confirmed              | ✅ Email + SMS | ✅ Email + SMS |
-| Booking cancelled              | ✅ Email + SMS | ✅ Email + SMS |
-| Payment failed                 | ✅ Email + SMS | —              |
-| Blog approved                  | ✅ Email + SMS | —              |
-| Blog rejected                  | ✅ Email + SMS | —              |
-| Experience reminder (pre-trip) | ✅ Email + SMS | —              |
+| Booking confirmed              | ✅ Email       | ✅ Email       |
+| Booking cancelled              | ✅ Email       | ✅ Email       |
+| Payment failed                 | ✅ Email       | —              |
+| Blog approved                  | ✅ Email       | —              |
 
-Notification services to be finalized in the Tech Stack document.  
-Candidates — Email: AWS SES, SendGrid, Resend  
-Candidates — SMS: MSG91, Twilio, AWS SNS  
-Both services are **V1 requirements — not optional.**
+### 10.4 Admin Panel (Command Center)
 
-### 10.4 Admin Panel
-
-- Experience management:
-  - Create, edit, publish, and archive experiences
-  - Configure scheduling type (fixed-date or flexible) per experience
-  - Set and manage participant capacity per experience and per slot
-  - Manage fixed-date slots (add, edit, remove dates)
-- Category management (add, rename, deactivate — no developer needed)
-- Booking management:
-  - View all bookings with participant count, payment status, and experience details
-  - Cancel bookings and initiate refunds via Razorpay
-- Blog moderation:
-  - Approve or reject submitted blogs
-  - Provide rejection reason to the author
-- Basic audit trail of key admin actions (bookings, cancellations, approvals)
-- Admin receives email + SMS on every new confirmed booking
-
-### 10.5 Legal Pages (Mandatory for V1)
-
-Required because real payments are being taken from real users.
-
-| Page                         | Purpose                                                     |
-| ---------------------------- | ----------------------------------------------------------- |
-| Terms & Conditions           | User agreement, usage rules, liability                      |
-| Privacy Policy               | How user data is collected, stored, and used                |
-| Cancellation & Refund Policy | Rules for cancellations, refund timelines, admin discretion |
-
-All three pages must be live **before** the platform accepts real payments.  
-Content to be written by the business. Pages must be linked in the site footer on every page.
-
-### 10.6 Analytics
-
-- Google Analytics integrated from launch
-- Tracks page views, experience views, booking funnel, and traffic sources
-- No additional analytics tool in V1
+- **Experience and Category Management**: Create, edit, and archive content.
+- **Booking Management**: View all bookings, manage cancellations and refunds.
+- **Role Management**: Control access via `SUPER_ADMIN`, `ADMIN`, `TREK_LEAD`, etc.
+- **System Configuration**: Real-time updates for tax, payments, and media providers.
 
 ---
 
-## 11. Platform & Device Requirements
+## 11. Monitoring & Analytics
 
-**The entire platform must be mobile-first.**
-
-This is a non-negotiable product requirement. The majority of users will access Param Adventures from a mobile browser.
-
-| Surface                              | Mobile Requirement                           |
-| ------------------------------------ | -------------------------------------------- |
-| Experience listings                  | ✅ Fully mobile optimized                    |
-| Experience detail pages              | ✅ Fully mobile optimized                    |
-| Booking flow including group booking | ✅ Fully functional on mobile                |
-| Razorpay payment                     | ✅ Mobile-friendly (native Razorpay support) |
-| User dashboard                       | ✅ Mobile optimized                          |
-| Blog reading and writing             | ✅ Mobile optimized                          |
-| Contact and enquiry forms            | ✅ Mobile optimized                          |
-| Admin panel                          | ✅ Usable on mobile, not just desktop        |
-| Legal pages                          | ✅ Mobile optimized                          |
-
-**Design principle:** Design mobile screens first, then scale up to tablet and desktop. Never the other way around.
-
-**No native app in V1.** The mobile browser experience is the product. A native iOS/Android app is a post-V1 consideration.
+- **Sentry**: Real-time error tracking and performance monitoring for server and client.
+- **Google Analytics**: Integrated visitor tracking and conversion funnel analysis.
 
 ---
 
-## 12. Security Standards (V1)
-
-- Email verification required before a user can complete their first booking
-- Sessions have explicit expiry — inactive users are logged out automatically
-- Passwords are never stored in plaintext
-- Authorization checks are enforced server-side — never client-side only
-- Users can only access their own bookings and payment data
-- Payment records are immutable after completion
-- All admin actions are audit logged with actor, action, timestamp, and target
-
----
-
-## 13. V1 Explicit Exclusions
-
-The following are intentionally out of scope for V1. Not forgotten — deferred.
-
-| Feature                                   | Deferred To              |
-| ----------------------------------------- | ------------------------ |
-| Content Uploader / Approver roles         | V2                       |
-| Corporate-specific booking flows          | V2                       |
-| Self-service booking cancellation by user | V2 (admin-handled in V1) |
-| Waiting list                              | V2                       |
-| Corporate-specific booking flows          | V2                       |
-| Multi-language support                    | V2                       |
-| WhatsApp notifications                    | V2                       |
-| Admin capacity override                   | V2                       |
-| Flat group pricing                        | V2                       |
-| Native mobile app                         | Post-V1                  |
-| Discount and coupon system                | Post-V1                  |
-| Recommendation engine                     | Post-V1                  |
-
----
-
-## 14. Success Criteria
+## 12. Success Criteria
 
 V1 is successful when all of the following are true:
 
 | Area          | Definition of Success                                                                      |
 | ------------- | ------------------------------------------------------------------------------------------ |
-| Technical     | Clean layered codebase, fully documented, stable on AWS                                    |
-| Product       | Users can browse, book individually or as a group, and pay on any device without confusion |
-| Capacity      | System never allows overbooking under any condition                                        |
-| Business      | 20 live experiences active, bookings processing reliably with Razorpay                     |
-| Notifications | Every key event triggers email and SMS without failure                                     |
-| Legal         | All three legal pages live before first real payment is accepted                           |
-| SEO           | Sitemap, robots.txt, and meta tags present at launch                                       |
-| Analytics     | Google Analytics tracking from day one                                                     |
-| Operations    | Admin can manage experiences, categories, bookings, and content without developer help     |
-| Quality       | No critical bugs or security issues in production at launch                                |
+| **Technical** | Stable on Render, Sentry reporting 0 critical issues, fully documented.                    |
+| **Product**   | Users can complete group bookings on mobile without friction.                              |
+| **Business**  | 20 live experiences active, payments processing reliably via Razorpay.                     |
+| **Legal**     | Terms, Privacy, and Refund policies live and linked in footer.                             |
 
 ---
 
-## 15. Document Version History
+## 13. Document Version History
 
-| Version | Changes                                                                                                                                                                                                                                                                                   | Date     |
-| ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- |
-| v1.0    | Initial PRD — vision, users, features, exclusions                                                                                                                                                                                                                                         | Feb 2026 |
-| v1.1    | Dynamic categories, email + SMS notifications, notification trigger matrix, admin notifications                                                                                                                                                                                           | Feb 2026 |
-| v1.2    | Mobile-first as non-negotiable platform requirement across all surfaces                                                                                                                                                                                                                   | Feb 2026 |
-| v1.3    | Group booking, per-person pricing, fixed + flexible scheduling, strict capacity enforcement, legal pages (T&C, Privacy Policy, Cancellation & Refund), Google Analytics, social sharing, sitemap and robots.txt, email verification on signup, session expiry, security standards section | Feb 2026 |
+| Version | Changes                                                                                              | Date       |
+| ------- | ---------------------------------------------------------------------------------------------------- | ---------- |
+| v1.0    | Initial PRD — vision, users, features, exclusions                                                   | Feb 2026   |
+| v1.3    | Group booking, legal pages, Google Analytics integration.                                            | Feb 2026   |
+| v1.3.1  | Render deployment target, Sentry monitoring, Modular Command Center architecture, and Role Refactor. | April 2026 |
 
 ---
 
-**Status: Awaiting Approval**
-
-Reply with:
-
-- ✅ Approved — lock it and move to Document 2: Roles & Access Control
-- ✅ Approved with changes — list what to change
-- ❌ Needs rework — explain why
+**Status: Ready for Final Review**

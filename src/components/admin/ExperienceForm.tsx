@@ -264,7 +264,7 @@ export default function ExperienceForm({
       try {
         const res = await fetch("/api/admin/settings");
         const data = await res.json();
-        if (data.settings && data.settings.taxConfig) {
+        if (data.settings?.taxConfig) {
           const config = data.settings.taxConfig;
           if (Array.isArray(config)) {
              setTaxes(config);

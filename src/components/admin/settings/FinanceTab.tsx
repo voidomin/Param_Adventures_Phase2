@@ -5,7 +5,7 @@ import { SectionTitle, InputGroup, TabProps } from "./Common";
 export default function FinanceTab(props: TabProps) {
   const { getVal, updateSetting } = props;
   
-  // Linter-Safe State Initialization: Derived from parent state on mount
+  // State Initialization: Derived from parent state on mount
   const [localTaxConfig, setLocalTaxConfig] = useState<{ id: string; name: string; percentage: number }[]>(() => {
     const raw = getVal("PLATFORM", "taxConfig");
     if (!raw) return [];
@@ -55,7 +55,7 @@ export default function FinanceTab(props: TabProps) {
       <div className="bg-card border border-border rounded-3xl overflow-hidden">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="bg-foreground/[0.02] border-b border-border">
+            <tr className="bg-foreground/5 border-b border-border">
               <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-foreground/40">Tax Name</th>
               <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-foreground/40 text-center">Percentage (%)</th>
               <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-foreground/40 text-right">Actions</th>
@@ -68,7 +68,7 @@ export default function FinanceTab(props: TabProps) {
               </tr>
             ) : (
               localTaxConfig.map((tax: { id: string; name: string; percentage: number }) => (
-                <tr key={tax.id} className="group hover:bg-foreground/[0.01] transition-colors">
+                <tr key={tax.id} className="group hover:bg-foreground/5 transition-colors">
                   <td className="px-6 py-4">
                     <input 
                       type="text" 
@@ -101,7 +101,7 @@ export default function FinanceTab(props: TabProps) {
             )}
           </tbody>
         </table>
-        <div className="p-4 bg-foreground/[0.02] border-t border-border">
+        <div className="p-4 bg-foreground/5 border-t border-border">
           <button 
             onClick={addTaxItem}
             className="w-full py-3 flex items-center justify-center gap-2 text-sm font-bold text-primary hover:bg-primary/5 rounded-xl transition-all border border-dashed border-primary/20"
