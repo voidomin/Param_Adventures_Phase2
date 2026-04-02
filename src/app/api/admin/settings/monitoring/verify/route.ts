@@ -1,6 +1,5 @@
 import { NextResponse, NextRequest } from "next/server";
 import { authorizeRequest } from "@/lib/api-auth";
-import * as Sentry from "@sentry/nextjs";
 import { isSentryEnabled } from "@/lib/monitoring";
 
 export async function POST(request: NextRequest) {
@@ -23,24 +22,55 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "DSN is required" }, { status: 400 });
     }
 
-    // Trigger a heartbeat message to Sentry
-    // We send a direct message which works even if the default SDK isn't fully initialized with this DSN yet
-    Sentry.captureMessage("Sentry Verification Heartbeat - Param Adventures Command Center", {
-      level: "info",
-      tags: {
-        type: "verification",
-        source: "admin-dashboard"
-      },
-      extra: {
-        requestedBy: auth.userId,
-        timestamp: new Date().toISOString()
-      }
-    });
+    // Low-level Sentry Heartbeat via Fetch
+    // This bypasses the Sentry 10 SDK initialization limits and works even if
+    // NEXT_PUBLIC_SENTRY_DSN is missing from the environment.
+    try {
+      const dsnUrl = new URL(dsn);
+      const projectId = dsnUrl.pathname.substring(1);
+      const publicKey = dsnUrl.username;
+      const host = dsnUrl.host;
+      
+      const storeUrl = `https://${host}/api/${projectId}/store/`;
+      const authHeader = `Sentry sentry_version=7, sentry_key=${publicKey}, sentry_client=param-adventures-admin/1.0.0`;
 
-    return NextResponse.json({ 
-      success: true, 
-      message: "Verification heartbeat sent to Sentry. Please check your Sentry dashboard issues list." 
-    });
+      const sentryRes = await fetch(storeUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Sentry-Auth": authHeader,
+        },
+        body: JSON.stringify({
+          message: "Sentry Verification Heartbeat - Param Adventures Command Center",
+          level: "info",
+          tags: {
+            type: "verification",
+            source: "admin-dashboard",
+            environment: process.env.NODE_ENV,
+            platform: "render"
+          },
+          extra: {
+            requestedBy: auth.userId,
+            timestamp: new Date().toISOString()
+          }
+        }),
+      });
+
+      if (!sentryRes.ok) {
+        const errText = await sentryRes.text();
+        console.error("Sentry ingestion error:", errText);
+        return NextResponse.json({ error: `Sentry server rejected the heartbeat: ${sentryRes.status}` }, { status: 502 });
+      }
+
+      return NextResponse.json({ 
+        success: true, 
+        message: "Verification heartbeat sent! If this arrives in Sentry, your DSN and networking are healthy." 
+      });
+
+    } catch (e) {
+      console.error("DSN parsing error:", e);
+      return NextResponse.json({ error: "Invalid DSN format" }, { status: 400 });
+    }
   } catch (error: unknown) {
     console.error("Sentry verify error:", error);
     return NextResponse.json(

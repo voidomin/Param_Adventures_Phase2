@@ -247,6 +247,20 @@ export default function IntegrationsTab({ getVal, updateSetting }: TabProps) {
           </div>
         </div>
 
+        <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-500/10 space-y-2 translate-y-[-8px]">
+          <div className="flex items-center gap-2 text-blue-500 text-[10px] font-black uppercase tracking-widest">
+            <Zap className="w-3 h-3" /> Deployment Configuration
+          </div>
+          <div className="space-y-1.5">
+            <p className="text-[11px] text-foreground/60 leading-relaxed font-bold">
+              <span className="text-foreground">SENTRY_AUTH_TOKEN</span>, <span className="text-foreground">SENTRY_ORG</span>, and <span className="text-foreground">SENTRY_PROJECT</span> are used by Render at <span className="text-primary/70">Build Time</span> to upload source maps.
+            </p>
+            <p className="text-[11px] text-foreground/60 leading-relaxed font-bold">
+              For <span className="text-blue-500">runtime error tracking</span>, ensure <span className="text-foreground uppercase">Next_Public_Sentry_Dsn</span> is also set in your Render environment. The toggle below acts as a live kill-switch for that DSN.
+            </p>
+          </div>
+        </div>
+
         <div className="space-y-6">
           <InputGroup
             label="Sentry DSN"
