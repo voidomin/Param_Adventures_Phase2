@@ -1,6 +1,6 @@
 # 🚀 Param Adventures — Deployment Guide
 
-This guide walks you through deploying Param Adventures to a production environment (AWS or any cloud provider).
+This guide walks you through deploying Param Adventures to a production or staging environment. The platform currently supports **Render** (Primary Staging/UAT) and **AWS** (Production Target).
 
 ---
 
@@ -8,10 +8,12 @@ This guide walks you through deploying Param Adventures to a production environm
 
 1. [Prerequisites](#prerequisites)
 2. [Environment Variables](#environment-variables)
-3. [Database Setup (PostgreSQL)](#database-setup-postgresql)
-4. [Build & Deploy](#build--deploy)
-5. [Post-Deploy Verification](#post-deploy-verification)
-6. [Common Deployment Commands](#common-deployment-commands)
+3. [Deployment Options](#deployment-options)
+   - [Option A: Render (Recommended for Staging/UAT)](#option-a-render)
+   - [Option B: AWS (Production)](#option-b-aws)
+4. [Sentry Monitoring Setup](#sentry-monitoring-setup)
+5. [Database Setup (PostgreSQL)](#database-setup-postgresql)
+6. [Post-Deploy Verification](#post-deploy-verification)
 7. [Troubleshooting](#troubleshooting)
 
 ---
@@ -19,11 +21,11 @@ This guide walks you through deploying Param Adventures to a production environm
 ## Prerequisites
 
 | Requirement        | Details                                           |
-| ------------------ | ------------------------------------------------- |
+| ------------------ | :------------------------------------------------ |
 | **Node.js**        | v20+ recommended (tested on v22)                  |
-| **PostgreSQL**     | v14+ (AWS RDS, Supabase, Neon, or self-hosted)    |
+| **PostgreSQL**     | v14+ (Render DB, AWS RDS, or self-hosted)         |
 | **npm**            | v10+                                              |
-| **Domain (optional)** | For production HTTPS                           |
+| **Sentry DSN**     | For real-time error tracking                      |
 
 ### Third-Party Accounts Required
 
@@ -31,214 +33,143 @@ This guide walks you through deploying Param Adventures to a production environm
 - **Cloudinary** — Image/video storage ([cloudinary.com](https://cloudinary.com))
 - **AWS S3** — Media library storage ([aws.amazon.com/s3](https://aws.amazon.com/s3))
 - **Resend** — Transactional emails ([resend.com](https://resend.com))
+- **Zoho** — Domain email & API delivery ([zoho.com/mail](https://zoho.com/mail))
 
 ---
 
 ## Environment Variables
 
-Create a `.env` file in the project root with the following variables. **All variables are required** unless marked optional.
+Create your environment variables in the Render/AWS dashboard. **All variables are required** for full system functionality.
 
 ```bash
 # ══════════════════════════════════════════
-# DATABASE
+# CORE & DATABASE
 # ══════════════════════════════════════════
-DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/param_adventure?schema=public"
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/db_name?sslmode=require"
+NEXT_PUBLIC_APP_URL="https://your-app.onrender.com"
+NODE_ENV="production"
 
 # ══════════════════════════════════════════
-# JWT AUTHENTICATION
+# AUTHENTICATION
 # ══════════════════════════════════════════
-JWT_SECRET=<a-strong-random-string-at-least-32-chars>
-JWT_EXPIRY=15m
-REFRESH_TOKEN_EXPIRY=7d
+JWT_SECRET="a-strong-random-string-at-least-32-chars"
+JWT_EXPIRY="15m"
+REFRESH_TOKEN_EXPIRY="7d"
 
 # ══════════════════════════════════════════
-# PAYMENT GATEWAY (Razorpay)
+# MONITORING (Sentry)
 # ══════════════════════════════════════════
-RAZORPAY_KEY_ID=rzp_live_xxxxxxxxxxxx
-RAZORPAY_KEY_SECRET=xxxxxxxxxxxxxxxxxxxxxxxx
-NEXT_PUBLIC_RAZORPAY_KEY_ID=rzp_live_xxxxxxxxxxxx   # Same as RAZORPAY_KEY_ID (exposed to client for checkout)
+SENTRY_DSN="https://xxxx@xxxx.ingest.sentry.io/xxxx"
+NEXT_PUBLIC_SENTRY_DSN="https://xxxx@xxxx.ingest.sentry.io/xxxx"
 
 # ══════════════════════════════════════════
-# EMAIL (Resend)
+# PAYMENTS (Razorpay)
 # ══════════════════════════════════════════
-RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxx
+RAZORPAY_KEY_ID="rzp_live_xxxxxxxxxxxx"
+RAZORPAY_KEY_SECRET="xxxxxxxxxxxxxxxxxxxxxxxx"
+NEXT_PUBLIC_RAZORPAY_KEY_ID="rzp_live_xxxxxxxxxxxx"
+RAZORPAY_WEBHOOK_SECRET="xxxxxxxxxxxxxxxxxxxxxxxx"
 
 # ══════════════════════════════════════════
-# MEDIA — AWS S3 (Media Library)
+# EMAILS (Dual Provider)
 # ══════════════════════════════════════════
-AWS_REGION=ap-south-1
-AWS_ACCESS_KEY_ID=AKIAxxxxxxxxxxxxxxxx
-AWS_SECRET_ACCESS_KEY=xxxxxxxxxxxxxxxxxxxxxxxx
-AWS_S3_BUCKET_NAME=param-adventure-media
+EMAIL_PROVIDER="RESEND" # Options: RESEND | ZOHO_API | ZOHO_SMTP
+RESEND_API_KEY="re_xxxxxxxxxxxxxxxxxxxxxxxx"
+ZOHO_API_KEY="xxxxxxxxxxxxxxxxxxxxxxxx"
+SMTP_USER="booking@yourdomain.com"
+SMTP_PASS="xxxxxxxx"
 
 # ══════════════════════════════════════════
-# MEDIA — Cloudinary (Payment Proofs, Avatars)
+# MEDIA (AWS S3 & Cloudinary)
 # ══════════════════════════════════════════
-CLOUDINARY_CLOUD_NAME=your-cloud-name
-CLOUDINARY_API_KEY=xxxxxxxxxxxx
-CLOUDINARY_API_SECRET=xxxxxxxxxxxxxxxxxxxxxxxxx
+AWS_REGION="ap-south-1"
+AWS_ACCESS_KEY_ID="AKIAxxxxxxxxxxxxxxxx"
+AWS_SECRET_ACCESS_KEY="xxxxxxxxxxxxxxxxxxxxxxxx"
+AWS_S3_BUCKET_NAME="param-adventure-media"
+
+CLOUDINARY_CLOUD_NAME="your-cloud-name"
+CLOUDINARY_API_KEY="xxxxxxxxxxxx"
+CLOUDINARY_API_SECRET="xxxxxxxxxxxxxxxxxxxxxxxxx"
 
 # ══════════════════════════════════════════
-# SUPER ADMIN BOOTSTRAP (for seed script)
+# BOOTSTRAP (Admin Seed)
 # ══════════════════════════════════════════
-ADMIN_EMAIL=admin@yourdomain.com
-ADMIN_PASSWORD=<strong-password>
-
-# ══════════════════════════════════════════
-# APP URL (used in emails, sitemap, SEO)
-# ══════════════════════════════════════════
-NEXT_PUBLIC_APP_URL=https://yourdomain.com
+ADMIN_EMAIL="admin@yourdomain.com"
+ADMIN_PASSWORD="a-strong-password"
+FORCE_SEED="true" # Set to true only for the first deployment
 ```
-
-> **⚠️ Security Notes:**
-> - Use a unique, random `JWT_SECRET` (not the dev fallback).
-> - Never commit `.env` to version control.
-> - Use live Razorpay keys (`rzp_live_`), not test keys (`rzp_test_`).
 
 ---
 
-## Database Setup (PostgreSQL)
+## Option A: Render (Recommended)
 
-### Step 1: Create the Database
+Render is used for current UAT and Staging environments.
 
-On AWS RDS (or your provider), create a PostgreSQL database named `param_adventure`. Update `DATABASE_URL` accordingly.
+1. **New Web Service**: Connect your GitHub repository.
+2. **Build Selection**: Select **Node** as the environment.
+3. **Build Command**: `npm install && npx prisma generate && npm run build`
+4. **Start Command**: `npm start`
+5. **Environment Variables**: Add all variables from the list above.
+6. **Health Check Path**: `/api/health` (Optional, ensure route exists).
 
-### Step 2: Apply Migrations
+---
 
+## Option B: AWS (Production Target)
+
+1. **App Runner**: Connect the repository to AWS App Runner for automated builds.
+2. **Runtime**: Node.js 22.
+3. **Build Command**: Same as Render.
+4. **Database**: Provision an **Amazon RDS (PostgreSQL)** instance. Ensure VPC peering or Public Access (if necessary) is configured.
+
+---
+
+## Sentry Monitoring Setup
+
+1. Create a new project in your [Sentry Dashboard](https://sentry.io/).
+2. Select **Next.js** as the platform.
+3. Copy the `SENTRY_DSN` and add it to your environment variables.
+4. The application is pre-configured with `@sentry/nextjs`. Errors will be captured automatically on both client and server sides.
+
+---
+
+## Database Setup
+
+### Step 1: Apply Migrations
+Always run this command first to ensure the schema is up to date.
 ```bash
 npx prisma migrate deploy
 ```
 
-This creates all tables. **This command is non-destructive** — it only applies pending migrations and never drops existing data.
-
-### Step 3: Seed Roles, Permissions & Admin
-
+### Step 2: Seed the Database
+Crucial for creating the **6 Roles** and **26 Permissions** needed for the Command Center.
 ```bash
 npx prisma db seed
 ```
-
-This runs `prisma/seed.mjs` and creates:
-
-| What                    | Count | Details                                      |
-| ----------------------- | :---: | -------------------------------------------- |
-| **Categories**          |   6   | Trekking, Camping, Spiritual, etc.           |
-| **Roles**               |   6   | SUPER_ADMIN, ADMIN, TRIP_MANAGER, etc.       |
-| **Permissions**         |  26   | trip:browse, booking:create, user:view-all…  |
-| **Role ↔ Permission**   |  62   | Full RBAC matrix linking roles to permissions|
-| **Super Admin User**    |   1   | Created using ADMIN_EMAIL / ADMIN_PASSWORD   |
-
-The seed is **idempotent** (uses `upsert`) — safe to run multiple times without data duplication.
-
----
-
-## Build & Deploy
-
-### Option A: Standard Node.js Server (EC2 / VPS)
-
-```bash
-# 1. Install dependencies
-npm ci --production=false
-
-# 2. Generate Prisma Client
-npx prisma generate
-
-# 3. Apply migrations
-npx prisma migrate deploy
-
-# 4. Seed the database (first deploy only, safe to rerun)
-npx prisma db seed
-
-# 5. Build the application
-npm run build
-
-# 6. Start the production server
-npm start
-```
-
-Use a process manager like **PM2** to keep the server running:
-
-```bash
-pm2 start npm --name "param-adventure" -- start
-pm2 save
-pm2 startup
-```
-
-### Option B: Docker (ECS / Fargate)
-
-Create a multi-stage Dockerfile:
-
-```dockerfile
-FROM node:22-alpine AS builder
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci
-COPY . .
-RUN npx prisma generate
-RUN npm run build
-
-FROM node:22-alpine AS runner
-WORKDIR /app
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
-
-EXPOSE 3000
-ENV PORT=3000
-CMD ["node", "server.js"]
-```
-
-> **Note:** Run `prisma migrate deploy` and `prisma db seed` as a separate init container or CI/CD step, not inside the web server container.
 
 ---
 
 ## Post-Deploy Verification
 
-After deployment, run through this checklist:
-
-| #  | Check                                  | How                                                         |
-|----|----------------------------------------|-------------------------------------------------------------|
-| 1  | App loads                              | Visit `https://yourdomain.com`                              |
-| 2  | Super Admin login                      | Log in at `/login` with ADMIN_EMAIL / ADMIN_PASSWORD        |
-| 3  | Admin sidebar fully visible            | Navigate to `/admin` — should see all 12 sidebar items      |
-| 4  | Categories exist                       | Check `/admin/categories` — 6 default categories            |
-| 5  | New user registration                  | Register a new account — should get REGISTERED_USER role    |
-| 6  | Razorpay checkout                      | Start a booking — Razorpay modal should open                |
-| 7  | Emails working                         | Register → should receive welcome email                     |
-| 8  | Media upload                           | Upload an image in `/admin/media`                           |
-| 9  | Hero slides                            | If no DB slides, fallback images will display (expected)    |
-
----
-
-## Common Deployment Commands
-
-```bash
-# Apply new schema changes (safe, non-destructive)
-npx prisma migrate deploy
-
-# Re-seed roles/permissions (idempotent, safe to rerun)
-npx prisma db seed
-
-# Open database GUI (dev only, not for production)
-npx prisma studio
-
-# Check build locally before deploying
-npm run build
-
-# View production logs (if using PM2)
-pm2 logs param-adventure
-```
+| # | Check             | Expected Result                                |
+|---|-------------------|------------------------------------------------|
+| 1 | App Loads         | Landing page is visible.                       |
+| 2 | Admin Login       | Can access `/admin` with `ADMIN_EMAIL`.         |
+| 3 | Command Center    | All tabs (Finance, Security, etc.) are visible. |
+| 4 | Razorpay Modal    | Opens successfully on experience checkout.     |
+| 5 | Sentry Check      | Visit `/api/debug-sentry` to trigger a test error.|
 
 ---
 
 ## Troubleshooting
 
-### "Cannot connect to database"
-- Verify `DATABASE_URL` is correct and the database server allows connections from your server's IP.
-- On AWS RDS, check the **Security Group** allows inbound connections on port `5432`.
+### "Database connection error"
+- Ensure `?sslmode=require` is added to your `DATABASE_URL` for Render/RDS.
+- Check that your IP or the Hosting Provider's IP is allowed in the DB access list.
 
-### "Seed script fails"
+### "Seed failed"
+- Ensure `FORCE_SEED=true` is set if you are seeding on a production-like environment.
+- Verify `ADMIN_EMAIL` hasn't already been created.
+ls"
 - Ensure `ADMIN_EMAIL` and `ADMIN_PASSWORD` are set in `.env`.
 - The seed script requires `dotenv`, `bcryptjs`, `@prisma/client`, `@prisma/adapter-pg`, and `pg` — all included in project dependencies.
 
