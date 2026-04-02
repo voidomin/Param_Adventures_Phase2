@@ -2,9 +2,40 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { prisma } from "@/lib/db";
 
-const JWT_SECRET = process.env.JWT_SECRET || "fallback-dev-secret";
-const JWT_EXPIRY = process.env.JWT_EXPIRY || "1h";
-const REFRESH_TOKEN_EXPIRY = process.env.REFRESH_TOKEN_EXPIRY || "7d";
+// ─── Auth Config Logic ────────────────────────────────────
+
+interface AuthConfig {
+  JWT_SECRET: string;
+  JWT_EXPIRY: string;
+}
+
+/**
+ * Fetches the JWT Secret and Expiry from the database (platform settings)
+ * with automatic fallback to environment variables.
+ */
+async function getAuthConfig(): Promise<AuthConfig> {
+  try {
+    const settings = await prisma.platformSetting.findMany({
+      where: { key: { in: ["jwt_secret", "session_lifetime_hrs"] } },
+    });
+
+    const getVal = (key: string) => settings.find(s => s.key === key)?.value;
+
+    const secret = getVal("jwt_secret") || process.env.JWT_SECRET || "fallback-dev-secret";
+    
+    // session_lifetime_hrs is stored as a number (string-version), e.g. "168"
+    const lifetime = getVal("session_lifetime_hrs");
+    const expiry = lifetime ? `${lifetime}h` : process.env.JWT_EXPIRY || "1h";
+
+    return { JWT_SECRET: secret, JWT_EXPIRY: expiry };
+  } catch (error) {
+    console.error("Failed to fetch auth config from DB, using fallback:", error);
+    return {
+      JWT_SECRET: process.env.JWT_SECRET || "fallback-dev-secret",
+      JWT_EXPIRY: process.env.JWT_EXPIRY || "1h",
+    };
+  }
+}
 
 // ─── Password Hashing ───────────────────────────────────
 
@@ -35,10 +66,11 @@ export interface RefreshPayload {
   tokenVersion: number;
 }
 
-export function generateAccessToken(userId: string, roleName: string, tokenVersion: number, expiresIn?: string): string {
-  return jwt.sign({ userId, roleName, tokenVersion } satisfies TokenPayload, JWT_SECRET, {
+export async function generateAccessToken(userId: string, roleName: string, tokenVersion: number, expiresIn?: string): Promise<string> {
+  const config = await getAuthConfig();
+  return jwt.sign({ userId, roleName, tokenVersion } satisfies TokenPayload, config.JWT_SECRET, {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expiresIn: (expiresIn || JWT_EXPIRY) as any,
+    expiresIn: (expiresIn || config.JWT_EXPIRY) as any,
   });
 }
 
@@ -62,10 +94,13 @@ export function parseExpiryToSeconds(expiry: string): number {
 /**
  * Generate a long-lived refresh token (default: 7 days).
  */
-export function generateRefreshToken(userId: string, tokenVersion: number, expiresIn?: string): string {
+export async function generateRefreshToken(userId: string, tokenVersion: number, expiresIn?: string): Promise<string> {
+  const config = await getAuthConfig();
+  const REFRESH_TOKEN_EXPIRY = process.env.REFRESH_TOKEN_EXPIRY || "7d";
+  
   return jwt.sign(
     { userId, type: "refresh", tokenVersion } satisfies RefreshPayload,
-    JWT_SECRET,
+    config.JWT_SECRET,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     { expiresIn: (expiresIn || REFRESH_TOKEN_EXPIRY) as any },
   );
@@ -78,7 +113,8 @@ export function generateRefreshToken(userId: string, tokenVersion: number, expir
  */
 export async function verifyAccessToken(token: string): Promise<TokenPayload | null> {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as TokenPayload;
+    const config = await getAuthConfig();
+    const decoded = jwt.verify(token, config.JWT_SECRET) as TokenPayload;
     if (!decoded.userId || !decoded.roleName || decoded.tokenVersion === undefined) return null;
 
     const user = await prisma.user.findUnique({
@@ -100,9 +136,10 @@ export async function verifyAccessToken(token: string): Promise<TokenPayload | n
  * Verify and decode a refresh token.
  * Returns the payload or null if invalid/expired.
  */
-export function verifyRefreshToken(token: string): RefreshPayload | null {
+export async function verifyRefreshToken(token: string): Promise<RefreshPayload | null> {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as RefreshPayload;
+    const config = await getAuthConfig();
+    const decoded = jwt.verify(token, config.JWT_SECRET) as RefreshPayload;
     if (!decoded.userId || decoded.type !== "refresh") return null;
     return decoded;
   } catch {

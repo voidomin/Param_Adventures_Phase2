@@ -27,7 +27,14 @@ export async function GET(request: NextRequest) {
       "razorpay_key_id", 
       "razorpay_key_secret", 
       "razorpay_webhook_secret",
-      "taxConfig"
+      "taxConfig",
+      "companyName",
+      "gstNumber",
+      "panNumber",
+      "stateCode",
+      "companyAddress",
+      "jwt_secret",
+      "session_lifetime_hrs"
     ];
     const platformSettings = await prisma.platformSetting.findMany({
       where: { key: { in: platformKeys } }
@@ -68,7 +75,14 @@ export async function PUT(request: NextRequest) {
       "razorpay_key_id", 
       "razorpay_key_secret", 
       "razorpay_webhook_secret",
-      "taxConfig"
+      "taxConfig",
+      "companyName",
+      "gstNumber",
+      "panNumber",
+      "stateCode",
+      "companyAddress",
+      "jwt_secret",
+      "session_lifetime_hrs"
     ]);
 
     // Transactionally update all settings

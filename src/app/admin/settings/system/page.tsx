@@ -66,9 +66,16 @@ interface AuditLog {
 }
 
 interface DBStats {
+  status: string;
+  connection: {
+    host: string;
+    region: string;
+  };
   stats: {
     users: number;
+    bookings: number;
     experiences: number;
+    payments: number;
     auditLogs: number;
   };
 }
@@ -94,14 +101,26 @@ export default function SystemSettingsPage() {
       const res = await fetch("/api/admin/settings/system");
       if (!res.ok) throw new Error("Failed to fetch settings");
       const data = await res.json();
-      setPlatformSettings(data.platformSettings || []);
-      setSiteSettings(data.siteSettings || []);
-      setDbStats(data.dbStats || null);
+      setPlatformSettings(data.platform || []);
+      setSiteSettings(data.site || []);
     } catch (err) {
       Sentry.captureException(err);
       console.error(err);
     } finally {
       setIsLoading(false);
+    }
+  }, [isWhitelisted]);
+
+  const fetchDbStats = useCallback(async () => {
+    if (!isWhitelisted) return;
+    try {
+      const res = await fetch("/api/admin/settings/system/database/stats");
+      if (res.ok) {
+        const data = await res.json();
+        setDbStats(data);
+      }
+    } catch (err) {
+      console.error("DB stats fetch error:", err);
     }
   }, [isWhitelisted]);
 
@@ -133,10 +152,11 @@ export default function SystemSettingsPage() {
     if (isWhitelisted) {
       fetchData();
       fetchLogs();
+      fetchDbStats();
     } else if (!authLoading && user) {
        setIsLoading(false);
     }
-  }, [isWhitelisted, fetchData, fetchLogs, authLoading, user]);
+  }, [isWhitelisted, fetchData, fetchLogs, fetchDbStats, authLoading, user]);
 
   const updateSetting = (type: "PLATFORM" | "SITE", key: string, value: string) => {
     if (type === "PLATFORM") {
@@ -184,21 +204,25 @@ export default function SystemSettingsPage() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const settingsMap: Record<string, string> = {};
-      platformSettings.forEach(s => settingsMap[s.key] = s.value);
-      siteSettings.forEach(s => settingsMap[s.key] = s.value);
-
-      const res = await fetch("/api/admin/settings", {
-        method: "PUT",
-        body: JSON.stringify({ settings: settingsMap }),
+      const res = await fetch("/api/admin/settings/system", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          platform: platformSettings,
+          site: siteSettings,
+        }),
       });
 
       if (res.ok) {
         await fetchLogs();
         globalThis.alert?.("Settings updated successfully!");
+      } else {
+        const err = await res.json();
+        globalThis.alert?.(err.error || "Failed to save settings.");
       }
     } catch (err) {
       console.error(err);
+      globalThis.alert?.("Network error — could not save.");
     } finally {
       setIsSaving(false);
     }
@@ -261,9 +285,11 @@ export default function SystemSettingsPage() {
              <button 
               onClick={() => fetchData()}
               disabled={isLoading}
-              className="p-3 bg-secondary text-secondary-foreground rounded-2xl hover:scale-105 active:scale-95 transition-all border border-border"
+              title="Reset all changes to database values"
+              className="px-5 py-3 bg-secondary text-secondary-foreground rounded-2xl hover:scale-105 active:scale-95 transition-all border border-border flex items-center gap-2 group/reset"
             >
-              <RefreshCw className={`w-5 h-5 ${isLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
+              <span className="font-bold text-xs uppercase tracking-widest whitespace-nowrap">Reset</span>
             </button>
             <button 
               onClick={handleSave}
@@ -307,13 +333,39 @@ export default function SystemSettingsPage() {
                  <div className="space-y-3">
                     <div className="flex justify-between items-center">
                        <span className="text-[10px] uppercase font-black tracking-widest opacity-30">Database</span>
-                       <span className="flex items-center gap-1 text-[10px] font-bold text-green-500">
-                          <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> ONLINE
-                       </span>
+                        {(() => {
+                          const isHealthy = dbStats?.status === "HEALTHY";
+                          const isChecking = !dbStats;
+                          
+                          let colorClass = "text-red-500";
+                          let dotClass = "bg-red-500";
+                          let label = "OFFLINE";
+
+                          if (isHealthy) {
+                            colorClass = "text-green-500";
+                            dotClass = "bg-green-500 animate-pulse";
+                            label = "ONLINE";
+                          } else if (isChecking) {
+                            colorClass = "text-foreground/30";
+                            dotClass = "bg-foreground/20";
+                            label = "CHECKING...";
+                          }
+                          
+                          return (
+                            <span className={`flex items-center gap-1 text-[10px] font-bold ${colorClass}`}>
+                              <div className={`w-1.5 h-1.5 rounded-full ${dotClass}`} />
+                              {label}
+                            </span>
+                          );
+                        })()}
                     </div>
                     <div className="flex justify-between items-center">
-                       <span className="text-[10px] uppercase font-black tracking-widest opacity-30">Cluster</span>
-                       <span className="text-[10px] font-bold">Region: Bombay</span>
+                       <span className="text-[10px] uppercase font-black tracking-widest opacity-30">Region</span>
+                       <span className="text-[10px] font-bold">{dbStats?.connection?.region || "Loading..."}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                       <span className="text-[10px] uppercase font-black tracking-widest opacity-30">Host</span>
+                       <span className="text-[10px] font-bold text-foreground/50 truncate max-w-[120px]" title={dbStats?.connection?.host}>{dbStats?.connection?.host || "..."}</span>
                     </div>
                  </div>
               </div>
@@ -398,9 +450,9 @@ export default function SystemSettingsPage() {
 
         {/* Global Infrastructure Status Bar */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-8">
-           <StatCard label="Live Connections" value={String(dbStats?.stats?.users || "...")} color="text-blue-500" />
-           <StatCard label="Architecture Health" value="OPTIMIZED" color="text-green-500" />
-           <StatCard label="Mutations / Hour" value="4.2k" color="text-primary" />
+           <StatCard label="Registered Users" value={String(dbStats?.stats?.users ?? "...")} color="text-blue-500" />
+           <StatCard label="Total Bookings" value={String(dbStats?.stats?.bookings ?? "...")} color="text-green-500" />
+           <StatCard label="Audit Events" value={String(dbStats?.stats?.auditLogs ?? "...")} color="text-primary" />
         </div>
 
         <footer className="pt-12 pb-8 border-t border-border/20 text-center space-y-4">

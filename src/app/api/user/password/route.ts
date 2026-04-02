@@ -70,24 +70,26 @@ export async function PATCH(request: NextRequest) {
     });
 
     // ─── Token Rotation ──────────────────────────────────
-    const expirySetting = await prisma.platformSetting.findUnique({ where: { key: "jwt_expiry" } });
-    const refreshExpirySetting = await prisma.platformSetting.findUnique({ where: { key: "refresh_token_expiry" } });
-    
-    const accessToken = generateAccessToken(updatedUser.id, updatedUser.role.name, updatedUser.tokenVersion, expirySetting?.value);
-    const refreshToken = generateRefreshToken(updatedUser.id, updatedUser.tokenVersion, refreshExpirySetting?.value);
+    const accessToken = await generateAccessToken(updatedUser.id, updatedUser.role.name, updatedUser.tokenVersion);
+    const refreshToken = await generateRefreshToken(updatedUser.id, updatedUser.tokenVersion);
 
     const response = NextResponse.json({ message: "Password updated successfully" });
 
-    // Set new tokens in cookies
-    const accessTokenExpiry = parseExpiryToSeconds(expirySetting?.value || "15m");
-    const refreshTokenExpiry = parseExpiryToSeconds(refreshExpirySetting?.value || "7d");
+    // We still have to parse expiry strings for cookies maxAge
+    // These will fallback to defaults if not in DB
+    const pSettings = await prisma.platformSetting.findMany({
+      where: { key: { in: ["session_lifetime_hrs"] } }
+    });
+    const sHrs = pSettings.find(s => s.key === "session_lifetime_hrs")?.value || "1";
+    const jExpiryStr = `${sHrs}h`;
+    const rExpiryStr = process.env.REFRESH_TOKEN_EXPIRY || "7d";
 
     response.cookies.set("accessToken", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: accessTokenExpiry,
+      maxAge: parseExpiryToSeconds(jExpiryStr),
     });
 
     response.cookies.set("refreshToken", refreshToken, {
@@ -95,7 +97,7 @@ export async function PATCH(request: NextRequest) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       path: "/",
-      maxAge: refreshTokenExpiry,
+      maxAge: parseExpiryToSeconds(rExpiryStr),
     });
 
     return response;

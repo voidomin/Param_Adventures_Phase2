@@ -70,7 +70,7 @@ describe("Auth Utilities", () => {
 
     it("generates an access token", async () => {
       const { generateAccessToken } = await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth");
-      const token = generateAccessToken(userId, roleName, tokenVersion);
+      const token = await generateAccessToken(userId, roleName, tokenVersion);
       expect(token).toBeDefined();
       const decoded = jwt.decode(token) as any;
       expect(decoded.userId).toBe(userId);
@@ -80,7 +80,7 @@ describe("Auth Utilities", () => {
 
     it("generates a refresh token", async () => {
       const { generateRefreshToken } = await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth");
-      const token = generateRefreshToken(userId, tokenVersion);
+      const token = await generateRefreshToken(userId, tokenVersion);
       expect(token).toBeDefined();
       const decoded = jwt.decode(token) as any;
       expect(decoded.userId).toBe(userId);
@@ -96,7 +96,7 @@ describe("Auth Utilities", () => {
         deletedAt: null,
       } as any);
 
-      const token = generateAccessToken(userId, roleName, tokenVersion);
+      const token = await generateAccessToken(userId, roleName, tokenVersion);
       const decoded = await verifyAccessToken(token);
 
       expect(decoded).not.toBeNull();
@@ -115,7 +115,7 @@ describe("Auth Utilities", () => {
         deletedAt: new Date(),
       } as any);
 
-      const token = generateAccessToken(userId, roleName, tokenVersion);
+      const token = await generateAccessToken(userId, roleName, tokenVersion);
       const decoded = await verifyAccessToken(token);
 
       expect(decoded).toBeNull();
@@ -129,7 +129,7 @@ describe("Auth Utilities", () => {
         deletedAt: null,
       } as any);
 
-      const token = generateAccessToken(userId, roleName, tokenVersion);
+      const token = await generateAccessToken(userId, roleName, tokenVersion);
       const decoded = await verifyAccessToken(token);
 
       expect(decoded).toBeNull();
@@ -143,7 +143,7 @@ describe("Auth Utilities", () => {
         deletedAt: null,
       } as any);
 
-      const token = generateAccessToken(userId, roleName, tokenVersion);
+      const token = await generateAccessToken(userId, roleName, tokenVersion);
       const decoded = await verifyAccessToken(token);
 
       expect(decoded).toBeNull();
@@ -157,15 +157,15 @@ describe("Auth Utilities", () => {
 
     it("verifies a valid refresh token", async () => {
       const { generateRefreshToken, verifyRefreshToken } = await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth");
-      const token = generateRefreshToken(userId, tokenVersion);
-      const decoded = verifyRefreshToken(token);
+      const token = await generateRefreshToken(userId, tokenVersion);
+      const decoded = await verifyRefreshToken(token);
       expect(decoded).not.toBeNull();
       expect(decoded?.userId).toBe(userId);
     });
 
     it("returns null for malformed refresh token", async () => {
       const { verifyRefreshToken } = await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth");
-      const decoded = verifyRefreshToken("bad-token");
+      const decoded = await verifyRefreshToken("bad-token");
       expect(decoded).toBeNull();
     });
   });

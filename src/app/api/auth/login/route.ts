@@ -69,18 +69,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // ─── Fetch Dynamic Settings ─────────────────────────
-    const settings = await prisma.platformSetting.findMany({
-      where: { key: { in: ["jwt_expiry", "refresh_token_expiry"] } }
-    });
-    const getVal = (key: string, fallback: string) => settings.find(s => s.key === key)?.value || fallback;
-
-    const jwtExpiry = getVal("jwt_expiry", "1h");
-    const refreshExpiry = getVal("refresh_token_expiry", "7d");
-
     // ─── Generate tokens ─────────────────────────────────
-    const accessToken = generateAccessToken(user.id, user.role.name, user.tokenVersion, jwtExpiry);
-    const refreshToken = generateRefreshToken(user.id, user.tokenVersion, refreshExpiry);
+    const accessToken = await generateAccessToken(user.id, user.role.name, user.tokenVersion);
+    const refreshToken = await generateRefreshToken(user.id, user.tokenVersion);
 
     // ─── Response with refresh cookie ────────────────────
     const response = NextResponse.json({
@@ -93,12 +84,21 @@ export async function POST(request: NextRequest) {
       accessToken,
     });
 
+    // We still have to parse expiry strings for cookies maxAge
+    // These will fallback to defaults if not in DB
+    const settings = await prisma.platformSetting.findMany({
+      where: { key: { in: ["session_lifetime_hrs"] } }
+    });
+    const sessionHrs = settings.find(s => s.key === "session_lifetime_hrs")?.value || "1";
+    const jwtExpiryStr = `${sessionHrs}h`;
+    const refreshExpiryStr = process.env.REFRESH_TOKEN_EXPIRY || "7d";
+
     response.cookies.set("accessToken", accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
       path: "/",
-      maxAge: parseExpiryToSeconds(jwtExpiry),
+      maxAge: parseExpiryToSeconds(jwtExpiryStr),
     });
 
     response.cookies.set("refreshToken", refreshToken, {
@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
       path: "/",
-      maxAge: parseExpiryToSeconds(refreshExpiry),
+      maxAge: parseExpiryToSeconds(refreshExpiryStr),
     });
 
     return response;
