@@ -10,6 +10,7 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
+  Cell,
   AreaChart,
   Area,
 } from "recharts";
@@ -137,7 +138,7 @@ export default function DashboardCharts({
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={charts.bookingsByStatus.map(b => ({ ...b, fill: b.color }))}
+                      data={charts.bookingsByStatus}
                       dataKey="count"
                       nameKey="status"
                       cx="50%"
@@ -146,7 +147,11 @@ export default function DashboardCharts({
                       innerRadius="55%"
                       paddingAngle={3}
                       strokeWidth={0}
-                    />
+                    >
+                      {charts.bookingsByStatus.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
                     <Tooltip content={<PieTooltip />} />
                   </PieChart>
                 </ResponsiveContainer>
