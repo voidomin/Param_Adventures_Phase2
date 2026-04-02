@@ -27,6 +27,7 @@ vi.mock("@/lib/db", () => {
     },
     platformSetting: {
       findUnique: vi.fn(),
+      findMany: vi.fn(),
     },
   };
   return { prisma: mockPrisma };
@@ -47,6 +48,7 @@ const mockHash = vi.mocked(bcrypt.hash);
 const mockFindUnique = vi.mocked(prisma.user.findUnique);
 const mockUpdate = vi.mocked(prisma.user.update);
 const mockPlatformSettingFindUnique = vi.mocked(prisma.platformSetting.findUnique);
+const mockPlatformSettingFindMany = vi.mocked(prisma.platformSetting.findMany);
 
 const createRequest = (body: unknown) =>
   new NextRequest("http://localhost/api/user/password", {
@@ -120,8 +122,9 @@ describe("PATCH /api/user/password", () => {
     mockCompare.mockResolvedValue(true as any);
     mockHash.mockResolvedValue("new_hash" as any);
     mockUpdate.mockResolvedValue({ id: "u1", role: { name: "REGISTERED_USER" }, tokenVersion: 2 } as any);
-    mockGenerateAccessToken.mockReturnValue("new_access");
-    mockGenerateRefreshToken.mockReturnValue("new_refresh");
+    mockPlatformSettingFindMany.mockResolvedValue([{ key: "session_lifetime_hrs", value: "24" }] as any);
+    mockGenerateAccessToken.mockResolvedValue("new_access" as any);
+    mockGenerateRefreshToken.mockResolvedValue("new_refresh" as any);
 
     const response = await PATCH(createRequest({ currentPassword: "x", newPassword: "12345678" }));
     const data = await response.json();

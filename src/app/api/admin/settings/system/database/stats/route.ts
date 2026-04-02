@@ -3,15 +3,40 @@ import { prisma } from "@/lib/db";
 import { authorizeSystemRequest } from "@/lib/api-auth";
 
 /**
+ * Extracts the host from a DATABASE_URL for display purposes.
+ * e.g. "postgresql://user:pass@host.render.com:5432/db" → "host.render.com"
+ */
+function extractDbInfo(): { host: string; region: string } {
+  try {
+    const raw = process.env.DATABASE_URL || "";
+    const url = new URL(raw);
+    const host = url.hostname || "localhost";
+
+    // Infer region from common cloud DB host patterns
+    let region = "Local";
+    if (host.includes("render.com")) region = "Render (Managed)";
+    else if (host.includes("ap-south")) region = "Mumbai (ap-south-1)";
+    else if (host.includes("us-east")) region = "N. Virginia (us-east-1)";
+    else if (host.includes("eu-west")) region = "Ireland (eu-west-1)";
+    else if (host.includes("supabase")) region = "Supabase (Managed)";
+    else if (host.includes("neon")) region = "Neon (Managed)";
+    else if (host !== "localhost") region = host;
+
+    return { host, region };
+  } catch {
+    return { host: "unknown", region: "Unknown" };
+  }
+}
+
+/**
  * GET /api/admin/settings/system/database/stats
- * Provides platform-wide health metrics and row counts.
+ * Provides platform-wide health metrics, row counts, and connection info.
  */
 export async function GET(request: NextRequest) {
   const auth = await authorizeSystemRequest(request);
   if (!auth.authorized) return auth.response;
 
   try {
-    // 1. Fetch row counts for critical tables
     const [
       userCount,
       bookingCount,
@@ -26,12 +51,14 @@ export async function GET(request: NextRequest) {
       prisma.auditLog.count(),
     ]);
 
-    // 2. Simple connection test
+    // Connection test
     await prisma.$queryRaw`SELECT 1`;
+
+    const { host, region } = extractDbInfo();
 
     return NextResponse.json({
       status: "HEALTHY",
-      diskUsage: "N/A (Managed)", // Render doesn't expose this via Prisma easily
+      connection: { host, region },
       stats: {
         users: userCount,
         bookings: bookingCount,
@@ -39,13 +66,13 @@ export async function GET(request: NextRequest) {
         payments: paymentCount,
         auditLogs: auditCount,
       },
-      lastBackup: "Check Audit Logs", // We can improve this later
     });
   } catch (error) {
     console.error("Database stats error:", error);
     return NextResponse.json(
       { 
         status: "UNHEALTHY", 
+        connection: { host: "unreachable", region: "Unknown" },
         error: "Failed to retrieve database metrics." 
       },
       { status: 500 },
