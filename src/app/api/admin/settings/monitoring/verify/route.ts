@@ -34,6 +34,8 @@ export async function POST(request: NextRequest) {
       const storeUrl = `https://${host}/api/${projectId}/store/`;
       const authHeader = `Sentry sentry_version=7, sentry_key=${publicKey}, sentry_client=param-adventures-admin/1.0.0`;
 
+      console.info(`[SENTRY] Attempting heartbeat: Project=${projectId} Host=${host}`);
+
       const sentryRes = await fetch(storeUrl, {
         method: "POST",
         headers: {
@@ -56,11 +58,15 @@ export async function POST(request: NextRequest) {
         }),
       });
 
+      console.info(`[SENTRY] Response status: ${sentryRes.status}`);
+
       if (!sentryRes.ok) {
         const errText = await sentryRes.text();
-        console.error("Sentry ingestion error:", errText);
+        console.error("[SENTRY] Heartbeat failed with error:", errText);
         return NextResponse.json({ error: `Sentry server rejected the heartbeat: ${sentryRes.status}` }, { status: 502 });
       }
+
+      console.info("[SENTRY] Heartbeat sent successfully.");
 
       return NextResponse.json({ 
         success: true, 
@@ -68,7 +74,7 @@ export async function POST(request: NextRequest) {
       });
 
     } catch (e) {
-      console.error("DSN parsing error:", e);
+      console.error("[SENTRY] DSN parsing error:", e);
       return NextResponse.json({ error: "Invalid DSN format" }, { status: 400 });
     }
   } catch (error: unknown) {
