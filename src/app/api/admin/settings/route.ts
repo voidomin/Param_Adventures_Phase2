@@ -34,7 +34,15 @@ export async function GET(request: NextRequest) {
       "stateCode",
       "companyAddress",
       "jwt_secret",
-      "session_lifetime_hrs"
+      "session_lifetime_hrs",
+      "google_analytics_id",
+      "google_analytics_enabled",
+      "sentry_dsn",
+      "sentry_enabled",
+      "meta_pixel_id",
+      "meta_pixel_enabled",
+      "microsoft_clarity_id",
+      "microsoft_clarity_enabled"
     ];
     const platformSettings = await prisma.platformSetting.findMany({
       where: { key: { in: platformKeys } }
@@ -82,7 +90,15 @@ export async function PUT(request: NextRequest) {
       "stateCode",
       "companyAddress",
       "jwt_secret",
-      "session_lifetime_hrs"
+      "session_lifetime_hrs",
+      "google_analytics_id",
+      "google_analytics_enabled",
+      "sentry_dsn",
+      "sentry_enabled",
+      "meta_pixel_id",
+      "meta_pixel_enabled",
+      "microsoft_clarity_id",
+      "microsoft_clarity_enabled"
     ]);
 
     // Transactionally update all settings
