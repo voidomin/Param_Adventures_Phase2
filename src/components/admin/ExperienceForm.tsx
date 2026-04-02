@@ -264,8 +264,20 @@ export default function ExperienceForm({
       try {
         const res = await fetch("/api/admin/settings");
         const data = await res.json();
-        if (data.settings && Array.isArray(data.settings.taxConfig)) {
-          setTaxes(data.settings.taxConfig);
+        if (data.settings?.taxConfig) {
+          const config = data.settings.taxConfig;
+          if (Array.isArray(config)) {
+             setTaxes(config);
+          } else if (typeof config === "string") {
+            try {
+               const parsed = JSON.parse(config);
+               if (Array.isArray(parsed)) setTaxes(parsed);
+            } catch (e) {
+               console.error("Failed to parse taxConfig string:", e);
+               // In case of parsing failure, fallback to an empty array
+               setTaxes([]);
+            }
+          }
         }
       } catch (err) {
         console.error("Failed to load settings:", err);

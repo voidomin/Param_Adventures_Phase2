@@ -121,8 +121,8 @@ describe("POST /api/auth/login", () => {
       role: { name: "CUSTOMER" },
     } as any);
     mockVerifyPassword.mockResolvedValue(true);
-    mockGenerateAccessToken.mockReturnValue("access-1" as any);
-    mockGenerateRefreshToken.mockReturnValue("refresh-1" as any);
+    mockGenerateAccessToken.mockResolvedValue("access-1" as any);
+    mockGenerateRefreshToken.mockResolvedValue("refresh-1" as any);
 
     const response = await POST(
       createRequest({ email: "USER@example.com", password: TEST_PASSWORD }),

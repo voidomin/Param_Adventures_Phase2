@@ -237,13 +237,13 @@ function HeroTags({ experience }: Readonly<{ experience: ExperienceWithInclusion
       <div className="snap-start whitespace-nowrap relative">
         <DifficultyMeter difficulty={experience.difficulty} />
       </div>
-      {experience.maxGroupSize && (
+      {!!experience.maxGroupSize && (
         <span className="bg-background text-foreground px-4 py-1.5 rounded-full text-sm font-bold border border-border shadow-sm flex items-center gap-1.5 snap-start whitespace-nowrap">
           <Users className="w-4 h-4 text-primary" /> Max Group:{" "}
           {experience.maxGroupSize}
         </span>
       )}
-      {(experience.minAge || experience.ageRange) && (
+      {!!(experience.minAge || experience.ageRange) && (
         <span className="bg-background text-foreground px-4 py-1.5 rounded-full text-sm font-bold border border-border shadow-sm flex items-center gap-1.5 snap-start whitespace-nowrap">
           <Baby className="w-4 h-4 text-primary" /> Age:{" "}
           {experience.minAge || experience.ageRange}+

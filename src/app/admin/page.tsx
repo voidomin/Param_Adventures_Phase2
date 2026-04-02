@@ -12,7 +12,6 @@ import {
   User,
   Users,
   ArrowRight,
-  Settings,
   Compass,
 } from "lucide-react";
 import Link from "next/link";
@@ -201,21 +200,7 @@ export default function AdminDashboardPage() {
               </div>
             </div>
 
-            {user?.role === "SUPER_ADMIN" && (
-              <button
-                onClick={() => router.push("/admin/settings")}
-                className="flex w-full items-center justify-between rounded-xl border border-border bg-primary/5 p-4 hover:border-primary/50 transition-colors cursor-pointer text-left mt-2"
-              >
-                <div>
-                  <div className="font-bold text-primary flex items-center gap-2">
-                    <Settings className="w-5 h-5" /> Platform Settings
-                  </div>
-                  <div className="text-sm text-foreground/60">
-                    Configure taxes, deductibles & company info
-                  </div>
-                </div>
-              </button>
-            )}
+
           </div>
         </div>
 
