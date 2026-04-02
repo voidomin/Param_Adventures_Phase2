@@ -384,6 +384,13 @@ export default function ExperienceForm({
     setIsSubmitting(true);
     setError("");
 
+    // ─── Frontend Mandatory Check ───────────────────────
+    if (!title.trim()) { setError("Title is required"); setIsSubmitting(false); return; }
+    if (!location.trim()) { setError("Location is required"); setIsSubmitting(false); return; }
+    if (!basePrice || basePrice < 0) { setError("Valid Base Price is required"); setIsSubmitting(false); return; }
+    if (!coverImage) { setError("Cover Image is required"); setIsSubmitting(false); return; }
+    if (!capacity || capacity < 1) { setError("Capacity must be at least 1"); setIsSubmitting(false); return; }
+
     const payload = {
       title,
       description,
@@ -398,7 +405,7 @@ export default function ExperienceForm({
       cardImage,
       images: images.filter((url) => url.trim() !== ""),
       itinerary,
-      categoryIds: selectedCategories,
+      categoryIds: (selectedCategories || []).filter((id): id is string => typeof id === "string" && id !== ""),
       inclusions: inclusions
         .map((item) => item.text)
         .filter((item) => item.trim() !== ""),
@@ -432,7 +439,7 @@ export default function ExperienceForm({
       dropoffTime,
       vibeTags: vibeTags
         .map((item) => item.text)
-        .filter((item) => item.trim() !== ""),
+        .filter((text): text is string => typeof text === "string" && text.trim() !== ""),
     };
 
     try {
@@ -448,7 +455,17 @@ export default function ExperienceForm({
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to save experience");
+      if (!res.ok) {
+        if (data.details) {
+          const detailMsgs = Object.entries(
+            data.details as Record<string, string[]>,
+          )
+            .map(([field, errors]) => `${field}: ${errors[0]}`)
+            .join(" | ");
+          throw new Error(`Validation Error: ${detailMsgs}`);
+        }
+        throw new Error(data.error || "Failed to save experience");
+      }
 
       router.push("/admin/experiences");
       router.refresh(); // Ensure the list page shows the new data
@@ -980,7 +997,7 @@ export default function ExperienceForm({
                 htmlFor="title"
                 className="block text-sm font-medium text-foreground/80 mb-1"
               >
-                Title
+                Title <span className="text-red-500">*</span>
               </label>
               <input
                 id="title"
@@ -1011,7 +1028,7 @@ export default function ExperienceForm({
                   htmlFor="loc"
                   className="block text-sm font-medium text-foreground/80 mb-1"
                 >
-                  Location
+                  Location <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="loc"
@@ -1027,7 +1044,7 @@ export default function ExperienceForm({
                   htmlFor="dur"
                   className="block text-sm font-medium text-foreground/80 mb-1"
                 >
-                  Duration (Days)
+                  Duration (Days) <span className="text-red-500">*</span>
                 </label>
                 <input
                   id="dur"
@@ -1137,7 +1154,7 @@ export default function ExperienceForm({
 
           <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
             <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
-              Trip Cover Image
+              Trip Cover Image <span className="text-red-500">*</span>
             </h2>
             <p className="text-sm text-foreground/60 pb-2">
               The main hero banner at the top of the trip page.
@@ -1510,7 +1527,7 @@ export default function ExperienceForm({
             </div>
             <div className="space-y-3">
               {highlights.map((item) => (
-                <div key={item.id} className="flex gap-2">
+                <div key={item.id} className="relative group">
                   <input
                     type="text"
                     value={item.text}
@@ -1521,7 +1538,7 @@ export default function ExperienceForm({
                         e.target.value,
                       )
                     }
-                    className="flex-1 bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                    className="w-full bg-background border border-border rounded-xl pl-4 pr-10 py-2 text-foreground text-sm focus:outline-none focus:border-primary/50 transition-colors"
                     placeholder="e.g. Stargazing at 14,000ft"
                   />
                   <button
@@ -1529,10 +1546,10 @@ export default function ExperienceForm({
                     onClick={() =>
                       removeStringArrayItem(setHighlights, item.id)
                     }
-                    className="p-2 text-foreground/50 hover:text-red-500 transition-colors"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center text-foreground/20 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                    title="Remove Highlight"
                   >
-                    {" "}
-                    <Trash2 className="w-5 h-5" />{" "}
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               ))}
@@ -1557,7 +1574,7 @@ export default function ExperienceForm({
             </div>
             <div className="space-y-3">
               {vibeTags.map((item) => (
-                <div key={item.id} className="flex gap-2">
+                <div key={item.id} className="relative group">
                   <input
                     type="text"
                     value={item.text}
@@ -1568,16 +1585,16 @@ export default function ExperienceForm({
                         e.target.value,
                       )
                     }
-                    className="flex-1 bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                    className="w-full bg-background border border-border rounded-xl pl-4 pr-10 py-2 text-foreground text-sm focus:outline-none focus:border-primary/50 transition-colors"
                     placeholder="e.g. Solo-Female Friendly"
                   />
                   <button
                     type="button"
                     onClick={() => removeStringArrayItem(setVibeTags, item.id)}
-                    className="p-2 text-foreground/50 hover:text-red-500 transition-colors"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center text-foreground/20 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                    title="Remove Vibe Tag"
                   >
-                    {" "}
-                    <Trash2 className="w-5 h-5" />{" "}
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               ))}
@@ -1618,7 +1635,7 @@ export default function ExperienceForm({
                   htmlFor="maxGroupSize"
                   className="block text-sm font-medium text-foreground/80 mb-1"
                 >
-                  Max Group Size
+                  Max Group Size (Per Booking)
                 </label>
                 <input
                   id="maxGroupSize"
@@ -1810,7 +1827,7 @@ export default function ExperienceForm({
                 htmlFor="price"
                 className="block text-sm font-medium text-foreground/80 mb-1"
               >
-                Total Gross Price (₹)
+                Total Gross Price (₹) <span className="text-red-500">*</span>
               </label>
               <input
                 id="price"
@@ -1863,7 +1880,7 @@ export default function ExperienceForm({
                 htmlFor="cap"
                 className="block text-sm font-medium text-foreground/80 mb-1"
               >
-                Total Capacity
+                Total Capacity <span className="text-red-500">*</span>
               </label>
               <input
                 id="cap"

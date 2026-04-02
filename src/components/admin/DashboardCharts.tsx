@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import {
   BarChart,
   Bar,
@@ -74,200 +75,151 @@ function PieTooltip({
 export default function DashboardCharts({
   charts,
 }: Readonly<{ charts: ChartData }>) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setMounted(true), 300);
+    return () => clearTimeout(timer);
+  }, []);
+
   const totalBookings = charts.bookingsByStatus.reduce(
     (s, b) => s + b.count,
     0,
   );
 
+  // ── Render Helpers to avoid nested ternary ──
+  
+  const renderRevenueChart = () => {
+    if (!mounted) return <div className="w-full h-full bg-foreground/5 animate-pulse rounded-xl" />;
+    return (
+      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+        <BarChart
+          data={charts.revenueByMonth}
+          margin={{ top: 5, right: 5, bottom: 5, left: 5 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+          <XAxis dataKey="month" tick={{ fontSize: 12, fill: "var(--foreground)" }} axisLine={false} tickLine={false} />
+          <YAxis
+            tick={{ fontSize: 11, fill: "var(--foreground)" }}
+            axisLine={false}
+            tickLine={false}
+            tickFormatter={(v) => v >= 1000 ? `₹${(v / 1000).toFixed(0)}k` : `₹${v}`}
+          />
+          <Tooltip content={<CustomTooltip prefix="₹" />} />
+          <Bar dataKey="revenue" fill="var(--primary)" radius={[8, 8, 0, 0]} maxBarSize={48} />
+        </BarChart>
+      </ResponsiveContainer>
+    );
+  };
+
+  const renderBookingPie = () => {
+    if (!mounted) return <div className="w-full h-full bg-foreground/5 animate-pulse rounded-xl" />;
+    if (totalBookings === 0) return <p className="text-foreground/40 text-sm">No bookings yet</p>;
+
+    return (
+      <div className="w-full h-full flex items-center">
+        <div className="w-1/2 h-full">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+            <PieChart>
+              <Pie
+                data={charts.bookingsByStatus.map(b => ({ ...b, fill: b.color }))}
+                dataKey="count"
+                nameKey="status"
+                cx="50%"
+                cy="50%"
+                outerRadius="80%"
+                innerRadius="55%"
+                paddingAngle={3}
+                strokeWidth={0}
+              />
+              <Tooltip content={<PieTooltip />} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="w-1/2 space-y-3 pl-4">
+          {charts.bookingsByStatus.map((item) => (
+            <div key={item.status} className="flex items-center gap-3">
+              <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+              <div className="flex-1 min-w-0">
+                <span className="text-sm font-medium text-foreground">{item.status}</span>
+              </div>
+              <span className="text-sm font-black text-foreground">{item.count}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+  const renderExperiencesChart = () => {
+    if (!mounted) return <div className="w-full h-full bg-foreground/5 animate-pulse rounded-xl" />;
+    if (charts.topExperiences.length === 0) return <p className="text-foreground/40 text-sm">No data yet</p>;
+
+    return (
+      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+        <BarChart
+          data={charts.topExperiences}
+          layout="vertical"
+          margin={{ top: 5, right: 20, bottom: 5, left: 5 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" horizontal={false} />
+          <XAxis type="number" tick={{ fontSize: 11, fill: "var(--foreground)" }} axisLine={false} tickLine={false} />
+          <YAxis
+            dataKey="name"
+            type="category"
+            width={120}
+            tick={{ fontSize: 11, fill: "var(--foreground)" }}
+            axisLine={false}
+            tickLine={false}
+          />
+          <Tooltip content={<CustomTooltip suffix=" bookings" />} />
+          <Bar dataKey="bookings" fill="#8b5cf6" radius={[0, 8, 8, 0]} maxBarSize={32} />
+        </BarChart>
+      </ResponsiveContainer>
+    );
+  };
+
+  const renderUserGrowthChart = () => {
+    if (!mounted) return <div className="w-full h-full bg-foreground/5 animate-pulse rounded-xl" />;
+    return (
+      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+        <AreaChart data={charts.userGrowth} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+          <defs>
+            <linearGradient id="userGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+          <XAxis dataKey="month" tick={{ fontSize: 12, fill: "var(--foreground)" }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 11, fill: "var(--foreground)" }} axisLine={false} tickLine={false} allowDecimals={false} />
+          <Tooltip content={<CustomTooltip suffix=" users" />} />
+          <Area type="monotone" dataKey="users" stroke="#22c55e" strokeWidth={2.5} fill="url(#userGrad)" />
+        </AreaChart>
+      </ResponsiveContainer>
+    );
+  };
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* ── Revenue Chart ─────────────────────────────── */}
-      <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
-        <h3 className="text-sm font-bold text-foreground/60 uppercase tracking-wider mb-4">
-          Revenue Trend (6 Months)
-        </h3>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={charts.revenueByMonth}
-              margin={{ top: 5, right: 5, bottom: 5, left: 5 }}
-            >
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="var(--border)"
-                vertical={false}
-              />
-              <XAxis
-                dataKey="month"
-                tick={{ fontSize: 12, fill: "var(--foreground)" }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tick={{ fontSize: 11, fill: "var(--foreground)" }}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={(v) =>
-                  v >= 1000 ? `₹${(v / 1000).toFixed(0)}k` : `₹${v}`
-                }
-              />
-              <Tooltip content={<CustomTooltip prefix="₹" />} />
-              <Bar
-                dataKey="revenue"
-                fill="var(--primary)"
-                radius={[8, 8, 0, 0]}
-                maxBarSize={48}
-              />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+      <div className="bg-card border border-border rounded-2xl p-6 shadow-sm overflow-hidden min-h-[350px]">
+        <h3 className="text-sm font-bold text-foreground/60 uppercase tracking-wider mb-4">Revenue Trend (6 Months)</h3>
+        <div className="h-64 w-full">{renderRevenueChart()}</div>
       </div>
 
-      {/* ── Booking Status Pie ────────────────────────── */}
-      <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
-        <h3 className="text-sm font-bold text-foreground/60 uppercase tracking-wider mb-4">
-          Booking Distribution
-        </h3>
-        <div className="h-64 flex items-center justify-center">
-          {totalBookings === 0 ? (
-            <p className="text-foreground/40 text-sm">No bookings yet</p>
-          ) : (
-            <div className="w-full h-full flex items-center">
-              <div className="w-1/2 h-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={charts.bookingsByStatus.map(b => ({ ...b, fill: b.color }))}
-                      dataKey="count"
-                      nameKey="status"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius="80%"
-                      innerRadius="55%"
-                      paddingAngle={3}
-                      strokeWidth={0}
-                    />
-                    <Tooltip content={<PieTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="w-1/2 space-y-3 pl-4">
-                {charts.bookingsByStatus.map((item) => (
-                  <div key={item.status} className="flex items-center gap-3">
-                    <div
-                      className="w-3 h-3 rounded-full shrink-0"
-                      style={{ backgroundColor: item.color }}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <span className="text-sm font-medium text-foreground">
-                        {item.status}
-                      </span>
-                    </div>
-                    <span className="text-sm font-black text-foreground">
-                      {item.count}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+      <div className="bg-card border border-border rounded-2xl p-6 shadow-sm overflow-hidden min-h-[350px]">
+        <h3 className="text-sm font-bold text-foreground/60 uppercase tracking-wider mb-4">Booking Distribution</h3>
+        <div className="h-64 w-full flex items-center justify-center">{renderBookingPie()}</div>
       </div>
 
-      {/* ── Top Experiences ───────────────────────────── */}
-      <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
-        <h3 className="text-sm font-bold text-foreground/60 uppercase tracking-wider mb-4">
-          Top Experiences by Bookings
-        </h3>
-        <div className="h-64">
-          {charts.topExperiences.length === 0 ? (
-            <div className="h-full flex items-center justify-center">
-              <p className="text-foreground/40 text-sm">No data yet</p>
-            </div>
-          ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={charts.topExperiences}
-                layout="vertical"
-                margin={{ top: 5, right: 20, bottom: 5, left: 5 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="var(--border)"
-                  horizontal={false}
-                />
-                <XAxis
-                  type="number"
-                  tick={{ fontSize: 11, fill: "var(--foreground)" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  dataKey="name"
-                  type="category"
-                  width={120}
-                  tick={{ fontSize: 11, fill: "var(--foreground)" }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip content={<CustomTooltip suffix=" bookings" />} />
-                <Bar
-                  dataKey="bookings"
-                  fill="#8b5cf6"
-                  radius={[0, 8, 8, 0]}
-                  maxBarSize={32}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </div>
+      <div className="bg-card border border-border rounded-2xl p-6 shadow-sm overflow-hidden min-h-[350px]">
+        <h3 className="text-sm font-bold text-foreground/60 uppercase tracking-wider mb-4">Top Experiences by Bookings</h3>
+        <div className="h-64 w-full flex items-center justify-center">{renderExperiencesChart()}</div>
       </div>
 
-      {/* ── User Growth ──────────────────────────────── */}
-      <div className="bg-card border border-border rounded-2xl p-6 shadow-sm">
-        <h3 className="text-sm font-bold text-foreground/60 uppercase tracking-wider mb-4">
-          User Registration Trend
-        </h3>
-        <div className="h-64">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart
-              data={charts.userGrowth}
-              margin={{ top: 5, right: 5, bottom: 5, left: 5 }}
-            >
-              <defs>
-                <linearGradient id="userGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="var(--border)"
-                vertical={false}
-              />
-              <XAxis
-                dataKey="month"
-                tick={{ fontSize: 12, fill: "var(--foreground)" }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tick={{ fontSize: 11, fill: "var(--foreground)" }}
-                axisLine={false}
-                tickLine={false}
-                allowDecimals={false}
-              />
-              <Tooltip content={<CustomTooltip suffix=" users" />} />
-              <Area
-                type="monotone"
-                dataKey="users"
-                stroke="#22c55e"
-                strokeWidth={2.5}
-                fill="url(#userGrad)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
+      <div className="bg-card border border-border rounded-2xl p-6 shadow-sm overflow-hidden min-h-[350px]">
+        <h3 className="text-sm font-bold text-foreground/60 uppercase tracking-wider mb-4">User Registration Trend</h3>
+        <div className="h-64 w-full">{renderUserGrowthChart()}</div>
       </div>
     </div>
   );
