@@ -19,6 +19,8 @@ export interface BookingEmailData {
   slotDate: string;
   participantCount: number;
   totalPrice: number;
+  baseFare?: number;
+  taxBreakdown?: { name: string; percentage: number; amount: number }[];
   bookingId: string;
 }
 
@@ -100,6 +102,10 @@ export async function sendBookingConfirmation(data: BookingEmailData) {
         userName={data.userName}
         tripName={data.experienceTitle}
         bookingId={data.bookingId}
+        participantCount={data.participantCount}
+        totalPrice={data.totalPrice}
+        baseFare={data.baseFare}
+        taxBreakdown={data.taxBreakdown}
       />,
     );
     await sendEmail({

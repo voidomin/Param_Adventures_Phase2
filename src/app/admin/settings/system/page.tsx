@@ -20,7 +20,9 @@ import {
   Image as ImageIcon,
   User as UserIcon,
   ArrowRight,
-  Activity as ActivityIcon
+  Activity as ActivityIcon,
+  Plus,
+  Trash2
 } from "lucide-react";
 import Image from "next/image";
 import { getMediaUrl } from "@/lib/media/media-gateway";
@@ -902,6 +904,47 @@ function SEOTab({ getVal, updateSetting }: Readonly<TabProps>) {
 }
 
 function FinanceTab({ getVal, updateSetting }: Readonly<TabProps>) {
+  const [localTaxConfig, setLocalTaxConfig] = useState<{ id: string; name: string; percentage: number }[]>([]);
+
+  useEffect(() => {
+    const raw = getVal("PLATFORM", "taxConfig");
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setLocalTaxConfig(parsed);
+      } catch (e) {
+        console.error("Failed to parse taxConfig:", e);
+      }
+    }
+  }, [getVal]);
+
+  const saveTaxConfig = (config: typeof localTaxConfig) => {
+    updateSetting("PLATFORM", "taxConfig", JSON.stringify(config));
+  };
+
+  const addTaxItem = () => {
+    const newConfig = [
+      ...localTaxConfig,
+      { id: `tax-${crypto.randomUUID().slice(0, 6)}`, name: "", percentage: 0 }
+    ];
+    setLocalTaxConfig(newConfig);
+    saveTaxConfig(newConfig);
+  };
+
+  const removeTaxItem = (id: string) => {
+    const newConfig = localTaxConfig.filter(item => item.id !== id);
+    setLocalTaxConfig(newConfig);
+    saveTaxConfig(newConfig);
+  };
+
+  const updateTaxItem = (id: string, field: "name" | "percentage", value: string | number) => {
+    const newConfig = localTaxConfig.map(item => 
+      item.id === id ? { ...item, [field]: value } : item
+    );
+    setLocalTaxConfig(newConfig);
+    saveTaxConfig(newConfig);
+  };
+
   return (
     <div className="space-y-8 animate-in slide-in-from-left-4 duration-300">
       <SectionTitle 
@@ -946,6 +989,101 @@ function FinanceTab({ getVal, updateSetting }: Readonly<TabProps>) {
             value={getVal("PLATFORM", "razorpay_webhook_secret")}
             onChange={(v: string) => updateSetting("PLATFORM", "razorpay_webhook_secret", v)}
             type="password"
+          />
+        </div>
+      </div>
+
+      <div className="p-8 bg-foreground/5 rounded-3xl space-y-8 border border-border/50">
+        <div className="flex items-center justify-between">
+           <h4 className="font-bold text-sm text-primary uppercase tracking-widest flex items-center gap-2">
+             <Settings2 className="w-4 h-4" /> 
+             Taxes & Fees components
+           </h4>
+           <button 
+             onClick={addTaxItem}
+             className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-xl text-xs font-bold hover:bg-primary/20 transition-all"
+           >
+             <Plus className="w-4 h-4" /> Add Component
+           </button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4">
+          {localTaxConfig.map((item) => (
+            <div key={item.id} className="flex flex-col md:flex-row gap-4 items-end bg-background/50 border border-border/50 p-4 rounded-2xl group animate-in slide-in-from-top-2">
+              <div className="flex-1 w-full">
+                <InputGroup
+                  label="Deductible Name"
+                  value={item.name}
+                  onChange={(v) => updateTaxItem(item.id, "name", v)}
+                  placeholder="e.g. CGST or Platform Fee"
+                />
+              </div>
+              <div className="w-full md:w-48">
+                <InputGroup
+                  label="Percentage (%)"
+                  value={String(item.percentage)}
+                  onChange={(v) => updateTaxItem(item.id, "percentage", parseFloat(v) || 0)}
+                  type="number"
+                />
+              </div>
+              <button 
+                onClick={() => removeTaxItem(item.id)}
+                className="p-3 text-foreground/20 hover:text-red-500 rounded-xl transition-colors bg-foreground/[0.02] border border-border group-hover:border-red-500/20"
+              >
+                <Trash2 className="w-5 h-5" />
+              </button>
+            </div>
+          ))}
+
+          {localTaxConfig.length === 0 && (
+            <div className="text-center py-10 border-2 border-dashed border-border rounded-3xl">
+               <p className="text-foreground/30 italic text-sm">No tax components defined. Standard revenue fallback will apply.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="p-8 bg-foreground/5 rounded-3xl space-y-6 border border-border/50">
+        <h4 className="font-bold text-sm text-primary uppercase tracking-widest flex items-center gap-2">
+          <UserIcon className="w-4 h-4" /> 
+          Company Identity (For GST Invoice)
+        </h4>
+
+        <div className="space-y-6">
+          <InputGroup
+            label="Legal Company Name"
+            value={getVal("SITE", "companyName")}
+            onChange={(v) => updateSetting("SITE", "companyName", v)}
+            placeholder="Param Adventures Pvt Ltd"
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <InputGroup
+              label="GSTIN"
+              value={getVal("SITE", "gstNumber")}
+              onChange={(v) => updateSetting("SITE", "gstNumber", v)}
+              placeholder="05AAAAA0000A1Z5"
+            />
+            <InputGroup
+              label="PAN"
+              value={getVal("SITE", "panNumber")}
+              onChange={(v) => updateSetting("SITE", "panNumber", v)}
+              placeholder="ABCDE1234F"
+            />
+            <InputGroup
+              label="State Code"
+              value={getVal("SITE", "stateCode")}
+              onChange={(v) => updateSetting("SITE", "stateCode", v)}
+              placeholder="05"
+            />
+          </div>
+
+          <InputGroup
+            label="Registered Address"
+            value={getVal("SITE", "companyAddress")}
+            onChange={(v) => updateSetting("SITE", "companyAddress", v)}
+            type="textarea"
+            placeholder="Full registered address for invoices..."
           />
         </div>
       </div>

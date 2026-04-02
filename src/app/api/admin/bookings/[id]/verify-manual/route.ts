@@ -32,6 +32,8 @@ async function sendBookingConfirmationEmail(bookingId: string) {
     slotDate: booking.slot.date.toISOString(),
     participantCount: booking.participantCount,
     totalPrice: Number(booking.totalPrice),
+    baseFare: Number(booking.baseFare),
+    taxBreakdown: booking.taxBreakdown as any,
     bookingId: booking.id,
   });
 }

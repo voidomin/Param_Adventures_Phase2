@@ -203,7 +203,7 @@ export default function AdminDashboardPage() {
 
             {user?.role === "SUPER_ADMIN" && (
               <button
-                onClick={() => router.push("/admin/settings")}
+                onClick={() => router.push("/admin/settings/system")}
                 className="flex w-full items-center justify-between rounded-xl border border-border bg-primary/5 p-4 hover:border-primary/50 transition-colors cursor-pointer text-left mt-2"
               >
                 <div>
