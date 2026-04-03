@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import * as Sentry from "@sentry/nextjs";
 import {
   Plus,
   Trash2,
@@ -12,6 +13,7 @@ import {
   Info,
   Download,
   Upload,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
 import MediaUploader from "./MediaUploader";
@@ -117,7 +119,8 @@ export default function ExperienceForm({
 
   const [categories, setCategories] = useState<Category[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(""); // General error
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [taxes, setTaxes] = useState<
     { id: string; name: string; percentage: number }[]
   >([]);
@@ -379,68 +382,124 @@ export default function ExperienceForm({
   const removeImageUrl = (index: number) =>
     setImages((prev) => prev.filter((_, i) => i !== index));
 
+  // ─── Refactored Logic Helpers ──────────────────────────
+
+  const validateForm = (): Record<string, string> => {
+    const newFieldErrors: Record<string, string> = {};
+    if (!title.trim()) newFieldErrors.title = "Title is required";
+    if (!location.trim()) newFieldErrors.location = "Location is required";
+    if (!basePrice || basePrice < 0)
+      newFieldErrors.basePrice = "Valid Base Price is required";
+    if (!coverImage) newFieldErrors.coverImage = "Cover Image is required";
+    if (!capacity || capacity < 1)
+      newFieldErrors.capacity = "Capacity must be at least 1";
+    return newFieldErrors;
+  };
+
+  const constructPayload = () => ({
+    title,
+    description,
+    basePrice: Number(basePrice),
+    capacity: Number(capacity),
+    durationDays: Number(durationDays),
+    location,
+    difficulty,
+    status,
+    isFeatured,
+    coverImage,
+    cardImage,
+    images: images.filter((url) => url.trim() !== ""),
+    itinerary,
+    categoryIds: (selectedCategories || []).filter(
+      (id): id is string => typeof id === "string" && id !== "",
+    ),
+    inclusions: inclusions
+      .map((item) => item.text)
+      .filter((item) => item.trim() !== ""),
+    exclusions: exclusions
+      .map((item) => item.text)
+      .filter((item) => item.trim() !== ""),
+    thingsToCarry: thingsToCarry
+      .map((item) => item.text)
+      .filter((item) => item.trim() !== ""),
+    pickupPoints: pickupPoints
+      .map((item) => item.text)
+      .filter((item) => item.trim() !== ""),
+    faqs: faqs
+      .filter((faq) => faq.question.trim() !== "" && faq.answer.trim() !== "")
+      .map(({ question, answer }) => ({ question, answer })),
+    cancellationPolicy,
+    meetingPoint,
+    minAge: minAge ? Number(minAge) : null,
+    maxAltitude,
+    trekDistance,
+    bestTimeToVisit,
+    maxGroupSize: maxGroupSize ? Number(maxGroupSize) : null,
+    highlights: highlights
+      .map((item) => item.text)
+      .filter((item) => item.trim() !== ""),
+    networkConnectivity,
+    lastAtm,
+    fitnessRequirement,
+    ageRange,
+    meetingTime,
+    dropoffTime,
+    vibeTags: vibeTags
+      .map((item) => item.text)
+      .filter(
+        (text): text is string => typeof text === "string" && text.trim() !== "",
+      ),
+  });
+
+  const handleServerErrors = (data: any) => {
+    if (!data.details) {
+      setError(data.error || "Failed to save experience");
+      return;
+    }
+
+    const serverFieldErrors: Record<string, string> = {};
+    Object.entries(data.details).forEach(([field, errors]) => {
+      if (Array.isArray(errors)) {
+        serverFieldErrors[field] = errors[0];
+      } else if (typeof errors === "string") {
+        serverFieldErrors[field] = errors;
+      }
+    });
+
+    setFieldErrors(serverFieldErrors);
+    setError("Validation failed. Please check the highlighted fields.");
+
+    // Auto-scroll to first error from server
+    const firstErrorField = Object.keys(serverFieldErrors)[0];
+    if (firstErrorField) {
+      document
+        .getElementById(firstErrorField)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  };
+
   const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError("");
+    setFieldErrors({});
 
-    // ─── Frontend Mandatory Check ───────────────────────
-    if (!title.trim()) { setError("Title is required"); setIsSubmitting(false); return; }
-    if (!location.trim()) { setError("Location is required"); setIsSubmitting(false); return; }
-    if (!basePrice || basePrice < 0) { setError("Valid Base Price is required"); setIsSubmitting(false); return; }
-    if (!coverImage) { setError("Cover Image is required"); setIsSubmitting(false); return; }
-    if (!capacity || capacity < 1) { setError("Capacity must be at least 1"); setIsSubmitting(false); return; }
+    // 1. Frontend Validation
+    const newFieldErrors = validateForm();
+    if (Object.keys(newFieldErrors).length > 0) {
+      setFieldErrors(newFieldErrors);
+      setError("Please fix the errors highlighted below");
+      setIsSubmitting(false);
 
-    const payload = {
-      title,
-      description,
-      basePrice: Number(basePrice),
-      capacity: Number(capacity),
-      durationDays: Number(durationDays),
-      location,
-      difficulty,
-      status,
-      isFeatured,
-      coverImage,
-      cardImage,
-      images: images.filter((url) => url.trim() !== ""),
-      itinerary,
-      categoryIds: (selectedCategories || []).filter((id): id is string => typeof id === "string" && id !== ""),
-      inclusions: inclusions
-        .map((item) => item.text)
-        .filter((item) => item.trim() !== ""),
-      exclusions: exclusions
-        .map((item) => item.text)
-        .filter((item) => item.trim() !== ""),
-      thingsToCarry: thingsToCarry
-        .map((item) => item.text)
-        .filter((item) => item.trim() !== ""),
-      pickupPoints: pickupPoints
-        .map((item) => item.text)
-        .filter((item) => item.trim() !== ""),
-      faqs: faqs
-        .filter((faq) => faq.question.trim() !== "" && faq.answer.trim() !== "")
-        .map(({ question, answer }) => ({ question, answer })),
-      cancellationPolicy,
-      meetingPoint,
-      minAge: minAge ? Number(minAge) : null,
-      maxAltitude,
-      trekDistance,
-      bestTimeToVisit,
-      maxGroupSize: maxGroupSize ? Number(maxGroupSize) : null,
-      highlights: highlights
-        .map((item) => item.text)
-        .filter((item) => item.trim() !== ""),
-      networkConnectivity,
-      lastAtm,
-      fitnessRequirement,
-      ageRange,
-      meetingTime,
-      dropoffTime,
-      vibeTags: vibeTags
-        .map((item) => item.text)
-        .filter((text): text is string => typeof text === "string" && text.trim() !== ""),
-    };
+      const firstErrorField = Object.keys(newFieldErrors)[0];
+      document
+        .getElementById(firstErrorField)
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+
+    // 2. Payload Construction
+    const payload = constructPayload();
 
     try {
       const url = isEditing
@@ -455,24 +514,24 @@ export default function ExperienceForm({
       });
 
       const data = await res.json();
+
       if (!res.ok) {
-        if (data.details) {
-          const detailMsgs = Object.entries(
-            data.details as Record<string, string[]>,
-          )
-            .map(([field, errors]) => `${field}: ${errors[0]}`)
-            .join(" | ");
-          throw new Error(`Validation Error: ${detailMsgs}`);
+        handleServerErrors(data);
+        if (res.status >= 500 && !data.details) {
+          Sentry.captureException(
+            new Error(`Server Error [${res.status}]: ${data.error}`),
+          );
         }
-        throw new Error(data.error || "Failed to save experience");
+        setIsSubmitting(false);
+        return;
       }
 
       router.push("/admin/experiences");
-      router.refresh(); // Ensure the list page shows the new data
+      router.refresh();
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to save experience",
-      );
+      console.error(err);
+      setError("An unexpected error occurred. Please try again.");
+      Sentry.captureException(err);
     } finally {
       setIsSubmitting(false);
     }
@@ -995,19 +1054,30 @@ export default function ExperienceForm({
             <div>
               <label
                 htmlFor="title"
-                className="block text-sm font-medium text-foreground/80 mb-1"
+                className={`block text-sm font-medium mb-1 transition-colors ${fieldErrors.title ? "text-red-500" : "text-foreground/80"}`}
               >
                 Title <span className="text-red-500">*</span>
               </label>
               <input
                 id="title"
                 type="text"
-                required
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
+                onChange={(e) => {
+                  setTitle(e.target.value);
+                  if (fieldErrors.title) setFieldErrors(p => ({ ...p, title: "" }));
+                }}
+                className={`w-full bg-background border rounded-xl px-4 py-2.5 text-foreground focus:outline-none transition-all ${
+                  fieldErrors.title 
+                    ? "border-red-500 bg-red-500/5 focus:ring-2 focus:ring-red-500/20" 
+                    : "border-border focus:border-primary/50"
+                }`}
                 placeholder="e.g. Everest Base Camp Trek"
               />
+              {fieldErrors.title && (
+                <p className="mt-1.5 text-xs font-bold text-red-500 flex items-center gap-1 animate-in fade-in slide-in-from-top-1">
+                  <AlertCircle className="w-3 h-3" /> {fieldErrors.title}
+                </p>
+              )}
             </div>
             <div>
               <label
@@ -1152,9 +1222,12 @@ export default function ExperienceForm({
             </button>
           </div>
 
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-            <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
+          <div className={`bg-card border rounded-2xl p-6 space-y-4 transition-all ${fieldErrors.coverImage ? "border-red-500 bg-red-500/5 ring-1 ring-red-500/20" : "border-border"}`}>
+            <h2 className={`text-xl font-bold border-b pb-2 flex items-center justify-between ${fieldErrors.coverImage ? "text-red-500 border-red-500/20" : "text-foreground border-border"}`}>
               Trip Cover Image <span className="text-red-500">*</span>
+              {fieldErrors.coverImage && (
+                 <span className="text-xs font-black uppercase tracking-tighter bg-red-500 text-white px-2 py-0.5 rounded">Required</span>
+              )}
             </h2>
             <p className="text-sm text-foreground/60 pb-2">
               The main hero banner at the top of the trip page.
@@ -1825,7 +1898,7 @@ export default function ExperienceForm({
             <div>
               <label
                 htmlFor="price"
-                className="block text-sm font-medium text-foreground/80 mb-1"
+                className={`block text-sm font-medium mb-1 transition-colors ${fieldErrors.basePrice ? "text-red-500" : "text-foreground/80"}`}
               >
                 Total Gross Price (₹) <span className="text-red-500">*</span>
               </label>
@@ -1833,11 +1906,22 @@ export default function ExperienceForm({
                 id="price"
                 type="number"
                 min="0"
-                required
                 value={basePrice}
-                onChange={(e) => setBasePrice(Number(e.target.value))}
-                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50 text-xl font-semibold mb-2"
+                onChange={(e) => {
+                  setBasePrice(Number(e.target.value));
+                  if (fieldErrors.basePrice) setFieldErrors(p => ({ ...p, basePrice: "" }));
+                }}
+                className={`w-full bg-background border rounded-xl px-4 py-2.5 text-foreground focus:outline-none transition-all text-xl font-semibold mb-2 ${
+                  fieldErrors.basePrice 
+                    ? "border-red-500 bg-red-500/5 focus:ring-1 focus:ring-red-500/20" 
+                    : "border-border focus:border-primary/50"
+                }`}
               />
+              {fieldErrors.basePrice && (
+                <p className="mb-2 text-xs font-bold text-red-500 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" /> {fieldErrors.basePrice}
+                </p>
+              )}
               {basePrice > 0 && (
                 <div className="bg-primary/5 rounded-lg p-3 text-xs text-foreground/80 border border-primary/20 space-y-1">
                   <div className="flex items-center gap-1.5 font-bold text-primary mb-1">
@@ -1878,7 +1962,7 @@ export default function ExperienceForm({
             <div>
               <label
                 htmlFor="cap"
-                className="block text-sm font-medium text-foreground/80 mb-1"
+                className={`block text-sm font-medium mb-1 transition-colors ${fieldErrors.capacity ? "text-red-500" : "text-foreground/80"}`}
               >
                 Total Capacity <span className="text-red-500">*</span>
               </label>
@@ -1886,11 +1970,22 @@ export default function ExperienceForm({
                 id="cap"
                 type="number"
                 min="1"
-                required
                 value={capacity}
-                onChange={(e) => setCapacity(Number(e.target.value))}
-                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
+                onChange={(e) => {
+                  setCapacity(Number(e.target.value));
+                  if (fieldErrors.capacity) setFieldErrors(p => ({ ...p, capacity: "" }));
+                }}
+                className={`w-full bg-background border rounded-xl px-4 py-2.5 text-foreground focus:outline-none transition-all ${
+                  fieldErrors.capacity 
+                    ? "border-red-500 bg-red-500/5 focus:ring-1 focus:ring-red-500/20" 
+                    : "border-border focus:border-primary/50"
+                }`}
               />
+              {fieldErrors.capacity && (
+                <p className="mt-1.5 text-xs font-bold text-red-500 flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" /> {fieldErrors.capacity}
+                </p>
+              )}
             </div>
           </div>
 

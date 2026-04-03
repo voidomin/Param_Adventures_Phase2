@@ -31,11 +31,7 @@ export default function AuthContentManager() {
       const res = await fetch("/api/admin/settings");
       if (res.ok) {
         const data = await res.json();
-        const config: Record<string, string> = {};
-        data.settings.forEach((s: { key: string; value: string }) => {
-          config[s.key] = s.value;
-        });
-        setSettings(config);
+        setSettings(data.settings || {});
       }
     } catch (err) {
       console.error("Failed to fetch settings:", err);

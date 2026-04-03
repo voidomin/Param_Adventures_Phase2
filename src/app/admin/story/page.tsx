@@ -140,18 +140,18 @@ export default function AdminStoryPage() {
     );
   } else if (blocks.length === 0) {
     content = (
-      <div className="bg-card border border-border rounded-2xl p-12 text-center text-foreground/60">
+      <div className="bg-card border border-border rounded-2xl p-8 text-center text-foreground/60 shadow-sm">
         <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
         <h3 className="text-lg font-bold text-foreground mb-2">
           No Story Blocks Yet
         </h3>
-        <p className="mb-6">
+        <p className="max-w-md mx-auto mb-6 text-sm">
           Create blocks to build your &quot;Our Story&quot; page. Add heroes,
           milestones, values, and more.
         </p>
         <button
           onClick={() => openForm()}
-          className="inline-block bg-background border border-border text-foreground px-6 py-2.5 rounded-full font-bold hover:bg-foreground/5 transition-colors"
+          className="inline-block bg-primary text-primary-foreground px-8 py-2.5 rounded-full font-bold hover:scale-105 transition-all shadow-lg shadow-primary/20"
         >
           Create First Block
         </button>
@@ -159,23 +159,23 @@ export default function AdminStoryPage() {
     );
   } else {
     content = (
-      <div className="grid gap-3">
+      <div className="grid gap-4">
         {blocks.map((block, index) => (
           <div
             key={block.id}
-            className={`bg-card border border-border rounded-xl p-4 flex flex-col md:flex-row gap-4 items-center transition-colors hover:border-foreground/30 ${
-              block.isActive ? "" : "opacity-50"
+            className={`bg-card border border-border rounded-xl p-4 flex flex-col sm:flex-row gap-5 items-center transition-all hover:border-primary/30 hover:shadow-md ${
+              block.isActive ? "" : "opacity-60"
             }`}
           >
             {/* Type badge */}
-            <div className="flex items-center gap-3 w-full md:w-auto">
+            <div className="flex items-center gap-3 w-full sm:w-auto shrink-0">
               <span
-                className={`px-3 py-1 rounded-full text-xs font-bold border ${TYPE_COLORS[block.type] || "bg-foreground/5 text-foreground/60 border-border"}`}
+                className={`px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap ${TYPE_COLORS[block.type] || "bg-foreground/5 text-foreground/60 border-border"}`}
               >
                 {TYPE_LABELS[block.type] || block.type}
               </span>
               {block.stat && (
-                <span className="text-sm font-mono font-bold text-primary">
+                <span className="text-sm font-mono font-bold text-primary whitespace-nowrap">
                   {block.stat}
                 </span>
               )}
@@ -183,60 +183,60 @@ export default function AdminStoryPage() {
 
             {/* Preview */}
             {block.imageUrl && (
-              <div className="w-full md:w-20 h-14 rounded-lg overflow-hidden bg-foreground/5 shrink-0">
-                        <div className="relative aspect-video w-full">
-                          <Image
-                            src={block.imageUrl}
-                            alt={block.title}
-                            fill
-                            className="object-cover"
-                          />
-                        </div>         </div>
+              <div className="w-full sm:w-24 h-14 rounded-lg overflow-hidden bg-foreground/5 shrink-0 relative border border-border/50">
+                <Image
+                  src={block.imageUrl}
+                  alt={block.title}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 100px"
+                />
+              </div>
             )}
 
             {/* Title & subtitle */}
-            <div className="flex-1 min-w-0 w-full text-center md:text-left">
+            <div className="flex-1 min-w-0 w-full text-center sm:text-left">
               <h3 className="font-bold text-foreground truncate">
                 {block.title}
               </h3>
               {block.subtitle && (
-                <p className="text-foreground/50 text-sm truncate mt-0.5">
+                <p className="text-foreground/50 text-xs truncate mt-0.5">
                   {block.subtitle}
                 </p>
               )}
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-2 pt-3 md:pt-0 border-t border-border md:border-none w-full md:w-auto justify-center md:justify-end">
-              <div className="flex flex-col mr-2">
+            <div className="flex items-center gap-2 pt-4 sm:pt-0 border-t border-border sm:border-none w-full sm:w-auto justify-center sm:justify-end shrink-0">
+              <div className="flex flex-col mr-1">
                 <button
                   onClick={() => handleMove(block.id, "up", index)}
                   disabled={index === 0}
-                  className="p-1 text-foreground/40 hover:text-foreground disabled:opacity-30 transition-colors"
+                  className="p-0.5 text-foreground/40 hover:text-primary disabled:opacity-30 transition-colors"
                 >
                   <ArrowUp className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => handleMove(block.id, "down", index)}
                   disabled={index === blocks.length - 1}
-                  className="p-1 text-foreground/40 hover:text-foreground disabled:opacity-30 transition-colors"
+                  className="p-0.5 text-foreground/40 hover:text-primary disabled:opacity-30 transition-colors"
                 >
                   <ArrowDown className="w-4 h-4" />
                 </button>
               </div>
               <button
                 onClick={() => openForm(block)}
-                className="p-2 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg transition-colors"
+                className="p-2.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-xl transition-all"
                 title="Edit"
               >
-                <Edit2 className="w-5 h-5" />
+                <Edit2 className="w-4 h-4" />
               </button>
               <button
                 onClick={() => handleDelete(block.id, block.title)}
-                className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg transition-colors"
+                className="p-2.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-xl transition-all"
                 title="Delete"
               >
-                <Trash2 className="w-5 h-5" />
+                <Trash2 className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -246,19 +246,19 @@ export default function AdminStoryPage() {
   }
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-heading font-bold text-foreground">
+    <div className="overflow-hidden">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-2xl md:text-3xl font-heading font-black text-foreground">
             Our Story
           </h1>
-          <p className="text-foreground/60 mt-1">
+          <p className="text-sm text-foreground/60 mt-1 max-w-2xl">
             Manage the content blocks on your public &quot;Our Story&quot; page.
           </p>
         </div>
         <button
           onClick={() => openForm()}
-          className="bg-primary text-primary-foreground px-6 py-2.5 rounded-full font-bold flex items-center gap-2 hover:scale-105 transition-transform shadow-lg shadow-primary/25"
+          className="bg-primary text-primary-foreground px-6 py-2.5 rounded-full font-bold flex items-center gap-2 hover:scale-105 transition-all shadow-lg shadow-primary/25 shrink-0"
         >
           <Plus className="w-5 h-5" />
           Add Block

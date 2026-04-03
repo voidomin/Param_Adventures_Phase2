@@ -41,20 +41,20 @@ export async function GET(
 }
 
 const updateExperienceSchema = z.object({
-  title: z.string().min(1, "Title is required").max(100).optional(),
+  title: z.string().trim().min(1, "Title is required").max(100).optional(),
   description: z.any().optional(), // JSON
   basePrice: z.number().min(0, "Base Price is required").optional(),
   capacity: z.number().int().min(1, "Capacity must be at least 1").optional(),
   durationDays: z.number().int().min(1, "Duration (Days) is required").optional(),
-  location: z.string().min(1, "Location is required").optional(),
+  location: z.string().trim().min(1, "Location is required").optional(),
   difficulty: z.enum(["EASY", "MODERATE", "HARD", "EXTREME"]).optional(),
   status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).optional(),
   isFeatured: z.boolean().optional(),
   coverImage: z.string().min(1, "Cover Image is required").optional().nullable(),
   cardImage: z.string().optional().nullable(),
-  images: z.array(z.string()).optional(),
+  images: z.array(z.string().trim()).transform(arr => arr.filter(Boolean)).optional(),
   itinerary: z.any().optional(), // JSON
-  categoryIds: z.array(z.string()).optional(),
+  categoryIds: z.array(z.string()).transform(arr => arr.filter(Boolean)).optional(),
   inclusions: z.any().optional(),
   exclusions: z.any().optional(),
   thingsToCarry: z.any().optional(),
@@ -66,15 +66,15 @@ const updateExperienceSchema = z.object({
   trekDistance: z.string().optional().nullable(),
   bestTimeToVisit: z.string().optional().nullable(),
   maxGroupSize: z.number().int().optional().nullable(),
-  pickupPoints: z.array(z.string()).optional(),
-  highlights: z.array(z.string()).optional(),
+  pickupPoints: z.array(z.string().trim()).transform(arr => arr.filter(Boolean)).optional(),
+  highlights: z.array(z.string().trim()).transform(arr => arr.filter(Boolean)).optional(),
   networkConnectivity: z.string().optional().nullable(),
   lastAtm: z.string().optional().nullable(),
   fitnessRequirement: z.string().optional().nullable(),
   ageRange: z.string().optional().nullable(),
   meetingTime: z.string().optional().nullable(),
   dropoffTime: z.string().optional().nullable(),
-  vibeTags: z.array(z.string()).optional(),
+  vibeTags: z.array(z.string().trim()).transform(arr => arr.filter(Boolean)).optional(),
 });
 
 // PUT /api/admin/experiences/[id]
@@ -140,7 +140,7 @@ export async function PUT(
 
     // Execute everything in a transaction to handle relationship updates
     const updatedExperience = await prisma.$transaction(async (tx) => {
-      // 1. Delete all existing category links
+      // 1. Delete all existing category links if categoryIds is provided
       if (categoryIds !== undefined) {
         await tx.experienceCategory.deleteMany({
           where: { experienceId: id },
@@ -153,10 +153,8 @@ export async function PUT(
         data: {
           ...directData,
           slug: newSlug,
-          highlights: directData.highlights || [],
-          vibeTags: directData.vibeTags || [],
           categories:
-            categoryIds === undefined
+            (categoryIds === undefined || categoryIds.length === 0)
               ? undefined
               : {
                   create: categoryIds.map((catId: string) => ({

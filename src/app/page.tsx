@@ -13,6 +13,8 @@ import ScrollReveal from "@/components/ui/ScrollReveal";
 import Carousel from "@/components/ui/Carousel";
 import Image from "next/image";
 
+export const revalidate = 60;
+
 export default async function Home() {
   // Fetch active hero slides for the homepage carousel
   const heroSlides = await withBuildSafety(
@@ -38,6 +40,9 @@ export default async function Home() {
       }),
     [],
   );
+
+  // DEBUG: Report featured experiences found in terminal
+  console.log(`[Homepage] Found ${featuredExperiencesRaw.length} featured experiences.`);
 
   // Serialize Decimal and Date objects for Client Component compatibility
   const featuredExperiences = featuredExperiencesRaw.map((exp) => ({
