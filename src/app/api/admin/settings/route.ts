@@ -42,7 +42,16 @@ export async function GET(request: NextRequest) {
       "meta_pixel_id",
       "meta_pixel_enabled",
       "microsoft_clarity_id",
-      "microsoft_clarity_enabled"
+      "microsoft_clarity_enabled",
+      "email_provider",
+      "smtp_host",
+      "smtp_port",
+      "smtp_user",
+      "smtp_pass",
+      "smtp_secure",
+      "smtp_from",
+      "zoho_api_key",
+      "resend_api_key"
     ];
     const platformSettings = await prisma.platformSetting.findMany({
       where: { key: { in: platformKeys } }
@@ -98,7 +107,16 @@ export async function PUT(request: NextRequest) {
       "meta_pixel_id",
       "meta_pixel_enabled",
       "microsoft_clarity_id",
-      "microsoft_clarity_enabled"
+      "microsoft_clarity_enabled",
+      "email_provider",
+      "smtp_host",
+      "smtp_port",
+      "smtp_user",
+      "smtp_pass",
+      "smtp_secure",
+      "smtp_from",
+      "zoho_api_key",
+      "resend_api_key"
     ]);
 
     // Transactionally update all settings

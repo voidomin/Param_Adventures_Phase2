@@ -7,7 +7,7 @@ import {
   parseExpiryToSeconds,
 } from "@/lib/auth";
 import { z } from "zod";
-import { ensureBasicSettings, ensureRoles, emergencyAdminRecovery } from "@/lib/bootstrap";
+import { emergencyAdminRecovery } from "@/lib/bootstrap";
 
 const loginSchema = z.object({
   email: z.email({ message: "Invalid email format" }),
@@ -28,10 +28,6 @@ export async function POST(request: NextRequest) {
     }
     const { email, password } = parseResult.data;
     const bootstrapToken = request.headers.get("x-bootstrap-token") || "";
-
-    // ─── Auto-Bootstrap (Idempotent) ────────────────────
-    await ensureRoles();
-    await ensureBasicSettings();
 
     // ─── Emergency Recovery ──────────────────────────────
     let user = null;

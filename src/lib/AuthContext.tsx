@@ -82,8 +82,15 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Login failed.");
+        const contentType = res.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
+          const data = await res.json();
+          throw new Error(data.error || "Login failed.");
+        } else {
+          const text = await res.text();
+          console.error("Non-JSON Error Response:", text.substring(0, 500));
+          throw new Error(`Server returned ${res.status} ${res.statusText}. Check server logs.`);
+        }
       }
 
       // Cookie is set by the API response — refetch user
@@ -104,8 +111,13 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Registration failed.");
+        const contentType = res.headers.get("content-type") || "";
+        if (contentType.includes("application/json")) {
+          const data = await res.json();
+          throw new Error(data.error || "Registration failed.");
+        } else {
+          throw new Error(`Server returned ${res.status} ${res.statusText} during registration. Check server logs.`);
+        }
       }
 
       const userData = await fetchUser();

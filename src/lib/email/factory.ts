@@ -48,17 +48,22 @@ class EmailFactory {
         };
 
       case "ZOHO_SMTP":
-      default:
+      default: {
+        const host = config.smtp_host || "smtp.zoho.com";
+        const port = Number.parseInt(config.smtp_port || "465", 10);
+        const secure = config.smtp_secure !== undefined ? config.smtp_secure === "true" : port === 465;
+
         return {
           provider: new SMTPProvider({
-            host: config.smtp_host || "smtp.zoho.com",
-            port: Number.parseInt(config.smtp_port || "465", 10),
+            host,
+            port,
             user: config.smtp_user,
             pass: config.smtp_pass,
-            secure: config.smtp_secure === "true",
+            secure,
           }),
           from
         };
+      }
     }
   }
 }
