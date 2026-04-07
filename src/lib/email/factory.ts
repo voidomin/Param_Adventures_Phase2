@@ -9,7 +9,7 @@ class EmailFactory {
    * Resolve the active email provider from the database.
    * Caches configurations briefly or pulls them fresh for high reliability.
    */
-  async getProvider(): Promise<{ provider: EmailProvider; from: string }> {
+  async getProvider(overrideConfig?: Record<string, string>): Promise<{ provider: EmailProvider; from: string }> {
     const settings = await prisma.platformSetting.findMany({
       where: {
         key: {
@@ -28,7 +28,10 @@ class EmailFactory {
       },
     });
 
-    const config = Object.fromEntries(settings.map((s) => [s.key, s.value]));
+    const config = {
+      ...Object.fromEntries(settings.map((s) => [s.key, s.value])),
+      ...overrideConfig
+    };
     const providerType = config.email_provider || "ZOHO_SMTP";
     const from = config.smtp_from || "Param Adventures <booking@paramadventures.in>";
 
