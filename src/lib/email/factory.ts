@@ -33,19 +33,23 @@ class EmailFactory {
     const from = config.smtp_from || "Param Adventures <booking@paramadventures.in>";
 
     switch (providerType) {
-      case "RESEND":
-        if (!config.resend_api_key) throw new Error("Resend API Key is missing in Platform Settings.");
+      case "RESEND": {
+        const apiKey = config.resend_api_key || process.env.RESEND_API_KEY;
+        if (!apiKey) throw new Error("Resend API Key is missing (checked Platform Settings and Environment).");
         return { 
-          provider: new ResendProvider({ apiKey: config.resend_api_key }), 
+          provider: new ResendProvider({ apiKey }), 
           from 
         };
+      }
 
-      case "ZOHO_API":
-        if (!config.zoho_api_key) throw new Error("Zoho API Key is missing in Platform Settings.");
+      case "ZOHO_API": {
+        const apiKey = config.zoho_api_key || process.env.ZOHO_API_KEY;
+        if (!apiKey) throw new Error("Zoho API Key is missing (checked Platform Settings and Environment).");
         return { 
-          provider: new ZohoAPIProvider({ apiKey: config.zoho_api_key }), 
+          provider: new ZohoAPIProvider({ apiKey }), 
           from 
         };
+      }
 
       case "ZOHO_SMTP":
       default: {
