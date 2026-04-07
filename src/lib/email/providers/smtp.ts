@@ -13,27 +13,25 @@ export class SMTPProvider implements EmailProvider {
   private readonly transporter: nodemailer.Transporter;
 
   constructor(config: SMTPConfig) {
-    const isSSL = config.port === 465;
-    const isTLS = config.port === 587;
-    
-    console.log(`[SMTP] Initializing connection to ${config.host}:${config.port} (SSL Mode: ${isSSL}, TLS Mode: ${isTLS})`);
+    // Total Authority: If secure is provided by dashboard, use it. Otherwise guess by port.
+    const secureFlag = config.secure ?? config.port === 465;
 
     this.transporter = nodemailer.createTransport({
       host: config.host,
       port: config.port,
-      secure: isSSL, 
-      requireTLS: isTLS,
+      secure: secureFlag,
       auth: {
         user: config.user,
         pass: config.pass,
       },
-      pool: true,
-      maxConnections: 3,
-      connectionTimeout: 20000,
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
       tls: {
+        // Essential for production-grade security on cloud servers
+        rejectUnauthorized: false,
         minVersion: "TLSv1.2",
-        rejectUnauthorized: true,
-      },
+        ciphers: "HIGH:!aNULL:!MD5"
+      }
     });
   }
 
