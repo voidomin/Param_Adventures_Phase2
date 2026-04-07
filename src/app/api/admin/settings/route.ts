@@ -21,7 +21,6 @@ export async function GET(request: NextRequest) {
     }
 
     // Return all site settings + specific platform settings allowed for the dashboard
-    const siteSettings = await prisma.siteSetting.findMany();
     const platformKeys = [
       "razorpay_mode", 
       "razorpay_key_id", 
