@@ -28,6 +28,38 @@ export async function GET(request: NextRequest) {
   }
 }
 
+const PLATFORM_KEYS = new Set([
+  "razorpay_mode", 
+  "razorpay_key_id", 
+  "razorpay_key_secret", 
+  "razorpay_webhook_secret",
+  "taxConfig",
+  "companyName",
+  "gstNumber",
+  "panNumber",
+  "stateCode",
+  "companyAddress",
+  "jwt_secret",
+  "session_lifetime_hrs",
+  "google_analytics_id",
+  "google_analytics_enabled",
+  "sentry_dsn",
+  "sentry_enabled",
+  "meta_pixel_id",
+  "meta_pixel_enabled",
+  "microsoft_clarity_id",
+  "microsoft_clarity_enabled",
+  "email_provider",
+  "smtp_host",
+  "smtp_port",
+  "smtp_user",
+  "smtp_pass",
+  "smtp_secure",
+  "smtp_from",
+  "zoho_api_key",
+  "resend_api_key"
+]);
+
 async function updateSettings(
   tx: Prisma.TransactionClient,
   userId: string,
@@ -35,30 +67,31 @@ async function updateSettings(
   settings: { key: string; value: string }[],
   ip: string
 ) {
-  const action = type === "PLATFORM" ? "UPDATE_PLATFORM_SETTING" : "UPDATE_SITE_SETTING";
-
   for (const { key, value } of settings) {
     if (!key) continue;
 
-    // Use explicit model calls to avoid union type signature mismatches
+    // Foolproof: If key is in PLATFORM_KEYS, always use PLATFORM regardless of 'type'
+    const targetType = PLATFORM_KEYS.has(key) ? "PLATFORM" : type;
+    const action = targetType === "PLATFORM" ? "UPDATE_PLATFORM_SETTING" : "UPDATE_SITE_SETTING";
+
     let oldSetting;
-    if (type === "PLATFORM") {
+    if (targetType === "PLATFORM") {
       oldSetting = await tx.platformSetting.findUnique({ where: { key } });
       await tx.platformSetting.upsert({
         where: { key },
-        update: { value },
-        create: { key, value },
+        update: { value: String(value) },
+        create: { key, value: String(value) },
       });
     } else {
       oldSetting = await tx.siteSetting.findUnique({ where: { key } });
       await tx.siteSetting.upsert({
         where: { key },
-        update: { value },
-        create: { key, value },
+        update: { value: String(value) },
+        create: { key, value: String(value) },
       });
     }
 
-    if (oldSetting?.value !== value) {
+    if (oldSetting?.value !== String(value)) {
       const logMetadata: Record<string, unknown> = { 
         from: oldSetting?.value ?? null, 
         to: value, 
@@ -90,7 +123,7 @@ export async function PATCH(request: NextRequest) {
     const ip = forwarded ? forwarded.split(",")[0] : "127.0.0.1";
 
     await prisma.$transaction(async (tx) => {
-      // Explicitly pass PLATFORM vs SITE settings to ensure typesafety
+      // Process everything—the updateSettings function will now route correctly
       if (platform && Array.isArray(platform)) {
         await updateSettings(tx, auth.userId, "PLATFORM", platform, ip);
       }
