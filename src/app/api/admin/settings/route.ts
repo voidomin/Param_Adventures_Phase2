@@ -57,9 +57,19 @@ export async function GET(request: NextRequest) {
       where: { key: { in: platformKeys } }
     });
 
-    // Merge into a flat dictionary for the frontend
+    const relevantSiteSettings = await prisma.siteSetting.findMany({
+      where: { key: { in: platformKeys } }
+    });
+
+    // Merge: platformSettings take priority, siteSettings are the fallback
     const merged: Record<string, string> = {};
-    siteSettings.forEach(s => merged[s.key] = s.value);
+    
+    // First, map all standard site settings (non-platform)
+    const allSiteSettings = await prisma.siteSetting.findMany();
+    allSiteSettings.forEach(s => merged[s.key] = s.value);
+
+    // Then, merge platform settings and their fallbacks
+    relevantSiteSettings.forEach(s => merged[s.key] = s.value);
     platformSettings.forEach(s => merged[s.key] = s.value);
 
     return NextResponse.json({ settings: merged });
