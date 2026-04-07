@@ -13,10 +13,16 @@ export class SMTPProvider implements EmailProvider {
   private readonly transporter: nodemailer.Transporter;
 
   constructor(config: SMTPConfig) {
+    const isSSL = config.port === 465;
+    const isTLS = config.port === 587;
+    
+    console.log(`[SMTP] Initializing connection to ${config.host}:${config.port} (SSL Mode: ${isSSL}, TLS Mode: ${isTLS})`);
+
     this.transporter = nodemailer.createTransport({
       host: config.host,
       port: config.port,
-      secure: config.secure ?? (config.port === 465),
+      secure: isSSL, 
+      requireTLS: isTLS,
       auth: {
         user: config.user,
         pass: config.pass,

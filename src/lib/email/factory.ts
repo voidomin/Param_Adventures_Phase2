@@ -51,7 +51,11 @@ class EmailFactory {
       default: {
         const host = config.smtp_host || "smtp.zoho.com";
         const port = Number.parseInt(config.smtp_port || "465", 10);
-        const secure = config.smtp_secure !== undefined ? config.smtp_secure === "true" : port === 465;
+        const secure = config.smtp_secure !== undefined 
+          ? config.smtp_secure === "true" 
+          : port === 465;
+
+        console.log(`[EmailFactory] Initializing SMTP: ${host}:${port} (Secure: ${secure})`);
 
         return {
           provider: new SMTPProvider({
