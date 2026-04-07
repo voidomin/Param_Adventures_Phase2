@@ -37,8 +37,8 @@ class EmailFactory {
 
     switch (providerType) {
       case "RESEND": {
-        const apiKey = config.resend_api_key || process.env.RESEND_API_KEY;
-        if (!apiKey) throw new Error("Resend API Key is missing (checked Platform Settings and Environment).");
+        const apiKey = config.resend_api_key ?? process.env.RESEND_API_KEY;
+        if (!apiKey) throw new Error("Resend API Key is missing.");
         return { 
           provider: new ResendProvider({ apiKey }), 
           from 
@@ -46,8 +46,8 @@ class EmailFactory {
       }
 
       case "ZOHO_API": {
-        const apiKey = config.zoho_api_key || process.env.ZOHO_API_KEY;
-        if (!apiKey) throw new Error("Zoho API Key is missing (checked Platform Settings and Environment).");
+        const apiKey = config.zoho_api_key ?? process.env.ZOHO_API_KEY;
+        if (!apiKey) throw new Error("Zoho API Key is missing.");
         return { 
           provider: new ZohoAPIProvider({ apiKey }), 
           from 
