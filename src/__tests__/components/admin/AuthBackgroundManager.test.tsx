@@ -1,6 +1,6 @@
 import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import AuthBackgroundManager from "@/components/admin/AuthBackgroundManager";
 
 vi.mock("@/components/admin/MediaUploader", () => ({
@@ -20,6 +20,8 @@ vi.mock("@/components/admin/MediaUploader", () => ({
 }));
 
 describe("AuthBackgroundManager", () => {
+  afterEach(cleanup);
+
   beforeEach(() => {
     vi.clearAllMocks();
     globalThis.fetch = vi.fn();
@@ -35,9 +37,9 @@ describe("AuthBackgroundManager", () => {
     (globalThis.fetch as any).mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        settings: [
-          { key: "auth_login_bg", value: "https://example.com/login.mp4" },
-        ],
+        settings: {
+          "auth_login_bg": "https://example.com/login.mp4"
+        },
       }),
     });
 
@@ -54,17 +56,14 @@ describe("AuthBackgroundManager", () => {
 
   it("uploads background and refreshes settings", async () => {
     (globalThis.fetch as any)
-      .mockResolvedValueOnce({ ok: true, json: async () => ({ settings: [] }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ settings: {} }) })
       .mockResolvedValueOnce({ ok: true })
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          settings: [
-            {
-              key: "auth_login_bg",
-              value: "https://example.com/new-image.jpg",
-            },
-          ],
+          settings: {
+            "auth_login_bg": "https://example.com/new-image.jpg"
+          },
         }),
       });
 
@@ -95,7 +94,7 @@ describe("AuthBackgroundManager", () => {
   it("skips upload request when uploader returns empty urls", async () => {
     (globalThis.fetch as any).mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ settings: [] }),
+      json: async () => ({ settings: {} }),
     });
 
     render(<AuthBackgroundManager />);
@@ -118,18 +117,15 @@ describe("AuthBackgroundManager", () => {
       .mockResolvedValueOnce({
         ok: true,
         json: async () => ({
-          settings: [
-            {
-              key: "auth_register_bg",
-              value: "https://example.com/register.jpg",
-            },
-          ],
+          settings: {
+            "auth_register_bg": "https://example.com/register.jpg"
+          },
         }),
       })
       .mockResolvedValueOnce({ ok: true })
       .mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ settings: [] }),
+        json: async () => ({ settings: {} }),
       });
 
     render(<AuthBackgroundManager />);

@@ -67,7 +67,7 @@ export class EmailFactory {
     };
   }
 
-  private scrub(val: any): string {
+  private scrub(val: string | null | undefined): string {
     if (typeof val !== "string" || val === "") return "";
     return val.replaceAll(/\s/g, "");
   }

@@ -451,7 +451,7 @@ export default function ExperienceForm({
       ),
   });
 
-  const handleServerErrors = (data: any) => {
+  const handleServerErrors = (data: { error?: string; details?: Record<string, string | string[]> }) => {
     if (!data.details) {
       setError(data.error || "Failed to save experience");
       return;

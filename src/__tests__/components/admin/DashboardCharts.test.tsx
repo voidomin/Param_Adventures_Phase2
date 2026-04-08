@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, it, expect, vi } from "vitest";
+import { render, screen, cleanup } from "@testing-library/react";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import DashboardCharts from "@/components/admin/DashboardCharts";
 import React from "react";
 
@@ -18,6 +18,8 @@ vi.mock("recharts", async () => {
 });
 
 describe("DashboardCharts Component", () => {
+  afterEach(cleanup);
+
   const mockData = {
     revenueByMonth: [{ month: "Jan", revenue: 5000 }],
     bookingsByStatus: [{ status: "CONFIRMED", count: 10, color: "#000" }],
@@ -25,11 +27,12 @@ describe("DashboardCharts Component", () => {
     userGrowth: [{ month: "Jan", users: 50 }],
   };
 
-  it("renders correctly with data", () => {
+  it("renders correctly with data", async () => {
     render(<DashboardCharts charts={mockData} />);
     
-    // Check titles
-    expect(screen.getByText("Revenue Trend (6 Months)")).toBeInTheDocument();
+    // Use findByText to wait for the 1.2s mount delay to settle
+    // Increase timeout to 3000ms since delay is 1200ms
+    expect(await screen.findByText("Revenue Trend (6 Months)", {}, { timeout: 3000 })).toBeInTheDocument();
     expect(screen.getByText("Booking Distribution")).toBeInTheDocument();
     expect(screen.getByText("Top Experiences by Bookings")).toBeInTheDocument();
     expect(screen.getByText("User Registration Trend")).toBeInTheDocument();
@@ -38,7 +41,7 @@ describe("DashboardCharts Component", () => {
     expect(screen.getByText("CONFIRMED")).toBeInTheDocument();
   });
 
-  it("shows empty states when data is missing", () => {
+  it("shows empty states when data is missing", async () => {
     const emptyData = {
       revenueByMonth: [],
       bookingsByStatus: [],
@@ -47,7 +50,8 @@ describe("DashboardCharts Component", () => {
     };
     render(<DashboardCharts charts={emptyData} />);
     
-    expect(screen.getByText("No bookings yet")).toBeInTheDocument();
+    // Wait for mount delay with increased timeout
+    expect(await screen.findByText("No bookings yet", {}, { timeout: 3000 })).toBeInTheDocument();
     expect(screen.getByText("No data yet")).toBeInTheDocument();
   });
 });

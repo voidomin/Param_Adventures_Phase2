@@ -50,9 +50,9 @@ const updateExperienceSchema = z.object({
   difficulty: z.enum(["EASY", "MODERATE", "HARD", "EXTREME"]).optional(),
   status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).optional(),
   isFeatured: z.boolean().optional(),
-  coverImage: z.string().min(1, "Cover Image is required").optional().nullable(),
-  cardImage: z.string().optional().nullable(),
-  images: z.array(z.string().trim()).transform(arr => arr.filter(Boolean)).optional(),
+  coverImage: z.string().url({ message: "Invalid cover image URL" }).min(1, "Cover Image is required").optional().nullable(),
+  cardImage: z.string().url({ message: "Invalid card image URL" }).optional().nullable(),
+  images: z.array(z.string().url({ message: "Invalid image URL" }).trim()).transform(arr => arr.filter(Boolean)).optional(),
   itinerary: z.any().optional(), // JSON
   categoryIds: z.array(z.string()).transform(arr => arr.filter(Boolean)).optional(),
   inclusions: z.any().optional(),
@@ -103,15 +103,13 @@ export async function PUT(
       console.error("Experience Update Validation Failed:", fieldErrors);
       return NextResponse.json(
         {
-          error: "Validation Failed",
+          error: parseResult.error.issues[0].message,
           details: fieldErrors,
-          message: parseResult.error.issues[0].message,
         },
         { status: 400 },
       );
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { categoryIds, ...directData } = parseResult.data;
 
     const existingExp = await prisma.experience.findUnique({ where: { id } });

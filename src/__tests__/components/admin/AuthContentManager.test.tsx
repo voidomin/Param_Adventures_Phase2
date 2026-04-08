@@ -1,5 +1,5 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import AuthContentManager from "@/components/admin/AuthContentManager";
 import React from "react";
 
@@ -7,6 +7,7 @@ import React from "react";
 globalThis.fetch = vi.fn();
 
 describe("AuthContentManager Component", () => {
+  afterEach(cleanup);
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -22,9 +23,9 @@ describe("AuthContentManager Component", () => {
     (globalThis.fetch as any).mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        settings: [
-          { key: "auth_common_tagline", value: "Test Tagline" }
-        ]
+        settings: {
+          "auth_common_tagline": "Test Tagline"
+        }
       })
     });
     
@@ -48,9 +49,9 @@ describe("AuthContentManager Component", () => {
     (globalThis.fetch as any).mockResolvedValueOnce({
       ok: true,
       json: async () => ({
-        settings: [
-          { key: "auth_common_tagline", value: "Test Tagline" }
-        ]
+        settings: {
+          "auth_common_tagline": "Test Tagline"
+        }
       })
     });
     
@@ -85,7 +86,7 @@ describe("AuthContentManager Component", () => {
     // 1. Initial fetch mock
     (globalThis.fetch as any).mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ settings: [] })
+      json: async () => ({ settings: {} })
     });
     
     render(<AuthContentManager />);
