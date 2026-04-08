@@ -16,6 +16,23 @@ vi.mock("next/navigation", () => ({
 const mockFetch = vi.fn();
 globalThis.fetch = mockFetch;
 
+// Mock MediaUploader
+vi.mock("@/components/admin/MediaUploader", () => ({ 
+  default: ({ onUploadSuccess, id }: any) => {
+    return (
+      <div data-testid={id}>
+        <input
+          type="file"
+          aria-label={id === "cover-image-upload" ? "Cover Image Input" : "Media Input"}
+          onChange={() => {
+            onUploadSuccess(["https://example.com/mock-image.jpg"]);
+          }}
+        />
+      </div>
+    );
+  },
+}));
+
 // Mock xlsx
 vi.mock("xlsx", () => ({
   read: vi.fn(),
@@ -110,6 +127,15 @@ describe("ExperienceForm Comprehensive Smoke Test", () => {
   it("handles form submission", async () => {
     render(<ExperienceForm />);
     fireEvent.change(screen.getByLabelText(/Title/i), { target: { value: "Valid Trip" } });
+    fireEvent.change(screen.getByLabelText(/Location/i), { target: { value: "Manali" } });
+    fireEvent.change(screen.getByLabelText(/Total Gross Price/i), { target: { value: "1000" } });
+    fireEvent.change(screen.getByLabelText(/Total Capacity/i), { target: { value: "10" } });
+    fireEvent.change(screen.getByLabelText(/Duration/i), { target: { value: "5" } });
+    
+    // Trigger the mocked upload via test-id
+    const coverInput = screen.getByTestId("cover-image-upload").querySelector('input[type="file"]');
+    if (coverInput) fireEvent.change(coverInput, { target: { files: [] } });
+    
     fireEvent.submit(screen.getByRole("form", { name: /Experience Form/i }));
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining("/api/admin/experiences"), expect.objectContaining({ method: "POST" }));
@@ -143,7 +169,21 @@ describe("ExperienceForm Comprehensive Smoke Test", () => {
   }, 15000);
 
   it("handles editing existing experience", async () => {
-    render(<ExperienceForm initialData={{ id: "exp-1", title: "Editing Mode" }} />);
+    const mockExperience: any = {
+      id: "exp-1", 
+      title: "Editing Mode", 
+      location: "Leh", 
+      basePrice: 2000, 
+      capacity: 5, 
+      durationDays: 3, 
+      coverImage: "img.jpg",
+      description: { type: "doc", content: [] },
+      difficulty: "MODERATE",
+      status: "DRAFT",
+      isFeatured: false,
+      categories: []
+    };
+    render(<ExperienceForm initialData={mockExperience} />);
     expect(screen.getByText(/Edit Trip/i)).toBeInTheDocument();
     fireEvent.submit(screen.getByRole("form", { name: /Experience Form/i }));
     await waitFor(() => {
@@ -170,6 +210,15 @@ describe("ExperienceForm Comprehensive Smoke Test", () => {
     });
     render(<ExperienceForm />);
     fireEvent.change(screen.getByLabelText(/Title/i), { target: { value: "Fail Trip" } });
+    fireEvent.change(screen.getByLabelText(/Location/i), { target: { value: "Manali" } });
+    fireEvent.change(screen.getByLabelText(/Total Gross Price/i), { target: { value: "1000" } });
+    fireEvent.change(screen.getByLabelText(/Total Capacity/i), { target: { value: "10" } });
+    fireEvent.change(screen.getByLabelText(/Duration/i), { target: { value: "5" } });
+    
+    // Trigger mocked upload via test-id
+    const coverInputErr = screen.getByTestId("cover-image-upload").querySelector('input[type="file"]');
+    if (coverInputErr) fireEvent.change(coverInputErr, { target: { files: [] } });
+
     fireEvent.submit(screen.getByRole("form", { name: /Experience Form/i }));
     await waitFor(() => {
       expect(screen.getByText(/API Server Error/i)).toBeInTheDocument();

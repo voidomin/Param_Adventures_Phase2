@@ -4,7 +4,7 @@ import { SMTPProvider } from "./providers/smtp";
 import { ZohoAPIProvider } from "./providers/zoho-api";
 import { ResendProvider } from "./providers/resend";
 
-class EmailFactory {
+export class EmailFactory {
   /**
    * Resolve the active email provider from the database.
    */
