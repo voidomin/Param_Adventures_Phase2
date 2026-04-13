@@ -49,9 +49,9 @@
     "jspdf": "^4.2.0",
     "jspdf-autotable": "^5.0.7",
     "lucide-react": "^0.576.0",
-    "next": "^16.2.1",
+    "next": "16.2.3",
     "next-themes": "^0.4.6",
-    "nodemailer": "^8.0.2",
+    "nodemailer": "^8.0.5",
     "pg": "^8.19.0",
     "prisma": "^7.5.0",
     "razorpay": "^2.9.6",
@@ -63,7 +63,8 @@
     "sanitize-html": "^2.17.1",
     "tailwind-merge": "^3.5.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
-    "zod": "^4.3.6"
+    "zod": "^4.3.6",
+    "hono": "^4.12.12"
   },
   "devDependencies": {
     "@react-email/preview-server": "^5.2.9",
@@ -95,9 +96,12 @@
     "seed": "node prisma/seed.mjs"
   },
   "overrides": {
-    "hono": "^4.12.7",
+    "hono": "^4.12.12",
     "lodash": "^4.17.23",
-    "@hono/node-server": "^1.19.10",
-    "effect": "^3.20.0"
+    "@hono/node-server": "^1.19.14",
+    "@react-email/components": {
+      "lodash": "^4.17.23"
+    },
+    "axios": "^1.15.0"
   }
 }
