@@ -58,6 +58,8 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import MaintenanceGuard from "@/components/layout/MaintenanceGuard";
 import GoogleAnalytics from "@/components/monitoring/GoogleAnalytics";
+import MetaPixel from "@/components/monitoring/MetaPixel";
+import MicrosoftClarity from "@/components/monitoring/MicrosoftClarity";
 import { withBuildSafety } from "@/lib/db-utils";
 
 export default async function RootLayout({
@@ -83,6 +85,8 @@ export default async function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <GoogleAnalytics />
+        <MetaPixel />
+        <MicrosoftClarity />
       </head>
       <body
         className={`${outfit.variable} ${inter.variable} font-body antialiased`}

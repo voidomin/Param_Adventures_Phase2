@@ -209,6 +209,7 @@ export default function StoryBlockForm({
                       alt="Preview"
                       fill
                       className="object-cover"
+                      sizes="128px"
                     />
                   </div>
                 </div>

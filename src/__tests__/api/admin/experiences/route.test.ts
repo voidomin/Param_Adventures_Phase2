@@ -113,6 +113,8 @@ describe("/api/admin/experiences route", () => {
           cardImage: "https://cdn.example.com/card.jpg",
           images: ["https://cdn.example.com/1.jpg"],
           categoryIds: ["cat-1"],
+          durationDays: 5,
+          location: "Manali",
         }),
       );
       const data = await response.json();
@@ -146,6 +148,8 @@ describe("/api/admin/experiences route", () => {
           capacity: 10,
           coverImage: "https://cdn.example.com/cover.jpg",
           cardImage: "https://cdn.example.com/card.jpg",
+          durationDays: 5,
+          location: "Manali",
         }),
       );
 

@@ -135,6 +135,7 @@ describe("/api/admin/experiences/[id]", () => {
         basePrice: 999,
         capacity: 8,
         durationDays: 2,
+        location: "Manali",
         coverImage: "not-a-url",
       }),
       { params: Promise.resolve({ id: "exp-1" }) },
@@ -154,6 +155,7 @@ describe("/api/admin/experiences/[id]", () => {
         basePrice: 999,
         capacity: 8,
         durationDays: 2,
+        location: "Manali",
         coverImage: "https://valid.example/cover.jpg",
         cardImage: "also-invalid",
       }),
@@ -174,6 +176,7 @@ describe("/api/admin/experiences/[id]", () => {
         basePrice: 999,
         capacity: 8,
         durationDays: 2,
+        location: "Manali",
         coverImage: "https://valid.example/cover.jpg",
         cardImage: "https://valid.example/card.jpg",
         images: ["https://valid.example/1.jpg", "bad-url"],
@@ -191,7 +194,7 @@ describe("/api/admin/experiences/[id]", () => {
     mockFindUnique.mockResolvedValue(null);
 
     const response = await PUT(
-      createJsonRequest({ title: "New title", basePrice: 999, capacity: 8, durationDays: 2 }),
+      createJsonRequest({ title: "New title", basePrice: 999, capacity: 8, durationDays: 2, location: "Manali" }),
       { params: Promise.resolve({ id: "exp-1" }) },
     );
 
@@ -224,6 +227,7 @@ describe("/api/admin/experiences/[id]", () => {
         basePrice: 1200,
         capacity: 10,
         durationDays: 3,
+        location: "Manali",
         categoryIds: ["cat-1", "cat-2"],
       }),
       { params: Promise.resolve({ id: "exp-1" }) },
@@ -270,6 +274,7 @@ describe("/api/admin/experiences/[id]", () => {
         basePrice: 1200,
         capacity: 10,
         durationDays: 3,
+        location: "Manali",
       }),
       { params: Promise.resolve({ id: "exp-1" }) },
     );
@@ -282,8 +287,8 @@ describe("/api/admin/experiences/[id]", () => {
         data: expect.objectContaining({
           slug: "same-title",
           categories: undefined,
-          highlights: [],
-          vibeTags: [],
+          durationDays: 3,
+          location: "Manali",
         }),
       }),
     );
@@ -311,6 +316,7 @@ describe("/api/admin/experiences/[id]", () => {
         basePrice: 1200,
         capacity: 10,
         durationDays: 3,
+        location: "Manali",
         coverImage: null,
         cardImage: null,
       }),
@@ -328,7 +334,7 @@ describe("/api/admin/experiences/[id]", () => {
     );
   });
 
-  it("PUT accepts empty string image fields", async () => {
+  it("PUT accepts null image fields", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
     mockFindUnique.mockResolvedValue({
       id: "exp-1",
@@ -350,8 +356,9 @@ describe("/api/admin/experiences/[id]", () => {
         basePrice: 1200,
         capacity: 10,
         durationDays: 3,
-        coverImage: "",
-        cardImage: "",
+        location: "Manali",
+        coverImage: null,
+        cardImage: null,
       }),
       { params: Promise.resolve({ id: "exp-1" }) },
     );
@@ -360,8 +367,8 @@ describe("/api/admin/experiences/[id]", () => {
     expect(tx.experience.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          coverImage: "",
-          cardImage: "",
+          coverImage: null,
+          cardImage: null,
         }),
       }),
     );
@@ -382,6 +389,7 @@ describe("/api/admin/experiences/[id]", () => {
         basePrice: 1200,
         capacity: 10,
         durationDays: 3,
+        location: "Manali",
       }),
       { params: Promise.resolve({ id: "exp-1" }) },
     );

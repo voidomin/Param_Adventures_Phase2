@@ -230,9 +230,11 @@ export default function BookingModal({
     field: keyof ParticipantDetails,
     value: string,
   ) => {
-    const updated = [...partInfo];
-    updated[index] = { ...updated[index], [field]: value };
-    setPartInfo(updated);
+    setPartInfo((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
   };
 
   const copyEmergencyFromPrimary = (index: number) => {

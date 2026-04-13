@@ -26,13 +26,11 @@ export default function AuthBackgroundManager() {
       const res = await fetch("/api/admin/settings");
       if (res.ok) {
         const data = await res.json();
-        const allSettings = data.settings || [];
+        const allSettings = data.settings || {};
         setSettings(
           AUTH_BG_KEYS.map((def) => {
-            const found = allSettings.find(
-              (s: { key: string; value: string }) => s.key === def.key,
-            );
-            return { ...def, value: found?.value ?? null };
+            const val = allSettings[def.key];
+            return { ...def, value: val ?? null };
           }),
         );
       }
