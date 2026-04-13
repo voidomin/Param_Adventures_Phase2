@@ -10,7 +10,8 @@ import {
   ShieldCheck, 
   Zap,
   Loader2,
-  ExternalLink
+  ExternalLink,
+  Handshake
 } from "lucide-react";
 import { SectionTitle, InputGroup, TabProps } from "./Common";
 
@@ -274,7 +275,7 @@ export default function IntegrationsTab({ getVal, updateSetting }: TabProps) {
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <p className="text-sm font-bold flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-green-500" /> 
+                  <Handshake className="w-4 h-4 text-primary" /> 
                   Connectivity Verification
                 </p>
                 <p className="text-xs text-foreground/50 font-medium italic">
@@ -284,9 +285,9 @@ export default function IntegrationsTab({ getVal, updateSetting }: TabProps) {
               <button
                 onClick={handleVerifySentry}
                 disabled={isVerifying || !isSentryEnabled}
-                className="px-6 py-2.5 bg-foreground text-background rounded-xl font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:grayscale transition-all duration-300"
+                className="px-6 py-2.5 bg-foreground text-background rounded-xl font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:grayscale transition-all duration-300 h-10"
               >
-                {isVerifying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
+                {isVerifying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Handshake className="w-4 h-4" />}
                 {isVerifying ? 'Verifying...' : 'Test Connection'}
               </button>
             </div>

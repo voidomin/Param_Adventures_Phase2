@@ -50,9 +50,9 @@ const updateExperienceSchema = z.object({
   difficulty: z.enum(["EASY", "MODERATE", "HARD", "EXTREME"]).optional(),
   status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).optional(),
   isFeatured: z.boolean().optional(),
-  coverImage: z.string().url({ message: "Invalid cover image URL" }).min(1, "Cover Image is required").optional().nullable(),
-  cardImage: z.string().url({ message: "Invalid card image URL" }).optional().nullable(),
-  images: z.array(z.string().url({ message: "Invalid image URL" }).trim()).transform(arr => arr.filter(Boolean)).optional(),
+  coverImage: z.url({ message: "Invalid cover image URL" }).min(1, "Cover Image is required").optional().nullable(),
+  cardImage: z.url({ message: "Invalid card image URL" }).optional().nullable(),
+  images: z.array(z.url({ message: "Invalid image URL" }).trim()).transform(arr => arr.filter(Boolean)).optional(),
   itinerary: z.any().optional(), // JSON
   categoryIds: z.array(z.string()).transform(arr => arr.filter(Boolean)).optional(),
   inclusions: z.any().optional(),
