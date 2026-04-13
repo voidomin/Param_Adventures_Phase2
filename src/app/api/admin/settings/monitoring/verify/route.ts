@@ -27,11 +27,28 @@ export async function POST(request: NextRequest) {
     // NEXT_PUBLIC_SENTRY_DSN is missing from the environment.
     try {
       const dsnUrl = new URL(dsn);
-      const projectId = dsnUrl.pathname.substring(1);
+
+      // SSRF hardening: only allow known Sentry ingestion hosts over HTTPS.
+      if (dsnUrl.protocol !== "https:") {
+        return NextResponse.json({ error: "Invalid DSN protocol" }, { status: 400 });
+      }
+
+      const hostname = dsnUrl.hostname.toLowerCase();
+      const isAllowedSentryHost =
+        hostname === "sentry.io" || hostname.endsWith(".ingest.sentry.io");
+
+      if (!isAllowedSentryHost) {
+        return NextResponse.json({ error: "Invalid DSN host" }, { status: 400 });
+      }
+
+      const projectId = dsnUrl.pathname.replace(/^\/+/, "");
       const publicKey = dsnUrl.username;
-      const host = dsnUrl.host;
-      
-      const storeUrl = `https://${host}/api/${projectId}/store/`;
+
+      if (!/^\d+$/.test(projectId) || !publicKey) {
+        return NextResponse.json({ error: "Invalid DSN format" }, { status: 400 });
+      }
+
+      const storeUrl = new URL(`/api/${projectId}/store/`, dsnUrl.origin).toString();
       const authHeader = `Sentry sentry_version=7, sentry_key=${publicKey}, sentry_client=param-adventures-admin/1.0.0`;
 
       const sentryRes = await fetch(storeUrl, {
