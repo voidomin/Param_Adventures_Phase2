@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
 
       const hostname = dsnUrl.hostname.toLowerCase();
       const isAllowedSentryHost =
-        hostname === "sentry.io" || hostname.endsWith(".ingest.sentry.io");
+        hostname === "sentry.io" || hostname.endsWith(".sentry.io");
 
       if (!isAllowedSentryHost) {
         return NextResponse.json({ error: "Invalid DSN host" }, { status: 400 });
