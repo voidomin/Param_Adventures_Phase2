@@ -4,62 +4,72 @@ import { SMTPProvider } from "./providers/smtp";
 import { ZohoAPIProvider } from "./providers/zoho-api";
 import { ResendProvider } from "./providers/resend";
 
-class EmailFactory {
+export class EmailFactory {
   /**
    * Resolve the active email provider from the database.
-   * Caches configurations briefly or pulls them fresh for high reliability.
    */
-  async getProvider(): Promise<{ provider: EmailProvider; from: string }> {
-    const settings = await prisma.platformSetting.findMany({
-      where: {
-        key: {
-          in: [
-            "email_provider",
-            "smtp_host",
-            "smtp_port",
-            "smtp_user",
-            "smtp_pass",
-            "smtp_secure",
-            "smtp_from",
-            "zoho_api_key",
-            "resend_api_key",
-          ],
-        },
-      },
-    });
-
-    const config = Object.fromEntries(settings.map((s) => [s.key, s.value]));
-    const providerType = config.email_provider || "ZOHO_SMTP";
+  async getProvider(overrideConfig?: Record<string, string>): Promise<{ provider: EmailProvider; from: string }> {
+    const config = await this.fetchResolvedConfig(overrideConfig);
+    const type = config.email_provider || "ZOHO_SMTP";
     const from = config.smtp_from || "Param Adventures <booking@paramadventures.in>";
 
-    switch (providerType) {
+    switch (type) {
       case "RESEND":
-        if (!config.resend_api_key) throw new Error("Resend API Key is missing in Platform Settings.");
-        return { 
-          provider: new ResendProvider({ apiKey: config.resend_api_key }), 
-          from 
-        };
-
+        return this.initResend(config, from);
       case "ZOHO_API":
-        if (!config.zoho_api_key) throw new Error("Zoho API Key is missing in Platform Settings.");
-        return { 
-          provider: new ZohoAPIProvider({ apiKey: config.zoho_api_key }), 
-          from 
-        };
-
-      case "ZOHO_SMTP":
+        return this.initZoho(config, from);
       default:
-        return {
-          provider: new SMTPProvider({
-            host: config.smtp_host || "smtp.zoho.com",
-            port: Number.parseInt(config.smtp_port || "465", 10),
-            user: config.smtp_user,
-            pass: config.smtp_pass,
-            secure: config.smtp_secure === "true",
-          }),
-          from
-        };
+        return this.initSMTP(config, from);
     }
+  }
+
+  private async fetchResolvedConfig(overrideConfig?: Record<string, string>): Promise<Record<string, string>> {
+    const keys = [
+      "email_provider", "smtp_host", "smtp_port", "smtp_user", 
+      "smtp_pass", "smtp_secure", "smtp_from", "zoho_api_key", "resend_api_key"
+    ];
+    
+    const settings = await prisma.platformSetting.findMany({
+      where: { key: { in: keys } },
+    });
+
+    return {
+      ...Object.fromEntries(settings.map((s) => [s.key, s.value])),
+      ...overrideConfig
+    };
+  }
+
+  private initResend(config: Record<string, string>, from: string) {
+    const key = this.scrub(config.resend_api_key) || process.env.RESEND_API_KEY || "";
+    if (!key) throw new Error("Resend API Key is missing.");
+    return { provider: new ResendProvider({ apiKey: key }), from };
+  }
+
+  private initZoho(config: Record<string, string>, from: string) {
+    const key = this.scrub(config.zoho_api_key) || process.env.ZOHO_API_KEY || "";
+    if (!key) throw new Error("Zoho API Key is missing.");
+    return { provider: new ZohoAPIProvider({ apiKey: key }), from };
+  }
+
+  private initSMTP(config: Record<string, string>, from: string) {
+    const host = config.smtp_host || "smtp.zoho.com";
+    const port = Number.parseInt(config.smtp_port || "465", 10);
+    const secure = config.smtp_secure === undefined 
+      ? port === 465 
+      : config.smtp_secure === "true";
+
+    const user = this.scrub(config.smtp_user) || process.env.SMTP_USER || "booking@paramadventures.in";
+    const pass = this.scrub(config.smtp_pass) || process.env.SMTP_PASS || "";
+
+    return {
+      provider: new SMTPProvider({ host, port, user, pass, secure }),
+      from
+    };
+  }
+
+  private scrub(val: string | null | undefined): string {
+    if (typeof val !== "string" || val === "") return "";
+    return val.replaceAll(/\s/g, "");
   }
 }
 

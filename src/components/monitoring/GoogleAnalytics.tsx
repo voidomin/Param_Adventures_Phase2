@@ -11,9 +11,16 @@ export default async function GoogleAnalytics() {
     }), null
   );
 
-  const measurementId = gaSetting?.value;
+  const gaEnabledSetting = await withBuildSafety(() =>
+    prisma.platformSetting.findUnique({
+      where: { key: 'google_analytics_enabled' },
+    }), null
+  );
 
-  if (!measurementId?.startsWith('G-')) {
+  const measurementId = gaSetting?.value;
+  const isEnabled = gaEnabledSetting?.value !== 'false'; // Default to true
+
+  if (!measurementId?.startsWith('G-') || !isEnabled) {
     return null;
   }
 

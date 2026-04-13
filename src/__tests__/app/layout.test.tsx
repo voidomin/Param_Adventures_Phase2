@@ -1,6 +1,6 @@
 import React from "react";
-import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { render, screen, cleanup } from "@testing-library/react";
 import { DEFAULT_METADATA as metadata } from "@/app/layout";
 
 vi.mock("next/font/google", () => ({
@@ -39,6 +39,8 @@ vi.mock("@/components/monitoring/GoogleAnalytics", () => ({
 }));
 
 describe("app/layout", () => {
+  afterEach(cleanup);
+
   it("exports SEO metadata with expected defaults", () => {
     expect(metadata.title).toEqual(
       expect.objectContaining({

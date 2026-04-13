@@ -178,6 +178,7 @@ export default function AdminHeroPage() {
                       alt={slide.title}
                       fill
                       className="object-cover"
+                      sizes="(max-width: 768px) 100vw, 200px"
                     />
                   </div>
                 )}

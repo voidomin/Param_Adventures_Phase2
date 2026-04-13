@@ -18,6 +18,7 @@ import {
   History,
   Image as ImageIcon,
   User as UserIcon,
+  Puzzle,
 } from "lucide-react";
 import Image from "next/image";
 import { getMediaUrl } from "@/lib/media/media-gateway";
@@ -29,6 +30,7 @@ import FinanceTab from "@/components/admin/settings/FinanceTab";
 import MediaTab from "@/components/admin/settings/MediaTab";
 import SecurityTab from "@/components/admin/settings/SecurityTab";
 import SystemTab from "@/components/admin/settings/SystemTab";
+import IntegrationsTab from "@/components/admin/settings/IntegrationsTab";
 
 const maskValue = (key: string, value: string | number | undefined | null) => {
   if (value === undefined || value === null) return "n/a";
@@ -263,6 +265,7 @@ export default function SystemSettingsPage() {
     { id: "finance", label: "Finance & Taxation", icon: CreditCard },
     { id: "media", label: "Media Storage", icon: ImageIcon },
     { id: "security", label: "Security & Keys", icon: Lock },
+    { id: "integrations", label: "Integrations", icon: Puzzle },
     { id: "system", label: "Core Platform", icon: Database },
     { id: "logs", label: "Audit Logs", icon: History },
   ];
@@ -380,6 +383,7 @@ export default function SystemSettingsPage() {
               {activeTab === "finance" && <FinanceTab getVal={getVal} updateSetting={updateSetting} />}
               {activeTab === "media" && <MediaTab getVal={getVal} updateSetting={updateSetting} />}
               {activeTab === "security" && <SecurityTab getVal={getVal} updateSetting={updateSetting} />}
+              {activeTab === "integrations" && <IntegrationsTab getVal={getVal} updateSetting={updateSetting} />}
               {activeTab === "system" && <SystemTab getVal={getVal} updateSetting={updateSetting} />}
 
               {activeTab === "logs" && (

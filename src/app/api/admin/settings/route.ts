@@ -21,7 +21,6 @@ export async function GET(request: NextRequest) {
     }
 
     // Return all site settings + specific platform settings allowed for the dashboard
-    const siteSettings = await prisma.siteSetting.findMany();
     const platformKeys = [
       "razorpay_mode", 
       "razorpay_key_id", 
@@ -34,15 +33,42 @@ export async function GET(request: NextRequest) {
       "stateCode",
       "companyAddress",
       "jwt_secret",
-      "session_lifetime_hrs"
+      "session_lifetime_hrs",
+      "google_analytics_id",
+      "google_analytics_enabled",
+      "sentry_dsn",
+      "sentry_enabled",
+      "meta_pixel_id",
+      "meta_pixel_enabled",
+      "microsoft_clarity_id",
+      "microsoft_clarity_enabled",
+      "email_provider",
+      "smtp_host",
+      "smtp_port",
+      "smtp_user",
+      "smtp_pass",
+      "smtp_secure",
+      "smtp_from",
+      "zoho_api_key",
+      "resend_api_key"
     ];
     const platformSettings = await prisma.platformSetting.findMany({
       where: { key: { in: platformKeys } }
     });
 
-    // Merge into a flat dictionary for the frontend
+    const relevantSiteSettings = await prisma.siteSetting.findMany({
+      where: { key: { in: platformKeys } }
+    });
+
+    // Merge: platformSettings take priority, siteSettings are the fallback
     const merged: Record<string, string> = {};
-    siteSettings.forEach(s => merged[s.key] = s.value);
+    
+    // First, map all standard site settings (non-platform)
+    const allSiteSettings = await prisma.siteSetting.findMany();
+    allSiteSettings.forEach(s => merged[s.key] = s.value);
+
+    // Then, merge platform settings and their fallbacks
+    relevantSiteSettings.forEach(s => merged[s.key] = s.value);
     platformSettings.forEach(s => merged[s.key] = s.value);
 
     return NextResponse.json({ settings: merged });
@@ -82,7 +108,24 @@ export async function PUT(request: NextRequest) {
       "stateCode",
       "companyAddress",
       "jwt_secret",
-      "session_lifetime_hrs"
+      "session_lifetime_hrs",
+      "google_analytics_id",
+      "google_analytics_enabled",
+      "sentry_dsn",
+      "sentry_enabled",
+      "meta_pixel_id",
+      "meta_pixel_enabled",
+      "microsoft_clarity_id",
+      "microsoft_clarity_enabled",
+      "email_provider",
+      "smtp_host",
+      "smtp_port",
+      "smtp_user",
+      "smtp_pass",
+      "smtp_secure",
+      "smtp_from",
+      "zoho_api_key",
+      "resend_api_key"
     ]);
 
     // Transactionally update all settings

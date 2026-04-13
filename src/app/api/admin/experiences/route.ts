@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-// Trigger TS Re-check
 import { authorizeRequest } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
 import { ExperienceStatus, Difficulty } from "@prisma/client";
-
 import { generateSlug } from "@/lib/slugify";
+import { z } from "zod";
 
 // GET /api/admin/experiences
 export async function GET(request: NextRequest) {
@@ -31,22 +30,21 @@ export async function GET(request: NextRequest) {
   }
 }
 
-import { z } from "zod";
-
+// POST /api/admin/experiences schema
 const experienceSchema = z.object({
-  title: z.string().min(1, "Title is required").max(100),
+  title: z.string().trim().min(1, "Title is required").max(100),
   description: z.any(), // JSON
-  basePrice: z.number().min(0),
-  capacity: z.number().int().min(1),
-  durationDays: z.number().int().min(1).optional(),
-  location: z.string().optional(),
+  basePrice: z.number().min(0, "Base Price is required"),
+  capacity: z.number().int().min(1, "Capacity must be at least 1"),
+  durationDays: z.number().int().min(1, "Duration (Days) is required"),
+  location: z.string().trim().min(1, "Location is required"),
   difficulty: z.enum(["EASY", "MODERATE", "HARD", "EXTREME"]).optional(),
   isFeatured: z.boolean().optional(),
-  coverImage: z.url().optional().nullable(),
-  cardImage: z.url().optional().nullable(),
-  images: z.array(z.url()).optional(),
+  coverImage: z.string().min(1, "Cover Image is required").nullable(),
+  cardImage: z.string().optional().nullable(),
+  images: z.array(z.string().trim()).transform(arr => arr.filter(Boolean)).optional(),
   itinerary: z.any().optional(), // JSON
-  categoryIds: z.array(z.string()).optional(),
+  categoryIds: z.array(z.string()).transform(arr => arr.filter(Boolean)).optional(),
   inclusions: z.any().optional(),
   exclusions: z.any().optional(),
   thingsToCarry: z.any().optional(),
@@ -58,15 +56,15 @@ const experienceSchema = z.object({
   trekDistance: z.string().optional().nullable(),
   bestTimeToVisit: z.string().optional().nullable(),
   maxGroupSize: z.number().int().optional().nullable(),
-  pickupPoints: z.array(z.string()).optional(),
-  highlights: z.array(z.string()).optional(),
+  pickupPoints: z.array(z.string().trim()).transform(arr => arr.filter(Boolean)).optional(),
+  highlights: z.array(z.string().trim()).transform(arr => arr.filter(Boolean)).optional(),
   networkConnectivity: z.string().optional().nullable(),
   lastAtm: z.string().optional().nullable(),
   fitnessRequirement: z.string().optional().nullable(),
   ageRange: z.string().optional().nullable(),
   meetingTime: z.string().optional().nullable(),
   dropoffTime: z.string().optional().nullable(),
-  vibeTags: z.array(z.string()).optional(),
+  vibeTags: z.array(z.string().trim()).transform(arr => arr.filter(Boolean)).optional(),
 });
 
 // POST /api/admin/experiences
@@ -80,11 +78,24 @@ export async function POST(request: NextRequest) {
     // ─── Validation ──────────────────────────────────────
     const parseResult = experienceSchema.safeParse(body);
     if (!parseResult.success) {
+      const fieldErrors: Record<string, string[]> = {};
+      parseResult.error.issues.forEach((issue) => {
+        const path = issue.path[0] as string;
+        if (!fieldErrors[path]) fieldErrors[path] = [];
+        fieldErrors[path].push(issue.message);
+      });
+
+      console.error("Experience Validation Failed:", fieldErrors);
       return NextResponse.json(
-        { error: parseResult.error.issues[0].message },
+        {
+          error: "Validation Failed",
+          details: fieldErrors,
+          message: parseResult.error.issues[0].message,
+        },
         { status: 400 },
       );
     }
+
     const {
       title,
       description,
@@ -168,10 +179,10 @@ export async function POST(request: NextRequest) {
         meetingTime,
         dropoffTime,
         vibeTags: vibeTags || [],
-        categories: categoryIds
+        categories: (categoryIds && categoryIds.length > 0)
           ? {
               create: categoryIds.map((catId: string) => ({
-                category: { connect: { id: catId } },
+                categoryId: catId,
               })),
             }
           : undefined,

@@ -20,17 +20,23 @@ export async function POST(request: NextRequest) {
   if (!auth.authorized) return auth.response;
 
   try {
-    const { to } = await request.json();
+    const { to, config: overrideConfig } = await request.json();
     if (!to) {
       return NextResponse.json({ error: "Recipient email is required." }, { status: 400 });
     }
 
-    // Resolve the current provider from the DB
-    const { provider, from } = await emailFactory.getProvider();
+    // Resolve the provider, optionally using temporary overrides from the frontend
+    const { provider, from } = await emailFactory.getProvider(overrideConfig);
 
     // Render the template using the safe helper
-    const html = await renderTestEmail("Admin Tester");
+    const html = await renderTestEmail("Admin Configuration Tester");
 
+    const configSource = (overrideConfig && Object.keys(overrideConfig).length > 0) ? "TEMPORARY (Dashboard Overrides)" : "SAVED (Database)";
+    console.log(`[TestEmail] Sending test to ${to} using ${configSource}...`);
+    if (configSource === "TEMPORARY (Dashboard Overrides)") {
+      console.log(`[TestEmail] Overrides received: ${Object.keys(overrideConfig || {}).join(", ")}`);
+    }
+    
     await provider.send({
       to,
       subject: "🏔️ Param Adventures: Email Configuration Test",
@@ -38,10 +44,10 @@ export async function POST(request: NextRequest) {
       from
     });
 
-    return NextResponse.json({ message: "Test email sent successfully!" });
+    return NextResponse.json({ message: "Test email sent successfully! Everything is wired correctly. 🚀" });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error";
-    console.error("Test email error:", error);
+    console.error("Test email error details:", error);
     return NextResponse.json(
       { error: `Failed to send test email: ${message}` },
       { status: 500 },

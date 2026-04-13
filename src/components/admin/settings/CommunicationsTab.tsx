@@ -12,11 +12,31 @@ export default function CommunicationsTab(props: Readonly<TabProps>) {
     if (!testEmail) return;
     setTestStatus("sending");
     setTestMessage("");
+    
+    // Gather current form values and "Super Trim" them to remove accidental spaces
+    const config = {
+      email_provider: getVal("PLATFORM", "email_provider"),
+      smtp_from: (getVal("PLATFORM", "smtp_from") || "").trim(),
+      smtp_host: (getVal("PLATFORM", "smtp_host") || "").trim(),
+      smtp_port: (getVal("PLATFORM", "smtp_port") || "").trim(),
+      smtp_user: (getVal("PLATFORM", "smtp_user") || "").trim(),
+      smtp_pass: getVal("PLATFORM", "smtp_pass"), // Keep raw for now, but will trim in payload
+      resend_api_key: (getVal("PLATFORM", "resend_api_key") || "").trim(),
+      zoho_api_key: (getVal("PLATFORM", "zoho_api_key") || "").trim(),
+      zoho_org_id: (getVal("PLATFORM", "zoho_org_id") || "").trim(),
+      smtp_secure: getVal("PLATFORM", "smtp_secure"),
+    };
+
+    // Explicitly trim the password and keys for the test payload
+    if (config.smtp_pass) config.smtp_pass = config.smtp_pass.trim();
+    if (config.resend_api_key) config.resend_api_key = config.resend_api_key.trim();
+    if (config.zoho_api_key) config.zoho_api_key = config.zoho_api_key.trim();
+
     try {
       const res = await fetch("/api/admin/settings/system/test-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ to: testEmail }),
+        body: JSON.stringify({ to: testEmail, config }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -90,17 +110,32 @@ export default function CommunicationsTab(props: Readonly<TabProps>) {
               onChange={(v: string) => updateSetting("PLATFORM", "smtp_pass", v)}
               type="password"
             />
+            <div className="flex items-center gap-2 pt-2">
+              <input
+                id="smtp_secure"
+                type="checkbox"
+                checked={getVal("PLATFORM", "smtp_secure") === "true"}
+                onChange={(e) => updateSetting("PLATFORM", "smtp_secure", e.target.checked ? "true" : "false")}
+                className="w-4 h-4 rounded border-border text-primary focus:ring-primary/20"
+              />
+              <label htmlFor="smtp_secure" className="text-xs font-bold text-foreground/60 uppercase tracking-widest cursor-pointer">
+                Secure (Use SSL/TLS)
+              </label>
+            </div>
           </div>
         )}
 
         {(getVal("PLATFORM", "email_provider") === "ZOHO_API" || getVal("PLATFORM", "email_provider") === "RESEND") && (
           <div className="space-y-6">
             <InputGroup
-              label="API Key"
-              value={getVal("PLATFORM", "email_api_key")}
-              onChange={(v: string) => updateSetting("PLATFORM", "email_api_key", v)}
+              label={`${getVal("PLATFORM", "email_provider") === "RESEND" ? "Resend" : "Zoho Mail"} API Key`}
+              value={getVal("PLATFORM", "email_provider") === "RESEND" ? getVal("PLATFORM", "resend_api_key") : getVal("PLATFORM", "zoho_api_key")}
+              onChange={(v: string) => {
+                const key = getVal("PLATFORM", "email_provider") === "RESEND" ? "resend_api_key" : "zoho_api_key";
+                updateSetting("PLATFORM", key, v);
+              }}
               type="password"
-              placeholder="e.g. resend_key_..."
+              placeholder="Paste your API key here..."
             />
             {getVal("PLATFORM", "email_provider") === "ZOHO_API" && (
               <InputGroup
