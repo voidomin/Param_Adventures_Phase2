@@ -12,7 +12,7 @@
  *
  * Usage:
  * 1. Set BOOTSTRAP_TOKEN in your Render environment variables (any random string)
- * 2. Call: https://your-app.onrender.com/api/admin/bootstrap?token=YOUR_BOOTSTRAP_TOKEN
+ * 2. Call via POST: https://your-app.onrender.com/api/admin/bootstrap?token=YOUR_BOOTSTRAP_TOKEN
  * 3. Wait for seed to complete (logs will show init progress)
  * 4. Verify admin accounts created and can log in
  * 5. DELETE the BOOTSTRAP_TOKEN from environment variables to prevent abuse
@@ -241,7 +241,3 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
-  // Support GET requests for easier browser access
-  return POST(request);
-}

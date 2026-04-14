@@ -2,6 +2,18 @@ import { NextResponse, NextRequest } from "next/server";
 import { authorizeRequest } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
 
+const SENSITIVE_KEYS = new Set([
+  "jwt_secret",
+  "razorpay_key_secret",
+  "razorpay_webhook_secret",
+  "smtp_pass",
+  "zoho_api_key",
+  "resend_api_key",
+  "aws_secret_access_key"
+]);
+
+const MASK_VALUE = "[UNREVEALED]";
+
 // GET /api/admin/settings
 export async function GET(request: NextRequest) {
   try {
@@ -71,6 +83,13 @@ export async function GET(request: NextRequest) {
     relevantSiteSettings.forEach(s => merged[s.key] = s.value);
     platformSettings.forEach(s => merged[s.key] = s.value);
 
+    // Mask sensitive values before returning to client
+    Object.keys(merged).forEach(k => {
+      if (SENSITIVE_KEYS.has(k) && merged[k]) {
+        merged[k] = MASK_VALUE;
+      }
+    });
+
     return NextResponse.json({ settings: merged });
   } catch (error: unknown) {
     console.error("Fetch settings error:", error);
@@ -128,22 +147,30 @@ export async function PUT(request: NextRequest) {
       "resend_api_key"
     ]);
 
-    // Transactionally update all settings
+    // Transactionally update all settings, filtering out masked placeholders
     await prisma.$transaction(
-      Object.entries(settings).map(([key, value]) => {
-        if (platformKeys.has(key)) {
-          return prisma.platformSetting.upsert({
+      Object.entries(settings)
+        .filter(([key, value]) => {
+          // If it's a sensitive key and the value is the masking placeholder, skip the update
+          if (SENSITIVE_KEYS.has(key) && value === MASK_VALUE) {
+            return false;
+          }
+          return true;
+        })
+        .map(([key, value]) => {
+          if (platformKeys.has(key)) {
+            return prisma.platformSetting.upsert({
+              where: { key },
+              update: { value: String(value) },
+              create: { key, value: String(value) }
+            });
+          }
+          return prisma.siteSetting.upsert({
             where: { key },
             update: { value: String(value) },
             create: { key, value: String(value) }
           });
-        }
-        return prisma.siteSetting.upsert({
-          where: { key },
-          update: { value: String(value) },
-          create: { key, value: String(value) }
-        });
-      })
+        })
     );
 
     return NextResponse.json({ success: true });

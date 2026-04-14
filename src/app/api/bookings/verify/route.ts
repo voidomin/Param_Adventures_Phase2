@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import crypto from "node:crypto";
+import { authorizeRequest } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
 import { sendBookingConfirmation } from "@/lib/email";
 import { logActivity } from "@/lib/audit-logger";
@@ -50,6 +51,10 @@ const verifySchema = z.object({
  */
 export async function POST(request: NextRequest) {
   try {
+    // ─── Authentication ──────────────────────────────────
+    const auth = await authorizeRequest(request);
+    if (!auth.authorized) return auth.response;
+
     const body = await request.json();
 
     // ─── Validation ──────────────────────────────────────
@@ -66,6 +71,21 @@ export async function POST(request: NextRequest) {
       razorpay_signature,
       bookingId,
     } = parseResult.data;
+
+    // ─── Ownership Check ─────────────────────────────────
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: { userId: true, paymentStatus: true }
+    });
+
+    if (!booking) {
+      return NextResponse.json({ error: "Booking not found." }, { status: 404 });
+    }
+
+    if (booking.userId !== auth.userId) {
+      console.warn(`🛑 Unauthorized payment verification attempt. User ${auth.userId} tried to verify booking ${bookingId} owned by ${booking.userId}`);
+      return NextResponse.json({ error: "Unauthorized access to this booking." }, { status: 403 });
+    }
 
     // ─── Verification ────────────────────────────────────
     const secretSetting = await prisma.platformSetting.findUnique({
@@ -99,13 +119,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Signature valid — check idempotency
-    const existingBooking = await prisma.booking.findUnique({
-      where: { id: bookingId },
-      select: { paymentStatus: true },
-    });
-
-    if (existingBooking?.paymentStatus === "PAID") {
+    if (booking.paymentStatus === "PAID") {
       return NextResponse.json({
         success: true,
         bookingId,

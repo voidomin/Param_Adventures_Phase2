@@ -3,6 +3,23 @@ import { prisma } from "@/lib/db";
 import { authorizeSystemRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
 
+const SENSITIVE_KEYS = new Set([
+  "jwt_secret",
+  "razorpay_key_secret",
+  "razorpay_webhook_secret",
+  "smtp_pass",
+  "zoho_api_key",
+  "resend_api_key",
+  "aws_secret_access_key"
+]);
+
+const sanitizeSettings = (settings: { key: string; value: string }[]) => {
+  return settings.map(s => ({
+    ...s,
+    value: SENSITIVE_KEYS.has(s.key) ? "[REDACTED]" : s.value
+  }));
+};
+
 /**
  * GET /api/admin/settings/system/database/snapshot
  * Exports all critical platform data as a secure JSON archive.
@@ -50,8 +67,8 @@ export async function GET(request: NextRequest) {
         slots,
         bookings,
         payments,
-        platformSettings,
-        siteSettings
+        platformSettings: sanitizeSettings(platformSettings),
+        siteSettings: sanitizeSettings(siteSettings)
       }
     };
 
