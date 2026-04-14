@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { authorizeSystemRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
 
+// Redaction strategy for platform settings
 const SENSITIVE_KEYS = new Set([
   "jwt_secret",
   "razorpay_key_secret",
@@ -14,25 +15,40 @@ const SENSITIVE_KEYS = new Set([
 ]);
 
 const sanitizeSettings = (settings: { key: string; value: string }[]) => {
-  return settings.map(s => ({
-    ...s,
-    value: SENSITIVE_KEYS.has(s.key) ? "[REDACTED]" : s.value
-  }));
+  // Surgical stripping: completely remove sensitive keys from the export payload
+  return settings.filter(s => !SENSITIVE_KEYS.has(s.key));
 };
+
+// Rate limit: 60 seconds cooldown for data exports
+let lastExportTime = 0;
+const COOLDOWN_MS = 60 * 1000;
 
 /**
  * GET /api/admin/settings/system/database/snapshot
- * Exports all critical platform data as a secure JSON archive.
- * Provides Data Sovereignty for the Product Owner.
+ * Exports critical platform data as a secure JSON archive.
+ * Implements architectural hardening: Deny-by-Default selectors and Rate Limiting.
  */
 export async function GET(request: NextRequest) {
+  // 1. High-Security Auth Check (Whitelist + SuperAdmin)
   const auth = await authorizeSystemRequest(request);
   if (!auth.authorized) return auth.response;
 
+  // 2. Rate Limiting (Memory-based Cooldown)
+  const now = Date.now();
+  if (now - lastExportTime < COOLDOWN_MS) {
+    const remaining = Math.ceil((COOLDOWN_MS - (now - lastExportTime)) / 1000);
+    return NextResponse.json(
+      { error: `Export cooldown active. Please wait ${remaining}s before generating a new snapshot.` },
+      { status: 429 }
+    );
+  }
+
   try {
     const timestamp = new Date().toISOString();
+    const ip = request.headers.get("x-forwarded-for") || "unknown";
     
-    // 1. Fetch all critical data collections
+    // 3. Selective Fetching (Deny-by-Default)
+    // We explicitly exclude hashes, secrets, and auth tokens from the export.
     const [
       users, 
       roles, 
@@ -44,19 +60,31 @@ export async function GET(request: NextRequest) {
       platformSettings, 
       siteSettings
     ] = await Promise.all([
-      prisma.user.findMany({ select: { id: true, email: true, name: true, roleId: true, status: true, phoneNumber: true, createdAt: true } }),
+      prisma.user.findMany({ 
+        select: { 
+          id: true, email: true, name: true, roleId: true, status: true, 
+          phoneNumber: true, age: true, gender: true, createdAt: true 
+          // password, googleId, resetToken, tokenVersion EXCLUDED
+        } 
+      }),
       prisma.role.findMany({ include: { permissions: { include: { permission: true } } } }),
       prisma.experience.findMany(),
       prisma.category.findMany(),
       prisma.slot.findMany({ include: { assignments: true } }),
       prisma.booking.findMany({ include: { participants: true, payments: true } }),
-      prisma.payment.findMany(),
+      prisma.payment.findMany({
+        select: {
+          id: true, bookingId: true, provider: true, amount: true, 
+          currency: true, status: true, createdAt: true
+          // providerPaymentId, fullPayload EXCLUDED
+        }
+      }),
       prisma.platformSetting.findMany(),
       prisma.siteSetting.findMany(),
     ]);
 
     const snapshot = {
-      version: "2.0.0",
+      version: "2.1.0",
       timestamp,
       environment: process.env.NODE_ENV,
       data: {
@@ -72,16 +100,26 @@ export async function GET(request: NextRequest) {
       }
     };
 
-    // 2. Audit Log the export
+    // 4. Enriched Audit Logging
     await logActivity(
       "DATABASE_SNAPSHOT_EXPORTED",
       auth.userId,
       "SYSTEM",
       "ALL",
-      { message: `Full platform snapshot generated with ${bookings.length} bookings and ${users.length} users.` }
+      { 
+        ip,
+        snapshot_version: "2.1.0",
+        record_counts: {
+          users: users.length,
+          bookings: bookings.length,
+          payments: payments.length
+        }
+      }
     );
 
-    // 3. Return as a downloadable JSON file
+    lastExportTime = now;
+
+    // 5. Return as a downloadable JSON file
     const response = NextResponse.json(snapshot);
     const filename = `param_adventures_snapshot_${timestamp.replaceAll(":", "-").replaceAll(".", "-")}.json`;
     
