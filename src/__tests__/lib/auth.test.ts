@@ -33,6 +33,7 @@ const TEST_PASSWORD_B = "password456"; // NOSONAR
 describe("Auth Utilities", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubEnv("JWT_SECRET", "test-secret-key-12345");
   });
 
   describe("Password Hashing", () => {

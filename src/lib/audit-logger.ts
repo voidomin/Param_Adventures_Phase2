@@ -11,6 +11,54 @@ import { Prisma } from "@prisma/client";
  * @param metadata - Extra context (IP, User Agent, etc.)
  * @param tx - Optional Prisma transaction client
  */
+/**
+ * SENSITIVE_KEYS: Keys that should be redacted from audit logs to prevent PII leaks.
+ */
+const SENSITIVE_KEYS = new Set([
+  "email",
+  "emailAddress",
+  "phone",
+  "phoneNumber",
+  "password",
+  "token",
+  "secret",
+  "name",
+  "firstName",
+  "lastName",
+  "adminEmail",
+  "razorpay_key_secret",
+  "razorpay_webhook_secret",
+  "smtp_pass",
+]);
+
+/**
+ * Recursively scrubs PII from an object.
+ */
+function scrubPII(obj: unknown): unknown {
+  if (!obj || typeof obj !== "object") return obj;
+  if (Array.isArray(obj)) return obj.map(scrubPII);
+
+  const entries = Object.entries(obj as Record<string, unknown>);
+  const scrubbed: Record<string, unknown> = {};
+
+  for (const [key, value] of entries) {
+    if (SENSITIVE_KEYS.has(key)) {
+      scrubbed[key] = "[REDACTED]";
+    } else if (typeof value === "object") {
+      scrubbed[key] = scrubPII(value);
+    } else {
+      scrubbed[key] = value;
+    }
+  }
+  return scrubbed;
+}
+
+/**
+ * Log a system activity securely.
+ * Supports optional Prisma transactions to ensure atomicity.
+ * 
+ * v1.0.2 Upgrade: Automatically scrubs PII from metadata.
+ */
 export async function logActivity(
   action: string,
   actorId: string | null,
@@ -21,14 +69,16 @@ export async function logActivity(
 ) {
   const client = tx || prisma;
   try {
+    // Scrub metadata to prevent PII leakage into logs
+    const sanitizedMetadata = metadata ? scrubPII(metadata) : null;
+
     await client.auditLog.create({
       data: {
         action,
         actorId,
         targetType,
         targetId,
-        // @ts-expect-error Prisma strictly expects InputJsonValue which clashes with Record<string,any>
-        metadata: metadata ? (structuredClone(metadata) as Prisma.InputJsonValue) : null,
+        metadata: sanitizedMetadata as Prisma.InputJsonValue,
       },
     });
   } catch (error) {

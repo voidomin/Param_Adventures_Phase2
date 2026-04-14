@@ -1,62 +1,16 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { NextRequest, NextResponse } from "next/server";
-
-const {
-  mockOrdersCreate,
-  MockRazorpay,
-} = vi.hoisted(() => {
-  const mockOrdersCreate = vi.fn();
-  return {
-    mockOrdersCreate,
-    MockRazorpay: class {
-      orders = { create: mockOrdersCreate };
-    },
-  };
-});
-
-vi.mock("razorpay", () => ({
-  default: MockRazorpay,
-}));
-
-vi.mock("next/cache", () => ({
-  revalidatePath: vi.fn(),
-}));
-
-vi.mock("@/lib/api-auth", () => ({
-  authorizeRequest: vi.fn(),
-}));
-
-vi.mock("@/lib/audit-logger", () => ({
-  logActivity: vi.fn(),
-}));
-
-vi.mock("@/lib/db", () => ({
-  prisma: {
-    experience: { findUnique: vi.fn() },
-    slot: { findUnique: vi.fn(), update: vi.fn() },
-    platformSetting: { findUnique: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]) },
-    booking: { create: vi.fn(), delete: vi.fn() },
-    payment: { create: vi.fn() },
-    $transaction: vi.fn(),
+vi.mock("@/services/booking.service", () => ({
+  BookingService: {
+    processBooking: vi.fn(),
   },
 }));
 
+import { NextRequest, NextResponse } from "next/server";
 import { POST } from "@/app/api/bookings/route";
 import { authorizeRequest } from "@/lib/api-auth";
-import { prisma } from "@/lib/db";
-import { logActivity } from "@/lib/audit-logger";
-import { revalidatePath } from "next/cache";
+import { BookingService } from "@/services/booking.service";
 
 const mockAuthorizeRequest = vi.mocked(authorizeRequest);
-const mockExperienceFindUnique = vi.mocked(prisma.experience.findUnique);
-const mockSlotFindUnique = vi.mocked(prisma.slot.findUnique);
-const mockPlatformSettingFindUnique = vi.mocked(prisma.platformSetting.findUnique);
-const mockBookingDelete = vi.mocked(prisma.booking.delete);
-const mockSlotUpdate = vi.mocked(prisma.slot.update);
-const mockPaymentCreate = vi.mocked(prisma.payment.create);
-const mockTransaction = vi.mocked(prisma.$transaction);
-const mockLogActivity = vi.mocked(logActivity);
-const mockRevalidatePath = vi.mocked(revalidatePath);
+const mockProcessBooking = vi.mocked(BookingService.processBooking);
 
 const createRequest = (body: unknown) =>
   ({ json: vi.fn().mockResolvedValue(body) }) as unknown as NextRequest;
@@ -67,7 +21,7 @@ const validPayload = {
   participantCount: 2,
   participants: [
     { name: "A", isPrimary: true, age: 28 },
-    { name: "B", age: "32" },
+    { name: "B", age: 32 },
   ],
 };
 
@@ -76,7 +30,6 @@ describe("POST /api/bookings", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockOrdersCreate.mockReset();
     errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
@@ -91,77 +44,27 @@ describe("POST /api/bookings", () => {
     } as any);
 
     const response = await POST(createRequest(validPayload));
-
     expect(response.status).toBe(401);
   });
 
-  it("returns 400 when participant count and details mismatch", async () => {
+  it("returns 400 for validation failure (mismatched participants)", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
 
     const response = await POST(
       createRequest({ ...validPayload, participantCount: 3 }),
     );
-
     expect(response.status).toBe(400);
   });
 
-  it("returns 404 when experience is not published", async () => {
+  it("creates booking and returns result on success", async () => {
+    const successResult = {
+      bookingId: "bk-1",
+      orderId: "order_123",
+      amount: 200000,
+      currency: "INR"
+    };
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
-    mockExperienceFindUnique.mockResolvedValue({ id: "exp-1", status: "DRAFT" } as any);
-    mockSlotFindUnique.mockResolvedValue({ id: "slot-1", experienceId: "exp-1", remainingCapacity: 10 } as any);
-
-    const response = await POST(createRequest(validPayload));
-
-    expect(response.status).toBe(404);
-  });
-
-  it("returns 409 when not enough capacity", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
-    mockExperienceFindUnique.mockResolvedValue({ id: "exp-1", status: "PUBLISHED", basePrice: 1000 } as any);
-    mockSlotFindUnique.mockResolvedValue({ id: "slot-1", experienceId: "exp-1", remainingCapacity: 1 } as any);
-
-    const response = await POST(createRequest(validPayload));
-
-    expect(response.status).toBe(409);
-  });
-
-  it("returns 404 when slot does not belong to experience", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
-    mockExperienceFindUnique.mockResolvedValue({ id: "exp-1", status: "PUBLISHED", basePrice: 1000 } as any);
-    mockSlotFindUnique.mockResolvedValue({ id: "slot-1", experienceId: "exp-other", remainingCapacity: 10 } as any);
-
-    const response = await POST(createRequest(validPayload));
-
-    expect(response.status).toBe(404);
-  });
-
-  it("creates booking, payment, and razorpay order on success", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
-    mockExperienceFindUnique.mockResolvedValue({ id: "exp-1", status: "PUBLISHED", basePrice: 1000 } as any);
-    mockSlotFindUnique.mockResolvedValue({ id: "slot-1", experienceId: "exp-1", remainingCapacity: 10 } as any);
-
-    mockPlatformSettingFindUnique.mockResolvedValue({
-      key: "taxConfig",
-      value: JSON.stringify([{ name: "GST", percentage: 5 }]),
-    } as any);
-
-    mockTransaction.mockImplementation(async (cb: any) => {
-      const tx = {
-        booking: {
-          create: vi.fn().mockResolvedValue({ id: "bk-1", totalPrice: 2000 }),
-          delete: mockBookingDelete,
-        },
-        slot: {
-          updateMany: vi.fn().mockResolvedValue({ count: 1 }),
-          update: mockSlotUpdate,
-        },
-      };
-      return cb(tx);
-    });
-
-    mockOrdersCreate.mockResolvedValue({ id: "order_123" });
-    mockPaymentCreate.mockResolvedValue({ id: "pay-1" } as any);
-    mockLogActivity.mockResolvedValue(undefined);
+    mockProcessBooking.mockResolvedValueOnce(successResult);
 
     const response = await POST(createRequest(validPayload));
     const data = await response.json();
@@ -169,169 +72,40 @@ describe("POST /api/bookings", () => {
     expect(response.status).toBe(200);
     expect(data.bookingId).toBe("bk-1");
     expect(data.orderId).toBe("order_123");
-    expect(data.amount).toBe(200000);
-    expect(mockPaymentCreate).toHaveBeenCalled();
-    expect(mockLogActivity).toHaveBeenCalledWith(
-      "BOOKING_REQUESTED",
-      "u1",
-      "Booking",
-      "bk-1",
-      expect.objectContaining({ experienceId: "exp-1", slotId: "slot-1" }),
-    );
-    expect(mockRevalidatePath).toHaveBeenCalledWith("/", "layout");
+    expect(mockProcessBooking).toHaveBeenCalledWith("u1", expect.any(Object));
   });
 
-  it("continues with defaults when tax config is invalid JSON", async () => {
+  it("returns 409 on INSUFFICIENT_CAPACITY", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
-    mockExperienceFindUnique.mockResolvedValue({ id: "exp-1", status: "PUBLISHED", basePrice: 1000 } as any);
-    mockSlotFindUnique.mockResolvedValue({ id: "slot-1", experienceId: "exp-1", remainingCapacity: 10 } as any);
-
-    mockPlatformSettingFindUnique.mockResolvedValue({
-      key: "taxConfig",
-      value: "{ bad-json",
-    } as any);
-
-    let capturedBookingCreateArg: any;
-    mockTransaction.mockImplementation(async (cb: any) => {
-      const tx = {
-        booking: {
-          create: vi.fn(async (arg: any) => {
-            capturedBookingCreateArg = arg;
-            return { id: "bk-1", totalPrice: 2000 };
-          }),
-          delete: mockBookingDelete,
-        },
-        slot: {
-          updateMany: vi.fn().mockResolvedValue({ count: 1 }),
-          update: mockSlotUpdate,
-        },
-      };
-      return cb(tx);
-    });
-
-    mockOrdersCreate.mockResolvedValue({ id: "order_123" });
-    mockPaymentCreate.mockResolvedValue({ id: "pay-1" } as any);
-    mockLogActivity.mockResolvedValue(undefined);
+    mockProcessBooking.mockRejectedValueOnce(new Error("INSUFFICIENT_CAPACITY"));
 
     const response = await POST(createRequest(validPayload));
-
-    expect(response.status).toBe(200);
-    expect(capturedBookingCreateArg.data.baseFare).toBe(2000);
-    expect(capturedBookingCreateArg.data.taxBreakdown).toEqual([]);
-    expect(errorSpy).toHaveBeenCalledWith("Failed to parse taxConfig during booking");
-  });
-
-  it("handles non-numeric tax percentage and blank participant age", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
-    mockExperienceFindUnique.mockResolvedValue({ id: "exp-1", status: "PUBLISHED", basePrice: 1000 } as any);
-    mockSlotFindUnique.mockResolvedValue({ id: "slot-1", experienceId: "exp-1", remainingCapacity: 10 } as any);
-
-    mockPlatformSettingFindUnique.mockResolvedValue({
-      key: "taxConfig",
-      value: JSON.stringify([{ name: "GST", percentage: "abc" }]),
-    } as any);
-
-    let capturedBookingCreateArg: any;
-    mockTransaction.mockImplementation(async (cb: any) => {
-      const tx = {
-        booking: {
-          create: vi.fn(async (arg: any) => {
-            capturedBookingCreateArg = arg;
-            return { id: "bk-2", totalPrice: 1000 };
-          }),
-          delete: mockBookingDelete,
-        },
-        slot: {
-          updateMany: vi.fn().mockResolvedValue({ count: 1 }),
-          update: mockSlotUpdate,
-        },
-      };
-      return cb(tx);
-    });
-
-    mockOrdersCreate.mockResolvedValue({ id: "order_456" });
-    mockPaymentCreate.mockResolvedValue({ id: "pay-2" } as any);
-    mockLogActivity.mockResolvedValue(undefined);
-
-    const response = await POST(
-      createRequest({
-        ...validPayload,
-        participantCount: 1,
-        participants: [{ name: "A", age: "" }],
-      }),
-    );
-
-    expect(response.status).toBe(200);
-    expect(capturedBookingCreateArg.data.participants.create[0].age).toBeNull();
-    expect(capturedBookingCreateArg.data.taxBreakdown[0].amount).toBe(0);
-  });
-
-  it("rolls back booking when razorpay order creation fails", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
-    mockExperienceFindUnique.mockResolvedValue({ id: "exp-1", status: "PUBLISHED", basePrice: 1000 } as any);
-    mockSlotFindUnique.mockResolvedValue({ id: "slot-1", experienceId: "exp-1", remainingCapacity: 10 } as any);
-    mockPlatformSettingFindUnique.mockResolvedValue(null);
-
-    let txCall = 0;
-    mockTransaction.mockImplementation(async (cb: any) => {
-      txCall += 1;
-      if (txCall === 1) {
-        return cb({
-          booking: {
-            create: vi.fn().mockResolvedValue({ id: "bk-1", totalPrice: 2000 }),
-            delete: mockBookingDelete,
-          },
-          slot: {
-            updateMany: vi.fn().mockResolvedValue({ count: 1 }),
-            update: mockSlotUpdate,
-          },
-        });
-      }
-
-      return cb({
-        booking: { delete: mockBookingDelete },
-        slot: { update: mockSlotUpdate },
-      });
-    });
-
-    mockOrdersCreate.mockRejectedValue(new Error("gateway down"));
-
-    const response = await POST(createRequest(validPayload));
+    expect(response.status).toBe(409);
     const data = await response.json();
-
-    expect(response.status).toBe(502);
-    expect(data.error).toContain("Payment gateway unavailable");
-    expect(mockBookingDelete).toHaveBeenCalledWith({ where: { id: "bk-1" } });
-    expect(mockSlotUpdate).toHaveBeenCalledWith({
-      where: { id: "slot-1" },
-      data: { remainingCapacity: { increment: 2 } },
-    });
+    expect(data.error).toContain("Requested slots are no longer available");
   });
 
-  it("returns 409 when transaction detects overbooking race", async () => {
+  it("returns 409 on OVERBOOKED (race condition)", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
-    mockExperienceFindUnique.mockResolvedValue({ id: "exp-1", status: "PUBLISHED", basePrice: 1000 } as any);
-    mockSlotFindUnique.mockResolvedValue({ id: "slot-1", experienceId: "exp-1", remainingCapacity: 10 } as any);
-    mockPlatformSettingFindUnique.mockResolvedValue(null);
-
-    mockTransaction.mockImplementation(async (cb: any) => {
-      return cb({
-        booking: { create: vi.fn().mockResolvedValue({ id: "bk-1", totalPrice: 2000 }) },
-        slot: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
-      });
-    });
+    mockProcessBooking.mockRejectedValueOnce(new Error("OVERBOOKED"));
 
     const response = await POST(createRequest(validPayload));
-
     expect(response.status).toBe(409);
   });
 
-  it("returns 500 for unexpected non-overbooked errors", async () => {
+  it("returns 502 on PAYMENT_GATEWAY_ERROR", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
-    mockExperienceFindUnique.mockRejectedValue("db-down");
+    mockProcessBooking.mockRejectedValueOnce(new Error("PAYMENT_GATEWAY_ERROR"));
 
     const response = await POST(createRequest(validPayload));
+    expect(response.status).toBe(502);
+  });
 
+  it("returns 500 for unexpected fatal errors", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
+    mockProcessBooking.mockRejectedValueOnce(new Error("Database explosion"));
+
+    const response = await POST(createRequest(validPayload));
     expect(response.status).toBe(500);
   });
 });
