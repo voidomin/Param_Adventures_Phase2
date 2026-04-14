@@ -68,7 +68,7 @@ export class SystemService {
     }
 
     // Dynamic import to avoid issues if the seed file is missing or has env dependencies at startup
-    const { main: runSeed } = await import("../../../../prisma/seed.mjs");
+    const { main: runSeed } = await import("../../prisma/seed.mjs");
     await runSeed(prisma);
 
     const [finalRoleCount, finalPermissionCount, superAdminCount] = await Promise.all([

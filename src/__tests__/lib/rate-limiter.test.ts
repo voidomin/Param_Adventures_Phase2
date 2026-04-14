@@ -2,14 +2,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { RateLimiter } from "@/lib/rate-limiter";
 
 describe("RateLimiter", () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  const now = () => Date.now();
+  let currentTime = 1000;
+  const manualClock = () => currentTime;
 
   it("allows requests under the limit", () => {
-    const limiter = new RateLimiter({ limit: 2, windowMs: 1000 }, now);
+    const limiter = new RateLimiter({ limit: 2, windowMs: 1000 }, manualClock);
     const key = "test-ip";
 
     const res1 = limiter.check(key);
@@ -22,7 +19,7 @@ describe("RateLimiter", () => {
   });
 
   it("blocks requests over the limit", () => {
-    const limiter = new RateLimiter({ limit: 1, windowMs: 1000 }, now);
+    const limiter = new RateLimiter({ limit: 1, windowMs: 1000 }, manualClock);
     const key = "test-ip";
 
     limiter.check(key);
@@ -33,15 +30,15 @@ describe("RateLimiter", () => {
   });
 
   it("resets after the window expires", () => {
-    const limiter = new RateLimiter({ limit: 1, windowMs: 1000 }, now);
+    const limiter = new RateLimiter({ limit: 1, windowMs: 1000 }, manualClock);
     const key = "test-ip";
+    currentTime = 1000;
 
     expect(limiter.check(key).success).toBe(true);
     expect(limiter.check(key).success).toBe(false);
 
-    // Fast forward time - use both advance and setSystemTime for guaranteed vitest sync
-    const future = Date.now() + 2000;
-    vi.setSystemTime(future);
+    // Explicitly advance the manual clock
+    currentTime += 2000;
 
     const res3 = limiter.check(key);
     expect(res3.success).toBe(true);
@@ -49,7 +46,7 @@ describe("RateLimiter", () => {
   });
 
   it("tracks different keys independently", () => {
-    const limiter = new RateLimiter({ limit: 1, windowMs: 1000 }, now);
+    const limiter = new RateLimiter({ limit: 1, windowMs: 1000 }, manualClock);
     
     expect(limiter.check("ip-1").success).toBe(true);
     expect(limiter.check("ip-1").success).toBe(false);
