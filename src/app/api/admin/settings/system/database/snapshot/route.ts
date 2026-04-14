@@ -19,27 +19,34 @@ const sanitizeSettings = (settings: { key: string; value: string }[]) => {
   return settings.filter(s => !SENSITIVE_KEYS.has(s.key));
 };
 
-// Rate limit: 60 seconds cooldown for data exports
-let lastExportTime = 0;
-const COOLDOWN_MS = 60 * 1000;
+import { snapshotLimiter } from "@/lib/rate-limiter";
 
 /**
  * GET /api/admin/settings/system/database/snapshot
  * Exports critical platform data as a secure JSON archive.
- * Implements architectural hardening: Deny-by-Default selectors and Rate Limiting.
+ * Implements architectural hardening: Deny-by-Default selectors and centralized Rate Limiting.
  */
 export async function GET(request: NextRequest) {
   // 1. High-Security Auth Check (Whitelist + SuperAdmin)
   const auth = await authorizeSystemRequest(request);
   if (!auth.authorized) return auth.response;
 
-  // 2. Rate Limiting (Memory-based Cooldown)
-  const now = Date.now();
-  if (now - lastExportTime < COOLDOWN_MS) {
-    const remaining = Math.ceil((COOLDOWN_MS - (now - lastExportTime)) / 1000);
+  // 2. Rate Limiting Protection (v1.0.2 Abuse Prevention)
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimit = snapshotLimiter.check(`${auth.userId}:${ip}`);
+  
+  if (!rateLimit.success) {
+    console.warn(`⚠️ [Snapshot] Rate limit exceeded for User: ${auth.userId} at IP: ${ip}`);
     return NextResponse.json(
-      { error: `Export cooldown active. Please wait ${remaining}s before generating a new snapshot.` },
-      { status: 429 }
+      { error: "Too many export requests. Please wait 15 minutes before your next snapshot." },
+      { 
+        status: 429,
+        headers: {
+          'X-RateLimit-Limit': rateLimit.limit.toString(),
+          'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+          'X-RateLimit-Reset': rateLimit.reset.toString()
+        }
+      }
     );
   }
 
@@ -116,9 +123,6 @@ export async function GET(request: NextRequest) {
         }
       }
     );
-
-    lastExportTime = now;
-
     // 5. Return as a downloadable JSON file
     const response = NextResponse.json(snapshot);
     const filename = `param_adventures_snapshot_${timestamp.replaceAll(":", "-").replaceAll(".", "-")}.json`;

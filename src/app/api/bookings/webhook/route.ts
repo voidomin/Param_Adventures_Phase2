@@ -4,14 +4,35 @@ import { prisma } from "@/lib/db";
 import { BookingService } from "@/services/booking.service";
 import { logActivity } from "@/lib/audit-logger";
 
+import { webhookLimiter } from "@/lib/rate-limiter";
+
 /**
  * POST /api/bookings/webhook
  * 
  * Server-to-Server endpoint for Razorpay payment notifications.
- * SECURE: Uses HMAC-SHA256 signature verification.
+ * SECURE: Uses HMAC-SHA256 signature verification and Rate Limiting.
  * PUBLIC: No JWT authentication (Razorpay call).
  */
 export async function POST(request: NextRequest) {
+  // 0. Rate Limiting Protection (Abuse Prevention)
+  const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimit = webhookLimiter.check(ip);
+  
+  if (!rateLimit.success) {
+    console.warn(`⚠️ [Webhook] Rate limit exceeded for IP: ${ip}`);
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { 
+        status: 429,
+        headers: {
+          'X-RateLimit-Limit': rateLimit.limit.toString(),
+          'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+          'X-RateLimit-Reset': rateLimit.reset.toString()
+        }
+      }
+    );
+  }
+
   try {
     // 1. Capture Raw Body for Signature Verification
     // We need the exact string payload to verify the HMAC hash.

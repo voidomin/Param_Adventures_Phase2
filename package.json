@@ -1,6 +1,6 @@
 {
   "name": "param-adventure",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -45,6 +45,7 @@
     "date-fns": "^4.1.0",
     "dotenv": "^16.4.7",
     "framer-motion": "^12.4.10",
+    "hono": "^4.12.12",
     "jsonwebtoken": "^9.0.3",
     "jspdf": "^4.2.0",
     "jspdf-autotable": "^5.0.7",
@@ -63,8 +64,7 @@
     "sanitize-html": "^2.17.1",
     "tailwind-merge": "^3.5.0",
     "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.2/xlsx-0.20.2.tgz",
-    "zod": "^4.3.6",
-    "hono": "^4.12.12"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@react-email/preview-server": "^5.2.9",
