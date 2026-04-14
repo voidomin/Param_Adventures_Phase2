@@ -60,4 +60,36 @@ describe("logActivity", () => {
     expect(consoleErrorSpy).toHaveBeenCalledWith("[Audit Logger Error]", expect.any(Error));
     consoleErrorSpy.mockRestore();
   });
+
+  describe("PII Scrubbing", () => {
+    it("scrubs sensitive keys from metadata", async () => {
+      mockAuditLogCreate.mockResolvedValue({} as any);
+
+      const sensitiveMetadata = {
+        ip: "127.0.0.1",
+        email: "leak@example.com",
+        phone: "1234567890",
+        nested: {
+          adminEmail: "admin@corp.com",
+          publicInfo: "all good"
+        }
+      };
+
+      await logActivity("SENSITIVE_ACTION", "user-1", "SYSTEM", null, sensitiveMetadata);
+
+      expect(mockAuditLogCreate).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          metadata: {
+            ip: "127.0.0.1",
+            email: "[REDACTED]",
+            phone: "[REDACTED]",
+            nested: {
+              adminEmail: "[REDACTED]",
+              publicInfo: "all good"
+            }
+          }
+        })
+      });
+    });
+  });
 });

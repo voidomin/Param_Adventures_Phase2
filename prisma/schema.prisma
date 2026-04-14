@@ -65,6 +65,11 @@ model User {
   assignments            TripAssignment[]   @relation("TrekLeadAssignments")
   auditLogs              AuditLog[]
   role                   Role               @relation(fields: [roleId], references: [id])
+
+  @@index([roleId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([deletedAt])
 }
 
 model Category {
@@ -125,6 +130,10 @@ model Experience {
   reviews             ExperienceReview[]
   savedBy             SavedExperience[]
   slots               Slot[]
+
+  @@index([status])
+  @@index([isFeatured])
+  @@index([deletedAt])
 }
 
 model ExperienceCategory {
@@ -156,6 +165,11 @@ model Slot {
   manager           User?            @relation("SlotManager", fields: [managerId], references: [id])
   assignments       TripAssignment[]
   tripLog           TripLog?
+
+  @@index([experienceId])
+  @@index([date])
+  @@index([status])
+  @@index([managerId])
 }
 
 model Booking {
@@ -184,6 +198,14 @@ model Booking {
   user               User                 @relation(fields: [userId], references: [id])
   participants       BookingParticipant[]
   payments           Payment[]
+
+  @@index([userId])
+  @@index([experienceId])
+  @@index([slotId])
+  @@index([bookingStatus])
+  @@index([paymentStatus])
+  @@index([createdAt])
+  @@index([deletedAt])
 }
 
 model Payment {
@@ -298,6 +320,11 @@ model AuditLog {
   timestamp  DateTime @default(now())
 
   actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([timestamp(sort: Desc)])
+  @@index([actorId])
+  @@index([action])
+  @@index([targetType])
 }
 
 model SiteSetting {

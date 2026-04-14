@@ -21,17 +21,27 @@ async function getAuthConfig(): Promise<AuthConfig> {
 
     const getVal = (key: string) => settings.find(s => s.key === key)?.value;
 
-    const secret = getVal("jwt_secret") || process.env.JWT_SECRET || "fallback-dev-secret";
+    const secret = getVal("jwt_secret") || process.env.JWT_SECRET;
+    
+    if (!secret) {
+      throw new Error("CRITICAL: JWT_SECRET is not configured. Access denied for security.");
+    }
     
     // session_lifetime_hrs is stored as a number (string-version), e.g. "168"
     const lifetime = getVal("session_lifetime_hrs");
     const expiry = lifetime ? `${lifetime}h` : process.env.JWT_EXPIRY || "1h";
 
     return { JWT_SECRET: secret, JWT_EXPIRY: expiry };
-  } catch (error) {
-    console.error("Failed to fetch auth config from DB, using fallback:", error);
+
+  } catch {
+    const secret = process.env.JWT_SECRET;
+    
+    if (!secret) {
+      throw new Error("CRITICAL: JWT_SECRET is not configured. Access denied for security.");
+    }
+
     return {
-      JWT_SECRET: process.env.JWT_SECRET || "fallback-dev-secret",
+      JWT_SECRET: secret,
       JWT_EXPIRY: process.env.JWT_EXPIRY || "1h",
     };
   }

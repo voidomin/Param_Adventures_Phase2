@@ -1,38 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
 import crypto from "node:crypto";
+import { authorizeRequest } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
-import { sendBookingConfirmation } from "@/lib/email";
 import { logActivity } from "@/lib/audit-logger";
-
-/**
- * Fetches full booking details and sends a confirmation email.
- */
-async function sendBookingConfirmationEmail(bookingId: string) {
-  const booking = await prisma.booking.findUnique({
-    where: { id: bookingId },
-    include: {
-      user: { select: { name: true, email: true } },
-      experience: { select: { title: true } },
-      slot: { select: { date: true } },
-    },
-  });
-
-  if (!booking?.slot) return;
-
-  await sendBookingConfirmation({
-    userName: booking.user.name,
-    userEmail: booking.user.email,
-    experienceTitle: booking.experience.title,
-    slotDate: booking.slot.date.toISOString(),
-    participantCount: booking.participantCount,
-    totalPrice: Number(booking.totalPrice),
-    baseFare: Number(booking.baseFare),
-    taxBreakdown: booking.taxBreakdown as { name: string; percentage: number; amount: number }[],
-    bookingId: booking.id,
-  });
-}
-
+import { BookingService } from "@/services/booking.service";
 import { z } from "zod";
 
 const verifySchema = z.object({
@@ -50,9 +21,13 @@ const verifySchema = z.object({
  */
 export async function POST(request: NextRequest) {
   try {
+    // 1. Authentication & Session Security
+    const auth = await authorizeRequest(request);
+    if (!auth.authorized) return auth.response;
+
     const body = await request.json();
 
-    // ─── Validation ──────────────────────────────────────
+    // 2. Schema Validation
     const parseResult = verifySchema.safeParse(body);
     if (!parseResult.success) {
       return NextResponse.json(
@@ -67,106 +42,69 @@ export async function POST(request: NextRequest) {
       bookingId,
     } = parseResult.data;
 
-    // ─── Verification ────────────────────────────────────
+    // 3. Ownership Check: Ensure the user owns this booking
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: { userId: true, paymentStatus: true }
+    });
+
+    if (!booking) {
+      return NextResponse.json({ error: "Booking not found." }, { status: 404 });
+    }
+
+    if (booking.userId !== auth.userId) {
+      console.warn(`🛑 Unauthorized payment verification attempt by User ${auth.userId}`);
+      return NextResponse.json({ error: "Unauthorized access to this booking." }, { status: 403 });
+    }
+
+    // 4. HMAC Signature Verification
     const secretSetting = await prisma.platformSetting.findUnique({
       where: { key: "razorpay_key_secret" }
     });
     const secret = secretSetting?.value || process.env.RAZORPAY_KEY_SECRET;
     
     if (!secret) {
-      console.error("Razorpay secret is missing in both database and environment");
-      return NextResponse.json(
-        { error: "Server configuration error" },
-        { status: 500 },
-      );
+      console.error("[VerifyAPI] Razorpay secret is missing.");
+      return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
     }
 
-    // Verify HMAC signature
     const expectedSignature = crypto
       .createHmac("sha256", secret)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest("hex");
 
     if (expectedSignature !== razorpay_signature) {
-      // Signature mismatch — payment is invalid
+      // Record failure for audit
       await prisma.payment.updateMany({
         where: { providerOrderId: razorpay_order_id },
         data: { status: "FAILED" },
       });
-      return NextResponse.json(
-        { error: "Invalid payment signature." },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Invalid payment signature." }, { status: 400 });
     }
 
-    // Signature valid — check idempotency
-    const existingBooking = await prisma.booking.findUnique({
-      where: { id: bookingId },
-      select: { paymentStatus: true },
+    // 5. Shared Confirmation Orchestration
+    // This utilizes the same battle-hardened logic as the Webhook.
+    await BookingService.confirmPayment(
+      bookingId,
+      razorpay_order_id,
+      razorpay_payment_id,
+      body
+    );
+
+    await logActivity(
+      "BOOKING_CONFIRMED",
+      auth.userId,
+      "Booking",
+      bookingId,
+      { paymentId: razorpay_payment_id, origin: "FRONTEND_VERIFY" },
+    );
+
+    return NextResponse.json({
+      success: true,
+      bookingId,
+      message: "Payment verified and booking confirmed.",
     });
 
-    if (existingBooking?.paymentStatus === "PAID") {
-      return NextResponse.json({
-        success: true,
-        bookingId,
-        message: "Payment was already verified and booking confirmed.",
-      });
-    }
-
-    // Confirm booking and payment
-    try {
-      const [updatedBooking] = await prisma.$transaction([
-        prisma.booking.update({
-          where: { id: bookingId, paymentStatus: { not: "PAID" } },
-          data: { bookingStatus: "CONFIRMED", paymentStatus: "PAID" },
-        }),
-        prisma.payment.updateMany({
-          where: { providerOrderId: razorpay_order_id, status: { not: "PAID" } },
-          data: {
-            status: "PAID",
-            providerPaymentId: razorpay_payment_id,
-            fullPayload: body,
-          },
-        }),
-      ]);
-
-      await logActivity(
-        "BOOKING_CONFIRMED",
-        updatedBooking.userId,
-        "Booking",
-        bookingId,
-        { paymentId: razorpay_payment_id },
-      );
-
-      // Revalidate entire layout to refresh slot capacities and admin dashboards
-      revalidatePath("/", "layout");
-
-      // Send confirmation email (fire-and-forget — don't block the response)
-      sendBookingConfirmationEmail(bookingId).catch((err) =>
-        console.error("Background email error:", err),
-      );
-
-      return NextResponse.json({
-        success: true,
-        bookingId,
-        message: "Payment verified and booking confirmed.",
-      });
-    } catch (txError: unknown) {
-      // If the record was not found, it's likely already paid (idempotency)
-      if (
-        typeof txError === "object" &&
-        txError !== null &&
-        "code" in txError &&
-        (txError as { code?: string }).code === "P2025"
-      ) {
-        return NextResponse.json({
-          success: true,
-          bookingId,
-          message: "Payment was already verified and booking confirmed.",
-        });
-      }
-      throw txError;
-    }
   } catch (error) {
     console.error("Payment verification error:", error);
     return NextResponse.json(

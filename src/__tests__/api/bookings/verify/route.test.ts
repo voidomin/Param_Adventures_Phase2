@@ -16,8 +16,8 @@ vi.mock("node:crypto", () => {
   };
 });
 
-vi.mock("@/lib/email", () => ({
-  sendBookingConfirmation: vi.fn(),
+vi.mock("@/lib/api-auth", () => ({
+  authorizeRequest: vi.fn(),
 }));
 
 vi.mock("@/lib/audit-logger", () => ({
@@ -26,34 +26,28 @@ vi.mock("@/lib/audit-logger", () => ({
 
 vi.mock("@/lib/db", () => ({
   prisma: {
-    booking: {
-      findUnique: vi.fn(),
-      update: vi.fn(),
-    },
-    payment: {
-      updateMany: vi.fn(),
-    },
-    platformSetting: {
-      findUnique: vi.fn().mockResolvedValue({ value: "test_secret" }),
-    },
-    $transaction: vi.fn(),
+    booking: { findUnique: vi.fn() },
+    payment: { updateMany: vi.fn() },
+    platformSetting: { findUnique: vi.fn().mockResolvedValue({ value: "test_secret" }) },
   },
+}));
+
+vi.mock("@/services/booking.service", () => ({
+  BookingService: { confirmPayment: vi.fn() },
 }));
 
 import crypto from "node:crypto";
 import { POST } from "@/app/api/bookings/verify/route";
 import { prisma } from "@/lib/db";
-import { sendBookingConfirmation } from "@/lib/email";
+import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
-import { revalidatePath } from "next/cache";
+import { BookingService } from "@/services/booking.service";
 
+const mockAuthorizeRequest = vi.mocked(authorizeRequest);
 const mockBookingFindUnique = vi.mocked(prisma.booking.findUnique);
-const mockBookingUpdate = vi.mocked(prisma.booking.update);
 const mockPaymentUpdateMany = vi.mocked(prisma.payment.updateMany);
-const mockTransaction = vi.mocked(prisma.$transaction);
-const mockSendBookingConfirmation = vi.mocked(sendBookingConfirmation);
+const mockConfirmPayment = vi.mocked(BookingService.confirmPayment);
 const mockLogActivity = vi.mocked(logActivity);
-const mockRevalidatePath = vi.mocked(revalidatePath);
 
 const mockCreateHmac = vi.mocked((crypto as any).createHmac);
 
@@ -80,6 +74,15 @@ describe("POST /api/bookings/verify", () => {
         .fn()
         .mockReturnValue({ digest: vi.fn().mockReturnValue("sig_ok") }),
     } as any);
+
+    // Default to a pending booking owned by 'u1'
+    mockBookingFindUnique.mockResolvedValue({
+      userId: "u1",
+      paymentStatus: "PENDING",
+    } as any);
+
+    // Default to authorized as 'u1'
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
   });
 
   afterEach(() => {
@@ -88,15 +91,16 @@ describe("POST /api/bookings/verify", () => {
 
   it("returns 400 on validation failure", async () => {
     const response = await POST(createRequest({ bookingId: "" }));
-
     expect(response.status).toBe(400);
   });
 
   it("returns 500 when secret is missing", async () => {
     vi.stubEnv("RAZORPAY_KEY_SECRET", "");
+    // mock platformSetting findUnique to return null for secret check
+    const mockPlatformFindUnique = vi.mocked(prisma.platformSetting.findUnique);
+    mockPlatformFindUnique.mockResolvedValueOnce(null);
 
     const response = await POST(createRequest(validBody));
-
     expect(response.status).toBe(500);
   });
 
@@ -118,149 +122,35 @@ describe("POST /api/bookings/verify", () => {
     });
   });
 
-  it("returns success when booking is already paid", async () => {
+  it("returns 403 when user does not own the booking", async () => {
     mockBookingFindUnique.mockResolvedValueOnce({
-      paymentStatus: "PAID",
+      userId: "different_user",
     } as any);
 
     const response = await POST(createRequest(validBody));
-    const data = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(data.success).toBe(true);
-    expect(data.message).toContain("already verified");
+    expect(response.status).toBe(403);
   });
 
-  it("confirms payment and booking on success", async () => {
-    mockBookingFindUnique
-      .mockResolvedValueOnce({ paymentStatus: "PENDING" } as any)
-      .mockResolvedValueOnce({
-        id: "bk_1",
-        participantCount: 2,
-        totalPrice: 1999,
-        user: { name: "User", email: "u@example.com" },
-        experience: { title: "Trip" },
-        slot: { date: new Date("2026-01-01") },
-      } as any);
-
-    mockTransaction.mockResolvedValueOnce([
-      { id: "bk_1", userId: "u1" },
-      { count: 1 },
-    ] as any);
-
-    mockLogActivity.mockResolvedValue(undefined);
-    mockSendBookingConfirmation.mockResolvedValue(undefined as any);
+  it("confirms payment on success and orchestrates via BookingService", async () => {
+    mockConfirmPayment.mockResolvedValueOnce({ id: "bk_1" } as any);
 
     const response = await POST(createRequest(validBody));
     const data = await response.json();
 
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
-    expect(data.message).toContain("Payment verified");
-    expect(mockBookingUpdate).toHaveBeenCalledWith({
-      where: { id: "bk_1", paymentStatus: { not: "PAID" } },
-      data: { bookingStatus: "CONFIRMED", paymentStatus: "PAID" },
-    });
-    expect(mockPaymentUpdateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { providerOrderId: "order_1", status: { not: "PAID" } },
-      }),
+    expect(mockConfirmPayment).toHaveBeenCalledWith(
+      "bk_1",
+      "order_1",
+      "pay_1",
+      validBody
     );
     expect(mockLogActivity).toHaveBeenCalled();
-    expect(mockRevalidatePath).toHaveBeenCalledWith("/", "layout");
-  });
-
-  it("treats P2025 as idempotent success", async () => {
-    mockBookingFindUnique.mockResolvedValueOnce({
-      paymentStatus: "PENDING",
-    } as any);
-    mockTransaction.mockRejectedValueOnce({ code: "P2025" });
-
-    const response = await POST(createRequest(validBody));
-    const data = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(data.success).toBe(true);
-    expect(data.message).toContain("already verified");
-  });
-
-  it("returns 500 when transaction fails with non-idempotent error", async () => {
-    mockBookingFindUnique.mockResolvedValueOnce({
-      paymentStatus: "PENDING",
-    } as any);
-    mockTransaction.mockRejectedValueOnce({ code: "P9999" });
-
-    const response = await POST(createRequest(validBody));
-
-    expect(response.status).toBe(500);
-  });
-
-  it("logs background email failures without failing response", async () => {
-    mockBookingFindUnique
-      .mockResolvedValueOnce({ paymentStatus: "PENDING" } as any)
-      .mockResolvedValueOnce({
-        id: "bk_1",
-        participantCount: 2,
-        totalPrice: 1999,
-        user: { name: "User", email: "u@example.com" },
-        experience: { title: "Trip" },
-        slot: { date: new Date("2026-01-01") },
-      } as any);
-
-    mockTransaction.mockResolvedValueOnce([
-      { id: "bk_1", userId: "u1" },
-      { count: 1 },
-    ] as any);
-
-    mockLogActivity.mockResolvedValue(undefined);
-    mockSendBookingConfirmation.mockRejectedValueOnce(new Error("smtp down"));
-
-    const response = await POST(createRequest(validBody));
-    expect(response.status).toBe(200);
-
-    // allow fire-and-forget catch handler to run
-    await Promise.resolve();
-    await Promise.resolve();
-
-    expect(errorSpy).toHaveBeenCalledWith(
-      "Background email error:",
-      expect.any(Error),
-    );
-  });
-
-  it("skips confirmation email when booking details have no slot", async () => {
-    mockBookingFindUnique
-      .mockResolvedValueOnce({ paymentStatus: "PENDING" } as any)
-      .mockResolvedValueOnce({
-        id: "bk_1",
-        participantCount: 2,
-        totalPrice: 1999,
-        user: { name: "User", email: "u@example.com" },
-        experience: { title: "Trip" },
-        slot: null,
-      } as any);
-
-    mockTransaction.mockResolvedValueOnce([
-      { id: "bk_1", userId: "u1" },
-      { count: 1 },
-    ] as any);
-
-    mockLogActivity.mockResolvedValue(undefined);
-
-    const response = await POST(createRequest(validBody));
-    expect(response.status).toBe(200);
-
-    await Promise.resolve();
-    await Promise.resolve();
-
-    expect(mockSendBookingConfirmation).not.toHaveBeenCalled();
   });
 
   it("returns 500 on unexpected error", async () => {
     mockBookingFindUnique.mockRejectedValueOnce(new Error("db down"));
-
     const response = await POST(createRequest(validBody));
-
     expect(response.status).toBe(500);
   });
 });
