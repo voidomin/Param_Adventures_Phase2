@@ -41,7 +41,6 @@ import { POST } from "@/app/api/bookings/verify/route";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
-import { revalidatePath } from "next/cache";
 import { BookingService } from "@/services/booking.service";
 
 const mockAuthorizeRequest = vi.mocked(authorizeRequest);
@@ -49,7 +48,6 @@ const mockBookingFindUnique = vi.mocked(prisma.booking.findUnique);
 const mockPaymentUpdateMany = vi.mocked(prisma.payment.updateMany);
 const mockConfirmPayment = vi.mocked(BookingService.confirmPayment);
 const mockLogActivity = vi.mocked(logActivity);
-const mockRevalidatePath = vi.mocked(revalidatePath);
 
 const mockCreateHmac = vi.mocked((crypto as any).createHmac);
 

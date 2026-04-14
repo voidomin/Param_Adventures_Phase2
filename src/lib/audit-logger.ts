@@ -34,12 +34,14 @@ const SENSITIVE_KEYS = new Set([
 /**
  * Recursively scrubs PII from an object.
  */
-function scrubPII(obj: any): any {
+function scrubPII(obj: unknown): unknown {
   if (!obj || typeof obj !== "object") return obj;
   if (Array.isArray(obj)) return obj.map(scrubPII);
 
-  const scrubbed: any = {};
-  for (const [key, value] of Object.entries(obj)) {
+  const entries = Object.entries(obj as Record<string, unknown>);
+  const scrubbed: Record<string, unknown> = {};
+
+  for (const [key, value] of entries) {
     if (SENSITIVE_KEYS.has(key)) {
       scrubbed[key] = "[REDACTED]";
     } else if (typeof value === "object") {
