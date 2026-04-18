@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
-import "@fontsource/inter/latin.css";
-import "@fontsource/outfit/latin.css";
+import "@fontsource/inter";
+import "@fontsource/outfit";
 import { AuthProvider } from "@/lib/AuthContext";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import "./globals.css";
