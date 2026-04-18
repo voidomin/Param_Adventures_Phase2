@@ -103,7 +103,7 @@ export async function PATCH(
     // ─── 3. Update the Role ──────────────────────────────────
     const updatedUser = await prisma.user.update({
       where: { id: targetUserId },
-      data: { roleId },
+      data: { roleId, tokenVersion: { increment: 1 } },
       select: {
         id: true,
         name: true,

@@ -36,8 +36,8 @@ export async function POST(request: NextRequest) {
 
     if (user.status !== "ACTIVE") {
       return NextResponse.json(
-        { error: "Account is suspended or inactive." },
-        { status: 403 },
+        { message: "If an account exists, a reset link has been sent." },
+        { status: 200 },
       );
     }
 
@@ -96,10 +96,7 @@ export async function POST(request: NextRequest) {
     console.error("[AUTH] Forgot Password error:", error);
     if (error instanceof Error && error.stack) console.error(error.stack);
     return NextResponse.json(
-      {
-        error: "Internal server error.",
-        details: errorMessage,
-      },
+      { error: "Internal server error." },
       { status: 500 },
     );
   }

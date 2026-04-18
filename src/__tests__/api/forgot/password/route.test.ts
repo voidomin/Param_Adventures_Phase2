@@ -82,7 +82,7 @@ describe("POST /api/auth/forgot-password", () => {
     expect(mockUpdate).not.toHaveBeenCalled();
   });
 
-  it("returns 403 for inactive user", async () => {
+  it("returns generic success for inactive user to prevent enumeration", async () => {
     mockFindUnique.mockResolvedValue({ id: "u1", status: "BANNED" } as any);
 
     const response = await POST(
@@ -90,8 +90,8 @@ describe("POST /api/auth/forgot-password", () => {
     );
     const data = await response.json();
 
-    expect(response.status).toBe(403);
-    expect(data.error).toBe("Account is suspended or inactive.");
+    expect(response.status).toBe(200);
+    expect(data.message).toContain("If an account exists");
   });
 
   it("updates reset token and sends email for active user", async () => {
@@ -207,14 +207,14 @@ describe("POST /api/auth/forgot-password", () => {
     expect(data.error).toBe("Internal server error.");
   });
 
-  it("returns 500 when thrown error has no stack", async () => {
+  it("returns 500 without leaking error details", async () => {
     mockFindUnique.mockRejectedValue({ message: "boom" } as any);
 
     const response = await POST(createRequest({ email: "x@example.com" }));
     const data = await response.json();
 
     expect(response.status).toBe(500);
-    expect(data.details).toBe("boom");
+    expect(data.details).toBeUndefined();
     expect(errorSpy).toHaveBeenCalledWith(
       "[AUTH] Forgot Password error:",
       expect.objectContaining({ message: "boom" }),
