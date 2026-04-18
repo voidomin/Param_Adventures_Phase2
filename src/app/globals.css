@@ -9,6 +9,9 @@
   --accent: #2d2d2d;
   --card: #ffffff;
   --border: #e2e8f0;
+  
+  --font-inter: "Inter", sans-serif;
+  --font-outfit: "Outfit", sans-serif;
 }
 
 @theme inline {

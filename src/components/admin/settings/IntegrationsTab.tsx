@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { SectionTitle, InputGroup, TabProps } from "./Common";
 
-export default function IntegrationsTab({ getVal, updateSetting }: TabProps) {
+export default function IntegrationsTab({ getVal, updateSetting }: Readonly<TabProps>) {
   const [isVerifying, setIsVerifying] = useState(false);
   const [verifyStatus, setVerifyStatus] = useState<{
     type: 'success' | 'error' | null;

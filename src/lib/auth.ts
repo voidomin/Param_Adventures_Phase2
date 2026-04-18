@@ -9,11 +9,19 @@ interface AuthConfig {
   JWT_EXPIRY: string;
 }
 
+let cachedAuthConfig: { config: AuthConfig; expiresAt: number } | null = null;
+const CACHE_TTL_MS = 60 * 1000;
+
 /**
  * Fetches the JWT Secret and Expiry from the database (platform settings)
  * with automatic fallback to environment variables.
  */
 async function getAuthConfig(): Promise<AuthConfig> {
+  const now = Date.now();
+  if (cachedAuthConfig && cachedAuthConfig.expiresAt > now) {
+    return cachedAuthConfig.config;
+  }
+
   try {
     const settings = await prisma.platformSetting.findMany({
       where: { key: { in: ["jwt_secret", "session_lifetime_hrs"] } },
@@ -31,7 +39,9 @@ async function getAuthConfig(): Promise<AuthConfig> {
     const lifetime = getVal("session_lifetime_hrs");
     const expiry = lifetime ? `${lifetime}h` : process.env.JWT_EXPIRY || "1h";
 
-    return { JWT_SECRET: secret, JWT_EXPIRY: expiry };
+    const config = { JWT_SECRET: secret, JWT_EXPIRY: expiry };
+    cachedAuthConfig = { config, expiresAt: now + CACHE_TTL_MS };
+    return config;
 
   } catch {
     const secret = process.env.JWT_SECRET;
@@ -40,10 +50,12 @@ async function getAuthConfig(): Promise<AuthConfig> {
       throw new Error("CRITICAL: JWT_SECRET is not configured. Access denied for security.");
     }
 
-    return {
+    const config = {
       JWT_SECRET: secret,
       JWT_EXPIRY: process.env.JWT_EXPIRY || "1h",
     };
+    cachedAuthConfig = { config, expiresAt: now + CACHE_TTL_MS };
+    return config;
   }
 }
 
@@ -150,7 +162,17 @@ export async function verifyRefreshToken(token: string): Promise<RefreshPayload 
   try {
     const config = await getAuthConfig();
     const decoded = jwt.verify(token, config.JWT_SECRET) as RefreshPayload;
-    if (!decoded.userId || decoded.type !== "refresh") return null;
+    if (!decoded.userId || decoded.type !== "refresh" || decoded.tokenVersion === undefined) return null;
+
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: { status: true, tokenVersion: true, deletedAt: true },
+    });
+
+    if (!user || user.deletedAt || user.status !== "ACTIVE" || user.tokenVersion !== decoded.tokenVersion) {
+      return null;
+    }
+
     return decoded;
   } catch {
     return null;

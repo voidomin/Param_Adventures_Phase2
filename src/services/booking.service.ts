@@ -35,7 +35,7 @@ export const BookingService = {
         throw new Error("EXPERIENCE_NOT_AVAILABLE");
       }
 
-      if (!slot || slot.experienceId !== data.experienceId) {
+      if (slot?.experienceId !== data.experienceId) {
         throw new Error("SLOT_MISMATCH");
       }
 
