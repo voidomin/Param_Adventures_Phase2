@@ -51,6 +51,9 @@ describe("lib/db module", () => {
     expect(dbModule.prisma).toBeDefined();
     expect(poolCtor).toHaveBeenCalledWith({
       connectionString: "postgres://test:test@localhost:5432/testdb",
+      max: 10,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 2000,
     });
     expect(adapterCtor).toHaveBeenCalledTimes(1);
     expect(prismaCtor).toHaveBeenCalledTimes(1);
