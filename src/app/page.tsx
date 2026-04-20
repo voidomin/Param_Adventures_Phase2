@@ -49,8 +49,6 @@ export default async function Home() {
     [],
   );
 
-  // DEBUG: Report featured experiences found in terminal
-  console.log(`[Homepage] Found ${featuredExperiencesRaw.length} featured experiences.`);
 
   // Serialize Decimal and Date objects for Client Component compatibility
   const featuredExperiences = featuredExperiencesRaw.map((exp) => ({
