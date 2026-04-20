@@ -20,6 +20,13 @@ export async function POST(req: Request) {
       data,
     });
 
+    // Send acknowledgment email in the background (no await to avoid slowing down response)
+    const { sendCustomTripAcknowledgmentEmail } = await import("@/lib/email");
+    sendCustomTripAcknowledgmentEmail({
+      userName: lead.name,
+      userEmail: lead.email,
+    }).catch(err => console.error("Acknowledgment email background error:", err));
+
     return NextResponse.json({ success: true, lead }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {

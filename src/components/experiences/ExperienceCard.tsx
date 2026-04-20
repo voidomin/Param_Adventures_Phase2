@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Clock, MapPin, Users, IndianRupee } from "lucide-react";
+import { Clock, MapPin, Users, IndianRupee, CalendarDays } from "lucide-react";
 import type { MediaSettings } from "@/types/media";
 import { motion } from "framer-motion";
 import SaveButton from "./SaveButton";
@@ -33,6 +33,7 @@ interface ExperienceCardProps {
     cardImage?: string;
     images: string[];
     categories: Category[];
+    nextDeparture?: string | null;
   };
   mediaSettings?: MediaSettings;
 }
@@ -162,6 +163,15 @@ export default function ExperienceCard({
             <h3 className="text-xl font-bold font-heading text-foreground group-hover:text-primary transition-colors line-clamp-2">
               {experience.title}
             </h3>
+            {experience.nextDeparture && (
+              <div className="flex items-center gap-1.5 mt-2 text-primary font-bold text-xs uppercase tracking-widest">
+                <CalendarDays className="w-3.5 h-3.5" />
+                Next: {new Date(experience.nextDeparture).toLocaleDateString("en-IN", {
+                  day: "numeric",
+                  month: "short",
+                })}
+              </div>
+            )}
           </div>
           <p className="text-foreground/70 text-sm line-clamp-2 mb-6 flex-1 min-h-12">
             {typeof experience.description === 'string' 

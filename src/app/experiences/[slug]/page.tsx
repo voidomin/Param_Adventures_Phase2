@@ -342,6 +342,62 @@ function EssentialLogistics({ experience }: Readonly<{ experience: ExperienceWit
   );
 }
 
+interface Slot {
+  id: string;
+  date: Date;
+  status: string;
+  remainingCapacity: number;
+}
+
+function DepartureDates({ slots }: Readonly<{ slots: Slot[] }>) {
+  if (!Array.isArray(slots) || slots.length === 0) return null;
+
+  const nextDeparture = slots[0].date;
+  const otherDates = slots.slice(1);
+
+  return (
+    <div className="mb-8 space-y-4">
+      <div className="flex flex-col gap-1.5 p-4 rounded-2xl bg-primary/5 border border-primary/20">
+        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Next Departure</span>
+        <div className="flex items-center gap-2 text-foreground font-bold">
+          <CalendarDays className="w-5 h-5 text-primary" />
+          <span className="text-lg">
+            {new Date(nextDeparture).toLocaleDateString("en-IN", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })}
+          </span>
+        </div>
+      </div>
+
+      {otherDates.length > 0 && (
+        <details className="group border border-border rounded-xl bg-foreground/[0.02] overflow-hidden [&_summary::-webkit-details-marker]:hidden">
+          <summary className="flex items-center justify-between p-3 cursor-pointer text-xs font-bold uppercase tracking-wider text-foreground/50 hover:bg-foreground/5 transition-colors list-none">
+            Upcoming Batches ({otherDates.length})
+            <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="p-3 pt-0 space-y-2 max-h-40 overflow-y-auto no-scrollbar">
+            {otherDates.map((slot) => (
+              <div key={slot.id} className="flex items-center justify-between py-2 border-t border-border/50 first:border-t-0">
+                <span className="text-sm font-medium">
+                  {new Date(slot.date).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                  })}
+                </span>
+                <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">
+                  {slot.remainingCapacity > 0 ? "Seats Available" : "Full"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+    </div>
+  );
+}
+
 function ItinerarySection({ itinerary }: Readonly<{ itinerary: ItineraryDay[] }>) {
   if (!Array.isArray(itinerary) || itinerary.length === 0) return null;
 
@@ -856,6 +912,8 @@ export default async function ExperienceDetailPage({
                 / person
               </span>
             </div>
+
+            <DepartureDates slots={experience.slots as unknown as Slot[]} />
 
             <BookNowButton
               experienceId={exp.id}

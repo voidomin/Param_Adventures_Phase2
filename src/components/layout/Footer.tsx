@@ -8,10 +8,11 @@ import { Mail, Phone, MapPin, X } from "lucide-react";
 interface FooterProps {
   supportEmail?: string;
   supportPhone?: string;
+  officeAddress?: string;
   siteTitle?: string;
 }
 
-export default function Footer({ supportEmail, supportPhone, siteTitle }: Readonly<FooterProps>) {
+export default function Footer({ supportEmail, supportPhone, officeAddress, siteTitle }: Readonly<FooterProps>) {
   const pathname = usePathname();
   const brandName = siteTitle || "Param Adventures";
   const brandPrefix = brandName.split(" ")[0].toUpperCase();
@@ -134,7 +135,7 @@ export default function Footer({ supportEmail, supportPhone, siteTitle }: Readon
               </li>
               <li>
                 <Link
-                  href="/about"
+                  href="/our-story"
                   className="hover:text-primary transition-colors"
                 >
                   About Us
@@ -192,10 +193,8 @@ export default function Footer({ supportEmail, supportPhone, siteTitle }: Readon
             <ul className="space-y-4 text-sm text-foreground/60">
               <li className="flex items-start gap-3">
                 <MapPin className="w-5 h-5 text-primary shrink-0" />
-                <span>
-                  Kullu, Himachal Pradesh,
-                  <br />
-                  India 175131
+                <span className="whitespace-pre-line">
+                  {officeAddress || "Kullu, Himachal Pradesh,\nIndia 175131"}
                 </span>
               </li>
               <li className="flex items-center gap-3">

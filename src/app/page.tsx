@@ -33,7 +33,15 @@ export default async function Home() {
         where: { isFeatured: true, status: "PUBLISHED" },
         include: {
           categories: { include: { category: true } },
-          _count: { select: { slots: true } },
+          slots: {
+            where: {
+              date: { gte: new Date() },
+              status: "UPCOMING",
+            },
+            select: { date: true },
+            orderBy: { date: "asc" },
+            take: 1,
+          },
         },
         take: 10,
         orderBy: { createdAt: "desc" },
@@ -48,6 +56,7 @@ export default async function Home() {
   const featuredExperiences = featuredExperiencesRaw.map((exp) => ({
     ...exp,
     basePrice: Number(exp.basePrice),
+    nextDeparture: exp.slots?.[0]?.date?.toISOString() || null,
   }));
 
   const recentBlogs = await withBuildSafety(
