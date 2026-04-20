@@ -8,19 +8,23 @@ export async function withBuildSafety<T>(fetcher: () => Promise<T>, fallback: T)
     return await fetcher();
   } catch (error) {
     // Detect Prisma connection errors (P1001) or raw ECONNREFUSED
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    const errorCode = (error as { code?: string })?.code;
+
     const isConnError = 
-      error instanceof Error && (
-        error.message.includes('ECONNREFUSED') || 
-        error.message.includes('Can\'t reach database') ||
-        ('code' in error && (error as { code: string }).code === 'ECONNREFUSED') ||
-        ('code' in error && (error as { code: string }).code === 'P1001')
-      );
+      errorMsg.includes('ECONNREFUSED') || 
+      errorMsg.includes('Can\'t reach database') ||
+      errorMsg.includes('Connection terminated') ||
+      errorMsg.includes('timeout') ||
+      errorMsg.includes('unexpectedly') ||
+      errorCode === 'ECONNREFUSED' ||
+      errorCode === 'P1001' ||
+      errorCode === 'P2024' || // Connection pool timeout
+      errorCode === 'P1017'    // Server has closed the connection
+    ;
 
     if (isConnError) {
-      // We only want to swallow this during build-time static generation
-      // In development or actual runtime, we might want to see the error,
-      // but for industrial build resilience, we warn and use the fallback.
-      console.warn("⚠️ Database connection failed. Using fallback data for static generation.");
+      console.warn(`⚠️ Database connection error during build: ${errorMsg}. Using fallback data.`);
       return fallback;
     }
     
