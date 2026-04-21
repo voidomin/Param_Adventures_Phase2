@@ -20,11 +20,13 @@ export async function withBuildSafety<T>(fetcher: () => Promise<T>, fallback: T)
       errorCode === 'ECONNREFUSED' ||
       errorCode === 'P1001' ||
       errorCode === 'P2024' || // Connection pool timeout
-      errorCode === 'P1017'    // Server has closed the connection
+      errorCode === 'P1017' || // Server has closed the connection
+      errorCode === 'P2021'    // Table does not exist in the current database
     ;
 
     if (isConnError) {
-      console.warn(`⚠️ Database connection error during build: ${errorMsg}. Using fallback data.`);
+      const logType = errorCode === 'P2021' ? 'Schema' : 'Connection';
+      console.warn(`⚠️ Database ${logType} error during build: ${errorMsg}. Using fallback data.`);
       return fallback;
     }
     

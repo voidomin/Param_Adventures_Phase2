@@ -9,7 +9,10 @@ async function getFeaturedHomeReviews() {
     () =>
       prisma.experienceReview.findMany({
         where: { isFeaturedHome: true },
-        include: {
+        select: {
+          id: true,
+          rating: true,
+          reviewText: true,
           user: { select: { name: true } },
           experience: { select: { title: true, slug: true } },
         },
