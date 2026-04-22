@@ -4,6 +4,8 @@ import { Prisma } from "@prisma/client";
 import { authorizeSystemRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/admin/settings/system
  * Fetches all platform and site-level configuration.
@@ -29,18 +31,25 @@ export async function GET(request: NextRequest) {
 }
 
 const PLATFORM_KEYS = new Set([
+  // Payment Gateways
   "razorpay_mode", 
   "razorpay_key_id", 
   "razorpay_key_secret", 
   "razorpay_webhook_secret",
+
+  // Finance & Taxation
   "taxConfig",
   "companyName",
   "gstNumber",
   "panNumber",
   "stateCode",
   "companyAddress",
+
+  // Auth & Security
   "jwt_secret",
   "session_lifetime_hrs",
+
+  // Analytics & Monitoring
   "google_analytics_id",
   "google_analytics_enabled",
   "sentry_dsn",
@@ -49,6 +58,8 @@ const PLATFORM_KEYS = new Set([
   "meta_pixel_enabled",
   "microsoft_clarity_id",
   "microsoft_clarity_enabled",
+
+  // Email Configuration
   "email_provider",
   "smtp_host",
   "smtp_port",
@@ -57,7 +68,23 @@ const PLATFORM_KEYS = new Set([
   "smtp_secure",
   "smtp_from",
   "zoho_api_key",
-  "resend_api_key"
+  "zoho_org_id",
+  "resend_api_key",
+
+  // Media & Storage
+  "media_provider",
+  "cdn_url",
+  "s3_bucket",
+  "s3_region",
+  "s3_access_key",
+  "s3_secret_key",
+  "s3_endpoint",
+  "cloudinary_cloud_name",
+  "cloudinary_api_key",
+  "cloudinary_api_secret",
+
+  // Core Platform
+  "app_url"
 ]);
 
 async function updateSettings(

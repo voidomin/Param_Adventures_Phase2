@@ -100,7 +100,7 @@ export default function SystemSettingsPage() {
   const fetchData = useCallback(async () => {
     if (!isWhitelisted) return;
     try {
-      const res = await fetch("/api/admin/settings/system");
+      const res = await fetch("/api/admin/settings/system", { cache: "no-store" });
       if (!res.ok) throw new Error("Failed to fetch settings");
       const data = await res.json();
       setPlatformSettings(data.platform || []);
