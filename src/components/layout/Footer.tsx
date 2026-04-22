@@ -143,6 +143,14 @@ export default function Footer({ supportEmail, supportPhone, officeAddress, site
               </li>
               <li>
                 <Link
+                  href="/why-param-adventures"
+                  className="hover:text-primary transition-colors"
+                >
+                  Why Param Adventures?
+                </Link>
+              </li>
+              <li>
+                <Link
                   href="/contact"
                   className="hover:text-primary transition-colors"
                 >
@@ -171,7 +179,7 @@ export default function Footer({ supportEmail, supportPhone, officeAddress, site
                   href="/terms"
                   className="hover:text-primary transition-colors"
                 >
-                  Terms of Service
+                  Terms & Conditions
                 </Link>
               </li>
               <li>

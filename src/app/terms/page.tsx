@@ -1,105 +1,191 @@
 import { Metadata } from "next";
 import LegalLayout from "@/components/layout/LegalLayout";
-import { prisma } from "@/lib/db";
-
-import { withBuildSafety } from "@/lib/db-utils";
 
 export const metadata: Metadata = {
-  title: "Terms and Conditions",
+  title: "Terms & Conditions | Param Adventures",
   description: "Terms and conditions for booking experiences.",
 };
 
-export default async function TermsPage() {
-  const siteTitle = await withBuildSafety(
-    () => prisma.siteSetting.findUnique({ where: { key: "site_title" } }),
-    null
-  );
-  const supportEmail = await withBuildSafety(
-    () => prisma.siteSetting.findUnique({ where: { key: "support_email" } }),
-    null
-  );
-
-  const title = siteTitle?.value || "Param Adventures";
-  const email = supportEmail?.value || "support@paramadventures.in";
-
+export default function TermsPage() {
   return (
-    <LegalLayout title="Terms and Conditions">
-      <section className="mb-8">
-        <h2 className="text-2xl font-bold mb-4">1. Agreement to Terms</h2>
-        <p>
-          By accessing or using {title} website and booking our
-          trekking or adventure services, you agree to be bound by these Terms
-          and Conditions. If you disagree with any part of these terms, you
-          may not access our services.
-        </p>
-      </section>
+    <LegalLayout title="Terms & Conditions">
+      <div className="space-y-12">
+        <section>
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-foreground">
+            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">1</span>
+            Booking & Participation Policy
+          </h2>
+          <ul className="list-disc pl-5 space-y-3 text-foreground/80 leading-relaxed">
+            <li>A minimum of 10–12 participants is required to conduct a trek/trip.</li>
+            <li>If minimum bookings are not met or permits are unavailable, an alternative trek or rescheduled date will be offered. No refunds will be provided in such cases.</li>
+            <li>Seat allocation in transport is not pre-assigned and will be on a first-come, first-served basis at the time of boarding.</li>
+            <li>Changing the trek, batch, or date is subject to availability.</li>
+            <li>The Organizer reserves the right to accept or decline any participant at its sole discretion.</li>
+          </ul>
+        </section>
 
-      <section className="mb-8">
-        <h2 className="text-2xl font-bold mb-4">2. Bookings and Payments</h2>
-        <p>
-          All bookings are subject to availability and confirmation. A booking
-          is only confirmed once full or partial payment (as specified per
-          trip) has been received. We reserve the right to cancel bookings if
-          payment is not received within the specified timeframe. Payments are
-          securely processed via Razorpay.
-        </p>
-      </section>
+        <section>
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-foreground">
+            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">2</span>
+            Itinerary & Operational Changes
+          </h2>
+          <ul className="list-disc pl-5 space-y-3 text-foreground/80 leading-relaxed">
+            <li>All itineraries are indicative and subject to change due to weather, traffic, permits, or government regulations.</li>
+            <li>Pickup/drop timings, routes, and activities may be modified without prior notice.</li>
+            <li>Delays in transportation (including jeeps or buses) may occur due to unforeseen circumstances.</li>
+            <li>This is not a luxury trip; participants should be prepared for a basic outdoor experience.</li>
+          </ul>
+        </section>
 
-      <section className="mb-8">
-        <h2 className="text-2xl font-bold mb-4">
-          3. Cancellation and Refunds
-        </h2>
-        <p>
-          Cancellations made 30 days or more before the trip start date are
-          eligible for a full refund minus a 10% processing fee. Cancellations
-          made between 15-29 days before the trip are eligible for a 50%
-          refund. No refunds are provided for cancellations made less than 15
-          days before the trip. In the event Param Adventures cancels a trip
-          due to weather or operational reasons, a full refund or free
-          rescheduling will be offered.
-        </p>
-      </section>
+        <section>
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-foreground">
+            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">3</span>
+            Accommodation & Food
+          </h2>
+          <ul className="list-disc pl-5 space-y-3 text-foreground/80 leading-relaxed">
+            <li>Accommodation may include tents, dormitories, sleeping bags, or open-sky arrangements with basic facilities.</li>
+            <li>Only vegetarian meals will be provided, which will be simple, fresh, and hygienic.</li>
+          </ul>
+        </section>
 
-      <section className="mb-8">
-        <h2 className="text-2xl font-bold mb-4">4. Health and Safety</h2>
-        <p>
-          Trekking and adventure sports involve inherent risks. Participants
-          are responsible for ensuring they meet the physical and medical
-          requirements of the chosen activity. It is mandatory to disclose any
-          pre-existing medical conditions before booking. The Trek Lead has
-          the final authority to refuse participation if they determine a
-          participant is unfit or endangers the group.
-        </p>
-      </section>
+        <section>
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-foreground">
+            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">4</span>
+            Fitness & Safety Guidelines
+          </h2>
+          <ul className="list-disc pl-5 space-y-3 text-foreground/80 leading-relaxed">
+            <li>A moderate level of physical fitness is required.</li>
+            <li>Participants are responsible for their ability to complete the trek/trip.</li>
+            <li>Always stay with the group and follow instructions from the trek leader.</li>
+            <li>Entering water bodies (sea, streams, waterfalls) is strictly prohibited without permission.</li>
+            <li>Avoid risky behavior, especially while taking photographs.</li>
+          </ul>
+        </section>
 
-      <section className="mb-8">
-        <h2 className="text-2xl font-bold mb-4">5. Code of Conduct</h2>
-        <p>
-          Participants are expected to respect nature, local cultures, and
-          fellow trekkers. Consumption of alcohol or illegal substances during
-          the active trek is strictly prohibited. Param Adventures maintains a
-          zero-tolerance policy for harassment or discrimination. Violators
-          may be immediately expelled from the trip without refund.
-        </p>
-      </section>
+        <section>
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-foreground">
+            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">5</span>
+            Code of Conduct
+          </h2>
+          <p className="text-foreground/80 mb-4">Participants must maintain discipline and adhere to all instructions. The following are strictly prohibited:</p>
+          <ul className="list-disc pl-5 space-y-3 text-foreground/80 leading-relaxed">
+            <li>Consumption or possession of alcohol, smoking products, or intoxicants</li>
+            <li>Littering or causing environmental damage</li>
+            <li>
+              Misconduct, including:
+              <ul className="list-[circle] pl-5 mt-2 space-y-1">
+                <li>Verbal or physical abuse</li>
+                <li>Threatening or aggressive behavior</li>
+                <li>Discriminatory, religious, or political remarks</li>
+                <li>Sexual misconduct of any kind</li>
+              </ul>
+            </li>
+          </ul>
+          <p className="text-foreground/80 mt-4 font-bold text-red-500/90">Violation of these rules will result in immediate termination without refund, and the participant must bear any additional costs incurred.</p>
+        </section>
 
-      <section className="mb-8">
-        <h2 className="text-2xl font-bold mb-4">6. Liability Waiver</h2>
-        <p>
-          While we prioritize safety, {title} and its vendors/leads
-          shall not be liable for any injury, loss, damage, or death occurring
-          during the trip, except where such liability cannot be excluded by
-          law. Participants must sign a physical liability waiver before the
-          trip commences.
-        </p>
-      </section>
+        <section>
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-foreground">
+            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">6</span>
+            Grounds for Termination
+          </h2>
+          <p className="text-foreground/80 mb-4">The Organizer reserves the right to terminate participation without refund if:</p>
+          <ul className="list-disc pl-5 space-y-3 text-foreground/80 leading-relaxed">
+            <li>The participant violates rules or engages in misconduct</li>
+            <li>The participant is medically or physically unfit to continue</li>
+            <li>The participant’s behavior negatively impacts the group</li>
+          </ul>
+          <p className="text-foreground/80 mt-4 font-bold text-red-500/90">All expenses for return, evacuation, or additional arrangements shall be borne by the participant.</p>
+        </section>
 
-      <section>
-        <h2 className="text-2xl font-bold mb-4">7. Contact Information</h2>
-        <p>
-          For any questions regarding these Terms, please contact us at {email}.
-        </p>
-      </section>
+        <section>
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-foreground">
+            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">7</span>
+            Participant Responsibility & Withdrawal
+          </h2>
+          <ul className="list-disc pl-5 space-y-3 text-foreground/80 leading-relaxed">
+            <li>Participants must not leave the group without informing the trek leader.</li>
+            <li>If a participant chooses to leave the trip voluntarily, they must provide written confirmation, after which the Organizer holds no responsibility for their safety or well-being.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-foreground">
+            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">8</span>
+            Risk Acknowledgment
+          </h2>
+          <p className="text-foreground/80 mb-4">Trekking and adventure travel involve inherent risks, including but not limited to:</p>
+          <ul className="list-disc pl-5 space-y-3 text-foreground/80 leading-relaxed">
+            <li>Natural hazards (weather changes, landslides, wildlife)</li>
+            <li>Health risks (altitude sickness, dehydration, injuries)</li>
+            <li>Travel-related risks (delays, accidents, unforeseen disruptions)</li>
+          </ul>
+          <p className="text-foreground/80 mt-4 font-semibold">Participants acknowledge and accept these risks voluntarily.</p>
+        </section>
+
+        <section>
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-foreground">
+            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">9</span>
+            Medical Emergencies
+          </h2>
+          <ul className="list-disc pl-5 space-y-3 text-foreground/80 leading-relaxed">
+            <li>The Organizer is not liable for medical expenses.</li>
+            <li>
+              Participants must bear all costs related to:
+              <ul className="list-[circle] pl-5 mt-2 space-y-1">
+                <li>Treatment and hospitalization</li>
+                <li>Emergency evacuation</li>
+                <li>Return travel</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-foreground">
+            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">10</span>
+            Liability Disclaimer
+          </h2>
+          <ul className="list-disc pl-5 space-y-3 text-foreground/80 leading-relaxed">
+            <li>The Organizer is not responsible for loss, theft, or damage of personal belongings.</li>
+            <li>Participants are solely responsible for their safety, conduct, and personal items.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-foreground">
+            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">11</span>
+            Photography & Media Rights
+          </h2>
+          <ul className="list-disc pl-5 space-y-3 text-foreground/80 leading-relaxed">
+            <li>The Organizer reserves the right to capture and use photos/videos for promotional purposes.</li>
+            <li>By participating, the participant grants a royalty-free, perpetual license for such use.</li>
+            <li>Participants who do not consent must inform the Organizer in writing prior to the trip and ensure they avoid media capture.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-foreground">
+            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">12</span>
+            Environmental Responsibility
+          </h2>
+          <ul className="list-disc pl-5 space-y-3 text-foreground/80 leading-relaxed">
+            <li>Participants must respect nature and avoid littering or pollution.</li>
+            <li>Any environmental damage may result in immediate termination without refund.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-foreground">
+            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">13</span>
+            General Disclaimer
+          </h2>
+          <ul className="list-disc pl-5 space-y-3 text-foreground/80 leading-relaxed">
+            <li>Actual views and experiences may vary due to weather and natural conditions.</li>
+            <li>The Organizer reserves the right to modify policies, itineraries, or schedules at any time without prior notice.</li>
+          </ul>
+        </section>
+      </div>
     </LegalLayout>
   );
 }
