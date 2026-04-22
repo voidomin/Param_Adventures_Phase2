@@ -1,6 +1,7 @@
 import React from "react";
 import { Metadata } from "next";
-import { ShieldAlert, AlertCircle, Info, FileText } from "lucide-react";
+import Link from "next/link";
+import { ShieldAlert, FileText } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Cancellation & Refund Policy | Param Adventures",
@@ -184,8 +185,7 @@ export default function RefundsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                 <div className="space-y-4">
                   <h3 className="text-xl font-bold flex items-center gap-2">
-                    <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm">1</span>
-                    General Terms
+                    <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm">1</span> General Terms
                   </h3>
                   <ul className="space-y-3 text-foreground/70 list-disc pl-5">
                     <li>All refunds will be processed to the original mode of payment within 5–7 working days.</li>
@@ -197,8 +197,7 @@ export default function RefundsPage() {
 
                 <div className="space-y-4">
                   <h3 className="text-xl font-bold flex items-center gap-2">
-                    <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span>
-                    Payment & Due Amount Policy
+                    <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span> Payment & Due Amount Policy
                   </h3>
                   <ul className="space-y-3 text-foreground/70 list-disc pl-5">
                     <li>Full payment must be completed 30 days prior to departure.</li>
@@ -215,8 +214,7 @@ export default function RefundsPage() {
 
                 <div className="space-y-4">
                   <h3 className="text-xl font-bold flex items-center gap-2">
-                    <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm">3</span>
-                    Cancellation by Participant
+                    <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm">3</span> Cancellation by Participant
                   </h3>
                   <div className="space-y-3 text-foreground/70">
                     <p className="font-semibold text-foreground">Standard Cancellation:</p>
@@ -235,8 +233,7 @@ export default function RefundsPage() {
 
                 <div className="space-y-4">
                   <h3 className="text-xl font-bold flex items-center gap-2">
-                    <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm">4</span>
-                    Transfer of Booking
+                    <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm">4</span> Transfer of Booking
                   </h3>
                   <ul className="space-y-3 text-foreground/70 list-disc pl-5">
                     <li>Participants may transfer their booking to another individual, subject to fulfillment of all eligibility and fitness requirements.</li>
@@ -252,8 +249,7 @@ export default function RefundsPage() {
 
                 <div className="space-y-4">
                   <h3 className="text-xl font-bold flex items-center gap-2">
-                    <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm">5</span>
-                    During the Trek / Trip
+                    <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm">5</span> During the Trek / Trip
                   </h3>
                   <p className="text-foreground/70">No refund or voucher will be provided if a participant:</p>
                   <ul className="space-y-2 text-foreground/70 list-disc pl-5">
@@ -272,8 +268,7 @@ export default function RefundsPage() {
 
                 <div className="space-y-4">
                   <h3 className="text-xl font-bold flex items-center gap-2">
-                    <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm">6</span>
-                    Cancellation by the Company
+                    <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm">6</span> Cancellation by the Company
                   </h3>
                   <div className="space-y-3 text-foreground/70">
                     <p>In rare cases where the company cancels a trek due to natural events, political unrest, pandemics, or any force majeure situation.</p>
@@ -291,8 +286,7 @@ export default function RefundsPage() {
 
                 <div className="space-y-4">
                   <h3 className="text-xl font-bold flex items-center gap-2">
-                    <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm">7</span>
-                    Force Majeure / Emergency Policy
+                    <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm">7</span> Force Majeure / Emergency Policy
                   </h3>
                   <ul className="space-y-3 text-foreground/70 list-disc pl-5">
                     <li>In cases of war, pandemics, natural disasters, or other force majeure events, this policy may be superseded by a special Emergency Cancellation Policy.</li>
@@ -302,8 +296,7 @@ export default function RefundsPage() {
 
                 <div className="space-y-4">
                   <h3 className="text-xl font-bold flex items-center gap-2">
-                    <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm">8</span>
-                    Important Notes
+                    <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm">8</span> Important Notes
                   </h3>
                   <ul className="space-y-3 text-foreground/70 list-disc pl-5">
                     <li>Refund timelines are subject to banking processes.</li>
@@ -317,9 +310,9 @@ export default function RefundsPage() {
             {/* Contact CTA */}
             <div className="text-center py-10">
               <p className="text-foreground/50 mb-6 font-medium">Have questions about your specific booking?</p>
-              <a href="/contact" className="inline-flex items-center gap-2 px-10 py-5 bg-foreground text-background rounded-2xl font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">
+              <Link href="/contact" className="inline-flex items-center gap-2 px-10 py-5 bg-foreground text-background rounded-2xl font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all">
                 Contact Support Team
-              </a>
+              </Link>
             </div>
 
           </div>

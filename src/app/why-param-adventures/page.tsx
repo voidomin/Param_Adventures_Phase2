@@ -1,5 +1,6 @@
 import React from "react";
 import { Metadata } from "next";
+import Link from "next/link";
 import { Heart, Users, Award, ShieldCheck, Ban, Leaf, IndianRupee, HandHeart, Map, Globe, CalendarCheck, BriefcaseMedical, Coffee, Headset } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -141,9 +142,9 @@ export default function WhyParamAdventuresPage() {
             <p className="text-xl text-foreground/70 mb-10 max-w-2xl mx-auto relative z-10">
               Join us on our next adventure and experience the Param difference for yourself.
             </p>
-            <a href="/experiences" className="relative z-10 inline-flex items-center gap-2 px-10 py-5 bg-primary text-primary-foreground rounded-2xl font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-primary/30">
+            <Link href="/experiences" className="relative z-10 inline-flex items-center gap-2 px-10 py-5 bg-primary text-primary-foreground rounded-2xl font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-primary/30">
               Explore Experiences
-            </a>
+            </Link>
           </div>
         </div>
       </section>

@@ -12,8 +12,7 @@ export default function TermsPage() {
       <div className="space-y-12">
         <section>
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-foreground">
-            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">1</span>
-            Booking & Participation Policy
+            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">1</span> Booking & Participation Policy
           </h2>
           <ul className="list-disc pl-5 space-y-3 text-foreground/80 leading-relaxed">
             <li>A minimum of 10–12 participants is required to conduct a trek/trip.</li>
@@ -26,8 +25,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-foreground">
-            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">2</span>
-            Itinerary & Operational Changes
+            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">2</span> Itinerary & Operational Changes
           </h2>
           <ul className="list-disc pl-5 space-y-3 text-foreground/80 leading-relaxed">
             <li>All itineraries are indicative and subject to change due to weather, traffic, permits, or government regulations.</li>
@@ -39,8 +37,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-foreground">
-            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">3</span>
-            Accommodation & Food
+            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">3</span> Accommodation & Food
           </h2>
           <ul className="list-disc pl-5 space-y-3 text-foreground/80 leading-relaxed">
             <li>Accommodation may include tents, dormitories, sleeping bags, or open-sky arrangements with basic facilities.</li>
@@ -50,8 +47,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-foreground">
-            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">4</span>
-            Fitness & Safety Guidelines
+            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">4</span> Fitness & Safety Guidelines
           </h2>
           <ul className="list-disc pl-5 space-y-3 text-foreground/80 leading-relaxed">
             <li>A moderate level of physical fitness is required.</li>
@@ -64,8 +60,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-foreground">
-            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">5</span>
-            Code of Conduct
+            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">5</span> Code of Conduct
           </h2>
           <p className="text-foreground/80 mb-4">Participants must maintain discipline and adhere to all instructions. The following are strictly prohibited:</p>
           <ul className="list-disc pl-5 space-y-3 text-foreground/80 leading-relaxed">
@@ -86,8 +81,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-foreground">
-            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">6</span>
-            Grounds for Termination
+            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">6</span> Grounds for Termination
           </h2>
           <p className="text-foreground/80 mb-4">The Organizer reserves the right to terminate participation without refund if:</p>
           <ul className="list-disc pl-5 space-y-3 text-foreground/80 leading-relaxed">
@@ -100,8 +94,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-foreground">
-            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">7</span>
-            Participant Responsibility & Withdrawal
+            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">7</span> Participant Responsibility & Withdrawal
           </h2>
           <ul className="list-disc pl-5 space-y-3 text-foreground/80 leading-relaxed">
             <li>Participants must not leave the group without informing the trek leader.</li>
@@ -111,8 +104,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-foreground">
-            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">8</span>
-            Risk Acknowledgment
+            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">8</span> Risk Acknowledgment
           </h2>
           <p className="text-foreground/80 mb-4">Trekking and adventure travel involve inherent risks, including but not limited to:</p>
           <ul className="list-disc pl-5 space-y-3 text-foreground/80 leading-relaxed">
@@ -125,8 +117,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-foreground">
-            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">9</span>
-            Medical Emergencies
+            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">9</span> Medical Emergencies
           </h2>
           <ul className="list-disc pl-5 space-y-3 text-foreground/80 leading-relaxed">
             <li>The Organizer is not liable for medical expenses.</li>
@@ -143,8 +134,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-foreground">
-            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">10</span>
-            Liability Disclaimer
+            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">10</span> Liability Disclaimer
           </h2>
           <ul className="list-disc pl-5 space-y-3 text-foreground/80 leading-relaxed">
             <li>The Organizer is not responsible for loss, theft, or damage of personal belongings.</li>
@@ -154,8 +144,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-foreground">
-            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">11</span>
-            Photography & Media Rights
+            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">11</span> Photography & Media Rights
           </h2>
           <ul className="list-disc pl-5 space-y-3 text-foreground/80 leading-relaxed">
             <li>The Organizer reserves the right to capture and use photos/videos for promotional purposes.</li>
@@ -166,8 +155,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-foreground">
-            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">12</span>
-            Environmental Responsibility
+            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">12</span> Environmental Responsibility
           </h2>
           <ul className="list-disc pl-5 space-y-3 text-foreground/80 leading-relaxed">
             <li>Participants must respect nature and avoid littering or pollution.</li>
@@ -177,12 +165,11 @@ export default function TermsPage() {
 
         <section>
           <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-foreground">
-            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">13</span>
-            General Disclaimer
+            <span className="bg-primary/20 text-primary w-8 h-8 rounded-full flex items-center justify-center text-sm shrink-0">13</span> Governing Law & Jurisdiction
           </h2>
           <ul className="list-disc pl-5 space-y-3 text-foreground/80 leading-relaxed">
-            <li>Actual views and experiences may vary due to weather and natural conditions.</li>
-            <li>The Organizer reserves the right to modify policies, itineraries, or schedules at any time without prior notice.</li>
+            <li>These terms shall be governed by and construed in accordance with the laws of India.</li>
+            <li>Any disputes shall be subject to the exclusive jurisdiction of the courts in Bangalore, Karnataka.</li>
           </ul>
         </section>
       </div>
