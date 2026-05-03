@@ -38,7 +38,7 @@ export default function Navbar() {
   return (
     <>
       <nav className="fixed top-0 w-full z-[100] bg-background/80 backdrop-blur-md border-b border-border">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-6 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
             {/* Logo */}
             <Link href="/" className="flex items-center space-x-2">
@@ -57,7 +57,7 @@ export default function Navbar() {
             </Link>
 
             {/* Desktop Nav */}
-            <div className="hidden md:flex items-center space-x-8">
+            <div className="hidden lg:flex items-center space-x-8">
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
@@ -120,11 +120,12 @@ export default function Navbar() {
             </div>
 
             {/* Mobile Menu Button */}
-            <div className="md:hidden flex items-center space-x-4">
+            <div className="lg:hidden flex items-center space-x-4">
               <ThemeToggle />
               <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="text-foreground relative z-[60]"
+                suppressHydrationWarning
               >
                 {isOpen ? (
                   <X className="w-6 h-6" />
@@ -140,7 +141,7 @@ export default function Navbar() {
       {/* Mobile Nav Overlay — OUTSIDE the nav for proper z-index stacking */}
       {isOpen && (
         <div
-          className="md:hidden fixed inset-0 top-16 z-[55] overflow-y-auto"
+          className="lg:hidden fixed inset-0 top-16 z-[55] overflow-y-auto"
           style={{ backgroundColor: "#f8fafc" }}
         >
           <div className="flex flex-col p-6 space-y-6">

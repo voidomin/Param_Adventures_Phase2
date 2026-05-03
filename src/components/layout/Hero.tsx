@@ -92,6 +92,7 @@ export default function Hero({
           viewBox="0 0 200 200"
           xmlns="http://www.w3.org/2000/svg"
           className="w-full h-full"
+          preserveAspectRatio="none"
         >
           <filter id="noiseFilter">
             <feTurbulence
@@ -116,7 +117,7 @@ export default function Hero({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 1, ease: "linear" }}
-            className="absolute -inset-x-[5vw] inset-y-0 w-[110vw]"
+            className="absolute md:-inset-x-[5vw] inset-0 md:w-[110vw]"
           >
             {isVideo ? (
               <video
