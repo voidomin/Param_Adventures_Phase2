@@ -15,7 +15,7 @@ describe("app/robots", () => {
     const result = await robots();
 
     expect(result.rules).toHaveLength(1);
-    expect(result.rules[0]).toMatchObject({
+    expect((result.rules as any)[0]).toMatchObject({
       userAgent: "*",
       allow: "/",
       disallow: ["/admin", "/api", "/dashboard"],

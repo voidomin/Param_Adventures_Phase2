@@ -86,6 +86,6 @@ describe("getPlainTextFromJSON", () => {
 
   it("returns an empty string for invalid Tiptap JSON", () => {
     expect(getPlainTextFromJSON({ type: "doc" })).toBe("");
-    expect(getPlainTextFromJSON({ type: "doc", content: "not an array" })).toBe("");
+    expect(getPlainTextFromJSON({ type: "doc", content: "not an array" } as any)).toBe("");
   });
 });

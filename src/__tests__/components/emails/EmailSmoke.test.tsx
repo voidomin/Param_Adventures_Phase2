@@ -45,28 +45,24 @@ describe("email components", () => {
 
   it("renders EmailBase admin and gold themes and optional subheading branch", async () => {
     const adminHtml = await render(
-      React.createElement(
-        EmailBase,
-        {
-          preview: "Admin preview",
-          heading: "Admin heading",
-          subheading: "Admin subheading",
-          theme: "admin",
-        },
-        React.createElement("div", null, "Admin body"),
-      ),
+      <EmailBase
+        preview="Admin preview"
+        heading="Admin heading"
+        subheading="Admin subheading"
+        theme="admin"
+      >
+        <div>Admin body</div>
+      </EmailBase>
     );
 
     const goldNoSubheadingHtml = await render(
-      React.createElement(
-        EmailBase,
-        {
-          preview: "Gold preview",
-          heading: "Gold heading",
-          theme: "gold",
-        },
-        React.createElement("div", null, "Gold body"),
-      ),
+      <EmailBase
+        preview="Gold preview"
+        heading="Gold heading"
+        theme="gold"
+      >
+        <div>Gold body</div>
+      </EmailBase>
     );
 
     expect(adminHtml).toContain("Admin subheading");

@@ -1,5 +1,6 @@
 import React from "react";
 import { Metadata } from "next";
+import Link from "next/link";
 import { Mail, Phone, MapPin, MessageSquare, Clock, Globe } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { withBuildSafety } from "@/lib/db-utils";
@@ -16,7 +17,6 @@ export default async function ContactPage() {
   const supportEmail = getSiteVal("support_email", "info@paramadventures.in");
   const supportPhone = getSiteVal("support_phone", "+91 98765 43210");
   const officeAddress = getSiteVal("office_address", "Kullu, Himachal Pradesh,\nIndia 175131");
-  const siteTitle = getSiteVal("site_title", "Param Adventures");
 
   return (
     <div className="min-h-screen bg-background">
@@ -121,11 +121,11 @@ export default async function ContactPage() {
                   <div className="space-y-6">
                     <div className="flex items-center gap-4 p-6 bg-background/50 backdrop-blur-md rounded-3xl border border-primary/20 shadow-xl shadow-primary/5">
                       <div className="w-12 h-12 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center font-black">1</div>
-                      <p className="font-bold">Browse our <a href="/experiences" className="text-primary hover:underline">Adventures</a></p>
+                      <p className="font-bold">Browse our <Link href="/experiences" className="text-primary hover:underline">Adventures</Link></p>
                     </div>
                     <div className="flex items-center gap-4 p-6 bg-background/50 backdrop-blur-md rounded-3xl border border-primary/20 shadow-xl shadow-primary/5">
                       <div className="w-12 h-12 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center font-black">2</div>
-                      <p className="font-bold">Read our <a href="/blog" className="text-primary hover:underline">Travel Stories</a></p>
+                      <p className="font-bold">Read our <Link href="/blog" className="text-primary hover:underline">Travel Stories</Link></p>
                     </div>
                   </div>
                 </div>
