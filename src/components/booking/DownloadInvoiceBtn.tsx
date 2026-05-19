@@ -87,7 +87,8 @@ export default function DownloadInvoiceBtn({ bookingId }: Readonly<{ bookingId: 
       doc.setFont("helvetica", "normal");
       doc.text(`Invoice No: INV-${booking.id.split("-")[0].toUpperCase()}`, 14, 76);
       doc.text(`Invoice Date: ${new Date(booking.date).toLocaleDateString()}`, 14, 82);
-      doc.text(`Place of Supply: Uttarakhand (05)`, 14, 88); 
+      const placeOfSupply = getPlaceOfSupply(experience?.location || "");
+      doc.text(`Place of Supply: ${placeOfSupply}`, 14, 88); 
       doc.text(`Payment Status: ${booking.status}`, 14, 94);
 
       // Right: Billed To
@@ -180,4 +181,42 @@ export default function DownloadInvoiceBtn({ bookingId }: Readonly<{ bookingId: 
       {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
     </button>
   );
+}
+
+function getPlaceOfSupply(location: string): string {
+  const loc = (location || "").toLowerCase();
+  if (loc.includes("karnataka") || loc.includes("coorg") || loc.includes("kudremukh") || loc.includes("gokarna") || loc.includes("bangalore")) {
+    return "Karnataka (29)";
+  }
+  if (loc.includes("himachal") || loc.includes("manali") || loc.includes("dharamshala") || loc.includes("kasol") || loc.includes("spiti")) {
+    return "Himachal Pradesh (02)";
+  }
+  if (loc.includes("kerala") || loc.includes("wayanad") || loc.includes("munnar")) {
+    return "Kerala (32)";
+  }
+  if (loc.includes("tamil nadu") || loc.includes("ooty") || loc.includes("kodaikanal") || loc.includes("nilgiris")) {
+    return "Tamil Nadu (33)";
+  }
+  if (loc.includes("ladakh") || loc.includes("leh")) {
+    return "Ladakh (38)";
+  }
+  if (loc.includes("rajasthan") || loc.includes("jaisalmer") || loc.includes("jaipur")) {
+    return "Rajasthan (08)";
+  }
+  if (loc.includes("maharashtra") || loc.includes("lonavala") || loc.includes("pune") || loc.includes("mumbai") || loc.includes("ghats")) {
+    return "Maharashtra (27)";
+  }
+  if (loc.includes("goa")) {
+    return "Goa (30)";
+  }
+  if (loc.includes("sikkim")) {
+    return "Sikkim (11)";
+  }
+  if (loc.includes("arunachal")) {
+    return "Arunachal Pradesh (12)";
+  }
+  if (loc.includes("meghalaya")) {
+    return "Meghalaya (17)";
+  }
+  return "Uttarakhand (05)";
 }
