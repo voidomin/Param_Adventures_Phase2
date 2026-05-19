@@ -17,6 +17,10 @@ const COLORS = {
   green: [34, 197, 94] as [number, number, number],         // #22C55E
   red: [239, 68, 68] as [number, number, number],           // #EF4444
   lightOrange: [254, 243, 230] as [number, number, number], // #FEF3E6
+  lightTeal: [230, 250, 248] as [number, number, number],   // #E6FAF8
+  softGray: [248, 248, 250] as [number, number, number],    // #F8F8FA
+  paleGreen: [236, 253, 243] as [number, number, number],   // #ECFDF3
+  paleRed: [254, 242, 242] as [number, number, number],     // #FEF2F2
 };
 
 interface ItineraryBookingData {
@@ -49,6 +53,8 @@ interface ItineraryBookingData {
   ageRange?: string;
   minAge?: number | null;
   cancellationPolicy?: string;
+  categories?: string[];
+  vibeTags?: string[];
   company: {
     name: string;
     email: string;
@@ -120,30 +126,34 @@ function drawSocialButton(doc: jsPDF, label: string, url: string, x: number, y: 
 function addPageHeader(doc: jsPDF, data: ItineraryBookingData) {
   const pageWidth = doc.internal.pageSize.getWidth();
   
-  // Subtle top line
+  // Orange accent dot
+  doc.setFillColor(...COLORS.orange);
+  doc.circle(16, 8, 1.2, "F");
+  
+  // Brand name
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...COLORS.navy);
+  doc.text("PARAM ADVENTURES", 19, 9);
+  
+  // Subtle divider line
   doc.setDrawColor(230, 230, 230);
   doc.setLineWidth(0.2);
   doc.line(14, 12, pageWidth - 14, 12);
   
-  // Draw "Param Adventures"
-  doc.setFontSize(7.5);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...COLORS.navy);
-  doc.text("PARAM ADVENTURES", 14, 9);
-  
-  // Draw tab
-  const tabW = 24;
-  const tabH = 5;
+  // Book Online tab
+  const tabW = 26;
+  const tabH = 5.5;
   const tabX = pageWidth - 14 - tabW;
-  const tabY = 5.5;
+  const tabY = 5;
   
   doc.setFillColor(...COLORS.orange);
-  doc.roundedRect(tabX, tabY, tabW, tabH, 1, 1, "F");
+  doc.roundedRect(tabX, tabY, tabW, tabH, 1.5, 1.5, "F");
   
   doc.setFontSize(6.5);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.white);
-  doc.text("BOOK ONLINE", tabX + tabW / 2, tabY + 3.7, { align: "center" });
+  doc.text("BOOK ONLINE", tabX + tabW / 2, tabY + 3.8, { align: "center" });
   
   const bookingUrl = typeof window !== 'undefined' ? `${window.location.origin}/experiences/${data.slug}` : `https://www.paramadventures.in/experiences/${data.slug}`;
   doc.link(tabX, tabY, tabW, tabH, { url: bookingUrl });
@@ -171,16 +181,23 @@ function addPageFooter(doc: jsPDF, pageNum: number, totalPages: number) {
 
 function drawSectionHeader(doc: jsPDF, title: string, y: number): number {
   const pageWidth = doc.internal.pageSize.getWidth();
+  // Teal accent bar
   doc.setFillColor(...COLORS.teal);
-  doc.rect(14, y, 4, 10, "F");
+  doc.roundedRect(14, y, 4, 10, 1, 1, "F");
+  // Title
   doc.setFontSize(14);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.navy);
   doc.text(title, 22, y + 7.5);
+  // Light divider line
   doc.setDrawColor(220, 220, 220);
   doc.setLineWidth(0.3);
   doc.line(14, y + 13, pageWidth - 14, y + 13);
-  return y + 18;
+  // Orange accent underline (partial)
+  doc.setDrawColor(...COLORS.orange);
+  doc.setLineWidth(0.8);
+  doc.line(14, y + 13.8, 55, y + 13.8);
+  return y + 19;
 }
 
 function checkPageBreak(doc: jsPDF, currentY: number, needed: number): number {
@@ -218,39 +235,95 @@ function drawCoverPage(doc: jsPDF, data: ItineraryBookingData, logoBase64: strin
         } catch { /* skip image */ }
       }
 
+  // Orange accent stripe
   doc.setFillColor(...COLORS.orange);
   doc.rect(0, pageHeight * 0.58, pageWidth, 3, "F");
 
+  // Logo + Company block
   if (logoBase64) {
-    doc.addImage(logoBase64, "PNG", 14, pageHeight * 0.64, 22, 22);
+    doc.addImage(logoBase64, "PNG", 14, pageHeight * 0.62, 22, 22);
   }
-
   doc.setFontSize(10);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.orange);
-  doc.text("PARAM ADVENTURES", 40, pageHeight * 0.64 + 10);
+  doc.text("PARAM ADVENTURES", 40, pageHeight * 0.62 + 10);
   doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...COLORS.mutedText);
-  doc.text("Your Gateway to Unforgettable Experiences", 40, pageHeight * 0.64 + 16);
+  doc.text("Your Gateway to Unforgettable Experiences", 40, pageHeight * 0.62 + 16);
 
-  doc.setFontSize(28);
+  // Decorative thin separator
+  doc.setDrawColor(...COLORS.orange);
+  doc.setLineWidth(0.3);
+  doc.line(14, pageHeight * 0.70, pageWidth - 14, pageHeight * 0.70);
+
+  // Title
+  doc.setFontSize(26);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.white);
   const titleLines = doc.splitTextToSize(cleanTextForPdf(data.title).toUpperCase(), pageWidth - 28);
-  doc.text(titleLines, 14, pageHeight * 0.76);
+  doc.text(titleLines, 14, pageHeight * 0.74);
 
-  const badgeY = pageHeight * 0.76 + titleLines.length * 12 + 4;
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(...COLORS.orange);
-  doc.text(`Location: ${cleanTextForPdf(data.location)}`, 14, badgeY);
-  doc.text(`Duration: ${data.durationDays} Days / ${Math.max(data.durationDays - 1, 0)} Nights`, 14, badgeY + 7);
-
+  // Pill badges for metadata
+  const badgeY = pageHeight * 0.74 + titleLines.length * 11 + 5;
+  doc.setFontSize(8);
+  doc.setFont("helvetica", "bold");
+  let pillX = 14;
+  const pills = [
+    cleanTextForPdf(data.location),
+    `${data.durationDays}D / ${Math.max(data.durationDays - 1, 0)}N`,
+  ];
   if (data.difficulty) {
-    doc.text(`Difficulty: ${cleanTextForPdf(data.difficulty).charAt(0) + cleanTextForPdf(data.difficulty).slice(1).toLowerCase()}`, 14, badgeY + 14);
+    pills.push(cleanTextForPdf(data.difficulty).charAt(0) + cleanTextForPdf(data.difficulty).slice(1).toLowerCase());
+  }
+  pills.forEach((label) => {
+    const tw = doc.getTextWidth(label) + 12;
+    doc.setFillColor(...COLORS.orange);
+    doc.roundedRect(pillX, badgeY - 4.5, tw, 9, 4.5, 4.5, "F");
+    doc.setTextColor(...COLORS.white);
+    doc.text(label, pillX + 6, badgeY + 1.5);
+    pillX += tw + 4;
+  });
+
+  // Category tags as outlined pills
+  let tagRowY = badgeY + 12;
+  if (data.categories && data.categories.length > 0) {
+    let catX = 14;
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "normal");
+    data.categories.forEach((cat) => {
+      const catText = cleanTextForPdf(cat);
+      const tw = doc.getTextWidth(catText) + 8;
+      if (catX + tw > pageWidth - 14) { catX = 14; tagRowY += 9; }
+      doc.setDrawColor(120, 120, 140);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(catX, tagRowY - 3.5, tw, 7, 3.5, 3.5, "D");
+      doc.setTextColor(180, 180, 200);
+      doc.text(catText, catX + 4, tagRowY + 1);
+      catX += tw + 3;
+    });
+    tagRowY += 9;
   }
 
+  // Vibe tags as teal outlined pills
+  if (data.vibeTags && data.vibeTags.length > 0) {
+    let vibeX = 14;
+    doc.setFontSize(6.5);
+    doc.setFont("helvetica", "normal");
+    data.vibeTags.forEach((tag) => {
+      const tagText = cleanTextForPdf(tag);
+      const tw = doc.getTextWidth(tagText) + 8;
+      if (vibeX + tw > pageWidth - 14) { vibeX = 14; tagRowY += 9; }
+      doc.setDrawColor(...COLORS.teal);
+      doc.setLineWidth(0.3);
+      doc.roundedRect(vibeX, tagRowY - 3.5, tw, 7, 3.5, 3.5, "D");
+      doc.setTextColor(...COLORS.teal);
+      doc.text(tagText, vibeX + 4, tagRowY + 1);
+      vibeX += tw + 3;
+    });
+  }
+
+  // Footer badge
   doc.setFontSize(8);
   doc.setTextColor(...COLORS.mutedText);
   doc.text("DETAILED TRIP ITINERARY", pageWidth / 2, pageHeight - 18, { align: "center" });
@@ -268,7 +341,7 @@ function drawStatsOverview(doc: jsPDF, data: ItineraryBookingData, y: number): n
   y += 2;
 
   const stats = [
-    { label: "Duration", value: `${data.durationDays} Days` },
+    { label: "Duration", value: `${data.durationDays} Days / ${Math.max(data.durationDays - 1, 0)} Nights` },
     { label: "Max Altitude", value: data.maxAltitude || "N/A" },
     { label: "Total Distance (Both way)", value: data.trekDistance || "N/A" },
     { label: "Difficulty", value: data.difficulty ? data.difficulty.charAt(0) + data.difficulty.slice(1).toLowerCase() : "N/A" },
@@ -277,7 +350,7 @@ function drawStatsOverview(doc: jsPDF, data: ItineraryBookingData, y: number): n
   ];
 
   const cardW = (pageWidth - 28 - 10) / 2;
-  const cardH = 20;
+  const cardH = 22;
 
   stats.forEach((stat, i) => {
     const col = i % 2;
@@ -285,18 +358,26 @@ function drawStatsOverview(doc: jsPDF, data: ItineraryBookingData, y: number): n
     const cx = 14 + col * (cardW + 10);
     const cy = y + row * (cardH + 6);
 
+    // Card background
     doc.setFillColor(...COLORS.lightOrange);
     doc.roundedRect(cx, cy, cardW, cardH, 3, 3, "F");
 
-    doc.setFontSize(8);
+    // Left accent bar (alternating teal/orange)
+    const accentColor = i % 2 === 0 ? COLORS.teal : COLORS.orange;
+    doc.setFillColor(...accentColor);
+    doc.roundedRect(cx, cy, 3, cardH, 1.5, 1.5, "F");
+
+    // Label (uppercase)
+    doc.setFontSize(7.5);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...COLORS.mutedText);
-    doc.text(stat.label, cx + 5, cy + 7);
+    doc.text(stat.label.toUpperCase(), cx + 8, cy + 8);
 
+    // Value
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...COLORS.navy);
-    doc.text(stat.value, cx + 5, cy + 15);
+    doc.text(cleanTextForPdf(stat.value), cx + 8, cy + 17);
   });
 
   const startY = y + Math.ceil(stats.length / 2) * (cardH + 6) + 4;
@@ -352,30 +433,47 @@ function drawHighlightsAndAbout(doc: jsPDF, data: ItineraryBookingData, y: numbe
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
     data.highlights.forEach((h: string) => {
-      y = checkPageBreak(doc, y, 8);
-      doc.setTextColor(...COLORS.green);
-      doc.text("+", 18, y + 4);
+      y = checkPageBreak(doc, y, 9);
+      // Filled green dot
+      doc.setFillColor(...COLORS.green);
+      doc.circle(19, y + 3, 1.8, "F");
+      // White check mark inside dot
+      doc.setFontSize(5);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...COLORS.white);
+      doc.text("*", 18.2, y + 4.2);
+      // Text
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
       doc.setTextColor(...COLORS.darkText);
       const lines = doc.splitTextToSize(cleanTextForPdf(h), pageWidth - 40);
       doc.text(lines, 26, y + 4);
-      y += lines.length * 5 + 3;
+      y += lines.length * 5 + 4;
     });
-    y += 4;
+    y += 6;
   }
 
   if (data.description) {
     y = checkPageBreak(doc, y, 30);
     y = drawSectionHeader(doc, "ABOUT THE EXPERIENCE", y);
+    // Subtle container background
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...COLORS.darkText);
-    const descLines = doc.splitTextToSize(cleanTextForPdf(data.description), pageWidth - 28);
+    const descLines = doc.splitTextToSize(cleanTextForPdf(data.description), pageWidth - 36);
+    const containerH = descLines.length * 5 + 10;
+    y = checkPageBreak(doc, y, containerH);
+    doc.setFillColor(...COLORS.softGray);
+    doc.roundedRect(14, y, pageWidth - 28, containerH, 3, 3, "F");
+    // Left teal accent on container
+    doc.setFillColor(...COLORS.teal);
+    doc.roundedRect(14, y, 2.5, containerH, 1, 1, "F");
+    let textY = y + 6;
     for (const line of descLines) {
-      y = checkPageBreak(doc, y, 6);
-      doc.text(line, 14, y + 4);
-      y += 5;
+      doc.text(line, 22, textY);
+      textY += 5;
     }
-    y += 6;
+    y += containerH + 8;
   }
   return y;
 }
@@ -387,69 +485,88 @@ function drawItinerary(doc: jsPDF, data: ItineraryBookingData, y: number): numbe
   doc.addPage();
   y = 20;
   y = drawSectionHeader(doc, "DAY-BY-DAY ITINERARY", y);
-  y += 2;
+  y += 4;
 
   data.itinerary.forEach((day, index) => {
     const dayNum = index + 1;
     const descLen = day.description?.length ?? 0;
-    const neededHeight = 35 + (descLen / 5); // rough estimate
+    const neededHeight = 40 + (descLen / 4);
     y = checkPageBreak(doc, y, neededHeight);
 
+    const blockStartY = y;
+
+    // Light background behind content area
+    doc.setFillColor(...COLORS.softGray);
+    doc.roundedRect(28, y - 1, pageWidth - 42, neededHeight - 6, 3, 3, "F");
+
+    // Day number circle
     doc.setFillColor(...COLORS.orange);
-    doc.circle(22, y + 6, 5, "F");
+    doc.circle(22, y + 6, 5.5, "F");
     doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...COLORS.white);
     doc.text(`D${dayNum}`, 22, y + 7.5, { align: "center" });
 
+    // Day title
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...COLORS.navy);
-    doc.text(cleanTextForPdf(day.title || `Day ${dayNum}`), 30, y + 7.5);
+    doc.text(cleanTextForPdf(day.title || `Day ${dayNum}`), 32, y + 8);
 
     if (day.description) {
       doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(...COLORS.darkText);
-      const dayDescLines = doc.splitTextToSize(cleanTextForPdf(day.description), pageWidth - 44);
-      doc.text(dayDescLines, 30, y + 14);
-      y += 14 + dayDescLines.length * 4.5;
+      const dayDescLines = doc.splitTextToSize(cleanTextForPdf(day.description), pageWidth - 48);
+      doc.text(dayDescLines, 32, y + 15);
+      y += 15 + dayDescLines.length * 4.8;
     } else {
-      y += 14;
+      y += 16;
     }
 
+    // Chip-style meals and accommodation tags
     if (day.meals || day.accommodation) {
-      const midX = 30 + (pageWidth - 44) / 2;
       y += 2;
+      let chipX = 32;
       if (day.meals) {
-        doc.setFontSize(8);
+        const mealsStr = Array.isArray(day.meals) ? day.meals.join(", ") : (day.meals || "");
+        const mealsText = `Meals: ${cleanTextForPdf(mealsStr)}`;
+        doc.setFontSize(7);
+        const chipW = doc.getTextWidth(mealsText) + 8;
+        doc.setFillColor(...COLORS.lightTeal);
+        doc.roundedRect(chipX, y - 3, chipW, 7, 3, 3, "F");
         doc.setFont("helvetica", "bold");
         doc.setTextColor(...COLORS.teal);
-        doc.text("Meals: ", 30, y);
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(...COLORS.mutedText);
-        const mealsStr = Array.isArray(day.meals) ? day.meals.join(", ") : (day.meals || "");
-        const ml = doc.splitTextToSize(cleanTextForPdf(mealsStr), midX - 30 - 12);
-        doc.text(ml, 42, y);
+        doc.text(mealsText, chipX + 4, y + 1.5);
+        chipX += chipW + 4;
       }
       if (day.accommodation) {
-        doc.setFontSize(8);
+        const stayText = `Stay: ${cleanTextForPdf(day.accommodation)}`;
+        doc.setFontSize(7);
+        const chipW = doc.getTextWidth(stayText) + 8;
+        doc.setFillColor(...COLORS.lightOrange);
+        doc.roundedRect(chipX, y - 3, chipW, 7, 3, 3, "F");
         doc.setFont("helvetica", "bold");
-        doc.setTextColor(...COLORS.teal);
-        doc.text("Stay: ", midX, y);
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(...COLORS.mutedText);
-        const sl = doc.splitTextToSize(cleanTextForPdf(day.accommodation), pageWidth - 14 - midX - 10);
-        doc.text(sl, midX + 10, y);
+        doc.setTextColor(...COLORS.orange);
+        doc.text(stayText, chipX + 4, y + 1.5);
       }
       y += 8;
     }
 
-    y += 3;
-    doc.setDrawColor(230, 230, 230);
-    doc.setLineWidth(0.2);
-    doc.line(30, y, pageWidth - 14, y);
-    y += 6;
+    y += 4;
+
+    // Vertical timeline line connecting to next day
+    if (index < (data.itinerary?.length ?? 0) - 1) {
+      doc.setDrawColor(220, 220, 225);
+      doc.setLineWidth(0.6);
+      doc.line(22, blockStartY + 12, 22, y);
+    }
+
+    // Subtle separator
+    doc.setDrawColor(235, 235, 235);
+    doc.setLineWidth(0.15);
+    doc.line(32, y, pageWidth - 14, y);
+    y += 8;
   });
 
   return y;
@@ -468,30 +585,46 @@ function drawInclusionsExclusionsPacking(doc: jsPDF, data: ItineraryBookingData,
     if (inclusions.length > 0) {
       y = drawSectionHeader(doc, "WHAT'S INCLUDED", y);
       doc.setFontSize(9);
-      inclusions.forEach((item: string) => {
-        y = checkPageBreak(doc, y, 8);
-        doc.setTextColor(...COLORS.green).setFont("helvetica", "bold").text("+", 18, y + 4);
+      inclusions.forEach((item: string, i: number) => {
+        y = checkPageBreak(doc, y, 9);
+        // Zebra stripe
+        if (i % 2 === 0) {
+          doc.setFillColor(...COLORS.paleGreen);
+          doc.rect(14, y - 1, pageWidth - 28, 8, "F");
+        }
+        // Filled green dot
+        doc.setFillColor(...COLORS.green);
+        doc.circle(19, y + 3, 1.8, "F");
+        // Text
         doc.setTextColor(...COLORS.darkText).setFont("helvetica", "normal");
         const lines = doc.splitTextToSize(cleanTextForPdf(item), pageWidth - 40);
         doc.text(lines, 26, y + 4);
-        y += lines.length * 5 + 2;
+        y += lines.length * 5 + 3;
       });
-      y += 8;
+      y += 10;
     }
 
     if (exclusions.length > 0) {
       y = checkPageBreak(doc, y, 20);
       y = drawSectionHeader(doc, "WHAT'S NOT INCLUDED", y);
       doc.setFontSize(9);
-      exclusions.forEach((item: string) => {
-        y = checkPageBreak(doc, y, 8);
-        doc.setTextColor(...COLORS.red).setFont("helvetica", "bold").text("x", 18, y + 4);
+      exclusions.forEach((item: string, i: number) => {
+        y = checkPageBreak(doc, y, 9);
+        // Zebra stripe
+        if (i % 2 === 0) {
+          doc.setFillColor(...COLORS.paleRed);
+          doc.rect(14, y - 1, pageWidth - 28, 8, "F");
+        }
+        // Filled red dot
+        doc.setFillColor(...COLORS.red);
+        doc.circle(19, y + 3, 1.8, "F");
+        // Text
         doc.setTextColor(...COLORS.darkText).setFont("helvetica", "normal");
         const lines = doc.splitTextToSize(cleanTextForPdf(item), pageWidth - 40);
         doc.text(lines, 26, y + 4);
-        y += lines.length * 5 + 2;
+        y += lines.length * 5 + 3;
       });
-      y += 8;
+      y += 10;
     }
 
     if (thingsToCarry.length > 0) {
@@ -500,31 +633,37 @@ function drawInclusionsExclusionsPacking(doc: jsPDF, data: ItineraryBookingData,
       doc.setFontSize(9);
       const colWidth = (pageWidth - 28) / 2;
       thingsToCarry.forEach((item: string, i: number) => {
-        if (i % 2 === 0) y = checkPageBreak(doc, y, 7);
+        if (i % 2 === 0) y = checkPageBreak(doc, y, 8);
         const cx = i % 2 === 0 ? 18 : 14 + colWidth;
-        doc.setTextColor(...COLORS.orange).setFont("helvetica", "bold").text(">", cx, y + 4);
+        // Filled orange dot
+        doc.setFillColor(...COLORS.orange);
+        doc.circle(cx + 2, y + 3, 1.5, "F");
         doc.setTextColor(...COLORS.darkText).setFont("helvetica", "normal");
         const cleanItem = cleanTextForPdf(item);
-        doc.text(doc.splitTextToSize(cleanItem, colWidth - 14)[0] || cleanItem, cx + 6, y + 4);
-        if (i % 2 === 1) y += 7;
+        doc.text(doc.splitTextToSize(cleanItem, colWidth - 14)[0] || cleanItem, cx + 8, y + 4);
+        if (i % 2 === 1) y += 8;
       });
-      if (thingsToCarry.length % 2 !== 0) y += 7;
+      if (thingsToCarry.length % 2 !== 0) y += 8;
       y += 12;
     }
 
-    // Gallery
+    // Gallery with shadow effect
     const validGallery = galleryImages.filter((img): img is string => !!img);
     if (validGallery.length > 0) {
-      y = checkPageBreak(doc, y, 60);
+      y = checkPageBreak(doc, y, 65);
       y = drawSectionHeader(doc, "TRIP GALLERY", y);
       y += 5;
       const imgW = (pageWidth - 28 - 15) / 4;
       const imgH = 30;
       validGallery.forEach((img, i) => {
         const ix = 14 + i * (imgW + 5);
+        // Shadow rect
+        doc.setFillColor(220, 220, 220);
+        doc.roundedRect(ix + 1, y + 1, imgW, imgH, 2, 2, "F");
+        // Image
         try { doc.addImage(img, "JPEG", ix, y, imgW, imgH, undefined, "FAST"); } catch { /* skip */ }
       });
-      y += imgH + 10;
+      y += imgH + 12;
     }
   }
   return y;
