@@ -256,7 +256,6 @@ function HeroTags({ experience }: Readonly<{ experience: ExperienceWithInclusion
 function EssentialLogistics({ experience }: Readonly<{ experience: ExperienceWithInclusions }>) {
   if (
     !experience.networkConnectivity &&
-    !experience.lastAtm &&
     !experience.fitnessRequirement &&
     !experience.ageRange &&
     !experience.meetingTime &&
@@ -275,17 +274,6 @@ function EssentialLogistics({ experience }: Readonly<{ experience: ExperienceWit
             </p>
             <p className="font-bold text-sm leading-tight">
               {experience.networkConnectivity}
-            </p>
-          </div>
-        </div>
-      )}
-      {experience.lastAtm && (
-        <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors">
-          <Banknote className="w-5 h-5 text-primary" />
-          <div>
-            <p className="text-xs text-foreground/60 font-medium">Last ATM</p>
-            <p className="font-bold text-sm leading-tight">
-              {experience.lastAtm}
             </p>
           </div>
         </div>
@@ -317,7 +305,7 @@ function EssentialLogistics({ experience }: Readonly<{ experience: ExperienceWit
           <CarFront className="w-5 h-5 text-primary" />
           <div>
             <p className="text-xs text-foreground/60 font-medium">
-              Meeting Point & Time
+              Pick-up points & pickup time
             </p>
             <p className="font-bold text-sm leading-tight">
               {experience.meetingPoint} &bull; {experience.meetingTime}
@@ -779,7 +767,7 @@ export default async function ExperienceDetailPage({
               </div>
               <div>
                 <p className="text-sm text-foreground/60 font-medium whitespace-nowrap">
-                  Trek Distance
+                  Total Distance (Both way)
                 </p>
                 <p className="font-bold">{exp.trekDistance || "N/A"}</p>
               </div>
@@ -814,25 +802,25 @@ export default async function ExperienceDetailPage({
             exp.thingsToCarry.length > 0 && (
               <section
                 id="things-to-carry"
-                className="bg-card border border-border rounded-3xl p-8 shadow-sm scroll-mt-32"
+                className="scroll-mt-32"
               >
                 <h2 className="text-3xl font-heading font-bold mb-6 flex items-center gap-3">
                   <Backpack className="w-8 h-8 text-primary" />
                   Things to Carry
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-8">
+                <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3 pl-2">
                   {exp.thingsToCarry.map((item) => (
-                    <div
+                    <li
                       key={item}
-                      className="flex items-center gap-3 border-b border-border/50 pb-2"
+                      className="flex items-start gap-3 text-foreground/80"
                     >
-                      <div className="w-2 h-2 rounded-full bg-primary/60 shrink-0" />
-                      <span className="text-foreground/80 font-medium">
+                      <div className="w-2 h-2 rounded-full bg-primary shrink-0 mt-2" />
+                      <span className="leading-relaxed font-medium">
                         {item}
                       </span>
-                    </div>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </section>
             )}
 

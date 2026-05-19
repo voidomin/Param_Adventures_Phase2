@@ -69,7 +69,6 @@ export interface ExperienceFormData {
   highlights?: string[];
   vibeTags?: string[];
   networkConnectivity?: string;
-  lastAtm?: string;
   fitnessRequirement?: string;
   ageRange?: string;
   meetingTime?: string;
@@ -238,7 +237,6 @@ export default function ExperienceForm({
   const [networkConnectivity, setNetworkConnectivity] = useState(
     initialData?.networkConnectivity || "",
   );
-  const [lastAtm, setLastAtm] = useState(initialData?.lastAtm || "");
   const [fitnessRequirement, setFitnessRequirement] = useState(
     initialData?.fitnessRequirement || "",
   );
@@ -439,7 +437,6 @@ export default function ExperienceForm({
       .map((item) => item.text)
       .filter((item) => item.trim() !== ""),
     networkConnectivity,
-    lastAtm,
     fitnessRequirement,
     ageRange,
     meetingTime,
@@ -594,7 +591,6 @@ export default function ExperienceForm({
       setMaxGroupSize(data.maxGroupSize || "");
     if (data.networkConnectivity !== undefined)
       setNetworkConnectivity(data.networkConnectivity || "");
-    if (data.lastAtm !== undefined) setLastAtm(data.lastAtm || "");
     if (data.fitnessRequirement !== undefined)
       setFitnessRequirement(data.fitnessRequirement || "");
     if (data.ageRange !== undefined) setAgeRange(data.ageRange || "");
@@ -637,7 +633,6 @@ export default function ExperienceForm({
     maxGroupSize,
     highlights: highlights.map((i) => i.text),
     networkConnectivity,
-    lastAtm,
     fitnessRequirement,
     ageRange,
     meetingTime,
@@ -817,7 +812,6 @@ export default function ExperienceForm({
         { Key: "bestTimeToVisit", Value: bestTimeToVisit },
         { Key: "maxGroupSize", Value: maxGroupSize },
         { Key: "networkConnectivity", Value: networkConnectivity },
-        { Key: "lastAtm", Value: lastAtm },
         { Key: "fitnessRequirement", Value: fitnessRequirement },
         { Key: "ageRange", Value: ageRange },
         { Key: "meetingTime", Value: meetingTime },
@@ -1733,7 +1727,7 @@ export default function ExperienceForm({
                   htmlFor="meetingPoint"
                   className="block text-sm font-medium text-foreground/80 mb-1"
                 >
-                  Meeting Point
+                  Pick-up points
                 </label>
                 <input
                   id="meetingPoint"
@@ -1741,7 +1735,7 @@ export default function ExperienceForm({
                   value={meetingPoint}
                   onChange={(e) => setMeetingPoint(e.target.value)}
                   className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
-                  placeholder="e.g. Dehradun"
+                  placeholder="e.g. Bangalore or Dehradun"
                 />
               </div>
               <div>
@@ -1749,7 +1743,7 @@ export default function ExperienceForm({
                   htmlFor="meetingTime"
                   className="block text-sm font-medium text-foreground/80 mb-1"
                 >
-                  Meeting Time
+                  pickup time
                 </label>
                 <input
                   id="meetingTime"
@@ -1781,7 +1775,7 @@ export default function ExperienceForm({
                   htmlFor="trekDistance"
                   className="block text-sm font-medium text-foreground/80 mb-1"
                 >
-                  Trek Distance
+                  Total Distance (Both way)
                 </label>
                 <input
                   id="trekDistance"
@@ -1838,22 +1832,6 @@ export default function ExperienceForm({
                   onChange={(e) => setNetworkConnectivity(e.target.value)}
                   className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
                   placeholder="e.g. Jio/Airtel till basecamp"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="lastAtm"
-                  className="block text-sm font-medium text-foreground/80 mb-1"
-                >
-                  Last ATM
-                </label>
-                <input
-                  id="lastAtm"
-                  type="text"
-                  value={lastAtm}
-                  onChange={(e) => setLastAtm(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
-                  placeholder="e.g. Joshimath"
                 />
               </div>
               <div>

@@ -186,7 +186,7 @@ export default async function BookingSuccessPage({
                   <div className="flex items-start gap-3">
                     <Users className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-bold block text-foreground">Meeting Point</span>
+                      <span className="font-bold block text-foreground">Pick-up Point</span>
                       {experience.meetingPoint || "To be communicated by Trip Manager"}
                     </div>
                   </div>
@@ -246,7 +246,7 @@ export default async function BookingSuccessPage({
                           <td className="px-6 py-4">
                              <div className="flex items-center gap-2 text-foreground/80">
                                 <MapPin className="w-4 h-4 text-primary shrink-0" />
-                                <span className="font-medium">{p.pickupPoint || "Meeting Point"}</span>
+                                <span className="font-medium">{p.pickupPoint || "Pick-up Point"}</span>
                              </div>
                           </td>
                         </tr>

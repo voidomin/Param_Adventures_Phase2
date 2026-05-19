@@ -43,7 +43,6 @@ interface ItineraryBookingData {
   meetingTime?: string;
   dropoffTime?: string;
   networkConnectivity?: string;
-  lastAtm?: string;
   fitnessRequirement?: string;
   ageRange?: string;
   minAge?: number | null;
@@ -190,7 +189,7 @@ function drawStatsOverview(doc: jsPDF, data: ItineraryBookingData, y: number): n
   const stats = [
     { label: "Duration", value: `${data.durationDays} Days` },
     { label: "Max Altitude", value: data.maxAltitude || "N/A" },
-    { label: "Trek Distance", value: data.trekDistance || "N/A" },
+    { label: "Total Distance (Both way)", value: data.trekDistance || "N/A" },
     { label: "Difficulty", value: data.difficulty ? data.difficulty.charAt(0) + data.difficulty.slice(1).toLowerCase() : "N/A" },
     { label: "Best Season", value: data.bestTimeToVisit || "Year Round" },
     { label: "Group Size", value: data.maxGroupSize ? `Max ${data.maxGroupSize}` : "N/A" },
@@ -415,11 +414,10 @@ function drawEssentialInfoAndContact(doc: jsPDF, data: ItineraryBookingData) {
   let y = startY;
 
   const logistics = [
-    { label: "Meeting Point", value: data.meetingPoint },
-    { label: "Meeting Time", value: data.meetingTime },
+    { label: "Pick-up points", value: data.meetingPoint },
+    { label: "pickup time", value: data.meetingTime },
     { label: "Drop-off Time", value: data.dropoffTime },
     { label: "Network/WiFi", value: data.networkConnectivity },
-    { label: "Last ATM", value: data.lastAtm },
     { label: "Fitness Requirement", value: data.fitnessRequirement },
     { label: "Age Range", value: data.ageRange || (data.minAge ? `${data.minAge}+` : null) },
   ].filter((l): l is { label: string; value: string } => !!l.value);
