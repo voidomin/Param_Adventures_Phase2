@@ -42,7 +42,6 @@ export default async function EditExperiencePage({
     trekDistance: experience.trekDistance || "",
     bestTimeToVisit: experience.bestTimeToVisit || "",
     networkConnectivity: experience.networkConnectivity || "",
-    lastAtm: experience.lastAtm || "",
     fitnessRequirement: experience.fitnessRequirement || "",
     ageRange: experience.ageRange || "",
     meetingTime: experience.meetingTime || "",

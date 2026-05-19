@@ -21,6 +21,8 @@ const COLORS = {
 
 interface ItineraryBookingData {
   title: string;
+  slug: string;
+  basePrice: number;
   location: string;
   durationDays: number;
   difficulty?: string;
@@ -81,16 +83,70 @@ function cleanTextForPdf(text: string | null | undefined): string {
     .trim();
 }
 
-function drawSocialButton(doc: jsPDF, label: string, url: string, x: number, y: number, color: [number, number, number]) {
-  const w = 24;
+function drawSocialButton(doc: jsPDF, label: string, url: string, x: number, y: number, color: [number, number, number], iconType: "fb" | "insta" | "yt" | "wa") {
+  const w = 32;
   const h = 8;
   doc.setFillColor(...color);
   doc.roundedRect(x, y, w, h, 1.5, 1.5, "F");
-  doc.setFontSize(7.5);
+  
+  doc.setDrawColor(255, 255, 255);
+  doc.setFillColor(255, 255, 255);
+  doc.setLineWidth(0.4);
+  
+  const ix = x + 3;
+  const iy = y + 2.25;
+  
+  if (iconType === "fb") {
+    doc.setFont("helvetica", "bold").setFontSize(8).setTextColor(255, 255, 255);
+    doc.text("f", ix + 1.2, iy + 3.8);
+  } else if (iconType === "insta") {
+    doc.roundedRect(ix, iy, 3.5, 3.5, 0.8, 0.8, "D");
+    doc.circle(ix + 1.75, iy + 1.75, 0.8, "D");
+    doc.circle(ix + 2.7, iy + 0.8, 0.15, "F");
+  } else if (iconType === "yt") {
+    doc.triangle(ix, iy, ix, iy + 3.2, ix + 3, iy + 1.6, "F");
+  } else if (iconType === "wa") {
+    doc.circle(ix + 1.6, iy + 1.6, 1.4, "D");
+    doc.triangle(ix + 0.6, iy + 2.6, ix + 0.2, iy + 3.1, ix + 1.1, iy + 2.8, "F");
+  }
+  
+  doc.setFontSize(7);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(255, 255, 255);
-  doc.text(label, x + w / 2, y + 5.5, { align: "center" });
+  doc.text(label, x + 7 + (w - 7) / 2, y + 5.5, { align: "center" });
   doc.link(x, y, w, h, { url });
+}
+
+function addPageHeader(doc: jsPDF, data: ItineraryBookingData) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  
+  // Subtle top line
+  doc.setDrawColor(230, 230, 230);
+  doc.setLineWidth(0.2);
+  doc.line(14, 12, pageWidth - 14, 12);
+  
+  // Draw "Param Adventures"
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...COLORS.navy);
+  doc.text("PARAM ADVENTURES", 14, 9);
+  
+  // Draw tab
+  const tabW = 24;
+  const tabH = 5;
+  const tabX = pageWidth - 14 - tabW;
+  const tabY = 5.5;
+  
+  doc.setFillColor(...COLORS.orange);
+  doc.roundedRect(tabX, tabY, tabW, tabH, 1, 1, "F");
+  
+  doc.setFontSize(6.5);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...COLORS.white);
+  doc.text("BOOK ONLINE", tabX + tabW / 2, tabY + 3.7, { align: "center" });
+  
+  const bookingUrl = typeof window !== 'undefined' ? `${window.location.origin}/experiences/${data.slug}` : `https://www.paramadventures.in/experiences/${data.slug}`;
+  doc.link(tabX, tabY, tabW, tabH, { url: bookingUrl });
 }
 
 function addPageFooter(doc: jsPDF, pageNum: number, totalPages: number) {
@@ -104,6 +160,7 @@ function addPageFooter(doc: jsPDF, pageNum: number, totalPages: number) {
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...COLORS.white);
   doc.text("www.paramadventures.in", 14, pageHeight - 4.5);
+  doc.link(14, pageHeight - 8, 35, 8, { url: "https://www.paramadventures.in" });
   doc.text(
     `Page ${pageNum} of ${totalPages}`,
     pageWidth - 14,
@@ -175,7 +232,7 @@ function drawCoverPage(doc: jsPDF, data: ItineraryBookingData, logoBase64: strin
   doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...COLORS.mutedText);
-  doc.text("Your Gateway to Unforgettable Adventures", 40, pageHeight * 0.64 + 16);
+  doc.text("Your Gateway to Unforgettable Experiences", 40, pageHeight * 0.64 + 16);
 
   doc.setFontSize(28);
   doc.setFont("helvetica", "bold");
@@ -242,7 +299,48 @@ function drawStatsOverview(doc: jsPDF, data: ItineraryBookingData, y: number): n
     doc.text(stat.value, cx + 5, cy + 15);
   });
 
-  return y + Math.ceil(stats.length / 2) * (cardH + 6) + 6;
+  const startY = y + Math.ceil(stats.length / 2) * (cardH + 6) + 4;
+  const bannerW = pageWidth - 28;
+  const bannerH = 14;
+  
+  // Draw banner background
+  doc.setFillColor(...COLORS.lightOrange);
+  doc.roundedRect(14, startY, bannerW, bannerH, 3, 3, "F");
+  
+  // Draw border
+  doc.setDrawColor(...COLORS.orange);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(14, startY, bannerW, bannerH, 3, 3, "D");
+  
+  // Draw Text
+  doc.setFontSize(8.5);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...COLORS.navy);
+  doc.text("Booking Amount:", 20, startY + 9);
+  
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...COLORS.orange);
+  const priceVal = data.basePrice ? `INR ${data.basePrice.toLocaleString("en-IN")}` : "On Request";
+  doc.text(priceVal, 50, startY + 9.5);
+  
+  // Draw link
+  const linkX = pageWidth - 60;
+  doc.setFontSize(8.5);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...COLORS.teal);
+  doc.text("Book Now (Click Here)", linkX, startY + 9);
+  
+  // Draw underline for the link
+  const textWidth = doc.getTextWidth("Book Now (Click Here)");
+  doc.setDrawColor(...COLORS.teal);
+  doc.line(linkX, startY + 10, linkX + textWidth, startY + 10);
+  
+  // Add active link hotspot
+  const bookingUrl = typeof window !== 'undefined' ? `${window.location.origin}/experiences/${data.slug}` : `https://www.paramadventures.in/experiences/${data.slug}`;
+  doc.link(linkX, startY, textWidth, bannerH, { url: bookingUrl });
+  
+  return startY + bannerH + 10;
 }
 
 function drawHighlightsAndAbout(doc: jsPDF, data: ItineraryBookingData, y: number): number {
@@ -478,20 +576,35 @@ function drawEssentialInfoAndContact(doc: jsPDF, data: ItineraryBookingData) {
   doc.setFontSize(14).setFont("helvetica", "bold").setTextColor(...COLORS.white);
   doc.text("Ready to Book Your Adventure?", pageWidth / 2, y + 13, { align: "center" });
   doc.setFontSize(9).setFont("helvetica", "normal");
-  doc.text(`Email: ${cleanTextForPdf(data.company?.email ?? "")}   |   Phone: ${cleanTextForPdf(data.company?.phone ?? "")}`, pageWidth / 2, y + 23, { align: "center" });
-  doc.text(`Website: ${cleanTextForPdf(data.company?.website ?? "")}`, pageWidth / 2, y + 31, { align: "center" });
+  
+  const emailText = `Email: ${cleanTextForPdf(data.company?.email ?? "")}`;
+  const phoneText = `Phone: ${cleanTextForPdf(data.company?.phone ?? "")}`;
+  const contactText = `${emailText}   |   ${phoneText}`;
+  doc.text(contactText, pageWidth / 2, y + 23, { align: "center" });
+  
+  const webText = `Website: ${cleanTextForPdf(data.company?.website ?? "")}`;
+  doc.text(webText, pageWidth / 2, y + 31, { align: "center" });
+
+  // Add click links to email/website
+  const totalContactWidth = doc.getTextWidth(contactText);
+  const startEmailX = (pageWidth - totalContactWidth) / 2;
+  const emailWidth = doc.getTextWidth(emailText);
+  doc.link(startEmailX, y + 19, emailWidth, 6, { url: `mailto:${data.company?.email || "booking@paramadventures.in"}` });
+
+  const webWidth = doc.getTextWidth(webText);
+  doc.link((pageWidth - webWidth) / 2, y + 27, webWidth, 6, { url: `https://${data.company?.website || "www.paramadventures.in"}` });
 
   // Draw clickable social buttons
-  const startX = (pageWidth - 108) / 2;
+  const startX = (pageWidth - 146) / 2;
   const btnY = y + 36;
   const companyPhone = data.company?.phone ?? "";
   const waPhone = companyPhone.replace(/\D/g, "");
   const whatsappUrl = `https://wa.me/${waPhone || "919876543210"}`;
 
-  drawSocialButton(doc, "FACEBOOK", "https://www.facebook.com/profile.php?id=61576234846405", startX, btnY, [24, 119, 242]);
-  drawSocialButton(doc, "INSTAGRAM", "https://www.instagram.com/param.adventures?igsh=MXUzc25yYTN5NXRmZw%3D%3D&utm_source=qr", startX + 28, btnY, [225, 48, 108]);
-  drawSocialButton(doc, "YOUTUBE", "https://www.youtube.com/@ParamAdventures", startX + 56, btnY, [255, 0, 0]);
-  drawSocialButton(doc, "WHATSAPP", whatsappUrl, startX + 84, btnY, [37, 211, 102]);
+  drawSocialButton(doc, "FACEBOOK", "https://www.facebook.com/profile.php?id=61576234846405", startX, btnY, [24, 119, 242], "fb");
+  drawSocialButton(doc, "INSTAGRAM", "https://www.instagram.com/param.adventures?igsh=MXUzc25yYTN5NXRmZw%3D%3D&utm_source=qr", startX + 38, btnY, [225, 48, 108], "insta");
+  drawSocialButton(doc, "YOUTUBE", "https://www.youtube.com/@ParamAdventures", startX + 76, btnY, [255, 0, 0], "yt");
+  drawSocialButton(doc, "WHATSAPP", whatsappUrl, startX + 114, btnY, [37, 211, 102], "wa");
 
   y += 58;
   doc.setFontSize(7).setTextColor(...COLORS.mutedText);
@@ -538,6 +651,7 @@ export default function DownloadItineraryBtn({
       const total = doc.getNumberOfPages();
       for (let i = 2; i <= total; i++) {
         doc.setPage(i);
+        addPageHeader(doc, data);
         addPageFooter(doc, i - 1, total - 1);
       }
 

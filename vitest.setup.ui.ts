@@ -94,6 +94,8 @@ vi.mock('jspdf', () => {
   MockJsPDF.prototype.setGState = vi.fn().mockReturnThis();
   MockJsPDF.prototype.circle = vi.fn().mockReturnThis();
   MockJsPDF.prototype.link = vi.fn().mockReturnThis();
+  MockJsPDF.prototype.triangle = vi.fn().mockReturnThis();
+  MockJsPDF.prototype.getTextWidth = vi.fn((text: string) => text ? text.length * 2 : 10);
   
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (MockJsPDF as any).GState = class {
