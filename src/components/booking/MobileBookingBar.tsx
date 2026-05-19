@@ -40,7 +40,7 @@ export default function MobileBookingBar({
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
         <div className="flex flex-col">
           <span className="text-xs text-foreground/50 font-medium uppercase tracking-wider">
-            Starting from
+            Price
           </span>
           <div className="flex items-center gap-1">
             <IndianRupee className="w-4 h-4 text-primary" />

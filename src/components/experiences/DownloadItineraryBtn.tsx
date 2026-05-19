@@ -675,8 +675,19 @@ function drawEssentialInfoAndContact(doc: jsPDF, data: ItineraryBookingData) {
   const startY = 20;
   let y = startY;
 
+  if (data.meetingPoint) {
+    y = drawSectionHeader(doc, "PICK-UP POINTS", y);
+    doc.setFontSize(9).setFont("helvetica", "normal").setTextColor(...COLORS.darkText);
+    const pickupLines = doc.splitTextToSize(cleanTextForPdf(data.meetingPoint), pageWidth - 28);
+    for (const line of pickupLines) {
+      y = checkPageBreak(doc, y, 6);
+      doc.text(line, 14, y + 4);
+      y += 5;
+    }
+    y += 8;
+  }
+
   const logistics = [
-    { label: "Pick-up points", value: cleanTextForPdf(data.meetingPoint) },
     { label: "pickup time", value: cleanTextForPdf(data.meetingTime) },
     { label: "Drop-off Time", value: cleanTextForPdf(data.dropoffTime) },
     { label: "Network/WiFi", value: cleanTextForPdf(data.networkConnectivity) },

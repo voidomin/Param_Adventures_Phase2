@@ -186,7 +186,7 @@ export default function ExperienceCard({
             </div>
             <div className="flex flex-col items-end">
               <span className="text-xs text-foreground/50 font-medium">
-                Starting from
+                Price
               </span>
               <span className="text-lg font-bold text-foreground flex items-center">
                 <IndianRupee className="w-4 h-4 mr-0.5" />
