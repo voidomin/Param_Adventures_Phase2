@@ -95,7 +95,7 @@ export async function GET(
         address: companyInfo.companyAddress || "",
         phone: companyInfo.companyPhone || "+91 98765 43210",
         email: companyInfo.companyEmail || "booking@paramadventures.in",
-        website: "www.paramadventures.com",
+        website: "www.paramadventures.in",
       },
     });
   } catch (error) {

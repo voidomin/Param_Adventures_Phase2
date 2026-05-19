@@ -69,6 +69,30 @@ async function fetchImageAsBase64(url: string): Promise<string | null> {
   }
 }
 
+function cleanTextForPdf(text: string | null | undefined): string {
+  if (!text) return "";
+  return text
+    .replace(/[\u201c\u201d]/g, '"')
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u2013\u2014]/g, "-")
+    .replace(/[\u2022\u2023\u25E6\u2043\u2219]/g, "-")
+    .replace(/[^\x00-\x7F]/g, "") // Strip emojis/non-ASCII characters
+    .replace(/[ \t]+/g, " ")     // Collapse duplicate spaces
+    .trim();
+}
+
+function drawSocialButton(doc: jsPDF, label: string, url: string, x: number, y: number, color: [number, number, number]) {
+  const w = 24;
+  const h = 8;
+  doc.setFillColor(...color);
+  doc.roundedRect(x, y, w, h, 1.5, 1.5, "F");
+  doc.setFontSize(7.5);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(255, 255, 255);
+  doc.text(label, x + w / 2, y + 5.5, { align: "center" });
+  doc.link(x, y, w, h, { url });
+}
+
 function addPageFooter(doc: jsPDF, pageNum: number, totalPages: number) {
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
@@ -79,7 +103,7 @@ function addPageFooter(doc: jsPDF, pageNum: number, totalPages: number) {
   doc.setFontSize(7);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...COLORS.white);
-  doc.text("www.paramadventures.com", 14, pageHeight - 4.5);
+  doc.text("www.paramadventures.in", 14, pageHeight - 4.5);
   doc.text(
     `Page ${pageNum} of ${totalPages}`,
     pageWidth - 14,
@@ -156,18 +180,18 @@ function drawCoverPage(doc: jsPDF, data: ItineraryBookingData, logoBase64: strin
   doc.setFontSize(28);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(...COLORS.white);
-  const titleLines = doc.splitTextToSize(data.title.toUpperCase(), pageWidth - 28);
+  const titleLines = doc.splitTextToSize(cleanTextForPdf(data.title).toUpperCase(), pageWidth - 28);
   doc.text(titleLines, 14, pageHeight * 0.76);
 
   const badgeY = pageHeight * 0.76 + titleLines.length * 12 + 4;
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(...COLORS.orange);
-  doc.text(`Location: ${data.location}`, 14, badgeY);
+  doc.text(`Location: ${cleanTextForPdf(data.location)}`, 14, badgeY);
   doc.text(`Duration: ${data.durationDays} Days / ${Math.max(data.durationDays - 1, 0)} Nights`, 14, badgeY + 7);
 
   if (data.difficulty) {
-    doc.text(`Difficulty: ${data.difficulty.charAt(0) + data.difficulty.slice(1).toLowerCase()}`, 14, badgeY + 14);
+    doc.text(`Difficulty: ${cleanTextForPdf(data.difficulty).charAt(0) + cleanTextForPdf(data.difficulty).slice(1).toLowerCase()}`, 14, badgeY + 14);
   }
 
   doc.setFontSize(8);
@@ -178,7 +202,7 @@ function drawCoverPage(doc: jsPDF, data: ItineraryBookingData, logoBase64: strin
   doc.rect(0, pageHeight - 8, pageWidth, 8, "F");
   doc.setFontSize(7);
   doc.setTextColor(...COLORS.white);
-  doc.text(data.company.website, pageWidth / 2, pageHeight - 3, { align: "center" });
+  doc.text(cleanTextForPdf(data.company?.website ?? ""), pageWidth / 2, pageHeight - 3, { align: "center" });
 }
 
 function drawStatsOverview(doc: jsPDF, data: ItineraryBookingData, y: number): number {
@@ -234,7 +258,7 @@ function drawHighlightsAndAbout(doc: jsPDF, data: ItineraryBookingData, y: numbe
       doc.setTextColor(...COLORS.green);
       doc.text("+", 18, y + 4);
       doc.setTextColor(...COLORS.darkText);
-      const lines = doc.splitTextToSize(h, pageWidth - 40);
+      const lines = doc.splitTextToSize(cleanTextForPdf(h), pageWidth - 40);
       doc.text(lines, 26, y + 4);
       y += lines.length * 5 + 3;
     });
@@ -247,7 +271,7 @@ function drawHighlightsAndAbout(doc: jsPDF, data: ItineraryBookingData, y: numbe
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...COLORS.darkText);
-    const descLines = doc.splitTextToSize(data.description, pageWidth - 28);
+    const descLines = doc.splitTextToSize(cleanTextForPdf(data.description), pageWidth - 28);
     for (const line of descLines) {
       y = checkPageBreak(doc, y, 6);
       doc.text(line, 14, y + 4);
@@ -283,13 +307,13 @@ function drawItinerary(doc: jsPDF, data: ItineraryBookingData, y: number): numbe
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(...COLORS.navy);
-    doc.text(day.title || `Day ${dayNum}`, 30, y + 7.5);
+    doc.text(cleanTextForPdf(day.title || `Day ${dayNum}`), 30, y + 7.5);
 
     if (day.description) {
       doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(...COLORS.darkText);
-      const dayDescLines = doc.splitTextToSize(day.description, pageWidth - 44);
+      const dayDescLines = doc.splitTextToSize(cleanTextForPdf(day.description), pageWidth - 44);
       doc.text(dayDescLines, 30, y + 14);
       y += 14 + dayDescLines.length * 4.5;
     } else {
@@ -307,7 +331,7 @@ function drawItinerary(doc: jsPDF, data: ItineraryBookingData, y: number): numbe
         doc.setFont("helvetica", "normal");
         doc.setTextColor(...COLORS.mutedText);
         const mealsStr = Array.isArray(day.meals) ? day.meals.join(", ") : (day.meals || "");
-        const ml = doc.splitTextToSize(mealsStr, midX - 30 - 12);
+        const ml = doc.splitTextToSize(cleanTextForPdf(mealsStr), midX - 30 - 12);
         doc.text(ml, 42, y);
       }
       if (day.accommodation) {
@@ -317,7 +341,7 @@ function drawItinerary(doc: jsPDF, data: ItineraryBookingData, y: number): numbe
         doc.text("Stay: ", midX, y);
         doc.setFont("helvetica", "normal");
         doc.setTextColor(...COLORS.mutedText);
-        const sl = doc.splitTextToSize(day.accommodation, pageWidth - 14 - midX - 10);
+        const sl = doc.splitTextToSize(cleanTextForPdf(day.accommodation), pageWidth - 14 - midX - 10);
         doc.text(sl, midX + 10, y);
       }
       y += 8;
@@ -350,7 +374,7 @@ function drawInclusionsExclusionsPacking(doc: jsPDF, data: ItineraryBookingData,
         y = checkPageBreak(doc, y, 8);
         doc.setTextColor(...COLORS.green).setFont("helvetica", "bold").text("+", 18, y + 4);
         doc.setTextColor(...COLORS.darkText).setFont("helvetica", "normal");
-        const lines = doc.splitTextToSize(item, pageWidth - 40);
+        const lines = doc.splitTextToSize(cleanTextForPdf(item), pageWidth - 40);
         doc.text(lines, 26, y + 4);
         y += lines.length * 5 + 2;
       });
@@ -365,7 +389,7 @@ function drawInclusionsExclusionsPacking(doc: jsPDF, data: ItineraryBookingData,
         y = checkPageBreak(doc, y, 8);
         doc.setTextColor(...COLORS.red).setFont("helvetica", "bold").text("x", 18, y + 4);
         doc.setTextColor(...COLORS.darkText).setFont("helvetica", "normal");
-        const lines = doc.splitTextToSize(item, pageWidth - 40);
+        const lines = doc.splitTextToSize(cleanTextForPdf(item), pageWidth - 40);
         doc.text(lines, 26, y + 4);
         y += lines.length * 5 + 2;
       });
@@ -382,7 +406,8 @@ function drawInclusionsExclusionsPacking(doc: jsPDF, data: ItineraryBookingData,
         const cx = i % 2 === 0 ? 18 : 14 + colWidth;
         doc.setTextColor(...COLORS.orange).setFont("helvetica", "bold").text(">", cx, y + 4);
         doc.setTextColor(...COLORS.darkText).setFont("helvetica", "normal");
-        doc.text(doc.splitTextToSize(item, colWidth - 14)[0] || item, cx + 6, y + 4);
+        const cleanItem = cleanTextForPdf(item);
+        doc.text(doc.splitTextToSize(cleanItem, colWidth - 14)[0] || cleanItem, cx + 6, y + 4);
         if (i % 2 === 1) y += 7;
       });
       if (thingsToCarry.length % 2 !== 0) y += 7;
@@ -414,12 +439,12 @@ function drawEssentialInfoAndContact(doc: jsPDF, data: ItineraryBookingData) {
   let y = startY;
 
   const logistics = [
-    { label: "Pick-up points", value: data.meetingPoint },
-    { label: "pickup time", value: data.meetingTime },
-    { label: "Drop-off Time", value: data.dropoffTime },
-    { label: "Network/WiFi", value: data.networkConnectivity },
-    { label: "Fitness Requirement", value: data.fitnessRequirement },
-    { label: "Age Range", value: data.ageRange || (data.minAge ? `${data.minAge}+` : null) },
+    { label: "Pick-up points", value: cleanTextForPdf(data.meetingPoint) },
+    { label: "pickup time", value: cleanTextForPdf(data.meetingTime) },
+    { label: "Drop-off Time", value: cleanTextForPdf(data.dropoffTime) },
+    { label: "Network/WiFi", value: cleanTextForPdf(data.networkConnectivity) },
+    { label: "Fitness Requirement", value: cleanTextForPdf(data.fitnessRequirement) },
+    { label: "Age Range", value: cleanTextForPdf(data.ageRange || (data.minAge ? `${data.minAge}+` : null)) },
   ].filter((l): l is { label: string; value: string } => !!l.value);
 
   if (logistics.length > 0) {
@@ -439,7 +464,7 @@ function drawEssentialInfoAndContact(doc: jsPDF, data: ItineraryBookingData) {
     y = checkPageBreak(doc, y, 30);
     y = drawSectionHeader(doc, "CANCELLATION POLICY", y);
     doc.setFontSize(8).setFont("helvetica", "normal").setTextColor(...COLORS.mutedText);
-    const policyLines = doc.splitTextToSize(data.cancellationPolicy, pageWidth - 28);
+    const policyLines = doc.splitTextToSize(cleanTextForPdf(data.cancellationPolicy), pageWidth - 28);
     for (const line of policyLines) {
       y = checkPageBreak(doc, y, 5);
       doc.text(line, 14, y + 3);
@@ -453,13 +478,24 @@ function drawEssentialInfoAndContact(doc: jsPDF, data: ItineraryBookingData) {
   doc.setFontSize(14).setFont("helvetica", "bold").setTextColor(...COLORS.white);
   doc.text("Ready to Book Your Adventure?", pageWidth / 2, y + 13, { align: "center" });
   doc.setFontSize(9).setFont("helvetica", "normal");
-  doc.text(`Email: ${data.company.email}   |   Phone: ${data.company.phone}`, pageWidth / 2, y + 23, { align: "center" });
-  doc.text(`Website: ${data.company.website}`, pageWidth / 2, y + 31, { align: "center" });
-  doc.setFontSize(8).text("Instagram: @param.adventures  |  YouTube: @ParamAdventures", pageWidth / 2, y + 40, { align: "center" });
+  doc.text(`Email: ${cleanTextForPdf(data.company?.email ?? "")}   |   Phone: ${cleanTextForPdf(data.company?.phone ?? "")}`, pageWidth / 2, y + 23, { align: "center" });
+  doc.text(`Website: ${cleanTextForPdf(data.company?.website ?? "")}`, pageWidth / 2, y + 31, { align: "center" });
+
+  // Draw clickable social buttons
+  const startX = (pageWidth - 108) / 2;
+  const btnY = y + 36;
+  const companyPhone = data.company?.phone ?? "";
+  const waPhone = companyPhone.replace(/\D/g, "");
+  const whatsappUrl = `https://wa.me/${waPhone || "919876543210"}`;
+
+  drawSocialButton(doc, "FACEBOOK", "https://www.facebook.com/profile.php?id=61576234846405", startX, btnY, [24, 119, 242]);
+  drawSocialButton(doc, "INSTAGRAM", "https://www.instagram.com/param.adventures?igsh=MXUzc25yYTN5NXRmZw%3D%3D&utm_source=qr", startX + 28, btnY, [225, 48, 108]);
+  drawSocialButton(doc, "YOUTUBE", "https://www.youtube.com/@ParamAdventures", startX + 56, btnY, [255, 0, 0]);
+  drawSocialButton(doc, "WHATSAPP", whatsappUrl, startX + 84, btnY, [37, 211, 102]);
 
   y += 58;
   doc.setFontSize(7).setTextColor(...COLORS.mutedText);
-  doc.text(`© ${new Date().getFullYear()} ${data.company.name}. All rights reserved.`, pageWidth / 2, y + 4, { align: "center", maxWidth: pageWidth - 28 });
+  doc.text(`© ${new Date().getFullYear()} ${cleanTextForPdf(data.company?.name ?? "")}. All rights reserved.`, pageWidth / 2, y + 4, { align: "center", maxWidth: pageWidth - 28 });
 }
 
 // ─── Component ───────────────────────────────────────────
