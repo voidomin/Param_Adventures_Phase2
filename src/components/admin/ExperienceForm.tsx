@@ -74,6 +74,7 @@ export interface ExperienceFormData {
   meetingTime?: string;
   dropoffTime?: string;
   pickupPoints?: string[];
+  dropPoints?: string[];
 }
 
 const MEAL_OPTIONS = ["Breakfast", "Lunch", "Dinner", "Snacks"];
@@ -195,6 +196,14 @@ export default function ExperienceForm({
     { id: string; text: string }[]
   >(
     (initialData?.pickupPoints || []).map((text: string) => ({
+      id: crypto.randomUUID(),
+      text,
+    })),
+  );
+  const [dropPoints, setDropPoints] = useState<
+    { id: string; text: string }[]
+  >(
+    (initialData?.dropPoints || []).map((text: string) => ({
       id: crypto.randomUUID(),
       text,
     })),
@@ -423,6 +432,9 @@ export default function ExperienceForm({
     pickupPoints: pickupPoints
       .map((item) => item.text)
       .filter((item) => item.trim() !== ""),
+    dropPoints: dropPoints
+      .map((item) => item.text)
+      .filter((item) => item.trim() !== ""),
     faqs: faqs
       .filter((faq) => faq.question.trim() !== "" && faq.answer.trim() !== "")
       .map(({ question, answer }) => ({ question, answer })),
@@ -572,6 +584,7 @@ export default function ExperienceForm({
     if (data.highlights) setHighlights(mapToObj(data.highlights));
     if (data.vibeTags) setVibeTags(mapToObj(data.vibeTags));
     if (data.pickupPoints) setPickupPoints(mapToObj(data.pickupPoints));
+    if (data.dropPoints) setDropPoints(mapToObj(data.dropPoints));
     if (data.faqs)
       setFaqs(data.faqs.map((f: FAQ) => ({ ...f, id: crypto.randomUUID() })));
   };
@@ -623,6 +636,7 @@ export default function ExperienceForm({
     exclusions: exclusions.map((i) => i.text),
     thingsToCarry: thingsToCarry.map((i) => i.text),
     pickupPoints: pickupPoints.map((i) => i.text),
+    dropPoints: dropPoints.map((i) => i.text),
     faqs,
     cancellationPolicy,
     meetingPoint,
@@ -793,6 +807,9 @@ export default function ExperienceForm({
       imported.pickupPoints = listRows
         .map((r) => ensureString(r.PickupPoints))
         .filter(Boolean);
+      imported.dropPoints = listRows
+        .map((r) => ensureString(r.DropPoints))
+        .filter(Boolean);
     }
   };
 
@@ -840,6 +857,7 @@ export default function ExperienceForm({
         highlights.length,
         vibeTags.length,
         pickupPoints.length,
+        dropPoints.length,
       );
       const listsData = [];
       for (let i = 0; i < maxLen; i++) {
@@ -850,6 +868,7 @@ export default function ExperienceForm({
           Highlights: highlights[i]?.text || "",
           VibeTags: vibeTags[i]?.text || "",
           PickupPoints: pickupPoints[i]?.text || "",
+          DropPoints: dropPoints[i]?.text || "",
         });
       }
 
@@ -1476,7 +1495,7 @@ export default function ExperienceForm({
             {/* Pickup Points */}
             <div className="space-y-3 border-t border-border pt-4">
               <span className="block text-sm font-bold text-foreground/80">
-                Pickup & Drop Locations
+                Pickup Locations
               </span>
               {pickupPoints.map((item) => (
                 <div key={item.id} className="flex gap-2">
@@ -1507,6 +1526,46 @@ export default function ExperienceForm({
               <button
                 type="button"
                 onClick={() => addStringArrayItem(setPickupPoints)}
+                className="text-xs font-medium text-primary flex items-center gap-1 hover:text-primary/80"
+              >
+                <Plus className="w-3 h-3" /> Add Location
+              </button>
+            </div>
+
+            {/* Drop Points */}
+            <div className="space-y-3 border-t border-border pt-4">
+              <span className="block text-sm font-bold text-foreground/80">
+                Drop-off Locations
+              </span>
+              {dropPoints.map((item) => (
+                <div key={item.id} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={item.text}
+                    onChange={(e) =>
+                      handleStringArrayChange(
+                        setDropPoints,
+                        item.id,
+                        e.target.value,
+                      )
+                    }
+                    className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
+                    placeholder="e.g. Bangalore"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      removeStringArrayItem(setDropPoints, item.id)
+                    }
+                    className="p-2 text-foreground/50 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => addStringArrayItem(setDropPoints)}
                 className="text-xs font-medium text-primary flex items-center gap-1 hover:text-primary/80"
               >
                 <Plus className="w-3 h-3" /> Add Location

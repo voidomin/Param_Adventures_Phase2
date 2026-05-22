@@ -13,6 +13,7 @@ interface MobileBookingBarProps {
   basePrice: number;
   maxCapacity: number;
   pickupPoints: string[];
+  dropPoints?: string[];
 }
 
 export default function MobileBookingBar({
@@ -22,6 +23,7 @@ export default function MobileBookingBar({
   basePrice,
   maxCapacity,
   pickupPoints,
+  dropPoints = [],
 }: Readonly<MobileBookingBarProps>) {
   const [isOpen, setIsOpen] = useState(false);
   const { user, isLoading } = useAuth();
@@ -67,6 +69,7 @@ export default function MobileBookingBar({
           basePrice={basePrice}
           maxCapacity={maxCapacity}
           pickupPoints={pickupPoints}
+          dropPoints={dropPoints}
           onClose={() => setIsOpen(false)}
         />
       )}

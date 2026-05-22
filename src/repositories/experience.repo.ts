@@ -46,6 +46,7 @@ export const ExperienceRepo = {
         exclusions: (rest.exclusions as Prisma.InputJsonValue) || [],
         thingsToCarry: (rest.thingsToCarry as Prisma.InputJsonValue) || [],
         pickupPoints: rest.pickupPoints || [],
+        dropPoints: rest.dropPoints || [],
         faqs: (rest.faqs as Prisma.InputJsonValue) || [],
         highlights: rest.highlights || [],
         vibeTags: rest.vibeTags || [],

@@ -56,6 +56,7 @@ interface ItineraryBookingData {
   categories?: string[];
   vibeTags?: string[];
   pickupPoints?: string[];
+  dropPoints?: string[];
   company: {
     name: string;
     email: string;
@@ -689,11 +690,26 @@ function drawEssentialInfoAndContact(doc: jsPDF, data: ItineraryBookingData) {
   }
 
   if (data.pickupPoints && data.pickupPoints.length > 0) {
-    y = drawSectionHeader(doc, "AVAILABLE PICKUP & DROP LOCATIONS", y);
+    const hasDropPoints = data.dropPoints && data.dropPoints.length > 0;
+    const title = hasDropPoints ? "AVAILABLE PICKUP LOCATIONS" : "AVAILABLE PICKUP & DROP LOCATIONS";
+    y = drawSectionHeader(doc, title, y);
     doc.setFontSize(9).setFont("helvetica", "normal").setTextColor(...COLORS.darkText);
     for (const point of data.pickupPoints) {
       y = checkPageBreak(doc, y, 6);
-      doc.setFillColor(...COLORS.primary);
+      doc.setFillColor(...COLORS.orange);
+      doc.circle(16, y + 3.5, 1, "F");
+      doc.text(cleanTextForPdf(point), 20, y + 4);
+      y += 6;
+    }
+    y += 8;
+  }
+
+  if (data.dropPoints && data.dropPoints.length > 0) {
+    y = drawSectionHeader(doc, "AVAILABLE DROP-OFF LOCATIONS", y);
+    doc.setFontSize(9).setFont("helvetica", "normal").setTextColor(...COLORS.darkText);
+    for (const point of data.dropPoints) {
+      y = checkPageBreak(doc, y, 6);
+      doc.setFillColor(...COLORS.orange);
       doc.circle(16, y + 3.5, 1, "F");
       doc.text(cleanTextForPdf(point), 20, y + 4);
       y += 6;

@@ -67,6 +67,7 @@ const updateExperienceSchema = z.object({
   bestTimeToVisit: z.string().optional().nullable(),
   maxGroupSize: z.number().int().optional().nullable(),
   pickupPoints: z.array(z.string().trim()).transform(arr => arr.filter(Boolean)).optional(),
+  dropPoints: z.array(z.string().trim()).transform(arr => arr.filter(Boolean)).optional(),
   highlights: z.array(z.string().trim()).transform(arr => arr.filter(Boolean)).optional(),
   networkConnectivity: z.string().optional().nullable(),
   lastAtm: z.string().optional().nullable(),

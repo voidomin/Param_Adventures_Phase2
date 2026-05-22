@@ -60,6 +60,7 @@ export default async function EditExperiencePage({
     highlights: experience.highlights,
     vibeTags: experience.vibeTags,
     pickupPoints: experience.pickupPoints,
+    dropPoints: experience.dropPoints,
     faqs: Array.isArray(experience.faqs) ? (experience.faqs as unknown as FAQ[]) : [],
   };
 

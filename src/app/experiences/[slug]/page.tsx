@@ -259,7 +259,8 @@ function EssentialLogistics({ experience }: Readonly<{ experience: ExperienceWit
     !experience.ageRange &&
     !experience.meetingTime &&
     !experience.dropoffTime &&
-    (!experience.pickupPoints || experience.pickupPoints.length === 0)
+    (!experience.pickupPoints || experience.pickupPoints.length === 0) &&
+    (!experience.dropPoints || experience.dropPoints.length === 0)
   )
     return null;
 
@@ -318,7 +319,7 @@ function EssentialLogistics({ experience }: Readonly<{ experience: ExperienceWit
             <div className="mt-3 pt-3 border-t border-border/50">
               <details className="group [&_summary::-webkit-details-marker]:hidden">
                 <summary className="flex items-center justify-between cursor-pointer text-xs font-bold uppercase tracking-wider text-primary hover:text-primary/80 transition-colors list-none select-none">
-                  <span>Available Pickup & Drop Locations ({experience.pickupPoints.length})</span>
+                  <span>Available Pickup Locations ({experience.pickupPoints.length})</span>
                   <ChevronDown className="w-4 h-4 text-primary transition-transform duration-200 group-open:rotate-180" />
                 </summary>
                 <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-semibold text-foreground/80 max-h-40 overflow-y-auto custom-scrollbar pt-1">
@@ -334,17 +335,38 @@ function EssentialLogistics({ experience }: Readonly<{ experience: ExperienceWit
           )}
         </div>
       )}
-      {experience.dropoffTime && (
+      {(experience.dropoffTime || (experience.dropPoints && experience.dropPoints.length > 0)) && (
         <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors col-span-2">
-          <MapPin className="w-5 h-5 text-primary" />
-          <div>
-            <p className="text-xs text-foreground/60 font-medium">
-              Drop-off Time
-            </p>
-            <p className="font-bold text-sm leading-tight">
-              {experience.meetingPoint} &bull; {experience.dropoffTime}
-            </p>
+          <div className="flex items-center gap-3">
+            <MapPin className="w-5 h-5 text-primary shrink-0" />
+            <div>
+              <p className="text-xs text-foreground/60 font-medium">
+                Drop-off Details
+              </p>
+              <p className="font-bold text-sm leading-tight mt-0.5">
+                {experience.meetingPoint || "Multiple options available"} {experience.dropoffTime && `\u2022 ${experience.dropoffTime}`}
+              </p>
+            </div>
           </div>
+
+          {experience.dropPoints && experience.dropPoints.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-border/50">
+              <details className="group [&_summary::-webkit-details-marker]:hidden">
+                <summary className="flex items-center justify-between cursor-pointer text-xs font-bold uppercase tracking-wider text-primary hover:text-primary/80 transition-colors list-none select-none">
+                  <span>Available Drop-off Locations ({experience.dropPoints.length})</span>
+                  <ChevronDown className="w-4 h-4 text-primary transition-transform duration-200 group-open:rotate-180" />
+                </summary>
+                <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-semibold text-foreground/80 max-h-40 overflow-y-auto custom-scrollbar pt-1">
+                  {experience.dropPoints.map((point) => (
+                    <div key={point} className="flex items-center gap-2 bg-foreground/[0.03] border border-border/40 px-3 py-2 rounded-xl hover:bg-primary/5 hover:border-primary/20 transition-all">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                      <span className="truncate">{point}</span>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            </div>
+          )}
         </div>
       )}
     </section>
@@ -931,6 +953,7 @@ export default async function ExperienceDetailPage({
               basePrice={Number(exp.basePrice)}
               maxCapacity={exp.capacity}
               pickupPoints={exp.pickupPoints || []}
+              dropPoints={exp.dropPoints || []}
             />
 
             <SimilarTrips
@@ -951,6 +974,7 @@ export default async function ExperienceDetailPage({
         basePrice={Number(exp.basePrice)}
         maxCapacity={exp.capacity}
         pickupPoints={exp.pickupPoints || []}
+        dropPoints={exp.dropPoints || []}
       />
     </div>
   );
