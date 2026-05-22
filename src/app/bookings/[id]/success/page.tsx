@@ -186,7 +186,7 @@ export default async function BookingSuccessPage({
                   <div className="flex items-start gap-3">
                     <Users className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-bold block text-foreground">Pickup Points & Pickup Time</span>
+                      <span className="font-bold block text-foreground">Starting Point</span>
                       {experience.meetingPoint ? (
                         <>
                           {experience.meetingPoint}

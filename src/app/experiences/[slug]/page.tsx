@@ -306,7 +306,7 @@ function EssentialLogistics({ experience }: Readonly<{ experience: ExperienceWit
             <CarFront className="w-5 h-5 text-primary shrink-0" />
             <div>
               <p className="text-xs text-foreground/60 font-medium">
-                Pickup Points & Pickup Time
+                Starting Point
               </p>
               <p className="font-bold text-sm leading-tight mt-0.5">
                 {experience.meetingPoint || "Multiple options available"} {experience.meetingTime && `\u2022 ${experience.meetingTime}`}

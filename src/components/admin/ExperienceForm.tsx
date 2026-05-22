@@ -1727,7 +1727,7 @@ export default function ExperienceForm({
                   htmlFor="meetingPoint"
                   className="block text-sm font-medium text-foreground/80 mb-1"
                 >
-                  Pickup Points & Pickup Time
+                  Starting Point
                 </label>
                 <input
                   id="meetingPoint"
@@ -1743,7 +1743,7 @@ export default function ExperienceForm({
                   htmlFor="meetingTime"
                   className="block text-sm font-medium text-foreground/80 mb-1"
                 >
-                  pickup time
+                  Starting Time
                 </label>
                 <input
                   id="meetingTime"

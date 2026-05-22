@@ -677,7 +677,7 @@ function drawEssentialInfoAndContact(doc: jsPDF, data: ItineraryBookingData) {
   let y = startY;
 
   if (data.meetingPoint) {
-    y = drawSectionHeader(doc, "PICKUP POINTS & PICKUP TIME", y);
+    y = drawSectionHeader(doc, "STARTING POINT", y);
     doc.setFontSize(9).setFont("helvetica", "normal").setTextColor(...COLORS.darkText);
     const pickupLines = doc.splitTextToSize(cleanTextForPdf(data.meetingPoint), pageWidth - 28);
     for (const line of pickupLines) {
@@ -702,7 +702,7 @@ function drawEssentialInfoAndContact(doc: jsPDF, data: ItineraryBookingData) {
   }
 
   const logistics = [
-    { label: "pickup time", value: cleanTextForPdf(data.meetingTime) },
+    { label: "Starting Time", value: cleanTextForPdf(data.meetingTime) },
     { label: "Drop-off Time", value: cleanTextForPdf(data.dropoffTime) },
     { label: "Network/WiFi", value: cleanTextForPdf(data.networkConnectivity) },
     { label: "Fitness Requirement", value: cleanTextForPdf(data.fitnessRequirement) },
