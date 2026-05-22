@@ -265,7 +265,7 @@ function EssentialLogistics({ experience }: Readonly<{ experience: ExperienceWit
     return null;
 
   return (
-    <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 items-start">
       {experience.networkConnectivity && (
         <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors">
           <Wifi className="w-5 h-5 text-primary" />
@@ -322,11 +322,11 @@ function EssentialLogistics({ experience }: Readonly<{ experience: ExperienceWit
                   <span>Available Pickup Locations ({experience.pickupPoints.length})</span>
                   <ChevronDown className="w-4 h-4 text-primary transition-transform duration-200 group-open:rotate-180" />
                 </summary>
-                <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-semibold text-foreground/80 max-h-40 overflow-y-auto custom-scrollbar pt-1">
+                <div className="mt-2.5 flex flex-col gap-2 text-xs font-semibold text-foreground/80 max-h-52 overflow-y-auto custom-scrollbar pt-1">
                   {experience.pickupPoints.map((point) => (
                     <div key={point} className="flex items-center gap-2 bg-foreground/[0.03] border border-border/40 px-3 py-2 rounded-xl hover:bg-primary/5 hover:border-primary/20 transition-all">
                       <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                      <span className="truncate">{point}</span>
+                      <span>{point}</span>
                     </div>
                   ))}
                 </div>
@@ -356,11 +356,11 @@ function EssentialLogistics({ experience }: Readonly<{ experience: ExperienceWit
                   <span>Available Drop-off Locations ({experience.dropPoints.length})</span>
                   <ChevronDown className="w-4 h-4 text-primary transition-transform duration-200 group-open:rotate-180" />
                 </summary>
-                <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-semibold text-foreground/80 max-h-40 overflow-y-auto custom-scrollbar pt-1">
+                <div className="mt-2.5 flex flex-col gap-2 text-xs font-semibold text-foreground/80 max-h-52 overflow-y-auto custom-scrollbar pt-1">
                   {experience.dropPoints.map((point) => (
                     <div key={point} className="flex items-center gap-2 bg-foreground/[0.03] border border-border/40 px-3 py-2 rounded-xl hover:bg-primary/5 hover:border-primary/20 transition-all">
                       <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                      <span className="truncate">{point}</span>
+                      <span>{point}</span>
                     </div>
                   ))}
                 </div>
