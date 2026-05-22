@@ -57,4 +57,41 @@ describe("ExperienceCard Smoke Test", () => {
     expect(screen.getByTestId("save-button")).toBeInTheDocument();
     expect(screen.getByTestId("share-button")).toBeInTheDocument();
   });
+
+  it("handles upcoming slot with remaining capacity correctly", () => {
+    const slotExperience = {
+      ...mockExperience,
+      nextDepartureSlot: {
+        date: "2026-06-15T00:00:00.000Z",
+        capacity: 10,
+        remainingCapacity: 6,
+      },
+    };
+    render(<ExperienceCard experience={slotExperience} />);
+    expect(screen.getByText(/Next: 15 Jun/)).toBeInTheDocument();
+    expect(screen.getByText("4 booked / 6 left")).toBeInTheDocument();
+  });
+
+  it("handles sold out slot correctly", () => {
+    const soldOutExperience = {
+      ...mockExperience,
+      nextDepartureSlot: {
+        date: "2026-06-15T00:00:00.000Z",
+        capacity: 10,
+        remainingCapacity: 0,
+      },
+    };
+    render(<ExperienceCard experience={soldOutExperience} />);
+    expect(screen.getByText(/Next: 15 Jun \(Sold Out\)/)).toBeInTheDocument();
+    expect(screen.getAllByText(/Sold Out/)).toHaveLength(2); // One in calendar status, one in hover capacity text
+  });
+
+  it("handles no slots scheduled correctly", () => {
+    const noSlotsExperience = {
+      ...mockExperience,
+      nextDepartureSlot: null,
+    };
+    render(<ExperienceCard experience={noSlotsExperience} />);
+    expect(screen.getAllByText(/No slots scheduled/)).toHaveLength(2); // One in calendar status, one in hover capacity text
+  });
 });

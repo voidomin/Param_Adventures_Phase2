@@ -69,7 +69,7 @@ export default async function ExperiencesPage({
               date: { gte: new Date() },
               status: "UPCOMING",
             },
-            select: { date: true },
+            select: { date: true, capacity: true, remainingCapacity: true },
             orderBy: { date: "asc" },
             take: 1,
           },
@@ -114,7 +114,12 @@ export default async function ExperiencesPage({
     updatedAt: exp.updatedAt.toISOString(),
     startDate: exp.startDate?.toISOString() || null,
     endDate: exp.endDate?.toISOString() || null,
-    nextDeparture: exp.slots[0]?.date?.toISOString() || null,
+    nextDepartureSlot: (exp.slots[0] && exp.slots[0].date) ? {
+      date: exp.slots[0].date instanceof Date ? exp.slots[0].date.toISOString() : new Date(exp.slots[0].date).toISOString(),
+      capacity: exp.slots[0].capacity ?? exp.capacity,
+      remainingCapacity: exp.slots[0].remainingCapacity ?? exp.capacity,
+    } : null,
+    nextDeparture: exp.slots[0]?.date ? (exp.slots[0].date instanceof Date ? exp.slots[0].date.toISOString() : new Date(exp.slots[0].date).toISOString()) : null,
     slotsCount: exp.slots.length,
     categories: exp.categories.map((c) => ({
       category: {
