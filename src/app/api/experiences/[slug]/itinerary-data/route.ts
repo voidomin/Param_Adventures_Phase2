@@ -89,6 +89,7 @@ export async function GET(
       lastAtm: experience.lastAtm,
       fitnessRequirement: experience.fitnessRequirement,
       vibeTags: experience.vibeTags,
+      pickupPoints: experience.pickupPoints,
       categories: experience.categories.map((c) => c.category.name),
       company: {
         name: companyInfo.companyName || "Param Adventures",
