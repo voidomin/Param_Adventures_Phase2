@@ -186,8 +186,15 @@ export default async function BookingSuccessPage({
                   <div className="flex items-start gap-3">
                     <Users className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                     <div>
-                      <span className="font-bold block text-foreground">Pick-up Point</span>
-                      {experience.meetingPoint || "To be communicated by Trip Manager"}
+                      <span className="font-bold block text-foreground">Pickup Points & Pickup Time</span>
+                      {experience.meetingPoint ? (
+                        <>
+                          {experience.meetingPoint}
+                          {experience.meetingTime && ` • ${experience.meetingTime}`}
+                        </>
+                      ) : (
+                        "To be communicated by Trip Manager"
+                      )}
                     </div>
                   </div>
                 </div>

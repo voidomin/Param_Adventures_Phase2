@@ -343,7 +343,7 @@ function drawStatsOverview(doc: jsPDF, data: ItineraryBookingData, y: number): n
   const stats = [
     { label: "Duration", value: `${data.durationDays} Days / ${Math.max(data.durationDays - 1, 0)} Nights` },
     { label: "Max Altitude", value: data.maxAltitude || "N/A" },
-    { label: "Total Distance (Both way)", value: data.trekDistance || "N/A" },
+    { label: "Total Distance (Both Ways)", value: data.trekDistance || "N/A" },
     { label: "Difficulty", value: data.difficulty ? data.difficulty.charAt(0) + data.difficulty.slice(1).toLowerCase() : "N/A" },
     { label: "Best Season", value: data.bestTimeToVisit || "Year Round" },
     { label: "Group Size", value: data.maxGroupSize ? `Max ${data.maxGroupSize}` : "N/A" },
@@ -676,7 +676,7 @@ function drawEssentialInfoAndContact(doc: jsPDF, data: ItineraryBookingData) {
   let y = startY;
 
   if (data.meetingPoint) {
-    y = drawSectionHeader(doc, "PICK-UP POINTS", y);
+    y = drawSectionHeader(doc, "PICKUP POINTS & PICKUP TIME", y);
     doc.setFontSize(9).setFont("helvetica", "normal").setTextColor(...COLORS.darkText);
     const pickupLines = doc.splitTextToSize(cleanTextForPdf(data.meetingPoint), pageWidth - 28);
     for (const line of pickupLines) {

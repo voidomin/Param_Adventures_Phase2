@@ -16,7 +16,6 @@ import {
   Shield, 
   IndianRupee, 
   Wifi, 
-  Banknote, 
   Activity, 
   CarFront, 
   Tent, 
@@ -305,7 +304,7 @@ function EssentialLogistics({ experience }: Readonly<{ experience: ExperienceWit
           <CarFront className="w-5 h-5 text-primary" />
           <div>
             <p className="text-xs text-foreground/60 font-medium">
-              Pick-up points & pickup time
+              Pickup Points & Pickup Time
             </p>
             <p className="font-bold text-sm leading-tight">
               {experience.meetingPoint} &bull; {experience.meetingTime}
@@ -767,7 +766,7 @@ export default async function ExperienceDetailPage({
               </div>
               <div>
                 <p className="text-sm text-foreground/60 font-medium whitespace-nowrap">
-                  Total Distance (Both way)
+                  Total Distance (Both Ways)
                 </p>
                 <p className="font-bold">{exp.trekDistance || "N/A"}</p>
               </div>
