@@ -791,6 +791,104 @@ function drawEssentialInfoAndContact(doc: jsPDF, data: ItineraryBookingData) {
   doc.text(`© ${new Date().getFullYear()} ${cleanTextForPdf(data.company?.name ?? "")}. All rights reserved.`, pageWidth / 2, y + 4, { align: "center", maxWidth: pageWidth - 28 });
 }
 
+function drawWhyParamAdventures(doc: jsPDF) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  doc.addPage();
+  
+  let y = 20;
+  y = drawSectionHeader(doc, "WHY PARAM ADVENTURES?", y);
+  y += 5;
+
+  const reasons = [
+    {
+      title: "Your Happiness & Safety is Our Reward",
+      description: "With over 5 years of expertise in Himalayan, Western Ghats, and Sahyadri treks, Spiritual tours, Holiday Packages and more. We ensure every journey is safe, well-planned, and memorable."
+    },
+    {
+      title: "Inclusive for Everyone",
+      description: "Whether you're a kid, adult, solo traveler, family, group of friends, or corporate team—we design experiences for all."
+    },
+    {
+      title: "Certified & Experienced Leaders",
+      description: "Our trek and trip leaders are trained professionals and certified first responders, ensuring you're always in safe hands."
+    },
+    {
+      title: "Women-Friendly & Safe Environment",
+      description: "We prioritize safety for women travelers and have dedicated female trek and trip leaders on trips."
+    },
+    {
+      title: "Zero Tolerance for Smoking & Alcohol",
+      description: "We promote clean, responsible, and mindful travel experiences."
+    },
+    {
+      title: "Eco-Conscious Adventures",
+      description: "“Leave No Trace” is our mantra—we strictly avoid plastic and protect nature at every step."
+    },
+    {
+      title: "Budget-Friendly Without Compromise",
+      description: "Quality experiences at affordable prices—because adventure should be accessible to everyone."
+    },
+    {
+      title: "Personalized Attention",
+      description: "We focus on small group sizes to ensure every participant gets individual care and guidance."
+    },
+    {
+      title: "Local Expertise & Hidden Gems",
+      description: "Discover offbeat trails and unexplored locations that typical tourists miss."
+    },
+    {
+      title: "Community & Connection",
+      description: "Meet like-minded adventurers, build friendships, and create unforgettable memories together."
+    },
+    {
+      title: "Well-Planned Itineraries",
+      description: "Every trip is thoughtfully curated to balance adventure, relaxation, and exploration."
+    },
+    {
+      title: "Emergency Preparedness",
+      description: "We are equipped with first-aid kits, safety protocols, and backup plans for all situations."
+    },
+    {
+      title: "Authentic Experiences",
+      description: "From local culture to regional food, we give you a real taste of every destination."
+    },
+    {
+      title: "Customer-Centric Approach",
+      description: "Your comfort, feedback, and experience matter—we continuously improve based on your needs."
+    }
+  ];
+
+  const colWidth = (pageWidth - 28 - 6) / 2;
+  const leftX = 14;
+  const rightX = leftX + colWidth + 6;
+
+  reasons.forEach((reason, index) => {
+    const isEven = index % 2 === 0;
+    const x = isEven ? leftX : rightX;
+    const row = Math.floor(index / 2);
+    const itemY = y + row * 31.5;
+
+    // Background card (soft orange tint)
+    doc.setFillColor(...COLORS.lightOrange);
+    doc.roundedRect(x, itemY, colWidth, 27, 2, 2, "F");
+
+    // Primary accent line on the left side of the card
+    doc.setFillColor(...COLORS.orange);
+    doc.rect(x, itemY, 1.2, 27, "F");
+
+    // Title
+    doc.setFontSize(8.5);
+    doc.setFont("helvetica", "bold").setTextColor(...COLORS.navy);
+    doc.text(cleanTextForPdf(reason.title), x + 4, itemY + 5, { maxWidth: colWidth - 8 });
+
+    // Description
+    doc.setFontSize(7.5);
+    doc.setFont("helvetica", "normal").setTextColor(...COLORS.darkText);
+    const lines = doc.splitTextToSize(cleanTextForPdf(reason.description), colWidth - 8);
+    doc.text(lines, x + 4, itemY + 10, { maxWidth: colWidth - 8 });
+  });
+}
+
 // ─── Component ───────────────────────────────────────────
 
 interface DownloadItineraryBtnProps {
@@ -826,6 +924,7 @@ export default function DownloadItineraryBtn({
       y = drawHighlightsAndAbout(doc, data, y);
       y = drawItinerary(doc, data, y);
       drawInclusionsExclusionsPacking(doc, data, gallery, y);
+      drawWhyParamAdventures(doc);
       drawEssentialInfoAndContact(doc, data);
 
       const total = doc.getNumberOfPages();
