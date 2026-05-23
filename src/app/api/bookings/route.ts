@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authorizeRequest } from "@/lib/api-auth";
 import { bookingSchema } from "@/lib/validators/booking.schema";
 import { BookingService } from "@/services/booking.service";
+import { bookingLimiter } from "@/lib/rate-limiter";
 
 /**
  * POST /api/bookings
@@ -10,6 +11,16 @@ import { BookingService } from "@/services/booking.service";
  * and delegates business orchestration to BookingService.
  */
 export async function POST(request: NextRequest) {
+  // 0. Rate Limiting Protection
+  const ip = request.headers?.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimit = bookingLimiter.check(ip);
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429 }
+    );
+  }
+
   const auth = await authorizeRequest(request);
   if (!auth.authorized) return auth.response;
 

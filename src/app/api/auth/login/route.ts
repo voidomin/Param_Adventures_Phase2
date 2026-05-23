@@ -8,6 +8,7 @@ import {
 } from "@/lib/auth";
 import { z } from "zod";
 import { emergencyAdminRecovery } from "@/lib/bootstrap";
+import { authLimiter } from "@/lib/rate-limiter";
 
 const loginSchema = z.object({
   email: z.email({ message: "Invalid email format" }),
@@ -15,6 +16,16 @@ const loginSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  // 0. Rate Limiting Protection
+  const ip = request.headers?.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimit = authLimiter.check(ip);
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429 }
+    );
+  }
+
   try {
     const body = await request.json();
     

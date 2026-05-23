@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { POST } from "@/app/api/admin/bootstrap/route";
 import { NextRequest } from "next/server";
 import { SystemService } from "@/services/system.service";
+import { authLimiter } from "@/lib/rate-limiter";
 
 vi.mock("@/services/system.service", () => ({
   SystemService: {
@@ -20,6 +21,8 @@ vi.mock("@/lib/db", () => ({
 describe("Bootstrap Endpoint", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    // Restore the rate-limiter mock cleared by resetAllMocks
+    vi.mocked(authLimiter.check).mockReturnValue({ success: true, limit: 20, remaining: 19, reset: 0 });
     vi.stubEnv("BOOTSTRAP_TOKEN", "super-secret-bootstrap-token");
     vi.stubEnv("NODE_ENV", "development");
   });

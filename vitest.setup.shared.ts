@@ -53,3 +53,14 @@ vi.mock('razorpay', () => {
     },
   };
 });
+
+vi.mock('@/lib/rate-limiter', () => ({
+  authLimiter: { check: vi.fn().mockReturnValue({ success: true, limit: 20, remaining: 19, reset: 0 }) },
+  webhookLimiter: { check: vi.fn().mockReturnValue({ success: true, limit: 10, remaining: 9, reset: 0 }) },
+  snapshotLimiter: { check: vi.fn().mockReturnValue({ success: true, limit: 5, remaining: 4, reset: 0 }) },
+  bookingLimiter: { check: vi.fn().mockReturnValue({ success: true, limit: 10, remaining: 9, reset: 0 }) },
+  formLimiter: { check: vi.fn().mockReturnValue({ success: true, limit: 5, remaining: 4, reset: 0 }) },
+  RateLimiter: class {
+    check() { return { success: true, limit: 100, remaining: 99, reset: 0 }; }
+  }
+}));

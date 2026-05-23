@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { z } from "zod";
+import { formLimiter } from "@/lib/rate-limiter";
 
 const leadSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -12,6 +13,16 @@ const leadSchema = z.object({
 });
 
 export async function POST(req: Request) {
+  // 0. Rate Limiting Protection
+  const ip = req.headers?.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimit = formLimiter.check(ip);
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429 }
+    );
+  }
+
   try {
     const body = await req.json();
     const data = leadSchema.parse(body);

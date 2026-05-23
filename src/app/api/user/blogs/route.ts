@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
 }
 
 import { z } from "zod";
+import { formLimiter } from "@/lib/rate-limiter";
 
 const blogCreateSchema = z.object({
   experienceId: z.string().min(1, "experienceId is required"),
@@ -42,6 +43,16 @@ const blogCreateSchema = z.object({
  * Constraint: one blog per (user, experience)
  */
 export async function POST(request: NextRequest) {
+  // 0. Rate Limiting Protection
+  const ip = request.headers?.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimit = formLimiter.check(ip);
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429 }
+    );
+  }
+
   try {
     const token = request.cookies.get("accessToken")?.value;
     if (!token)
