@@ -473,3 +473,9 @@ enum LeadStatus {
   CLOSED
   DISCARDED
 }
+
+model ProcessedWebhookEvent {
+  id          String   @id
+  provider    String   @default("RAZORPAY")
+  processedAt DateTime @default(now())
+}

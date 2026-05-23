@@ -64,6 +64,10 @@ export async function ensureRoles() {
  * and grant them SUPER_ADMIN access.
  */
 export async function emergencyAdminRecovery(email: string, password: string, token: string) {
+  if (process.env.NODE_ENV === "production") {
+    console.warn(`[BOOTSTRAP] Blocked emergency recovery attempt in production mode for ${email}`);
+    return null;
+  }
   const bootstrapToken = process.env.BOOTSTRAP_TOKEN;
   if (!bootstrapToken || token !== bootstrapToken) return null;
 

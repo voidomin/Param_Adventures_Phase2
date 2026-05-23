@@ -14,7 +14,15 @@ export const runtime = "nodejs";
  * - Segregated logic via SystemService
  */
 export async function POST(request: NextRequest) {
-  // 0. Rate Limiting Protection
+  // 0. Disable in production mode
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json(
+      { error: "Forbidden: Bootstrap actions are disabled in production" },
+      { status: 403 }
+    );
+  }
+
+  // 1. Rate Limiting Protection
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
   const rateLimit = authLimiter.check(ip);
   if (!rateLimit.success) {

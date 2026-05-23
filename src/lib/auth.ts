@@ -22,19 +22,18 @@ async function getAuthConfig(): Promise<AuthConfig> {
     return cachedAuthConfig.config;
   }
 
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error("CRITICAL: JWT_SECRET is not configured in the environment variables. Access denied for security.");
+  }
+
   try {
     const settings = await prisma.platformSetting.findMany({
-      where: { key: { in: ["jwt_secret", "session_lifetime_hrs"] } },
+      where: { key: { in: ["session_lifetime_hrs"] } },
     });
 
     const getVal = (key: string) => settings.find(s => s.key === key)?.value;
 
-    const secret = getVal("jwt_secret") || process.env.JWT_SECRET;
-    
-    if (!secret) {
-      throw new Error("CRITICAL: JWT_SECRET is not configured. Access denied for security.");
-    }
-    
     // session_lifetime_hrs is stored as a number (string-version), e.g. "168"
     const lifetime = getVal("session_lifetime_hrs");
     const expiry = lifetime ? `${lifetime}h` : process.env.JWT_EXPIRY || "1h";
@@ -44,12 +43,6 @@ async function getAuthConfig(): Promise<AuthConfig> {
     return config;
 
   } catch {
-    const secret = process.env.JWT_SECRET;
-    
-    if (!secret) {
-      throw new Error("CRITICAL: JWT_SECRET is not configured. Access denied for security.");
-    }
-
     const config = {
       JWT_SECRET: secret,
       JWT_EXPIRY: process.env.JWT_EXPIRY || "1h",

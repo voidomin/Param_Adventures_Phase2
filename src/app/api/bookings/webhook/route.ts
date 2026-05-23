@@ -72,8 +72,33 @@ export async function POST(request: NextRequest) {
 
     console.log(`[Webhook] Received Razorpay Event: ${eventType}`);
 
+    // Deduplication check to prevent duplicate payment processing
+    const eventId = eventBody.id;
+    if (eventId) {
+      const isAlreadyProcessed = await prisma.$transaction(async (tx) => {
+        const existing = await tx.processedWebhookEvent.findUnique({
+          where: { id: eventId }
+        });
+        if (existing) {
+          return true;
+        }
+        await tx.processedWebhookEvent.create({
+          data: {
+            id: eventId,
+            provider: "RAZORPAY"
+          }
+        });
+        return false;
+      });
+
+      if (isAlreadyProcessed) {
+        console.log(`[Webhook] Duplicate event detected and skipped: ${eventId}`);
+        return NextResponse.json({ status: "ok", message: "Duplicate event skipped" });
+      }
+    }
+
     // LOGIC: Capture IP for forensics
-    const ip = request.headers.get("x-forwarded-for") || "unknown";
+    const forensicsIp = request.headers.get("x-forwarded-for") || "unknown";
 
     switch (eventType) {
       case "order.paid": {
@@ -103,7 +128,7 @@ export async function POST(request: NextRequest) {
             event: eventType, 
             razorpay_order_id: order.id, 
             razorpay_payment_id: payment.id,
-            ip
+            ip: forensicsIp
           }
         );
         break;
