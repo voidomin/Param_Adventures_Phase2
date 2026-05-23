@@ -73,6 +73,8 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: read
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/postgres' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
