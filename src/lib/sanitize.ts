@@ -54,5 +54,6 @@ export function sanitizeEditorContent(dirtyHTML: string): string {
     allowedStyles,
     allowedIframeHostnames: ["www.youtube.com", "player.vimeo.com"],
     allowedSchemes: ["http", "https", "mailto", "tel"],
+    allowedSchemesByTag: { iframe: ["https"] },
   });
 }

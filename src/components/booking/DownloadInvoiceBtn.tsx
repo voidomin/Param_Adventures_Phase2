@@ -87,7 +87,7 @@ export default function DownloadInvoiceBtn({ bookingId }: Readonly<{ bookingId: 
       doc.setFont("helvetica", "normal");
       doc.text(`Invoice No: INV-${booking.id.split("-")[0].toUpperCase()}`, 14, 76);
       doc.text(`Invoice Date: ${new Date(booking.date).toLocaleDateString()}`, 14, 82);
-      doc.text(`Place of Supply: Uttarakhand (05)`, 14, 88); 
+      doc.text(`Place of Supply: Karnataka (29)`, 14, 88); 
       doc.text(`Payment Status: ${booking.status}`, 14, 94);
 
       // Right: Billed To

@@ -3,7 +3,7 @@ import { z } from "zod";
 export const participantSchema = z.object({
   isPrimary: z.boolean().optional(),
   name: z.string().min(1, "Participant name is required"),
-  email: z.string().email({ message: "Invalid email format" }).optional().or(z.literal("")),
+  email: z.string().email("Invalid email format").optional().or(z.literal("")),
   phoneNumber: z.string().optional().or(z.literal("")),
   gender: z.string().optional().or(z.literal("")),
   age: z.union([z.number(), z.string()]).optional().or(z.literal("")),

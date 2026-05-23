@@ -98,6 +98,12 @@ interface Experience {
   images: string[];
   categories: Category[];
   slotsCount?: number;
+  nextDeparture?: string | null;
+  nextDepartureSlot?: {
+    date: string;
+    capacity: number;
+    remainingCapacity: number;
+  } | null;
 }
 
 const DIFFICULTIES: { value: DifficultyLevel; label: string; color: string }[] =

@@ -6,6 +6,7 @@ vi.mock("@/lib/db", () => ({
   prisma: {
     booking: {
       findMany: vi.fn(),
+      count: vi.fn(),
     },
   },
 }));
@@ -16,6 +17,7 @@ import { prisma } from "@/lib/db";
 
 const mockAuthorizeRequest = vi.mocked(authorizeRequest);
 const mockFindMany = vi.mocked(prisma.booking.findMany);
+const mockCount = vi.mocked(prisma.booking.count);
 
 describe("GET /api/admin/bookings", () => {
   beforeEach(() => {
@@ -36,6 +38,7 @@ describe("GET /api/admin/bookings", () => {
   it("returns bookings with filters", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
     mockFindMany.mockResolvedValue([{ id: "b1" }] as any);
+    mockCount.mockResolvedValue(1);
 
     const response = await GET(
       new NextRequest(
@@ -61,6 +64,7 @@ describe("GET /api/admin/bookings", () => {
   it("returns bookings without optional filters", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
     mockFindMany.mockResolvedValue([] as any);
+    mockCount.mockResolvedValue(0);
 
     const response = await GET(new NextRequest("http://localhost/api/admin/bookings"));
 

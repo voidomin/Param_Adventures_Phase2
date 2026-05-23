@@ -158,6 +158,12 @@ describe("Auth Utilities", () => {
 
     it("verifies a valid refresh token", async () => {
       const { generateRefreshToken, verifyRefreshToken } = await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth");
+      mockUserFindUnique.mockResolvedValue({
+        status: "ACTIVE",
+        tokenVersion: tokenVersion,
+        deletedAt: null,
+      } as any);
+      
       const token = await generateRefreshToken(userId, tokenVersion);
       const decoded = await verifyRefreshToken(token);
       expect(decoded).not.toBeNull();

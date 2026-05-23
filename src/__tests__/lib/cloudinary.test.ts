@@ -43,7 +43,7 @@ describe("Cloudinary Utils", () => {
     });
 
     it("handles upload errors", async () => {
-      vi.mocked(cloudinary.uploader.upload_stream).mockImplementationOnce((options: any, callback?: any) => {
+      vi.mocked(cloudinary.uploader.upload_stream as any).mockImplementationOnce((options: any, callback?: any) => {
         return {
           end: vi.fn(() => {
             callback(new Error("Upload Failed"), null);
@@ -56,7 +56,7 @@ describe("Cloudinary Utils", () => {
     });
 
     it("normalizes string upload errors", async () => {
-      vi.mocked(cloudinary.uploader.upload_stream).mockImplementationOnce((options: any, callback?: any) => {
+      vi.mocked(cloudinary.uploader.upload_stream as any).mockImplementationOnce((options: any, callback?: any) => {
         return {
           end: vi.fn(() => {
             callback("String upload failure", null);
@@ -69,7 +69,7 @@ describe("Cloudinary Utils", () => {
     });
 
     it("normalizes object upload errors with message", async () => {
-      vi.mocked(cloudinary.uploader.upload_stream).mockImplementationOnce((options: any, callback?: any) => {
+      vi.mocked(cloudinary.uploader.upload_stream as any).mockImplementationOnce((options: any, callback?: any) => {
         return {
           end: vi.fn(() => {
             callback({ message: "Object upload failure" }, null);
@@ -82,7 +82,7 @@ describe("Cloudinary Utils", () => {
     });
 
     it("uses fallback message for unknown upload errors", async () => {
-      vi.mocked(cloudinary.uploader.upload_stream).mockImplementationOnce((options: any, callback?: any) => {
+      vi.mocked(cloudinary.uploader.upload_stream as any).mockImplementationOnce((options: any, callback?: any) => {
         return {
           end: vi.fn(() => {
             callback({}, null);

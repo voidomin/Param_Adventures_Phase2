@@ -143,14 +143,14 @@ describe("ExperienceForm Comprehensive Smoke Test", () => {
   }, 15000);
 
   it("triggers JSON export", async () => {
-    render(<ExperienceForm initialData={{ title: "Test Trip" }} />);
+    render(<ExperienceForm initialData={{ title: "Test Trip" } as any} />);
     fireEvent.click(screen.getByText(/Export Data/i));
     fireEvent.click(screen.getByText(/Export JSON/i));
     expect(globalThis.URL.createObjectURL).toHaveBeenCalled();
   });
 
   it("triggers Excel export", async () => {
-    render(<ExperienceForm initialData={{ title: "Test Trip" }} />);
+    render(<ExperienceForm initialData={{ title: "Test Trip" } as any} />);
     fireEvent.click(screen.getByText(/Export Data/i));
     fireEvent.click(screen.getByText(/Export Excel/i));
     await waitFor(() => {

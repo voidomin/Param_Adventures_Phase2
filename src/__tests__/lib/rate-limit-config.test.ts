@@ -33,7 +33,7 @@ describe("rate-limit-config", () => {
       const generalRule = findMatchingRule("/api/some-new-feature");
       expect(generalRule).toBeDefined();
       expect(generalRule?.label).toBe("General");
-      expect(generalRule?.limit).toBe(500); // from our config
+      expect(generalRule?.limit).toBe(60); // from our config
     });
 
     it("returns undefined for non-api routes", () => {

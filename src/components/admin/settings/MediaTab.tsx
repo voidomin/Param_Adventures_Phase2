@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { ImageIcon, Database, Loader2, CheckCircle2, AlertCircle, Handshake } from "lucide-react";
 import { SectionTitle, InputGroup, TabProps } from "./Common";
 
-export default function MediaTab(props: TabProps) {
+export default function MediaTab(props: Readonly<TabProps>) {
   const { getVal, updateSetting } = props;
   const [isVerifying, setIsVerifying] = useState(false);
   const [verifyStatus, setVerifyStatus] = useState<{

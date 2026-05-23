@@ -1,3 +1,5 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+
 vi.mock("@/services/booking.service", () => ({
   BookingService: {
     processBooking: vi.fn(),
@@ -61,7 +63,8 @@ describe("POST /api/bookings", () => {
       bookingId: "bk-1",
       orderId: "order_123",
       amount: 200000,
-      currency: "INR"
+      currency: "INR",
+      keyId: undefined
     };
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
     mockProcessBooking.mockResolvedValueOnce(successResult);

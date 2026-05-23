@@ -13,30 +13,50 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
     const experienceId = searchParams.get("experienceId");
+    
+    // Pagination params
+    const page = Number.parseInt(searchParams.get("page") || "1");
+    const limit = Number.parseInt(searchParams.get("limit") || "50");
+    const skip = (page - 1) * limit;
 
-    const bookings = await prisma.booking.findMany({
-      where: {
-        ...(status
-          ? { bookingStatus: status as "REQUESTED" | "CONFIRMED" | "CANCELLED" }
-          : {}),
-        ...(experienceId ? { experienceId } : {}),
-        deletedAt: null,
-      },
-      orderBy: { createdAt: "desc" },
-      include: {
-        participants: true,
-        user: {
-          select: { id: true, name: true, email: true, phoneNumber: true },
+    const whereClause = {
+      ...(status
+        ? { bookingStatus: status as "REQUESTED" | "CONFIRMED" | "CANCELLED" }
+        : {}),
+      ...(experienceId ? { experienceId } : {}),
+      deletedAt: null,
+    };
+
+    const [bookings, total] = await Promise.all([
+      prisma.booking.findMany({
+        where: whereClause,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+        include: {
+          participants: true,
+          user: {
+            select: { id: true, name: true, email: true, phoneNumber: true },
+          },
+          experience: { select: { id: true, title: true, slug: true } },
+          slot: { select: { id: true, date: true } },
+          payments: {
+            select: { status: true, amount: true, providerPaymentId: true },
+          },
         },
-        experience: { select: { id: true, title: true, slug: true } },
-        slot: { select: { id: true, date: true } },
-        payments: {
-          select: { status: true, amount: true, providerPaymentId: true },
-        },
-      },
+      }),
+      prisma.booking.count({ where: whereClause })
+    ]);
+
+    return NextResponse.json({ 
+      bookings,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
     });
-
-    return NextResponse.json({ bookings });
   } catch (error) {
     console.error("Error fetching bookings:", error);
     return NextResponse.json(

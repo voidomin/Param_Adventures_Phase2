@@ -1,8 +1,9 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Clock, MapPin, Users, IndianRupee } from "lucide-react";
+import { Clock, MapPin, Users, IndianRupee, CalendarDays } from "lucide-react";
 import type { MediaSettings } from "@/types/media";
 import { motion } from "framer-motion";
 import SaveButton from "./SaveButton";
@@ -33,6 +34,12 @@ interface ExperienceCardProps {
     cardImage?: string;
     images: string[];
     categories: Category[];
+    nextDeparture?: string | null;
+    nextDepartureSlot?: {
+      date: string;
+      capacity: number;
+      remainingCapacity: number;
+    } | null;
   };
   mediaSettings?: MediaSettings;
 }
@@ -76,6 +83,51 @@ export default function ExperienceCard({
   );
 
   const isVideo = /\.(mp4|webm)$/i.test(rawImage);
+
+  const calendarStatusElement = useMemo(() => {
+    if (experience.nextDepartureSlot) {
+      const isSoldOut = experience.nextDepartureSlot.remainingCapacity <= 0;
+      const formattedDate = new Date(experience.nextDepartureSlot.date).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+      });
+      
+      if (isSoldOut) {
+        return (
+          <div className="flex items-center gap-1.5 text-red-500 font-bold text-xs uppercase tracking-widest">
+            <CalendarDays className="w-3.5 h-3.5 text-red-500" />
+            Next: {formattedDate} (Sold Out)
+          </div>
+        );
+      }
+      
+      return (
+        <div className="flex items-center gap-1.5 text-primary font-bold text-xs uppercase tracking-widest">
+          <CalendarDays className="w-3.5 h-3.5" />
+          Next: {formattedDate}
+        </div>
+      );
+    }
+    
+    return (
+      <div className="flex items-center gap-1.5 text-foreground/40 font-bold text-xs uppercase tracking-widest">
+        <CalendarDays className="w-3.5 h-3.5" />
+        No slots scheduled
+      </div>
+    );
+  }, [experience.nextDepartureSlot]);
+
+  const hoverCapacityText = useMemo(() => {
+    if (!experience.nextDepartureSlot) {
+      return "No slots scheduled";
+    }
+    const { capacity, remainingCapacity } = experience.nextDepartureSlot;
+    if (remainingCapacity <= 0) {
+      return "Sold Out";
+    }
+    const booked = capacity - remainingCapacity;
+    return `${booked} booked / ${remainingCapacity} left`;
+  }, [experience.nextDepartureSlot]);
 
   return (
     <Link
@@ -136,7 +188,7 @@ export default function ExperienceCard({
               </div>
               <div className="flex items-center gap-1.5 bg-black/50 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 shadow-sm">
                 <MapPin className="w-4 h-4 text-primary" />
-                <span className="truncate max-w-25">
+                <span className="whitespace-nowrap">
                   {experience.location}
                 </span>
               </div>
@@ -158,25 +210,35 @@ export default function ExperienceCard({
         </div>
 
         <div className="p-6 flex flex-col flex-1">
-          <div className="min-h-14 mb-2">
+          <div className="h-24 mb-2 flex flex-col justify-between">
             <h3 className="text-xl font-bold font-heading text-foreground group-hover:text-primary transition-colors line-clamp-2">
               {experience.title}
             </h3>
+            <div className="h-6 flex items-center">
+              {calendarStatusElement}
+            </div>
           </div>
-          <p className="text-foreground/70 text-sm line-clamp-2 mb-6 flex-1 min-h-12">
+          <p className="text-foreground/70 text-sm line-clamp-2 mb-6 h-12">
             {typeof experience.description === 'string' 
               ? experience.description 
               : getPlainTextFromJSON(experience.description as RichTextNode)}
           </p>
 
           <div className="flex items-center justify-between pt-4 border-t border-border mt-auto">
-            <div className="flex items-center gap-2 text-foreground/60 text-sm">
-              <Users className="w-4 h-4" />
-              <span>Up to {experience.capacity} pax</span>
+            <div className="flex items-center gap-2 text-foreground/60 text-sm cursor-help select-none">
+              <Users className="w-4 h-4 text-foreground/50 shrink-0" />
+              <div className="relative overflow-hidden h-5 w-40">
+                <span className="absolute inset-0 transition-transform duration-300 group-hover:-translate-y-5 flex items-center whitespace-nowrap">
+                  Up to {experience.capacity} pax
+                </span>
+                <span className="absolute inset-0 translate-y-5 transition-transform duration-300 group-hover:translate-y-0 flex items-center text-primary font-bold text-xs whitespace-nowrap">
+                  {hoverCapacityText}
+                </span>
+              </div>
             </div>
             <div className="flex flex-col items-end">
               <span className="text-xs text-foreground/50 font-medium">
-                Starting from
+                Price
               </span>
               <span className="text-lg font-bold text-foreground flex items-center">
                 <IndianRupee className="w-4 h-4 mr-0.5" />

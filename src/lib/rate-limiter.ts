@@ -23,9 +23,9 @@ interface Bucket {
 }
 
 export class RateLimiter {
-  private cache: Map<string, Bucket> = new Map();
-  private options: RateLimitOptions;
-  private nowFn: () => number;
+  private readonly cache: Map<string, Bucket> = new Map();
+  private readonly options: RateLimitOptions;
+  private readonly nowFn: () => number;
 
   constructor(options: RateLimitOptions, nowFn: () => number = Date.now) {
     this.options = options;

@@ -28,25 +28,25 @@ vi.mock("@/components/layout/LegalLayout", () => ({
 
 describe("app/terms/page", () => {
   it("exports metadata for terms page", () => {
-    expect(metadata.title).toBe("Terms and Conditions");
+    expect(metadata.title).toBe("Terms & Conditions | Param Adventures");
     expect(String(metadata.description)).toContain("booking experiences");
   });
 
-  it("renders core terms sections and support email", async () => {
+  it("renders core terms sections", async () => {
     const ui = await TermsPage();
     render(ui);
 
     expect(
-      screen.getByRole("heading", { name: "Terms and Conditions" }),
+      screen.getByRole("heading", { name: "Terms & Conditions" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /Agreement to Terms/i }),
+      screen.getByRole("heading", { name: /Booking & Participation Policy/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /Bookings and Payments/i }),
+      screen.getByRole("heading", { name: /Itinerary & Operational Changes/i }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/support@paramadventures.in/i),
+      screen.getByRole("heading", { name: /Accommodation & Food/i }),
     ).toBeInTheDocument();
   }, 10000);
 });
