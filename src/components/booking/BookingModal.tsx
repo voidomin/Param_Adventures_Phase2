@@ -31,6 +31,7 @@ interface BookingModalProps {
   experienceSlug: string;
   basePrice: number;
   pickupPoints: string[];
+  dropPoints?: string[];
   maxCapacity: number;
   onClose: () => void;
 }
@@ -110,6 +111,7 @@ export default function BookingModal({
   basePrice,
   maxCapacity,
   pickupPoints,
+  dropPoints = [],
   onClose,
 }: Readonly<BookingModalProps>) {
   const [mounted, setMounted] = useState(false);
@@ -764,31 +766,82 @@ export default function BookingModal({
                         </select>
                       </div>
 
-                      {pickupPoints && pickupPoints.length > 0 && (
-                        <div>
-                          <label
-                            htmlFor={`pickup-${index}`}
-                            className="block text-xs font-bold text-foreground/60 mb-1"
-                          >
-                            Pickup & Drop Point
-                          </label>
-                          <select
-                            id={`pickup-${index}`}
-                            value={p.pickupPoint}
-                            onChange={(e) => {
-                              updatePart(index, "pickupPoint", e.target.value);
-                              updatePart(index, "dropPoint", e.target.value);
-                            }}
-                            className="w-full px-3 py-2 bg-card border border-border rounded-lg outline-none appearance-none"
-                          >
-                            <option value="">Select Location (Optional)</option>
-                            {pickupPoints.map((loc) => (
-                              <option key={loc} value={loc}>
-                                {loc}
-                              </option>
-                            ))}
-                          </select>
+                      {dropPoints && dropPoints.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label
+                              htmlFor={`pickup-${index}`}
+                              className="block text-xs font-bold text-foreground/60 mb-1"
+                            >
+                              Pickup Location
+                            </label>
+                            <select
+                              id={`pickup-${index}`}
+                              value={p.pickupPoint}
+                              onChange={(e) => {
+                                updatePart(index, "pickupPoint", e.target.value);
+                              }}
+                              className="w-full px-3 py-2 bg-card border border-border rounded-lg outline-none appearance-none text-sm"
+                            >
+                              <option value="">Select Pickup (Optional)</option>
+                              {pickupPoints.map((loc) => (
+                                <option key={loc} value={loc}>
+                                  {loc}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label
+                              htmlFor={`drop-${index}`}
+                              className="block text-xs font-bold text-foreground/60 mb-1"
+                            >
+                              Drop-off Location
+                            </label>
+                            <select
+                              id={`drop-${index}`}
+                              value={p.dropPoint}
+                              onChange={(e) => {
+                                updatePart(index, "dropPoint", e.target.value);
+                              }}
+                              className="w-full px-3 py-2 bg-card border border-border rounded-lg outline-none appearance-none text-sm"
+                            >
+                              <option value="">Select Drop-off (Optional)</option>
+                              {dropPoints.map((loc) => (
+                                <option key={loc} value={loc}>
+                                  {loc}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
                         </div>
+                      ) : (
+                        pickupPoints && pickupPoints.length > 0 && (
+                          <div>
+                            <label
+                              htmlFor={`pickup-${index}`}
+                              className="block text-xs font-bold text-foreground/60 mb-1"
+                            >
+                              Pickup & Drop Point
+                            </label>
+                            <select
+                              id={`pickup-${index}`}
+                              value={p.pickupPoint}
+                              onChange={(e) => {
+                                updatePart(index, "pickupPoint", e.target.value);
+                                updatePart(index, "dropPoint", e.target.value);
+                              }}
+                              className="w-full px-3 py-2 bg-card border border-border rounded-lg outline-none appearance-none text-sm"
+                            >
+                              <option value="">Select Location (Optional)</option>
+                              {pickupPoints.map((loc) => (
+                                <option key={loc} value={loc}>
+                                  {loc}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )
                       )}
                     </div>
 

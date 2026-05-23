@@ -9,8 +9,6 @@ const eslintConfig = defineConfig([
       "out/**",
       "build/**",
       "next-env.d.ts",
-      "reference/**",
-      "skills/**",
       "public/**",
       "dist/**",
       "vitest.setup.shared.ts",

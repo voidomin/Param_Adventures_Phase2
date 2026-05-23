@@ -33,7 +33,15 @@ export default async function Home() {
         where: { isFeatured: true, status: "PUBLISHED" },
         include: {
           categories: { include: { category: true } },
-          _count: { select: { slots: true } },
+          slots: {
+            where: {
+              date: { gte: new Date() },
+              status: "UPCOMING",
+            },
+            select: { date: true, capacity: true, remainingCapacity: true },
+            orderBy: { date: "asc" },
+            take: 1,
+          },
         },
         take: 10,
         orderBy: { createdAt: "desc" },
@@ -41,13 +49,17 @@ export default async function Home() {
     [],
   );
 
-  // DEBUG: Report featured experiences found in terminal
-  console.log(`[Homepage] Found ${featuredExperiencesRaw.length} featured experiences.`);
 
   // Serialize Decimal and Date objects for Client Component compatibility
   const featuredExperiences = featuredExperiencesRaw.map((exp) => ({
     ...exp,
     basePrice: Number(exp.basePrice),
+    nextDeparture: exp.slots?.[0]?.date ? (exp.slots[0].date instanceof Date ? exp.slots[0].date.toISOString() : new Date(exp.slots[0].date).toISOString()) : null,
+    nextDepartureSlot: (exp.slots?.[0] && exp.slots[0].date) ? {
+      date: exp.slots[0].date instanceof Date ? exp.slots[0].date.toISOString() : new Date(exp.slots[0].date).toISOString(),
+      capacity: exp.slots[0].capacity ?? exp.capacity,
+      remainingCapacity: exp.slots[0].remainingCapacity ?? exp.capacity,
+    } : null,
   }));
 
   const recentBlogs = await withBuildSafety(

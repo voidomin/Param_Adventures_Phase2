@@ -48,9 +48,6 @@ next-env.d.ts
 
 /src/generated/prisma
 
-# Phase 1 reference (local only)
-/reference/
-
 # Database Backups
 *.sql
 !prisma/migrations/**/*.sql

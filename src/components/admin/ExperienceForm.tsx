@@ -69,12 +69,12 @@ export interface ExperienceFormData {
   highlights?: string[];
   vibeTags?: string[];
   networkConnectivity?: string;
-  lastAtm?: string;
   fitnessRequirement?: string;
   ageRange?: string;
   meetingTime?: string;
   dropoffTime?: string;
   pickupPoints?: string[];
+  dropPoints?: string[];
 }
 
 const MEAL_OPTIONS = ["Breakfast", "Lunch", "Dinner", "Snacks"];
@@ -200,11 +200,38 @@ export default function ExperienceForm({
       text,
     })),
   );
-
-  // New Logistic States
-  const [cancellationPolicy, setCancellationPolicy] = useState(
-    initialData?.cancellationPolicy || "",
+  const [dropPoints, setDropPoints] = useState<
+    { id: string; text: string }[]
+  >(
+    (initialData?.dropPoints || []).map((text: string) => ({
+      id: crypto.randomUUID(),
+      text,
+    })),
   );
+
+  // Parse initial cancellationPolicy JSON if present
+  const getInitialCancellationPolicy = () => {
+    let template = "custom";
+    let text = "";
+    if (initialData?.cancellationPolicy) {
+      try {
+        const parsed = JSON.parse(initialData.cancellationPolicy);
+        if (parsed && typeof parsed === "object" && "template" in parsed) {
+          template = parsed.template || "custom";
+          text = parsed.text || "";
+        } else {
+          text = initialData.cancellationPolicy;
+        }
+      } catch {
+        text = initialData.cancellationPolicy;
+      }
+    }
+    return { template, text };
+  };
+
+  const initialPolicy = getInitialCancellationPolicy();
+  const [cancelPolicyType, setCancelPolicyType] = useState(initialPolicy.template);
+  const [cancelPolicyText, setCancelPolicyText] = useState(initialPolicy.text);
   const [meetingPoint, setMeetingPoint] = useState(
     initialData?.meetingPoint || "",
   );
@@ -238,7 +265,6 @@ export default function ExperienceForm({
   const [networkConnectivity, setNetworkConnectivity] = useState(
     initialData?.networkConnectivity || "",
   );
-  const [lastAtm, setLastAtm] = useState(initialData?.lastAtm || "");
   const [fitnessRequirement, setFitnessRequirement] = useState(
     initialData?.fitnessRequirement || "",
   );
@@ -425,10 +451,13 @@ export default function ExperienceForm({
     pickupPoints: pickupPoints
       .map((item) => item.text)
       .filter((item) => item.trim() !== ""),
+    dropPoints: dropPoints
+      .map((item) => item.text)
+      .filter((item) => item.trim() !== ""),
     faqs: faqs
       .filter((faq) => faq.question.trim() !== "" && faq.answer.trim() !== "")
       .map(({ question, answer }) => ({ question, answer })),
-    cancellationPolicy,
+    cancellationPolicy: JSON.stringify({ template: cancelPolicyType, text: cancelPolicyText }),
     meetingPoint,
     minAge: minAge ? Number(minAge) : null,
     maxAltitude,
@@ -439,7 +468,6 @@ export default function ExperienceForm({
       .map((item) => item.text)
       .filter((item) => item.trim() !== ""),
     networkConnectivity,
-    lastAtm,
     fitnessRequirement,
     ageRange,
     meetingTime,
@@ -575,13 +603,27 @@ export default function ExperienceForm({
     if (data.highlights) setHighlights(mapToObj(data.highlights));
     if (data.vibeTags) setVibeTags(mapToObj(data.vibeTags));
     if (data.pickupPoints) setPickupPoints(mapToObj(data.pickupPoints));
+    if (data.dropPoints) setDropPoints(mapToObj(data.dropPoints));
     if (data.faqs)
       setFaqs(data.faqs.map((f: FAQ) => ({ ...f, id: crypto.randomUUID() })));
   };
 
   const applyLogisticsData = (data: Partial<ExperienceFormData>) => {
-    if (data.cancellationPolicy !== undefined)
-      setCancellationPolicy(data.cancellationPolicy || "");
+    if (data.cancellationPolicy !== undefined) {
+      try {
+        const parsed = JSON.parse(data.cancellationPolicy || "{}");
+        if (parsed && typeof parsed === "object" && "template" in parsed) {
+          setCancelPolicyType(parsed.template || "custom");
+          setCancelPolicyText(parsed.text || "");
+        } else {
+          setCancelPolicyType("custom");
+          setCancelPolicyText(data.cancellationPolicy || "");
+        }
+      } catch {
+        setCancelPolicyType("custom");
+        setCancelPolicyText(data.cancellationPolicy || "");
+      }
+    }
     if (data.meetingPoint !== undefined)
       setMeetingPoint(data.meetingPoint || "");
     if (data.minAge !== undefined) setMinAge(data.minAge || "");
@@ -594,7 +636,6 @@ export default function ExperienceForm({
       setMaxGroupSize(data.maxGroupSize || "");
     if (data.networkConnectivity !== undefined)
       setNetworkConnectivity(data.networkConnectivity || "");
-    if (data.lastAtm !== undefined) setLastAtm(data.lastAtm || "");
     if (data.fitnessRequirement !== undefined)
       setFitnessRequirement(data.fitnessRequirement || "");
     if (data.ageRange !== undefined) setAgeRange(data.ageRange || "");
@@ -627,8 +668,9 @@ export default function ExperienceForm({
     exclusions: exclusions.map((i) => i.text),
     thingsToCarry: thingsToCarry.map((i) => i.text),
     pickupPoints: pickupPoints.map((i) => i.text),
+    dropPoints: dropPoints.map((i) => i.text),
     faqs,
-    cancellationPolicy,
+    cancellationPolicy: JSON.stringify({ template: cancelPolicyType, text: cancelPolicyText }),
     meetingPoint,
     minAge,
     maxAltitude,
@@ -637,7 +679,6 @@ export default function ExperienceForm({
     maxGroupSize,
     highlights: highlights.map((i) => i.text),
     networkConnectivity,
-    lastAtm,
     fitnessRequirement,
     ageRange,
     meetingTime,
@@ -798,6 +839,9 @@ export default function ExperienceForm({
       imported.pickupPoints = listRows
         .map((r) => ensureString(r.PickupPoints))
         .filter(Boolean);
+      imported.dropPoints = listRows
+        .map((r) => ensureString(r.DropPoints))
+        .filter(Boolean);
     }
   };
 
@@ -817,13 +861,12 @@ export default function ExperienceForm({
         { Key: "bestTimeToVisit", Value: bestTimeToVisit },
         { Key: "maxGroupSize", Value: maxGroupSize },
         { Key: "networkConnectivity", Value: networkConnectivity },
-        { Key: "lastAtm", Value: lastAtm },
         { Key: "fitnessRequirement", Value: fitnessRequirement },
         { Key: "ageRange", Value: ageRange },
         { Key: "meetingTime", Value: meetingTime },
         { Key: "dropoffTime", Value: dropoffTime },
         { Key: "meetingPoint", Value: meetingPoint },
-        { Key: "cancellationPolicy", Value: cancellationPolicy },
+        { Key: "cancellationPolicy", Value: JSON.stringify({ template: cancelPolicyType, text: cancelPolicyText }) },
       ];
 
       const itineraryData = itinerary.map((d, i) => ({
@@ -846,6 +889,7 @@ export default function ExperienceForm({
         highlights.length,
         vibeTags.length,
         pickupPoints.length,
+        dropPoints.length,
       );
       const listsData = [];
       for (let i = 0; i < maxLen; i++) {
@@ -856,6 +900,7 @@ export default function ExperienceForm({
           Highlights: highlights[i]?.text || "",
           VibeTags: vibeTags[i]?.text || "",
           PickupPoints: pickupPoints[i]?.text || "",
+          DropPoints: dropPoints[i]?.text || "",
         });
       }
 
@@ -1482,7 +1527,7 @@ export default function ExperienceForm({
             {/* Pickup Points */}
             <div className="space-y-3 border-t border-border pt-4">
               <span className="block text-sm font-bold text-foreground/80">
-                Pickup & Drop Locations
+                Pickup Locations
               </span>
               {pickupPoints.map((item) => (
                 <div key={item.id} className="flex gap-2">
@@ -1513,6 +1558,46 @@ export default function ExperienceForm({
               <button
                 type="button"
                 onClick={() => addStringArrayItem(setPickupPoints)}
+                className="text-xs font-medium text-primary flex items-center gap-1 hover:text-primary/80"
+              >
+                <Plus className="w-3 h-3" /> Add Location
+              </button>
+            </div>
+
+            {/* Drop Points */}
+            <div className="space-y-3 border-t border-border pt-4">
+              <span className="block text-sm font-bold text-foreground/80">
+                Drop-off Locations
+              </span>
+              {dropPoints.map((item) => (
+                <div key={item.id} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={item.text}
+                    onChange={(e) =>
+                      handleStringArrayChange(
+                        setDropPoints,
+                        item.id,
+                        e.target.value,
+                      )
+                    }
+                    className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
+                    placeholder="e.g. Bangalore"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      removeStringArrayItem(setDropPoints, item.id)
+                    }
+                    className="p-2 text-foreground/50 hover:text-red-500 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() => addStringArrayItem(setDropPoints)}
                 className="text-xs font-medium text-primary flex items-center gap-1 hover:text-primary/80"
               >
                 <Plus className="w-3 h-3" /> Add Location
@@ -1568,21 +1653,43 @@ export default function ExperienceForm({
             </div>
 
             {/* Cancellation Policy */}
-            <div className="pt-4 border-t border-border">
-              <label
-                htmlFor="cancelPolicy"
-                className="block text-sm font-bold text-foreground/80 mb-1"
-              >
-                Cancellation Policy
-              </label>
-              <textarea
-                id="cancelPolicy"
-                rows={4}
-                value={cancellationPolicy}
-                onChange={(e) => setCancellationPolicy(e.target.value)}
-                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
-                placeholder="e.g. 100% refund if cancelled 30 days prior..."
-              />
+            <div className="pt-4 border-t border-border space-y-4">
+              <div>
+                <label
+                  htmlFor="cancelPolicyType"
+                  className="block text-sm font-bold text-foreground/80 mb-1"
+                >
+                  Cancellation Policy Template
+                </label>
+                <select
+                  id="cancelPolicyType"
+                  value={cancelPolicyType}
+                  onChange={(e) => setCancelPolicyType(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                >
+                  <option value="custom">Custom (No template table)</option>
+                  <option value="one_two_days">One- & Two-Days Treks/Trips Policy Table</option>
+                  <option value="multi_days">Multiple Days Treks/Trips Policy Table</option>
+                  <option value="international">International Treks/Trips Policy Table</option>
+                </select>
+              </div>
+
+              <div className="space-y-1">
+                <label
+                  htmlFor="cancelPolicy"
+                  className="block text-xs font-bold text-foreground/60 mb-1"
+                >
+                  Cancellation Policy Notes/Custom Text
+                </label>
+                <textarea
+                  id="cancelPolicy"
+                  rows={4}
+                  value={cancelPolicyText}
+                  onChange={(e) => setCancelPolicyText(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                  placeholder="e.g. 100% refund if cancelled 30 days prior..."
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -1733,7 +1840,7 @@ export default function ExperienceForm({
                   htmlFor="meetingPoint"
                   className="block text-sm font-medium text-foreground/80 mb-1"
                 >
-                  Meeting Point
+                  Starting Point
                 </label>
                 <input
                   id="meetingPoint"
@@ -1741,7 +1848,7 @@ export default function ExperienceForm({
                   value={meetingPoint}
                   onChange={(e) => setMeetingPoint(e.target.value)}
                   className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
-                  placeholder="e.g. Dehradun"
+                  placeholder="e.g. Bangalore or Dehradun"
                 />
               </div>
               <div>
@@ -1749,7 +1856,7 @@ export default function ExperienceForm({
                   htmlFor="meetingTime"
                   className="block text-sm font-medium text-foreground/80 mb-1"
                 >
-                  Meeting Time
+                  Starting Time
                 </label>
                 <input
                   id="meetingTime"
@@ -1781,7 +1888,7 @@ export default function ExperienceForm({
                   htmlFor="trekDistance"
                   className="block text-sm font-medium text-foreground/80 mb-1"
                 >
-                  Trek Distance
+                  Total Distance (Both Ways)
                 </label>
                 <input
                   id="trekDistance"
@@ -1838,22 +1945,6 @@ export default function ExperienceForm({
                   onChange={(e) => setNetworkConnectivity(e.target.value)}
                   className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
                   placeholder="e.g. Jio/Airtel till basecamp"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="lastAtm"
-                  className="block text-sm font-medium text-foreground/80 mb-1"
-                >
-                  Last ATM
-                </label>
-                <input
-                  id="lastAtm"
-                  type="text"
-                  value={lastAtm}
-                  onChange={(e) => setLastAtm(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
-                  placeholder="e.g. Joshimath"
                 />
               </div>
               <div>

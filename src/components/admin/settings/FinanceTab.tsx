@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Plus, Trash2, CreditCard, ShieldAlert } from "lucide-react";
 import { SectionTitle, InputGroup, TabProps } from "./Common";
 
-export default function FinanceTab(props: TabProps) {
+export default function FinanceTab(props: Readonly<TabProps>) {
   const { getVal, updateSetting } = props;
   
   // State Initialization: Derived from parent state on mount
@@ -143,6 +143,22 @@ export default function FinanceTab(props: TabProps) {
             value={getVal("PLATFORM", "stateCode")}
             onChange={(v: string) => updateSetting("PLATFORM", "stateCode", v)}
             placeholder="e.g. 27 (Maharashtra)"
+          />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <InputGroup
+            label="Company Official Email"
+            value={getVal("PLATFORM", "companyEmail")}
+            onChange={(v: string) => updateSetting("PLATFORM", "companyEmail", v)}
+            placeholder="booking@paramadventures.in"
+            description="Used in official itineraries and invoice footers."
+          />
+          <InputGroup
+            label="Company Contact Number"
+            value={getVal("PLATFORM", "companyPhone")}
+            onChange={(v: string) => updateSetting("PLATFORM", "companyPhone", v)}
+            placeholder="+91 98765 43210"
+            description="Displayed on PDF itineraries for trek leads/customers."
           />
         </div>
         <InputGroup

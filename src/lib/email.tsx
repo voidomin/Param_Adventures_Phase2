@@ -7,6 +7,7 @@ import RoleAssignedEmail from "@/components/emails/RoleAssignedEmail";
 import TripCompletedEmail from "@/components/emails/TripCompletedEmail";
 import PasswordResetEmail from "@/components/emails/PasswordResetEmail";
 import AdminInviteEmail from "@/components/emails/AdminInviteEmail";
+import CustomTripAcknowledgmentEmail from "@/components/emails/CustomTripAcknowledgmentEmail";
 import React from "react";
 import { emailFactory } from "./email/factory";
 
@@ -70,6 +71,11 @@ export interface AdminInviteData {
   userName: string;
   userEmail: string;
   setupLink: string;
+}
+
+export interface CustomTripData {
+  userName: string;
+  userEmail: string;
 }
 
 // ─── SENDERS ───────────────────────────────────────────
@@ -228,5 +234,18 @@ export async function sendAdminInviteEmail(data: AdminInviteData) {
     });
   } catch (err) {
     console.error("Email layout error:", err);
+  }
+}
+
+export async function sendCustomTripAcknowledgmentEmail(data: CustomTripData) {
+  try {
+    const html = await render(<CustomTripAcknowledgmentEmail userName={data.userName} />);
+    await sendEmail({
+      to: data.userEmail,
+      subject: "We've received your custom trip request! 🏔️",
+      html,
+    });
+  } catch (err) {
+    console.error("Email layout error (CustomTrip):", err);
   }
 }

@@ -38,11 +38,14 @@
 }
 
 @layer base {
-  body {
+  html, body {
     @apply bg-background text-foreground;
     font-feature-settings:
       "rlig" 1,
       "calt" 1;
+    overflow-x: hidden;
+    width: 100%;
+    position: relative;
   }
 
   h1,

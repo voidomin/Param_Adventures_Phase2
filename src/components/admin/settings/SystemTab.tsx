@@ -133,6 +133,14 @@ export default function SystemTab(props: Readonly<TabProps>) {
           value={getVal("SITE", "support_email")}
           onChange={(v: string) => updateSetting("SITE", "support_email", v)}
         />
+        <div className="md:col-span-2">
+          <InputGroup
+            label="Office Address"
+            value={getVal("SITE", "office_address")}
+            onChange={(v: string) => updateSetting("SITE", "office_address", v)}
+            placeholder="123 Mountain View, Kullu, HP, India"
+          />
+        </div>
       </div>
     </div>
   );

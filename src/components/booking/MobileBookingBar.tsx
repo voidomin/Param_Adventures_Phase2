@@ -13,6 +13,7 @@ interface MobileBookingBarProps {
   basePrice: number;
   maxCapacity: number;
   pickupPoints: string[];
+  dropPoints?: string[];
 }
 
 export default function MobileBookingBar({
@@ -22,6 +23,7 @@ export default function MobileBookingBar({
   basePrice,
   maxCapacity,
   pickupPoints,
+  dropPoints = [],
 }: Readonly<MobileBookingBarProps>) {
   const [isOpen, setIsOpen] = useState(false);
   const { user, isLoading } = useAuth();
@@ -40,7 +42,7 @@ export default function MobileBookingBar({
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
         <div className="flex flex-col">
           <span className="text-xs text-foreground/50 font-medium uppercase tracking-wider">
-            Starting from
+            Price
           </span>
           <div className="flex items-center gap-1">
             <IndianRupee className="w-4 h-4 text-primary" />
@@ -67,6 +69,7 @@ export default function MobileBookingBar({
           basePrice={basePrice}
           maxCapacity={maxCapacity}
           pickupPoints={pickupPoints}
+          dropPoints={dropPoints}
           onClose={() => setIsOpen(false)}
         />
       )}

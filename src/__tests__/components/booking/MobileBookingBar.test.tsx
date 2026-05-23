@@ -43,10 +43,10 @@ describe("MobileBookingBar", () => {
     (useAuth as any).mockReturnValue({ user: null, isLoading: false });
   });
 
-  it("renders starting price with formatted amount", () => {
+  it("renders price with formatted amount", () => {
     render(<MobileBookingBar {...props} />);
 
-    expect(screen.getByText("Starting from")).toBeInTheDocument();
+    expect(screen.getByText("Price")).toBeInTheDocument();
     expect(screen.getByText("12,345")).toBeInTheDocument();
   });
 

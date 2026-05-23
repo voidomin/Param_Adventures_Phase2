@@ -16,7 +16,6 @@ import {
   Shield, 
   IndianRupee, 
   Wifi, 
-  Banknote, 
   Activity, 
   CarFront, 
   Tent, 
@@ -172,6 +171,39 @@ interface ExperienceWithInclusions {
   categories: CategoryWithRelation[];
 }
 
+const CANCELLATION_TEMPLATES = {
+  one_two_days: {
+    title: "One- & Two-Days Treks or Trips Policy",
+    headers: ["Policy", "21 days Prior", "20-16 days", "15-6 days", "5-0 days"],
+    rows: [
+      ["Batch Shifting", "✔", "✔", "✘", "✘"],
+      ["Cancellation Charge", "Free Cancellation", "25% of the Trip Amount", "50% of the Trip Amount", "100% of the Trip Amount"],
+      ["Booking Amount", "Refunded in mode of original payment", "Adjusted in Refund Deduction", "Adjusted in Refund Deduction", "No Refund"],
+      ["Remaining Amount", "Full Refund (deduction of 5% booking amount)", "Refund, deduction 25% of the trip amount", "Refund, deduction 50% of the trip amount", "No Refund"]
+    ]
+  },
+  multi_days: {
+    title: "Multiple Days Treks or Trips Policy",
+    headers: ["Policy", "46 days Prior", "45-31 days", "30-21 days", "20-0 days"],
+    rows: [
+      ["Batch Shifting", "✔", "✘", "✘", "✘"],
+      ["Cancellation Charge", "Free Cancellation", "50% of the Trip Amount", "75% of the Trip Amount", "100% of the Trip Amount"],
+      ["Booking Amount", "Refunded in mode of original payment", "Adjusted in Refund Deduction", "Adjusted in Refund Deduction", "No Refund"],
+      ["Remaining Amount", "Full Refund (deduction of 5% booking amount)", "Refund, deduction 50% of the trip amount", "Refund, deduction 75% of the trip amount", "No Refund"]
+    ]
+  },
+  international: {
+    title: "International Treks & Trips Policy",
+    headers: ["Policy", "61 days Prior", "60-46 days", "45-31 days", "30-0 days"],
+    rows: [
+      ["Batch Shifting", "✔", "✘", "✘", "✘"],
+      ["Cancellation Charge", "Free Cancellation", "50% of the Trip Amount", "75% of the Trip Amount", "100% of the Trip Amount"],
+      ["Booking Amount", "Refunded in mode of original payment", "Adjusted in Refund Deduction", "Adjusted in Refund Deduction", "No Refund"],
+      ["Remaining Amount", "Full Refund (deduction of 10% booking amount)", "Refund, deduction 50% of the trip amount", "Refund, deduction 75% of the trip amount", "No Refund"]
+    ]
+  }
+};
+
 type ExperienceJsonLdProps = {
   experience: ExperienceWithInclusions;
   url: string;
@@ -256,16 +288,17 @@ function HeroTags({ experience }: Readonly<{ experience: ExperienceWithInclusion
 function EssentialLogistics({ experience }: Readonly<{ experience: ExperienceWithInclusions }>) {
   if (
     !experience.networkConnectivity &&
-    !experience.lastAtm &&
     !experience.fitnessRequirement &&
     !experience.ageRange &&
     !experience.meetingTime &&
-    !experience.dropoffTime
+    !experience.dropoffTime &&
+    (!experience.pickupPoints || experience.pickupPoints.length === 0) &&
+    (!experience.dropPoints || experience.dropPoints.length === 0)
   )
     return null;
 
   return (
-    <section className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 items-start">
       {experience.networkConnectivity && (
         <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors">
           <Wifi className="w-5 h-5 text-primary" />
@@ -275,17 +308,6 @@ function EssentialLogistics({ experience }: Readonly<{ experience: ExperienceWit
             </p>
             <p className="font-bold text-sm leading-tight">
               {experience.networkConnectivity}
-            </p>
-          </div>
-        </div>
-      )}
-      {experience.lastAtm && (
-        <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors">
-          <Banknote className="w-5 h-5 text-primary" />
-          <div>
-            <p className="text-xs text-foreground/60 font-medium">Last ATM</p>
-            <p className="font-bold text-sm leading-tight">
-              {experience.lastAtm}
             </p>
           </div>
         </div>
@@ -312,33 +334,131 @@ function EssentialLogistics({ experience }: Readonly<{ experience: ExperienceWit
           </div>
         </div>
       )}
-      {(experience.meetingTime || experience.meetingPoint) && (
+      {(experience.meetingTime || experience.meetingPoint || (experience.pickupPoints && experience.pickupPoints.length > 0)) && (
         <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors col-span-2">
-          <CarFront className="w-5 h-5 text-primary" />
-          <div>
-            <p className="text-xs text-foreground/60 font-medium">
-              Meeting Point & Time
-            </p>
-            <p className="font-bold text-sm leading-tight">
-              {experience.meetingPoint} &bull; {experience.meetingTime}
-            </p>
+          <div className="flex items-center gap-3">
+            <CarFront className="w-5 h-5 text-primary shrink-0" />
+            <div>
+              <p className="text-xs text-foreground/60 font-medium">
+                Starting Point
+              </p>
+              <p className="font-bold text-sm leading-tight mt-0.5">
+                {experience.meetingPoint || "Multiple options available"} {experience.meetingTime && `\u2022 ${experience.meetingTime}`}
+              </p>
+            </div>
           </div>
+
+          {experience.pickupPoints && experience.pickupPoints.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-border/50">
+              <details className="group [&_summary::-webkit-details-marker]:hidden">
+                <summary className="flex items-center justify-between cursor-pointer text-xs font-bold uppercase tracking-wider text-primary hover:text-primary/80 transition-colors list-none select-none">
+                  <span>Available Pickup Locations ({experience.pickupPoints.length})</span>
+                  <ChevronDown className="w-4 h-4 text-primary transition-transform duration-200 group-open:rotate-180" />
+                </summary>
+                <div className="mt-2.5 flex flex-col gap-2 text-xs font-semibold text-foreground/80 max-h-52 overflow-y-auto custom-scrollbar pt-1">
+                  {experience.pickupPoints.map((point) => (
+                    <div key={point} className="flex items-center gap-2 bg-foreground/[0.03] border border-border/40 px-3 py-2 rounded-xl hover:bg-primary/5 hover:border-primary/20 transition-all">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                      <span>{point}</span>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            </div>
+          )}
         </div>
       )}
-      {experience.dropoffTime && (
+      {(experience.dropoffTime || (experience.dropPoints && experience.dropPoints.length > 0)) && (
         <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors col-span-2">
-          <MapPin className="w-5 h-5 text-primary" />
-          <div>
-            <p className="text-xs text-foreground/60 font-medium">
-              Drop-off Time
-            </p>
-            <p className="font-bold text-sm leading-tight">
-              {experience.meetingPoint} &bull; {experience.dropoffTime}
-            </p>
+          <div className="flex items-center gap-3">
+            <MapPin className="w-5 h-5 text-primary shrink-0" />
+            <div>
+              <p className="text-xs text-foreground/60 font-medium">
+                Drop-off Details
+              </p>
+              <p className="font-bold text-sm leading-tight mt-0.5">
+                {experience.meetingPoint || "Multiple options available"} {experience.dropoffTime && `\u2022 ${experience.dropoffTime}`}
+              </p>
+            </div>
           </div>
+
+          {experience.dropPoints && experience.dropPoints.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-border/50">
+              <details className="group [&_summary::-webkit-details-marker]:hidden">
+                <summary className="flex items-center justify-between cursor-pointer text-xs font-bold uppercase tracking-wider text-primary hover:text-primary/80 transition-colors list-none select-none">
+                  <span>Available Drop-off Locations ({experience.dropPoints.length})</span>
+                  <ChevronDown className="w-4 h-4 text-primary transition-transform duration-200 group-open:rotate-180" />
+                </summary>
+                <div className="mt-2.5 flex flex-col gap-2 text-xs font-semibold text-foreground/80 max-h-52 overflow-y-auto custom-scrollbar pt-1">
+                  {experience.dropPoints.map((point) => (
+                    <div key={point} className="flex items-center gap-2 bg-foreground/[0.03] border border-border/40 px-3 py-2 rounded-xl hover:bg-primary/5 hover:border-primary/20 transition-all">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                      <span>{point}</span>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            </div>
+          )}
         </div>
       )}
     </section>
+  );
+}
+
+interface Slot {
+  id: string;
+  date: Date;
+  status: string;
+  remainingCapacity: number;
+}
+
+function DepartureDates({ slots }: Readonly<{ slots: Slot[] }>) {
+  if (!Array.isArray(slots) || slots.length === 0) return null;
+
+  const nextDeparture = slots[0].date;
+  const otherDates = slots.slice(1);
+
+  return (
+    <div className="mb-8 space-y-4">
+      <div className="flex flex-col gap-1.5 p-4 rounded-2xl bg-primary/5 border border-primary/20">
+        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Next Departure</span>
+        <div className="flex items-center gap-2 text-foreground font-bold">
+          <CalendarDays className="w-5 h-5 text-primary" />
+          <span className="text-lg">
+            {new Date(nextDeparture).toLocaleDateString("en-IN", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })}
+          </span>
+        </div>
+      </div>
+
+      {otherDates.length > 0 && (
+        <details className="group border border-border rounded-xl bg-foreground/[0.02] overflow-hidden [&_summary::-webkit-details-marker]:hidden">
+          <summary className="flex items-center justify-between p-3 cursor-pointer text-xs font-bold uppercase tracking-wider text-foreground/50 hover:bg-foreground/5 transition-colors list-none">
+            Upcoming Batches ({otherDates.length})
+            <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" />
+          </summary>
+          <div className="p-3 pt-0 space-y-2 max-h-40 overflow-y-auto no-scrollbar">
+            {otherDates.map((slot) => (
+              <div key={slot.id} className="flex items-center justify-between py-2 border-t border-border/50 first:border-t-0">
+                <span className="text-sm font-medium">
+                  {new Date(slot.date).toLocaleDateString("en-IN", {
+                    day: "numeric",
+                    month: "short",
+                  })}
+                </span>
+                <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">
+                  {slot.remainingCapacity > 0 ? "Seats Available" : "Full"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
+    </div>
   );
 }
 
@@ -723,7 +843,7 @@ export default async function ExperienceDetailPage({
               </div>
               <div>
                 <p className="text-sm text-foreground/60 font-medium whitespace-nowrap">
-                  Trek Distance
+                  Total Distance (Both Ways)
                 </p>
                 <p className="font-bold">{exp.trekDistance || "N/A"}</p>
               </div>
@@ -758,25 +878,25 @@ export default async function ExperienceDetailPage({
             exp.thingsToCarry.length > 0 && (
               <section
                 id="things-to-carry"
-                className="bg-card border border-border rounded-3xl p-8 shadow-sm scroll-mt-32"
+                className="scroll-mt-32"
               >
                 <h2 className="text-3xl font-heading font-bold mb-6 flex items-center gap-3">
                   <Backpack className="w-8 h-8 text-primary" />
                   Things to Carry
                 </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-y-4 gap-x-8">
+                <ul className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3 pl-2">
                   {exp.thingsToCarry.map((item) => (
-                    <div
+                    <li
                       key={item}
-                      className="flex items-center gap-3 border-b border-border/50 pb-2"
+                      className="flex items-start gap-3 text-foreground/80"
                     >
-                      <div className="w-2 h-2 rounded-full bg-primary/60 shrink-0" />
-                      <span className="text-foreground/80 font-medium">
+                      <div className="w-2 h-2 rounded-full bg-primary shrink-0 mt-2" />
+                      <span className="leading-relaxed font-medium">
                         {item}
                       </span>
-                    </div>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </section>
             )}
 
@@ -822,9 +942,72 @@ export default async function ExperienceDetailPage({
               <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-red-500/90">
                 <Shield className="w-6 h-6" /> Cancellation Policy
               </h2>
-              <p className="text-foreground/80 leading-relaxed whitespace-pre-line text-sm">
-                {exp.cancellationPolicy}
-              </p>
+              {(() => {
+                let policyTemplate = "custom";
+                let policyText = "";
+                try {
+                  const parsed = JSON.parse(exp.cancellationPolicy);
+                  if (parsed && typeof parsed === "object" && "template" in parsed) {
+                    policyTemplate = parsed.template || "custom";
+                    policyText = parsed.text || "";
+                  } else {
+                    policyText = exp.cancellationPolicy;
+                  }
+                } catch {
+                  policyText = exp.cancellationPolicy;
+                }
+
+                const isTemplate = policyTemplate in CANCELLATION_TEMPLATES;
+                const t = isTemplate ? CANCELLATION_TEMPLATES[policyTemplate as keyof typeof CANCELLATION_TEMPLATES] : null;
+
+                return (
+                  <div className="space-y-6">
+                    {t && (
+                      <div className="space-y-4">
+                        <p className="font-bold text-lg text-foreground">{t.title}</p>
+                        <div className="overflow-x-auto rounded-2xl border border-border bg-card">
+                          <table className="w-full text-left border-collapse text-sm">
+                            <thead>
+                              <tr className="bg-muted text-muted-foreground uppercase text-[10px] tracking-wider">
+                                {t.headers.map((h) => (
+                                  <th key={h} className="p-3 border-b border-r border-border font-bold last:border-r-0 whitespace-nowrap">{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border bg-card text-xs">
+                              {t.rows.map((row) => (
+                                <tr key={row[0]}>
+                                  {row.map((cell, cellIndex) => {
+                                    const isCheck = cell === "✔";
+                                    const isCross = cell === "✘";
+                                    return (
+                                      <td
+                                        key={`${cellIndex}-${cell}`}
+                                        className={`p-3 border-r border-border last:border-r-0 ${
+                                          cellIndex === 0 ? "font-semibold text-foreground/80 whitespace-nowrap" : "whitespace-normal"
+                                        } ${isCheck ? "text-green-600 font-bold text-center" : ""} ${
+                                          isCross ? "text-red-500 font-bold text-center" : ""
+                                        }`}
+                                      >
+                                        {cell}
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                    {policyText && (
+                      <p className="text-foreground/80 leading-relaxed whitespace-pre-line text-sm">
+                        {policyText}
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
             </section>
           )}
 
@@ -857,6 +1040,8 @@ export default async function ExperienceDetailPage({
               </span>
             </div>
 
+            <DepartureDates slots={experience.slots as unknown as Slot[]} />
+
             <BookNowButton
               experienceId={exp.id}
               experienceTitle={exp.title}
@@ -864,6 +1049,7 @@ export default async function ExperienceDetailPage({
               basePrice={Number(exp.basePrice)}
               maxCapacity={exp.capacity}
               pickupPoints={exp.pickupPoints || []}
+              dropPoints={exp.dropPoints || []}
             />
 
             <SimilarTrips
@@ -884,6 +1070,7 @@ export default async function ExperienceDetailPage({
         basePrice={Number(exp.basePrice)}
         maxCapacity={exp.capacity}
         pickupPoints={exp.pickupPoints || []}
+        dropPoints={exp.dropPoints || []}
       />
     </div>
   );
