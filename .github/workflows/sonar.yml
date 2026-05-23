@@ -2,6 +2,7 @@ name: CI & Quality Analysis
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/postgres' }}
 
 on:
   push:
@@ -157,7 +158,6 @@ jobs:
       - name: Run build
         run: npm run build
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/postgres' }}
           NEXT_PUBLIC_APP_URL: https://localhost:3000
 
   sonarcloud:
