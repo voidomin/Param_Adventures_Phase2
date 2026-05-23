@@ -739,16 +739,104 @@ function drawEssentialInfoAndContact(doc: jsPDF, data: ItineraryBookingData) {
   }
 
   if (data.cancellationPolicy) {
-    y = checkPageBreak(doc, y, 30);
-    y = drawSectionHeader(doc, "CANCELLATION POLICY", y);
-    doc.setFontSize(8).setFont("helvetica", "normal").setTextColor(...COLORS.mutedText);
-    const policyLines = doc.splitTextToSize(cleanTextForPdf(data.cancellationPolicy), pageWidth - 28);
-    for (const line of policyLines) {
-      y = checkPageBreak(doc, y, 5);
-      doc.text(line, 14, y + 3);
-      y += 4;
+    let policyTemplate = "custom";
+    let policyText = "";
+    try {
+      const parsed = JSON.parse(data.cancellationPolicy);
+      if (parsed && typeof parsed === "object" && "template" in parsed) {
+        policyTemplate = parsed.template || "custom";
+        policyText = parsed.text || "";
+      } else {
+        policyText = data.cancellationPolicy;
+      }
+    } catch {
+      policyText = data.cancellationPolicy;
     }
-    y += 8;
+
+    const isTemplate =
+      policyTemplate === "one_two_days" ||
+      policyTemplate === "multi_days" ||
+      policyTemplate === "international";
+
+    if (isTemplate) {
+      y = checkPageBreak(doc, y, 40);
+      y = drawSectionHeader(doc, "CANCELLATION POLICY", y);
+
+      const templates = {
+        one_two_days: {
+          title: "One- & Two-Days Treks or Trips Policy",
+          headers: ["Policy", "21 days Prior", "20-16 days", "15-6 days", "5-0 days"],
+          rows: [
+            ["Batch Shifting", "Yes", "Yes", "No", "No"],
+            ["Cancellation Charge", "Free Cancellation", "25% of Trip", "50% of Trip", "100% of Trip"],
+            ["Booking Amount", "Refunded original mode", "Adjusted in Refund", "Adjusted in Refund", "No Refund"],
+            ["Remaining Amount", "Full Refund (5% fee)", "Refund minus 25%", "Refund minus 50%", "No Refund"]
+          ]
+        },
+        multi_days: {
+          title: "Multiple Days Treks or Trips Policy",
+          headers: ["Policy", "46 days Prior", "45-31 days", "30-21 days", "20-0 days"],
+          rows: [
+            ["Batch Shifting", "Yes", "No", "No", "No"],
+            ["Cancellation Charge", "Free Cancellation", "50% of Trip", "75% of Trip", "100% of Trip"],
+            ["Booking Amount", "Refunded original mode", "Adjusted in Refund", "Adjusted in Refund", "No Refund"],
+            ["Remaining Amount", "Full Refund (5% fee)", "Refund minus 50%", "Refund minus 75%", "No Refund"]
+          ]
+        },
+        international: {
+          title: "International Treks & Trips Policy",
+          headers: ["Policy", "61 days Prior", "60-46 days", "45-31 days", "30-0 days"],
+          rows: [
+            ["Batch Shifting", "Yes", "No", "No", "No"],
+            ["Cancellation Charge", "Free Cancellation", "50% of Trip", "75% of Trip", "100% of Trip"],
+            ["Booking Amount", "Refunded original mode", "Adjusted in Refund", "Adjusted in Refund", "No Refund"],
+            ["Remaining Amount", "Full Refund (10% fee)", "Refund minus 50%", "Refund minus 75%", "No Refund"]
+          ]
+        }
+      };
+
+      const t = templates[policyTemplate as keyof typeof templates];
+      
+      doc.setFontSize(9).setFont("helvetica", "bold").setTextColor(...COLORS.navy);
+      doc.text(t.title, 14, y + 4);
+      y += 6;
+
+      autoTable(doc, {
+        startY: y,
+        head: [t.headers],
+        body: t.rows,
+        theme: "striped",
+        styles: { fontSize: 8, cellPadding: 3 },
+        headStyles: { fillColor: COLORS.teal, textColor: [255, 255, 255], fontStyle: "bold" },
+        columnStyles: { 0: { fontStyle: "bold", cellWidth: 35 } },
+      });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      y = (doc as any).lastAutoTable?.finalY ?? y;
+      y += 8;
+
+      if (policyText) {
+        y = checkPageBreak(doc, y, 20);
+        doc.setFontSize(8).setFont("helvetica", "normal").setTextColor(...COLORS.mutedText);
+        const policyLines = doc.splitTextToSize(cleanTextForPdf(policyText), pageWidth - 28);
+        for (const line of policyLines) {
+          y = checkPageBreak(doc, y, 5);
+          doc.text(line, 14, y + 3);
+          y += 4;
+        }
+        y += 8;
+      }
+    } else if (policyText) {
+      y = checkPageBreak(doc, y, 30);
+      y = drawSectionHeader(doc, "CANCELLATION POLICY", y);
+      doc.setFontSize(8).setFont("helvetica", "normal").setTextColor(...COLORS.mutedText);
+      const policyLines = doc.splitTextToSize(cleanTextForPdf(policyText), pageWidth - 28);
+      for (const line of policyLines) {
+        y = checkPageBreak(doc, y, 5);
+        doc.text(line, 14, y + 3);
+        y += 4;
+      }
+      y += 8;
+    }
   }
 
   y = checkPageBreak(doc, y, 60);

@@ -171,6 +171,39 @@ interface ExperienceWithInclusions {
   categories: CategoryWithRelation[];
 }
 
+const CANCELLATION_TEMPLATES = {
+  one_two_days: {
+    title: "One- & Two-Days Treks or Trips Policy",
+    headers: ["Policy", "21 days Prior", "20-16 days", "15-6 days", "5-0 days"],
+    rows: [
+      ["Batch Shifting", "✔", "✔", "✘", "✘"],
+      ["Cancellation Charge", "Free Cancellation", "25% of the Trip Amount", "50% of the Trip Amount", "100% of the Trip Amount"],
+      ["Booking Amount", "Refunded in mode of original payment", "Adjusted in Refund Deduction", "Adjusted in Refund Deduction", "No Refund"],
+      ["Remaining Amount", "Full Refund (deduction of 5% booking amount)", "Refund, deduction 25% of the trip amount", "Refund, deduction 50% of the trip amount", "No Refund"]
+    ]
+  },
+  multi_days: {
+    title: "Multiple Days Treks or Trips Policy",
+    headers: ["Policy", "46 days Prior", "45-31 days", "30-21 days", "20-0 days"],
+    rows: [
+      ["Batch Shifting", "✔", "✘", "✘", "✘"],
+      ["Cancellation Charge", "Free Cancellation", "50% of the Trip Amount", "75% of the Trip Amount", "100% of the Trip Amount"],
+      ["Booking Amount", "Refunded in mode of original payment", "Adjusted in Refund Deduction", "Adjusted in Refund Deduction", "No Refund"],
+      ["Remaining Amount", "Full Refund (deduction of 5% booking amount)", "Refund, deduction 50% of the trip amount", "Refund, deduction 75% of the trip amount", "No Refund"]
+    ]
+  },
+  international: {
+    title: "International Treks & Trips Policy",
+    headers: ["Policy", "61 days Prior", "60-46 days", "45-31 days", "30-0 days"],
+    rows: [
+      ["Batch Shifting", "✔", "✘", "✘", "✘"],
+      ["Cancellation Charge", "Free Cancellation", "50% of the Trip Amount", "75% of the Trip Amount", "100% of the Trip Amount"],
+      ["Booking Amount", "Refunded in mode of original payment", "Adjusted in Refund Deduction", "Adjusted in Refund Deduction", "No Refund"],
+      ["Remaining Amount", "Full Refund (deduction of 10% booking amount)", "Refund, deduction 50% of the trip amount", "Refund, deduction 75% of the trip amount", "No Refund"]
+    ]
+  }
+};
+
 type ExperienceJsonLdProps = {
   experience: ExperienceWithInclusions;
   url: string;
@@ -909,9 +942,72 @@ export default async function ExperienceDetailPage({
               <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-red-500/90">
                 <Shield className="w-6 h-6" /> Cancellation Policy
               </h2>
-              <p className="text-foreground/80 leading-relaxed whitespace-pre-line text-sm">
-                {exp.cancellationPolicy}
-              </p>
+              {(() => {
+                let policyTemplate = "custom";
+                let policyText = "";
+                try {
+                  const parsed = JSON.parse(exp.cancellationPolicy);
+                  if (parsed && typeof parsed === "object" && "template" in parsed) {
+                    policyTemplate = parsed.template || "custom";
+                    policyText = parsed.text || "";
+                  } else {
+                    policyText = exp.cancellationPolicy;
+                  }
+                } catch {
+                  policyText = exp.cancellationPolicy;
+                }
+
+                const isTemplate = policyTemplate in CANCELLATION_TEMPLATES;
+                const t = isTemplate ? CANCELLATION_TEMPLATES[policyTemplate as keyof typeof CANCELLATION_TEMPLATES] : null;
+
+                return (
+                  <div className="space-y-6">
+                    {t && (
+                      <div className="space-y-4">
+                        <p className="font-bold text-lg text-foreground">{t.title}</p>
+                        <div className="overflow-x-auto rounded-2xl border border-border bg-card">
+                          <table className="w-full text-left border-collapse text-sm">
+                            <thead>
+                              <tr className="bg-muted text-muted-foreground uppercase text-[10px] tracking-wider">
+                                {t.headers.map((h) => (
+                                  <th key={h} className="p-3 border-b border-r border-border font-bold last:border-r-0 whitespace-nowrap">{h}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border bg-card text-xs">
+                              {t.rows.map((row) => (
+                                <tr key={row[0]}>
+                                  {row.map((cell, cellIndex) => {
+                                    const isCheck = cell === "✔";
+                                    const isCross = cell === "✘";
+                                    return (
+                                      <td
+                                        key={`${cellIndex}-${cell}`}
+                                        className={`p-3 border-r border-border last:border-r-0 ${
+                                          cellIndex === 0 ? "font-semibold text-foreground/80 whitespace-nowrap" : "whitespace-normal"
+                                        } ${isCheck ? "text-green-600 font-bold text-center" : ""} ${
+                                          isCross ? "text-red-500 font-bold text-center" : ""
+                                        }`}
+                                      >
+                                        {cell}
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                    {policyText && (
+                      <p className="text-foreground/80 leading-relaxed whitespace-pre-line text-sm">
+                        {policyText}
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
             </section>
           )}
 
