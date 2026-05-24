@@ -22,7 +22,10 @@ import {
   PenLine,
 } from "lucide-react";
 import Image from "next/image";
-import ImageCropper from "@/components/admin/ImageCropper";
+import dynamic from "next/dynamic";
+const ImageCropper = dynamic(() => import("@/components/admin/ImageCropper"), {
+  ssr: false,
+});
 import { ASPECT_RATIOS } from "@/lib/constants/aspect-ratios";
 
 interface DashboardData {

@@ -36,17 +36,29 @@ export class SMTPProvider implements EmailProvider {
   }
 
   async send(options: EmailOptions): Promise<void> {
-    try {
-      await this.transporter.sendMail({
-        from: options.from,
-        to: options.to,
-        subject: options.subject,
-        html: options.html,
-      });
-      console.log(`✅ [SMTP] Email sent to ${options.to}`);
-    } catch (error) {
-      console.error(`❌ [SMTP] Delivery failed to ${options.to}:`, error);
-      throw error;
+    const maxRetries = 3;
+    const baseDelayMs = 1000;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await this.transporter.sendMail({
+          from: options.from,
+          to: options.to,
+          subject: options.subject,
+          html: options.html,
+        });
+        console.log(`✅ [SMTP] Email sent to ${options.to} (attempt ${attempt})`);
+        return;
+      } catch (error) {
+        const isLastAttempt = attempt === maxRetries;
+        if (isLastAttempt) {
+          console.error(`❌ [SMTP] Delivery failed to ${options.to} after ${maxRetries} attempts:`, error);
+          throw error;
+        }
+        const delay = baseDelayMs * Math.pow(2, attempt - 1);
+        console.warn(`⚠️ [SMTP] Attempt ${attempt}/${maxRetries} failed for ${options.to}, retrying in ${delay}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, delay));
+      }
     }
   }
 }
