@@ -33,9 +33,7 @@ const mockTransaction = vi.fn();
 
 beforeEach(() => {
   vi.clearAllMocks();
-  (prisma as any).platformSetting = {
-    findUnique: mockPlatformSettingFindUnique,
-  };
+  process.env.RAZORPAY_WEBHOOK_SECRET = "test_secret";
   (prisma as any).processedWebhookEvent = {
     findUnique: mockProcessedWebhookEventFindUnique,
     create: mockProcessedWebhookEventCreate,
@@ -43,7 +41,6 @@ beforeEach(() => {
   (prisma as any).$transaction = mockTransaction;
   
   // Default mocks
-  mockPlatformSettingFindUnique.mockResolvedValue({ value: "test_secret" });
   mockTransaction.mockImplementation(async (callback) => {
     return callback(prisma);
   });

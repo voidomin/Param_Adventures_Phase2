@@ -131,7 +131,7 @@ describe("POST /api/auth/login", () => {
 
     expect(response.status).toBe(200);
     expect(data.user.id).toBe("u1");
-    expect(data.accessToken).toBe("access-1");
+    expect(data.accessToken).toBeUndefined();
     expect(mockFindUnique).toHaveBeenCalledWith({
       where: { email: "user@example.com" },
       include: { role: true },

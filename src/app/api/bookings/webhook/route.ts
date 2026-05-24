@@ -44,10 +44,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Fetch Webhook Secret
-    const secretSetting = await prisma.platformSetting.findUnique({
-      where: { key: "razorpay_webhook_secret" }
-    });
-    const secret = secretSetting?.value || process.env.RAZORPAY_WEBHOOK_SECRET;
+    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
 
     if (!secret) {
       console.error("[Webhook] RAZORPAY_WEBHOOK_SECRET is not configured.");

@@ -19,6 +19,17 @@ export async function GET(request: NextRequest) {
     );
   } catch (error) {
     console.error("[Health Check Error]:", error);
+    const isProd = process.env.NODE_ENV === "production";
+
+    if (isProd) {
+      return NextResponse.json(
+        {
+          status: "error",
+        },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
       {
         status: "error",

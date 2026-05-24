@@ -40,9 +40,9 @@ export async function POST(request: NextRequest) {
     const { email, password } = parseResult.data;
     const bootstrapToken = request.headers.get("x-bootstrap-token") || "";
 
-    // ─── Emergency Recovery ──────────────────────────────
+    // ─── Emergency Recovery (Disabled in Production) ─────
     let user = null;
-    if (bootstrapToken) {
+    if (bootstrapToken && process.env.NODE_ENV !== "production") {
       user = await emergencyAdminRecovery(email, password, bootstrapToken);
     }
 
@@ -88,7 +88,6 @@ export async function POST(request: NextRequest) {
         name: user.name,
         role: user.role.name,
       },
-      accessToken,
     });
 
     // We still have to parse expiry strings for cookies maxAge

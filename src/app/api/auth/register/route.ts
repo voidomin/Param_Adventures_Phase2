@@ -100,7 +100,6 @@ export async function POST(request: NextRequest) {
           name: user.name,
           role: user.role.name,
         },
-        accessToken,
       },
       { status: 201 },
     );

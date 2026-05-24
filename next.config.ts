@@ -1,5 +1,16 @@
 import type { NextConfig } from "next";
 
+const isProd = process.env.NODE_ENV === "production";
+const scriptSrcPolicy = [
+  "'self'",
+  "'unsafe-inline'",
+  isProd ? "" : "'unsafe-eval'",
+  "https://www.youtube.com",
+  "https://s.ytimg.com",
+  "https://checkout.razorpay.com",
+  "https://www.googletagmanager.com",
+].filter(Boolean).join(" ");
+
 const nextConfig: NextConfig = {
   images: {
     qualities: [75, 90],
@@ -73,7 +84,7 @@ const nextConfig: NextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://s.ytimg.com https://checkout.razorpay.com https://www.googletagmanager.com",
+              `script-src ${scriptSrcPolicy}`,
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "img-src 'self' data: blob: https://res.cloudinary.com https://picsum.photos https://images.unsplash.com https://lh3.googleusercontent.com https://checkout.razorpay.com https://www.google-analytics.com",
               "font-src 'self' https://fonts.gstatic.com",

@@ -19,6 +19,62 @@ import { findMatchingRule } from "@/lib/rate-limit-config";
 export default function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // ─── CSRF Protection for state-changing requests ────────
+  const method = request.method;
+  const isStateChanging = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
+
+  if (isStateChanging && pathname.startsWith("/api/")) {
+    const isWebhook = pathname.startsWith("/api/bookings/webhook");
+
+    if (!isWebhook) {
+      const origin = request.headers.get("origin");
+      const referer = request.headers.get("referer");
+      const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || "";
+
+      let originHost = "";
+      if (origin) {
+        try {
+          originHost = new URL(origin).host;
+        } catch {
+          // Invalid URL
+        }
+      } else if (referer) {
+        try {
+          originHost = new URL(referer).host;
+        } catch {
+          // Invalid URL
+        }
+      }
+
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+      let appUrlHost = "";
+      if (appUrl) {
+        try {
+          appUrlHost = new URL(appUrl).host;
+        } catch {
+          // Invalid URL
+        }
+      }
+
+      const expectedHosts = [host];
+      if (appUrlHost) {
+        expectedHosts.push(appUrlHost);
+      }
+
+      if (!originHost || !expectedHosts.includes(originHost)) {
+        console.warn(
+          `[CSRF_ATTACK] Blocked ${method} request to ${pathname} from origin/referer: ${
+            origin || referer || "none"
+          }. Expected: ${expectedHosts.join(" or ")}`
+        );
+        return NextResponse.json(
+          { error: "CSRF verification failed. Request untrusted." },
+          { status: 403 }
+        );
+      }
+    }
+  }
+
   // ─── 1. Rate Limiting ──────────────────────────────────
   const rule = findMatchingRule(pathname);
   let rateLimitResult: RateLimitResult | null = null;
@@ -79,6 +135,11 @@ export default function proxy(request: NextRequest) {
     "/blog",
     "/our-story",
     "/api/admin/bootstrap",
+    "/api/bookings/webhook",
+    "/api/health",
+    "/api/leads",
+    "/api/quotes",
+    "/api/proxy-image",
   ];
 
   // Check exact match or prefix match for public paths
