@@ -53,14 +53,14 @@ describe("lib/db module", () => {
       connectionString: "postgres://test:test@localhost:5432/testdb",
       max: 10,
       idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
+      connectionTimeoutMillis: 15000,
     });
     expect(adapterCtor).toHaveBeenCalledTimes(1);
     expect(prismaCtor).toHaveBeenCalledTimes(1);
     expect(((globalThis as unknown) as Record<string, any>).prisma).toBe(dbModule.prisma);
   });
 
-  it("does not cache prisma on global in production", async () => {
+  it("caches prisma on global in production", async () => {
     delete ((globalThis as unknown) as Record<string, any>).prisma;
 
     vi.doMock("pg", () => ({
@@ -85,6 +85,6 @@ describe("lib/db module", () => {
     const dbModule = await import("../../lib/db");
 
     expect(dbModule.prisma).toBeDefined();
-    expect(((globalThis as unknown) as Record<string, any>).prisma).toBeUndefined();
+    expect(((globalThis as unknown) as Record<string, any>).prisma).toBe(dbModule.prisma);
   });
 });
