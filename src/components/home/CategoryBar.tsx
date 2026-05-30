@@ -185,12 +185,11 @@ export default function CategoryBar() {
         {/* Scrollable container */}
         <div
           ref={scrollRef}
-          className="flex flex-wrap sm:flex-nowrap overflow-visible sm:overflow-x-auto no-scrollbar py-3 sm:py-5 px-4 sm:px-12 gap-2 sm:gap-4 justify-center sm:justify-start"
+          className="flex flex-nowrap overflow-x-auto no-scrollbar py-3.5 sm:py-5 px-4 sm:px-12 gap-3 sm:gap-4 scroll-smooth mask-linear-fade"
         >
           {allItems.map((item, index) => {
             const isAll = item.slug === "all";
             const isActive = activeCategory === item.slug;
-            const isDuplicate = index >= categories.length + 1;
 
             return (
               <motion.button
@@ -206,7 +205,7 @@ export default function CategoryBar() {
                       : `/experiences?category=${item.slug}`,
                   );
                 }}
-                className={`${isDuplicate ? "hidden sm:flex" : "flex"} items-center gap-1.5 sm:gap-2 px-3.5 py-1.5 sm:px-6 sm:py-2.5 rounded-full whitespace-nowrap transition-all duration-300 flex-shrink-0 border ${
+                className={`flex items-center gap-1.5 sm:gap-2 px-4 py-2 sm:px-6 sm:py-2.5 rounded-full whitespace-nowrap transition-all duration-300 flex-shrink-0 border ${
                   isActive
                     ? "bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/20 border-primary"
                     : "bg-white/5 text-muted-foreground hover:bg-primary hover:text-primary-foreground font-medium border-white/5 hover:border-primary"

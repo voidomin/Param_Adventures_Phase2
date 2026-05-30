@@ -410,7 +410,7 @@ export default function ExperiencesClient({
               </button>
               <div
                 ref={categoryScrollRef}
-                className="flex flex-wrap sm:flex-nowrap gap-2 overflow-visible sm:overflow-x-auto no-scrollbar flex-1 mask-linear-fade pb-1 scroll-smooth justify-center sm:justify-start"
+                className="flex gap-2 overflow-x-auto no-scrollbar flex-1 mask-linear-fade pb-1.5 scroll-smooth"
               >
                 {[
                   { id: "all", name: "All Trips", slug: "all" },
