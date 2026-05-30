@@ -68,3 +68,9 @@
     display: none;
   }
 }
+
+@utility mask-linear-fade {
+  mask-image: linear-gradient(to right, transparent, white 12px, white calc(100% - 12px), transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, white 12px, white calc(100% - 12px), transparent);
+}
+

@@ -398,12 +398,12 @@ export default function ExperiencesClient({
         {/* Sticky Filter Bar */}
         <div className="sticky top-[72px] z-40 mb-8 bg-background/80 backdrop-blur-xl border-b border-border shadow-sm rounded-b-2xl px-4 pt-4 pb-2 transition-all">
           {/* Row 1: Categories + Search + Sort */}
-          <div className="flex items-center gap-3 mb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-3">
             {/* Category Pills with Scroll Arrows */}
-            <div className="flex items-center gap-1 flex-1 min-w-0">
+            <div className="flex items-center gap-1 w-full sm:flex-1 min-w-0">
               <button
                 onClick={() => scrollCategories("left")}
-                className="shrink-0 w-8 h-8 rounded-full bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center text-foreground/50 hover:text-foreground transition-colors"
+                className="hidden sm:flex shrink-0 w-8 h-8 rounded-full bg-foreground/5 hover:bg-foreground/10 items-center justify-center text-foreground/50 hover:text-foreground transition-colors"
                 aria-label="Scroll left"
               >
                 <ChevronLeft className="w-4 h-4" />
@@ -419,14 +419,14 @@ export default function ExperiencesClient({
                   <button
                     key={filter.id}
                     onClick={() => setActiveFilter(filter.slug)}
-                    className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-300 ${
+                    className={`flex items-center gap-1.5 sm:gap-2 px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-300 ${
                       activeFilter === filter.slug
                         ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 scale-105"
                         : "bg-foreground/5 text-foreground/70 hover:bg-foreground/10 hover:text-foreground"
                     }`}
                   >
                     {filter.slug !== "all" && (
-                      <DynamicIcon name={filter.icon} className="w-4 h-4" />
+                      <DynamicIcon name={filter.icon} className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     )}
                     {filter.name}
                   </button>
@@ -434,63 +434,65 @@ export default function ExperiencesClient({
               </div>
               <button
                 onClick={() => scrollCategories("right")}
-                className="shrink-0 w-8 h-8 rounded-full bg-foreground/5 hover:bg-foreground/10 flex items-center justify-center text-foreground/50 hover:text-foreground transition-colors"
+                className="hidden sm:flex shrink-0 w-8 h-8 rounded-full bg-foreground/5 hover:bg-foreground/10 items-center justify-center text-foreground/50 hover:text-foreground transition-colors"
                 aria-label="Scroll right"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Search */}
-            <div className="relative hidden sm:block">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/40" />
-              <input
-                type="text"
-                placeholder="Search trips..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 py-2.5 bg-foreground/5 border border-border rounded-full text-sm text-foreground placeholder:text-foreground/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary w-48 transition-all focus:w-56"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
+            {/* Actions: Search + Filters + Sort */}
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end shrink-0">
+              {/* Search */}
+              <div className="relative hidden sm:block">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/40" />
+                <input
+                  type="text"
+                  placeholder="Search trips..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-4 py-2.5 bg-foreground/5 border border-border rounded-full text-sm text-foreground placeholder:text-foreground/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary w-48 transition-all focus:w-56"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
 
-            {/* Filters Toggle */}
-            <button
-              onClick={() => setShowFilters((v) => !v)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all border ${
-                showFilters || activeFilterCount > 0
-                  ? "bg-primary/10 text-primary border-primary/30"
-                  : "bg-foreground/5 text-foreground/70 border-transparent hover:bg-foreground/10"
-              }`}
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-              Filters
-              {activeFilterCount > 0 && (
-                <span className="w-5 h-5 bg-primary text-primary-foreground rounded-full text-[10px] font-black flex items-center justify-center">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-
-            {/* Sort Button */}
-            <div className="relative">
+              {/* Filters Toggle */}
               <button
-                onClick={() => setShowSortMenu((v) => !v)}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold whitespace-nowrap bg-foreground/5 text-foreground/70 hover:bg-foreground/10 transition-all border border-transparent"
+                onClick={() => setShowFilters((v) => !v)}
+                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all border ${
+                  showFilters || activeFilterCount > 0
+                    ? "bg-primary/10 text-primary border-primary/30"
+                    : "bg-foreground/5 text-foreground/70 border-transparent hover:bg-foreground/10"
+                }`}
               >
-                <ArrowUpDown className="w-4 h-4" />
-                <span className="hidden md:inline">
-                  {SORT_OPTIONS.find((o) => o.value === sortBy)?.label}
-                </span>
-                <ChevronDown className="w-3.5 h-3.5" />
+                <SlidersHorizontal className="w-4 h-4" />
+                Filters
+                {activeFilterCount > 0 && (
+                  <span className="w-5 h-5 bg-primary text-primary-foreground rounded-full text-[10px] font-black flex items-center justify-center">
+                    {activeFilterCount}
+                  </span>
+                )}
               </button>
+
+              {/* Sort Button */}
+              <div className="relative flex-1 sm:flex-none">
+                <button
+                  onClick={() => setShowSortMenu((v) => !v)}
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold whitespace-nowrap bg-foreground/5 text-foreground/70 hover:bg-foreground/10 transition-all border border-transparent"
+                >
+                  <ArrowUpDown className="w-4 h-4" />
+                  <span>
+                    {SORT_OPTIONS.find((o) => o.value === sortBy)?.label}
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
               {showSortMenu && (
                 <>
                   <button
@@ -521,6 +523,7 @@ export default function ExperiencesClient({
               )}
             </div>
           </div>
+        </div>
 
           {/* Mobile Search (visible on small screens) */}
           <div className="sm:hidden mb-3">
