@@ -410,7 +410,7 @@ export default function ExperiencesClient({
               </button>
               <div
                 ref={categoryScrollRef}
-                className="flex gap-2 overflow-x-auto no-scrollbar flex-1 mask-linear-fade pb-1.5 scroll-smooth"
+                className="flex gap-2 overflow-x-auto no-scrollbar flex-1 mask-linear-fade pb-2 scroll-smooth"
               >
                 {[
                   { id: "all", name: "All Trips", slug: "all" },
@@ -419,14 +419,14 @@ export default function ExperiencesClient({
                   <button
                     key={filter.id}
                     onClick={() => setActiveFilter(filter.slug)}
-                    className={`flex items-center gap-1.5 sm:gap-2 px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-300 ${
+                    className={`flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-300 ${
                       activeFilter === filter.slug
                         ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 scale-105"
                         : "bg-foreground/5 text-foreground/70 hover:bg-foreground/10 hover:text-foreground"
                     }`}
                   >
                     {filter.slug !== "all" && (
-                      <DynamicIcon name={filter.icon} className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      <DynamicIcon name={filter.icon} className="w-4 h-4" />
                     )}
                     {filter.name}
                   </button>

@@ -185,7 +185,7 @@ export default function CategoryBar() {
         {/* Scrollable container */}
         <div
           ref={scrollRef}
-          className="flex flex-nowrap overflow-x-auto no-scrollbar py-3.5 sm:py-5 px-4 sm:px-12 gap-3 sm:gap-4 scroll-smooth mask-linear-fade"
+          className="flex flex-nowrap overflow-x-auto no-scrollbar py-4 sm:py-5 px-4 sm:px-12 gap-3 sm:gap-4 scroll-smooth mask-linear-fade"
         >
           {allItems.map((item, index) => {
             const isAll = item.slug === "all";
@@ -205,7 +205,7 @@ export default function CategoryBar() {
                       : `/experiences?category=${item.slug}`,
                   );
                 }}
-                className={`flex items-center gap-1.5 sm:gap-2 px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-300 flex-shrink-0 border ${
+                className={`flex items-center gap-2 px-4 py-2 sm:px-6 sm:py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-300 flex-shrink-0 border ${
                   isActive
                     ? "bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/20 border-primary"
                     : "bg-white/5 text-muted-foreground hover:bg-primary hover:text-primary-foreground font-medium border-white/5 hover:border-primary"
@@ -218,7 +218,7 @@ export default function CategoryBar() {
                   >
                     <DynamicIcon
                       name={item.icon}
-                      className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isActive ? "" : "opacity-70"}`}
+                      className={`w-4 h-4 ${isActive ? "" : "opacity-70"}`}
                     />
                   </motion.div>
                 )}
