@@ -19,13 +19,97 @@ export async function GET(request: NextRequest) {
     const limit = Number.parseInt(searchParams.get("limit") || "50");
     const skip = (page - 1) * limit;
 
-    const whereClause = {
+    const bookingDateStart = searchParams.get("bookingDateStart");
+    const bookingDateEnd = searchParams.get("bookingDateEnd");
+    const slotDateStart = searchParams.get("slotDateStart");
+    const slotDateEnd = searchParams.get("slotDateEnd");
+    const archived = searchParams.get("archived") === "true";
+
+    const bookingDateFilter: any = {};
+    if (bookingDateStart) {
+      bookingDateFilter.gte = new Date(bookingDateStart);
+    }
+    if (bookingDateEnd) {
+      const end = new Date(bookingDateEnd);
+      end.setHours(23, 59, 59, 999);
+      bookingDateFilter.lte = end;
+    }
+
+    const slotDateFilter: any = {};
+    if (slotDateStart) {
+      slotDateFilter.gte = new Date(slotDateStart);
+    }
+    if (slotDateEnd) {
+      const end = new Date(slotDateEnd);
+      end.setHours(23, 59, 59, 999);
+      slotDateFilter.lte = end;
+    }
+
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const fortyDaysAgo = new Date();
+    fortyDaysAgo.setDate(fortyDaysAgo.getDate() - 40);
+
+    const archiveCondition = {
+      OR: [
+        { completedAt: { lt: thirtyDaysAgo } },
+        { trekEndedAt: { lt: thirtyDaysAgo } },
+        {
+          AND: [
+            { completedAt: null },
+            { trekEndedAt: null },
+            { date: { lt: fortyDaysAgo } }
+          ]
+        }
+      ]
+    };
+
+    const activeCondition = {
+      OR: [
+        { completedAt: { gte: thirtyDaysAgo } },
+        { trekEndedAt: { gte: thirtyDaysAgo } },
+        {
+          AND: [
+            { completedAt: null },
+            { trekEndedAt: null },
+            { date: { gte: fortyDaysAgo } }
+          ]
+        }
+      ]
+    };
+
+    const whereClause: any = {
       ...(status
         ? { bookingStatus: status as "REQUESTED" | "CONFIRMED" | "CANCELLED" }
         : {}),
       ...(experienceId ? { experienceId } : {}),
       deletedAt: null,
     };
+
+    if (Object.keys(bookingDateFilter).length > 0) {
+      whereClause.createdAt = bookingDateFilter;
+    }
+
+    if (archived) {
+      whereClause.slot = {
+        ...archiveCondition,
+        ...(Object.keys(slotDateFilter).length > 0 ? { date: slotDateFilter } : {}),
+      };
+    } else {
+      if (Object.keys(slotDateFilter).length > 0) {
+        whereClause.slot = {
+          ...activeCondition,
+          date: slotDateFilter,
+        };
+      } else {
+        whereClause.OR = [
+          { slotId: null },
+          {
+            slot: activeCondition,
+          },
+        ];
+      }
+    }
 
     const [bookings, total] = await Promise.all([
       prisma.booking.findMany({

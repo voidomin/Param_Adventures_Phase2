@@ -10,6 +10,7 @@ import {
   Clock,
   Search,
   Filter,
+  Download,
 } from "lucide-react";
 import Link from "next/link";
 import { TableSkeleton } from "@/components/admin/TableSkeleton";
@@ -180,11 +181,25 @@ export default function AdminBookingsPage() {
   const [selectedBooking, setSelectedBooking] = useState<{ id: string; amount: number } | null>(null);
   const [resolvingBooking, setResolvingBooking] = useState<Booking | null>(null);
 
+  // New filters state
+  const [bookingDateStart, setBookingDateStart] = useState("");
+  const [bookingDateEnd, setBookingDateEnd] = useState("");
+  const [slotDateStart, setSlotDateStart] = useState("");
+  const [slotDateEnd, setSlotDateEnd] = useState("");
+  const [viewArchived, setViewArchived] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
   const fetchBookings = () => {
     const params = new URLSearchParams();
     if (statusFilter !== "ALL") params.set("status", statusFilter);
-    setIsLoading(true);
+    if (bookingDateStart) params.set("bookingDateStart", bookingDateStart);
+    if (bookingDateEnd) params.set("bookingDateEnd", bookingDateEnd);
+    if (slotDateStart) params.set("slotDateStart", slotDateStart);
+    if (slotDateEnd) params.set("slotDateEnd", slotDateEnd);
+    if (viewArchived) params.set("archived", "true");
+    params.set("limit", "1000");
 
+    setIsLoading(true);
     fetch(`/api/admin/bookings?${params}`)
       .then((r) => r.json())
       .then((d) => { setBookings(d.bookings || []); })
@@ -196,7 +211,14 @@ export default function AdminBookingsPage() {
     let active = true;
     const params = new URLSearchParams();
     if (statusFilter !== "ALL") params.set("status", statusFilter);
+    if (bookingDateStart) params.set("bookingDateStart", bookingDateStart);
+    if (bookingDateEnd) params.set("bookingDateEnd", bookingDateEnd);
+    if (slotDateStart) params.set("slotDateStart", slotDateStart);
+    if (slotDateEnd) params.set("slotDateEnd", slotDateEnd);
+    if (viewArchived) params.set("archived", "true");
+    params.set("limit", "1000");
 
+    setIsLoading(true);
     fetch(`/api/admin/bookings?${params}`)
       .then((r) => r.json())
       .then((d) => {
@@ -212,7 +234,78 @@ export default function AdminBookingsPage() {
     return () => {
       active = false;
     };
-  }, [statusFilter]);
+  }, [statusFilter, bookingDateStart, bookingDateEnd, slotDateStart, slotDateEnd, viewArchived]);
+
+  const handleExport = async () => {
+    try {
+      setIsExporting(true);
+      const params = new URLSearchParams();
+      if (statusFilter !== "ALL") params.set("status", statusFilter);
+      if (bookingDateStart) params.set("bookingDateStart", bookingDateStart);
+      if (bookingDateEnd) params.set("bookingDateEnd", bookingDateEnd);
+      if (slotDateStart) params.set("slotDateStart", slotDateStart);
+      if (slotDateEnd) params.set("slotDateEnd", slotDateEnd);
+      if (viewArchived) params.set("archived", "true");
+      params.set("limit", "10000");
+
+      const response = await fetch(`/api/admin/bookings?${params}`);
+      const data = await response.json();
+      const exportBookings = data.bookings || [];
+
+      if (exportBookings.length === 0) {
+        alert("No bookings to export.");
+        return;
+      }
+
+      // Map to flat structure for Excel
+      const rows = exportBookings.map((b: any) => ({
+        "Booking ID": b.id,
+        "Customer Name": b.user?.name || "—",
+        "Customer Email": b.user?.email || "—",
+        "Customer Phone": b.user?.phoneNumber || "—",
+        "Experience Title": b.experience?.title || "—",
+        "Slot Date": b.slot ? new Date(b.slot.date).toLocaleDateString("en-IN") : "—",
+        "Pax Count": b.participantCount,
+        "Total Paid (INR)": Number(b.totalPrice),
+        "Booking Status": b.bookingStatus,
+        "Payment Status": b.paymentStatus,
+        "Booking Date": new Date(b.createdAt).toLocaleDateString("en-IN"),
+      }));
+
+      // Dynamically import xlsx (SheetJS)
+      const XLSX = await import("xlsx");
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Bookings");
+
+      // Auto-fit column widths
+      const maxLens = Object.keys(rows[0]).reduce((acc, key) => {
+        acc[key] = key.length;
+        return acc;
+      }, {} as Record<string, number>);
+
+      rows.forEach((row: any) => {
+        Object.keys(row).forEach((key) => {
+          const valStr = String(row[key]);
+          if (valStr.length > maxLens[key]) {
+            maxLens[key] = valStr.length;
+          }
+        });
+      });
+
+      worksheet["!cols"] = Object.keys(maxLens).map((key) => ({
+        wch: Math.max(maxLens[key] + 3, 10),
+      }));
+
+      const dateStr = new Date().toISOString().split("T")[0];
+      XLSX.writeFile(workbook, `bookings_export_${dateStr}.xlsx`);
+    } catch (err) {
+      console.error("Export failed:", err);
+      alert("Failed to export bookings. Please try again.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const filtered = bookings.filter((b) => {
     if (!search) return true;
@@ -360,15 +453,58 @@ export default function AdminBookingsPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-heading font-bold text-foreground">
-            Bookings
+            {viewArchived ? "Archived Bookings" : "Bookings"}
           </h1>
           <p className="text-foreground/60 mt-1">
-            All bookings across all experiences.
+            {viewArchived
+              ? "Bookings archived after 30 days of trip end."
+              : "All active bookings across all experiences."}
           </p>
         </div>
+        <button
+          type="button"
+          disabled={isExporting}
+          onClick={handleExport}
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground font-bold text-sm rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 shadow-sm border border-primary/20 hover:shadow-primary/5 cursor-pointer"
+        >
+          <Download className="w-4 h-4" />
+          {isExporting ? "Exporting..." : "Export to Excel"}
+        </button>
+      </div>
+
+      {/* Active vs Archived Tabs */}
+      <div className="flex border-b border-border mb-6">
+        <button
+          type="button"
+          onClick={() => {
+            setIsLoading(true);
+            setViewArchived(false);
+          }}
+          className={`px-4 py-2.5 border-b-2 text-sm font-bold transition-all -mb-px cursor-pointer ${
+            !viewArchived
+              ? "border-primary text-primary font-bold"
+              : "border-transparent text-foreground/60 hover:text-foreground/90"
+          }`}
+        >
+          Active Bookings
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setIsLoading(true);
+            setViewArchived(true);
+          }}
+          className={`px-4 py-2.5 border-b-2 text-sm font-bold transition-all -mb-px cursor-pointer ${
+            viewArchived
+              ? "border-primary text-primary font-bold"
+              : "border-transparent text-foreground/60 hover:text-foreground/90"
+          }`}
+        >
+          Archived Bookings
+        </button>
       </div>
 
       {/* Stats */}
@@ -401,7 +537,7 @@ export default function AdminBookingsPage() {
         ].map((s) => (
           <div
             key={s.label}
-            className="bg-card border border-border rounded-xl p-4 flex items-center gap-3"
+            className="bg-card border border-border rounded-xl p-4 flex items-center gap-3 shadow-xs"
           >
             <div className={`${s.color} opacity-70`}>{s.icon}</div>
             <div>
@@ -412,8 +548,8 @@ export default function AdminBookingsPage() {
         ))}
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+      {/* Search and Status Filters */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/40" />
           <input
@@ -434,7 +570,7 @@ export default function AdminBookingsPage() {
                   setIsLoading(true);
                   setStatusFilter(s);
                 }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border ${
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border cursor-pointer ${
                   statusFilter === s
                     ? "bg-primary text-primary-foreground border-primary"
                     : "bg-card border-border text-foreground/60 hover:bg-foreground/5"
@@ -443,6 +579,84 @@ export default function AdminBookingsPage() {
                 {s}
               </button>
             ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Date Range Filters */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-card border border-border rounded-2xl mb-6 shadow-xs">
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold text-foreground/50 uppercase tracking-wider">
+            Booking Date From
+          </label>
+          <input
+            type="date"
+            value={bookingDateStart}
+            onChange={(e) => {
+              setIsLoading(true);
+              setBookingDateStart(e.target.value);
+            }}
+            className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all [color-scheme:dark]"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold text-foreground/50 uppercase tracking-wider">
+            Booking Date To
+          </label>
+          <input
+            type="date"
+            value={bookingDateEnd}
+            onChange={(e) => {
+              setIsLoading(true);
+              setBookingDateEnd(e.target.value);
+            }}
+            className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all [color-scheme:dark]"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold text-foreground/50 uppercase tracking-wider">
+            Slot Date From (Trip)
+          </label>
+          <input
+            type="date"
+            value={slotDateStart}
+            onChange={(e) => {
+              setIsLoading(true);
+              setSlotDateStart(e.target.value);
+            }}
+            className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all [color-scheme:dark]"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs font-bold text-foreground/50 uppercase tracking-wider">
+            Slot Date To (Trip)
+          </label>
+          <div className="flex gap-2">
+            <input
+              type="date"
+              value={slotDateEnd}
+              onChange={(e) => {
+                setIsLoading(true);
+                setSlotDateEnd(e.target.value);
+              }}
+              className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all [color-scheme:dark]"
+            />
+            {(bookingDateStart || bookingDateEnd || slotDateStart || slotDateEnd) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLoading(true);
+                  setBookingDateStart("");
+                  setBookingDateEnd("");
+                  setSlotDateStart("");
+                  setSlotDateEnd("");
+                }}
+                className="px-3 py-2 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500/20 text-xs font-bold border border-red-500/20 transition-all shrink-0 cursor-pointer"
+                title="Clear Date Filters"
+              >
+                Clear
+              </button>
+            )}
           </div>
         </div>
       </div>
