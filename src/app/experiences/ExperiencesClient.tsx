@@ -97,6 +97,8 @@ interface Experience {
   status: string;
   images: string[];
   categories: Category[];
+  vibeTags?: string[];
+  highlights?: string[];
   slotsCount?: number;
   nextDeparture?: string | null;
   nextDepartureSlot?: {
@@ -241,11 +243,31 @@ export default function ExperiencesClient({
     // 2. Search
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      results = results.filter(
-        (exp) =>
-          exp.title.toLowerCase().includes(q) ||
-          exp.location.toLowerCase().includes(q),
-      );
+      results = results.filter((exp) => {
+        const titleMatch = exp.title.toLowerCase().includes(q);
+        const locationMatch = exp.location.toLowerCase().includes(q);
+        const descMatch = (exp.description || "").toLowerCase().includes(q);
+        const difficultyMatch = exp.difficulty.toLowerCase().includes(q);
+        const categoryMatch = exp.categories.some((c) =>
+          c.category.name.toLowerCase().includes(q)
+        );
+        const tagsMatch = (exp.vibeTags || []).some((tag) =>
+          tag.toLowerCase().includes(q)
+        );
+        const highlightsMatch = (exp.highlights || []).some((hl) =>
+          hl.toLowerCase().includes(q)
+        );
+
+        return (
+          titleMatch ||
+          locationMatch ||
+          descMatch ||
+          difficultyMatch ||
+          categoryMatch ||
+          tagsMatch ||
+          highlightsMatch
+        );
+      });
     }
 
     // 3. Difficulty

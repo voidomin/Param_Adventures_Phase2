@@ -121,6 +121,8 @@ export default async function ExperiencesPage({
     } : null,
     nextDeparture: exp.slots[0]?.date ? (exp.slots[0].date instanceof Date ? exp.slots[0].date.toISOString() : new Date(exp.slots[0].date).toISOString()) : null,
     slotsCount: exp.slots.length,
+    vibeTags: exp.vibeTags,
+    highlights: exp.highlights,
     categories: exp.categories.map((c) => ({
       category: {
         id: c.category.id,
