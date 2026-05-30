@@ -149,7 +149,7 @@ export default function AdminUsersPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
           { label: "Total Users", value: stats.total, icon: Users, color: "text-primary", bg: "bg-primary/10" },
-          { label: "Customers", value: stats.customers, icon: UserIcon, color: "text-blue-500", bg: "bg-blue-500/10" },
+          { label: "Members", value: stats.customers, icon: UserIcon, color: "text-blue-500", bg: "bg-blue-500/10" },
           { label: "Trek Leads", value: stats.trekLeads, icon: Star, color: "text-orange-500", bg: "bg-orange-500/10" },
           { label: "Admins", value: stats.admins, icon: UserCog, color: "text-red-500", bg: "bg-red-500/10" },
         ].map((stat) => (

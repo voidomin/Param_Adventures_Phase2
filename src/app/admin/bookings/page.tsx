@@ -11,6 +11,8 @@ import {
   Search,
   Filter,
   Download,
+  Eye,
+  ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
 import { TableSkeleton } from "@/components/admin/TableSkeleton";
@@ -48,6 +50,13 @@ interface Booking {
     status: PaymentStatus;
     amount: number;
     providerPaymentId?: string | null;
+    provider: "RAZORPAY" | "MANUAL";
+    fullPayload?: {
+      proofUrl?: string | null;
+      adminNotes?: string | null;
+      verifiedBy?: string | null;
+      verifiedAt?: string | null;
+    } | null;
   }[];
 }
 
@@ -171,6 +180,124 @@ function RefundResolveModal({
   );
 }
 
+// Payment Details Modal
+function PaymentDetailsModal({
+  booking,
+  onClose,
+}: Readonly<{
+  booking: Booking;
+  onClose: () => void;
+}>) {
+  const payments = booking.payments;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+      <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
+        <div className="p-6 border-b border-border flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-foreground">Payment Records</h3>
+            <p className="text-foreground/50 text-sm mt-0.5">
+              {booking.user.name} — {booking.experience.title}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-foreground/5 text-foreground/40 hover:text-foreground transition-colors"
+          >
+            <XCircle className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+          {payments.length === 0 ? (
+            <p className="text-foreground/40 text-sm text-center py-4">No payment records found.</p>
+          ) : (
+            payments.map((p, i) => {
+              const isManual = p.provider === "MANUAL";
+              return (
+                <div key={i} className={`rounded-xl border p-4 space-y-3 ${
+                  isManual
+                    ? "bg-blue-500/5 border-blue-500/20"
+                    : "bg-foreground/[0.02] border-border"
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full border uppercase tracking-wider ${
+                      isManual
+                        ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                        : "bg-primary/10 text-primary border-primary/20"
+                    }`}>
+                      {isManual ? "🏦 Manual" : "💳 Razorpay"}
+                    </span>
+                    <span className={`text-xs font-bold ${
+                      p.status === "PAID" ? "text-green-500" : "text-yellow-500"
+                    }`}>
+                      {p.status}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div>
+                      <p className="text-foreground/40 text-xs">Amount</p>
+                      <p className="font-bold text-foreground">₹{Number(p.amount).toLocaleString("en-IN")}</p>
+                    </div>
+                    {p.providerPaymentId && (
+                      <div>
+                        <p className="text-foreground/40 text-xs">Transaction / Reference ID</p>
+                        <p className="font-mono text-xs text-foreground break-all">{p.providerPaymentId}</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {isManual && p.fullPayload && (
+                    <div className="space-y-2 pt-2 border-t border-border/50">
+                      {p.fullPayload.adminNotes && (
+                        <div>
+                          <p className="text-foreground/40 text-xs">Admin Notes</p>
+                          <p className="text-sm text-foreground">{p.fullPayload.adminNotes}</p>
+                        </div>
+                      )}
+                      {p.fullPayload.verifiedAt && (
+                        <div>
+                          <p className="text-foreground/40 text-xs">Verified At</p>
+                          <p className="text-sm text-foreground">
+                            {new Date(p.fullPayload.verifiedAt).toLocaleString("en-IN")}
+                          </p>
+                        </div>
+                      )}
+                      {p.fullPayload.proofUrl && (
+                        <div>
+                          <p className="text-foreground/40 text-xs mb-1.5">Payment Proof</p>
+                          <a
+                            href={p.fullPayload.proofUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
+                          >
+                            <ExternalLink className="w-3.5 h-3.5" />
+                            View Screenshot
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+        <div className="p-4 border-t border-border">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full py-2.5 rounded-xl border border-border text-foreground/60 font-bold hover:bg-foreground/5 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminBookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -180,6 +307,7 @@ export default function AdminBookingsPage() {
   const [search, setSearch] = useState("");
   const [selectedBooking, setSelectedBooking] = useState<{ id: string; amount: number } | null>(null);
   const [resolvingBooking, setResolvingBooking] = useState<Booking | null>(null);
+  const [viewPaymentBooking, setViewPaymentBooking] = useState<Booking | null>(null);
 
   // New filters state
   const [bookingDateStart, setBookingDateStart] = useState("");
@@ -430,16 +558,28 @@ export default function AdminBookingsPage() {
                     {formatDate(b.createdAt)}
                   </td>
                   <td className="px-5 py-4 text-right">
-                    {b.bookingStatus === "REQUESTED" && b.paymentStatus !== "PAID" && (
-                      <button
-                        onClick={() => setSelectedBooking({ id: b.id, amount: Number(b.totalPrice) })}
-                        className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all flex items-center gap-1.5 text-xs font-bold"
-                        title="Approve Manual Payment"
-                      >
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        Approve Manual
-                      </button>
-                    )}
+                    <div className="flex items-center justify-end gap-2">
+                      {b.payments.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setViewPaymentBooking(b)}
+                          className="p-2 rounded-lg bg-foreground/5 text-foreground/50 hover:bg-foreground/10 hover:text-foreground transition-all"
+                          title="View Payment Records"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                      {b.bookingStatus === "REQUESTED" && b.paymentStatus !== "PAID" && (
+                        <button
+                          onClick={() => setSelectedBooking({ id: b.id, amount: Number(b.totalPrice) })}
+                          className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all flex items-center gap-1.5 text-xs font-bold"
+                          title="Approve Manual Payment"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Approve Manual
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -735,6 +875,13 @@ export default function AdminBookingsPage() {
             setResolvingBooking(null);
             fetchBookings();
           }}
+        />
+      )}
+
+      {viewPaymentBooking && (
+        <PaymentDetailsModal
+          booking={viewPaymentBooking}
+          onClose={() => setViewPaymentBooking(null)}
         />
       )}
     </div>
