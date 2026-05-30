@@ -99,7 +99,7 @@ export async function DELETE(
       include: {
         _count: {
           select: {
-            bookings: { where: { bookingStatus: { not: "CANCELLED" } } },
+            bookings: true,
           },
         },
       },
@@ -111,7 +111,7 @@ export async function DELETE(
 
     if (slot._count.bookings > 0) {
       return NextResponse.json(
-        { error: "Cannot delete a slot that has active bookings." },
+        { error: "Cannot delete a slot that has bookings associated with it." },
         { status: 409 },
       );
     }

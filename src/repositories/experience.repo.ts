@@ -11,7 +11,12 @@ export const ExperienceRepo = {
       orderBy: { createdAt: "desc" },
       include: {
         categories: { include: { category: true } },
-        _count: { select: { slots: true, bookings: true } },
+        _count: {
+          select: {
+            slots: true,
+            bookings: { where: { bookingStatus: { not: "CANCELLED" } } },
+          },
+        },
       },
     });
   },
