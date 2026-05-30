@@ -354,7 +354,7 @@ export default function ExperiencesClient({
   return (
     <>
       {/* Hero */}
-      <div className="relative w-full pt-32 pb-24 flex items-center justify-center overflow-hidden min-h-[50vh] bg-black">
+      <div className="relative w-full pt-20 pb-12 sm:pt-32 sm:pb-24 flex items-center justify-center overflow-hidden sm:min-h-[50vh] min-h-0 bg-black">
         <div className="absolute inset-0 z-0">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/20 via-black to-black opacity-80" />
           <div
@@ -376,17 +376,17 @@ export default function ExperiencesClient({
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8, delay: 0.3 }}
-            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 text-primary text-xs font-bold uppercase tracking-widest mb-6"
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/30 text-primary text-xs font-bold uppercase tracking-widest mb-4 sm:mb-6"
           >
             Explore
           </motion.div>
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-heading font-black text-white mb-6 drop-shadow-xl tracking-tight leading-[1.1]">
+          <h1 className="text-3xl sm:text-5xl md:text-7xl lg:text-8xl font-heading font-black text-white mb-4 sm:mb-6 drop-shadow-xl tracking-tight leading-[1.1]">
             Curated <br className="md:hidden" />
             <span className="text-primary italic drop-shadow-md">
               Adventures
             </span>
           </h1>
-          <p className="text-white/70 max-w-2xl mx-auto text-lg md:text-xl font-body">
+          <p className="text-white/70 max-w-2xl mx-auto text-sm sm:text-lg md:text-xl font-body">
             Discover our hand-picked collection of treks, spiritual journeys,
             and immersive experiences across India.
           </p>
@@ -410,7 +410,7 @@ export default function ExperiencesClient({
               </button>
               <div
                 ref={categoryScrollRef}
-                className="flex gap-2 overflow-x-auto no-scrollbar flex-1 mask-linear-fade pb-1 scroll-smooth"
+                className="flex flex-wrap sm:flex-nowrap gap-2 overflow-visible sm:overflow-x-auto no-scrollbar flex-1 mask-linear-fade pb-1 scroll-smooth justify-center sm:justify-start"
               >
                 {[
                   { id: "all", name: "All Trips", slug: "all" },

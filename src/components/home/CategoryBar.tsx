@@ -170,7 +170,7 @@ export default function CategoryBar() {
     <div className="w-full bg-background/60 backdrop-blur-xl border-b border-white/5 sticky top-16 z-30 transition-all duration-300">
       <div className="relative w-full group">
         {/* Left gradient fade + arrow */}
-        <div className="absolute left-0 top-0 bottom-0 z-20 flex items-center">
+        <div className="absolute left-0 top-0 bottom-0 z-20 hidden sm:flex items-center">
           <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-background via-background/80 to-transparent pointer-events-none" />
           <button
             onClick={() => scroll("left")}
@@ -185,11 +185,12 @@ export default function CategoryBar() {
         {/* Scrollable container */}
         <div
           ref={scrollRef}
-          className="flex overflow-x-auto no-scrollbar py-5 px-12 gap-4"
+          className="flex flex-wrap sm:flex-nowrap overflow-visible sm:overflow-x-auto no-scrollbar py-3 sm:py-5 px-4 sm:px-12 gap-2 sm:gap-4 justify-center sm:justify-start"
         >
           {allItems.map((item, index) => {
             const isAll = item.slug === "all";
             const isActive = activeCategory === item.slug;
+            const isDuplicate = index >= categories.length + 1;
 
             return (
               <motion.button
@@ -205,7 +206,7 @@ export default function CategoryBar() {
                       : `/experiences?category=${item.slug}`,
                   );
                 }}
-                className={`flex items-center gap-2 px-6 py-2.5 rounded-full whitespace-nowrap transition-all duration-300 flex-shrink-0 border ${
+                className={`${isDuplicate ? "hidden sm:flex" : "flex"} items-center gap-1.5 sm:gap-2 px-3.5 py-1.5 sm:px-6 sm:py-2.5 rounded-full whitespace-nowrap transition-all duration-300 flex-shrink-0 border ${
                   isActive
                     ? "bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/20 border-primary"
                     : "bg-white/5 text-muted-foreground hover:bg-primary hover:text-primary-foreground font-medium border-white/5 hover:border-primary"
@@ -218,7 +219,7 @@ export default function CategoryBar() {
                   >
                     <DynamicIcon
                       name={item.icon}
-                      className={`w-4 h-4 ${isActive ? "" : "opacity-70"}`}
+                      className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isActive ? "" : "opacity-70"}`}
                     />
                   </motion.div>
                 )}
@@ -229,7 +230,7 @@ export default function CategoryBar() {
         </div>
 
         {/* Right gradient fade + arrow */}
-        <div className="absolute right-0 top-0 bottom-0 z-20 flex items-center">
+        <div className="absolute right-0 top-0 bottom-0 z-20 hidden sm:flex items-center">
           <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-background via-background/80 to-transparent pointer-events-none" />
           <button
             onClick={() => scroll("right")}
