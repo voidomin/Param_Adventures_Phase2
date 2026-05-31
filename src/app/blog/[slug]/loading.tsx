@@ -21,7 +21,7 @@ export default function BlogLoading() {
             <div
               key={i}
               className="h-4 rounded bg-muted animate-pulse"
-              style={{ width: `${75 + Math.random() * 25}%` }}
+              style={{ width: `${75 + (i % 4) * 8}%` }}
             />
           ))}
         </div>

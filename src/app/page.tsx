@@ -16,6 +16,27 @@ import Image from "next/image";
 export const revalidate = 60;
 
 export default async function Home() {
+  const dbPlatformSettings = await withBuildSafety(
+    () => prisma.platformSetting.findMany({
+      where: {
+        key: {
+          in: ["media_provider", "cloudinary_cloud_name", "s3_bucket", "s3_region", "media_quality", "media_high_fidelity", "cdn_url"]
+        }
+      }
+    }),
+    []
+  );
+
+  const mediaSettings = {
+    provider: (dbPlatformSettings.find(s => s.key === "media_provider")?.value || "CLOUDINARY") as "CLOUDINARY" | "AWS_S3" | "S3" | "LOCAL",
+    cloudinaryCloudName: dbPlatformSettings.find(s => s.key === "cloudinary_cloud_name")?.value,
+    s3Bucket: dbPlatformSettings.find(s => s.key === "s3_bucket")?.value,
+    s3Region: dbPlatformSettings.find(s => s.key === "s3_region")?.value,
+    globalQuality: Number.parseInt(dbPlatformSettings.find(s => s.key === "media_quality")?.value || "95"),
+    highFidelity: dbPlatformSettings.find(s => s.key === "media_high_fidelity")?.value === "true",
+    cdnUrl: dbPlatformSettings.find(s => s.key === "cdn_url")?.value,
+  };
+
   // Fetch active hero slides for the homepage carousel
   const heroSlides = await withBuildSafety(
     () =>
@@ -162,7 +183,7 @@ export default async function Home() {
         <div className="absolute bottom-[20%] -right-[10%] w-[60%] h-[60%] bg-orange-500/5 rounded-full blur-[120px]" />
       </div>
 
-      <Hero slides={heroSlides} />
+      <Hero slides={heroSlides} mediaSettings={mediaSettings} />
       <InfiniMarquee destinations={marqueeDestinations} />
       <CategoryBar />
 
@@ -186,7 +207,7 @@ export default async function Home() {
                   key={exp.id}
                   className="w-[85vw] sm:w-87.5 md:w-100 shrink-0 snap-start h-full flex flex-col"
                 >
-                  <ExperienceCard experience={exp} />
+                  <ExperienceCard experience={exp} mediaSettings={mediaSettings} />
                 </div>
               ))}
             </Carousel>

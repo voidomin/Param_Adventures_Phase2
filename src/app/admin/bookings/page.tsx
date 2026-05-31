@@ -385,8 +385,28 @@ export default function AdminBookingsPage() {
         return;
       }
 
+      interface ExportBooking {
+        id: string;
+        user?: {
+          name?: string | null;
+          email?: string | null;
+          phoneNumber?: string | null;
+        } | null;
+        experience?: {
+          title: string;
+        } | null;
+        slot?: {
+          date: string | Date;
+        } | null;
+        participantCount: number;
+        totalPrice: number | string;
+        bookingStatus: string;
+        paymentStatus: string;
+        createdAt: string | Date;
+      }
+
       // Map to flat structure for Excel
-      const rows = exportBookings.map((b: any) => ({
+      const rows = exportBookings.map((b: ExportBooking) => ({
         "Booking ID": b.id,
         "Customer Name": b.user?.name || "—",
         "Customer Email": b.user?.email || "—",
@@ -412,7 +432,7 @@ export default function AdminBookingsPage() {
         return acc;
       }, {} as Record<string, number>);
 
-      rows.forEach((row: any) => {
+      rows.forEach((row: Record<string, string | number>) => {
         Object.keys(row).forEach((key) => {
           const valStr = String(row[key]);
           if (valStr.length > maxLens[key]) {

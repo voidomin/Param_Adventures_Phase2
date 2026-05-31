@@ -24,6 +24,7 @@ export function getMediaUrl(
     s3Region?: string;
     globalQuality?: number;
     highFidelity?: boolean;
+    cdnUrl?: string;
   },
   options: MediaOptions = {}
 ): string {
@@ -37,8 +38,8 @@ export function getMediaUrl(
     return getCloudinaryUrl(path, settings.cloudinaryCloudName, quality, isHighFid, options);
   }
 
-  if (provider === 'AWS_S3' && settings.s3Bucket) {
-    return getS3Url(path, settings.s3Bucket, settings.s3Region);
+  if ((provider === 'AWS_S3' || provider === 'S3') && settings.s3Bucket) {
+    return getS3Url(path, settings.s3Bucket, settings.s3Region, settings.cdnUrl);
   }
 
   return path.startsWith('/') ? path : `/${path}`;
@@ -51,7 +52,9 @@ function getCloudinaryUrl(
   isHighFid: boolean,
   options: MediaOptions
 ): string {
-  const baseUrl = `https://res.cloudinary.com/${cloudName}/image/upload`;
+  const isVideo = /\.(mp4|webm|ogv|mov)$/i.test(path);
+  const resourceType = isVideo ? 'video' : 'image';
+  const baseUrl = `https://res.cloudinary.com/${cloudName}/${resourceType}/upload`;
   const transforms: string[] = [];
 
   if (isHighFid && quality >= 95) {
@@ -71,7 +74,11 @@ function getCloudinaryUrl(
   return `${baseUrl}/${transformPath}${cleanPath}`;
 }
 
-function getS3Url(path: string, bucket: string, region: string = 'ap-south-1'): string {
+function getS3Url(path: string, bucket: string, region: string = 'ap-south-1', cdnUrl?: string): string {
   const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+  if (cdnUrl) {
+    const base = cdnUrl.endsWith('/') ? cdnUrl.slice(0, -1) : cdnUrl;
+    return `${base}/${cleanPath}`;
+  }
   return `https://${bucket}.s3.${region}.amazonaws.com/${cleanPath}`;
 }

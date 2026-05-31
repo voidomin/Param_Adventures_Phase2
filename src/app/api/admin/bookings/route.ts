@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
+import { Prisma } from "@prisma/client";
 
 /**
  * GET /api/admin/bookings — List all bookings (admin)
@@ -25,7 +26,7 @@ export async function GET(request: NextRequest) {
     const slotDateEnd = searchParams.get("slotDateEnd");
     const archived = searchParams.get("archived") === "true";
 
-    const bookingDateFilter: any = {};
+    const bookingDateFilter: { gte?: Date; lte?: Date } = {};
     if (bookingDateStart) {
       bookingDateFilter.gte = new Date(bookingDateStart);
     }
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
       bookingDateFilter.lte = end;
     }
 
-    const slotDateFilter: any = {};
+    const slotDateFilter: { gte?: Date; lte?: Date } = {};
     if (slotDateStart) {
       slotDateFilter.gte = new Date(slotDateStart);
     }
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest) {
       ]
     };
 
-    const whereClause: any = {
+    const whereClause: Prisma.BookingWhereInput = {
       ...(status
         ? { bookingStatus: status as "REQUESTED" | "CONFIRMED" | "CANCELLED" }
         : {}),

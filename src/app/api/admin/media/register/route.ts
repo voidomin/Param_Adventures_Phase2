@@ -43,19 +43,26 @@ export async function POST(request: NextRequest) {
     }
     const { url, type, hash } = parseResult.data;
 
-    // If hash provided, check for existing duplicate first
+    // Check for existing duplicate by hash OR original URL
+    const conditions = [];
     if (hash) {
-      const existing = await prisma.image.findFirst({
-        where: { fileHash: hash },
-        select: { id: true, originalUrl: true, type: true },
+      conditions.push({ fileHash: hash });
+    }
+    conditions.push({ originalUrl: url });
+
+    const existing = await prisma.image.findFirst({
+      where: {
+        OR: conditions,
+      },
+      select: { id: true, originalUrl: true, type: true },
+    });
+
+    if (existing) {
+      return NextResponse.json({
+        id: existing.id,
+        url: existing.originalUrl,
+        type: existing.type,
       });
-      if (existing) {
-        return NextResponse.json({
-          id: existing.id,
-          url: existing.originalUrl,
-          type: existing.type,
-        });
-      }
     }
 
     // Save to Database
