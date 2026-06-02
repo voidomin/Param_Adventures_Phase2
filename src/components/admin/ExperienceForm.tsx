@@ -1991,7 +1991,7 @@ export default function ExperienceForm({
                 htmlFor="price"
                 className={`block text-sm font-medium mb-1 transition-colors ${fieldErrors.basePrice ? "text-red-500" : "text-foreground/80"}`}
               >
-                Total Gross Price (₹) <span className="text-red-500">*</span>
+                Base Price (₹) <span className="text-red-500">*</span>
               </label>
               <input
                 id="price"
@@ -2017,28 +2017,32 @@ export default function ExperienceForm({
                 <div className="bg-primary/5 rounded-lg p-3 text-xs text-foreground/80 border border-primary/20 space-y-1">
                   <div className="flex items-center gap-1.5 font-bold text-primary mb-1">
                     <Info className="w-3.5 h-3.5" />
-                    <span>Live Revenue Breakdown (per seat)</span>
+                    <span>Live Price Breakdown (per seat)</span>
+                  </div>
+                  <div className="flex justify-between text-foreground/80">
+                    <span>Base Price:</span>
+                    <span>₹{basePrice.toFixed(2)}</span>
                   </div>
                   {taxes.map((tax) => {
                     const amount = (basePrice * tax.percentage) / 100;
                     return (
                       <div
                         key={tax.id}
-                        className="flex justify-between text-red-500/80"
+                        className="flex justify-between text-foreground/60"
                       >
                         <span>
                           {tax.name} ({tax.percentage}%):
                         </span>
-                        <span>- ₹{amount.toFixed(2)}</span>
+                        <span>+ ₹{amount.toFixed(2)}</span>
                       </div>
                     );
                   })}
                   <div className="flex justify-between font-bold pt-1 border-t border-primary/10 mt-1 text-green-500">
-                    <span>Net Base Revenue:</span>
+                    <span>Total Price (Customer Pays):</span>
                     <span>
                       ₹
                       {(
-                        basePrice -
+                        basePrice +
                         taxes.reduce(
                           (acc, tax) =>
                             acc + (basePrice * tax.percentage) / 100,

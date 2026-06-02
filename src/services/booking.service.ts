@@ -212,8 +212,8 @@ export const BookingService = {
 
     if (!experience) throw new Error("EXPERIENCE_NOT_FOUND");
 
-    const totalPrice = Number(experience.basePrice) * data.participantCount;
-    let baseFare = totalPrice;
+    const baseFare = Number(experience.basePrice) * data.participantCount;
+    let totalPrice = baseFare;
     let taxBreakdown: { name: string; percentage: number; amount: number }[] = [];
 
     const taxSettings = await BookingRepo.getTaxConfig(prisma);
@@ -222,8 +222,8 @@ export const BookingService = {
         const config = JSON.parse(taxSettings.value);
         if (Array.isArray(config)) {
           taxBreakdown = config.map((tax: { name: string; percentage: number }) => {
-            const amount = (totalPrice * (Number(tax.percentage) || 0)) / 100;
-            baseFare -= amount;
+            const amount = (baseFare * (Number(tax.percentage) || 0)) / 100;
+            totalPrice += amount;
             return { ...tax, amount };
           });
         }

@@ -77,8 +77,13 @@ describe("BookingModal Smoke Test", () => {
     vi.clearAllMocks();
     mockUseAuth.mockReturnValue({ user: mockUser });
     
-    // Mock successful slot fetch
     mockFetch.mockImplementation((url: string) => {
+      if (url === "/api/settings/public") {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ taxConfig: JSON.stringify([]) }),
+        });
+      }
       if (url.includes("/slots")) {
         return Promise.resolve({
           ok: true,
@@ -156,6 +161,7 @@ describe("BookingModal Smoke Test", () => {
 
   it("handles payment verification failure", async () => {
     mockFetch.mockImplementation((url: string) => {
+      if (url === "/api/settings/public") return Promise.resolve({ ok: true, json: () => Promise.resolve({ taxConfig: JSON.stringify([]) }) });
       if (url.includes("/slots")) return Promise.resolve({ ok: true, json: () => Promise.resolve({ slots: [{ id: "s1", date: new Date().toISOString(), capacity: 10, remainingCapacity: 5 }] }) });
       if (url === "/api/bookings") return Promise.resolve({ ok: true, json: () => Promise.resolve({ bookingId: "b1", orderId: "o1", amount: 100, currency: "INR", keyId: "k" }) });
       if (url === "/api/bookings/verify") return Promise.resolve({ ok: false, json: () => Promise.resolve({ error: "Verification failed" }) });
@@ -179,6 +185,12 @@ describe("BookingModal Smoke Test", () => {
 
   it("shows 'No available dates' when slots are empty", async () => {
     mockFetch.mockImplementation((url: string) => {
+      if (url === "/api/settings/public") {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ taxConfig: JSON.stringify([]) }),
+        });
+      }
       if (url.includes("/slots")) {
         return Promise.resolve({
           ok: true,
@@ -219,6 +231,12 @@ describe("BookingModal Smoke Test", () => {
 
   it("shows error when booking creation fails", async () => {
     mockFetch.mockImplementation((url: string, opts?: any) => {
+      if (url === "/api/settings/public") {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ taxConfig: JSON.stringify([]) }),
+        });
+      }
       if (url.includes("/slots")) {
         return Promise.resolve({
           ok: true,

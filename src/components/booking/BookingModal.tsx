@@ -129,6 +129,7 @@ export default function BookingModal({
   const [partInfo, setPartInfo] = useState<ParticipantDetails[]>([]);
   const [includeMyself, setIncludeMyself] = useState(!!user);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [taxes, setTaxes] = useState<{ id: string; name: string; percentage: number }[]>([]);
 
   const createParticipant = useCallback(
     (isPrimary: boolean): ParticipantDetails => {
@@ -182,6 +183,24 @@ export default function BookingModal({
   useEffect(() => {
     fetchSlots();
   }, [fetchSlots]);
+
+  useEffect(() => {
+    const fetchTaxes = async () => {
+      try {
+        const res = await fetch("/api/settings/public");
+        const data = await res.json();
+        if (data.taxConfig) {
+          const parsed = JSON.parse(data.taxConfig);
+          if (Array.isArray(parsed)) {
+            setTaxes(parsed);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load taxes config:", err);
+      }
+    };
+    fetchTaxes();
+  }, []);
 
   useEffect(() => {
     setPartInfo((prev) => {
@@ -270,7 +289,9 @@ export default function BookingModal({
     setStep("summary");
   };
 
-  const totalPrice = basePrice * participants;
+  const baseFare = basePrice * participants;
+  const taxAmount = taxes.reduce((acc, tax) => acc + (baseFare * tax.percentage) / 100, 0);
+  const totalPrice = baseFare + taxAmount;
 
   async function handleProceedToPay() {
     setStep("processing");
@@ -530,12 +551,17 @@ export default function BookingModal({
                       <div className="flex items-center justify-between mb-4 px-1">
                         <div>
                           <p className="text-xs font-bold text-foreground/40 uppercase tracking-widest">
-                            Total Price
+                            Total Price (Incl. Taxes)
                           </p>
                           <p className="text-sm text-foreground/60 mt-0.5">
                             ₹{basePrice.toLocaleString("en-IN")} ×{" "}
                             {participants}
                           </p>
+                          {taxAmount > 0 && (
+                            <p className="text-[10px] text-foreground/40 mt-0.5">
+                              Base: ₹{baseFare.toLocaleString("en-IN")} + Taxes: ₹{taxAmount.toLocaleString("en-IN")}
+                            </p>
+                          )}
                         </div>
                         <span className="text-2xl font-black text-primary">
                           ₹{totalPrice.toLocaleString("en-IN")}
@@ -964,36 +990,59 @@ export default function BookingModal({
             </h3>
 
             <div className="space-y-3">
-              {[
-                {
-                  icon: <CalendarDays className="w-4 h-4" />,
-                  label: "Date",
-                  value: formatDate(selectedSlot.date),
-                },
-                {
-                  icon: <Users className="w-4 h-4" />,
-                  label: "Participants",
-                  value: `${participants} person${participants === 1 ? "" : "s"}`,
-                },
-                {
-                  icon: <IndianRupee className="w-4 h-4" />,
-                  label: "Total",
-                  value: `₹${totalPrice.toLocaleString("en-IN")}`,
-                },
-              ].map((row) => (
-                <div
-                  key={row.label}
-                  className="flex items-center justify-between py-3 border-b border-border last:border-none"
-                >
-                  <div className="flex items-center gap-2 text-foreground/60">
-                    {row.icon}
-                    <span className="text-sm">{row.label}</span>
-                  </div>
-                  <span className="font-semibold text-foreground text-sm">
-                    {row.value}
-                  </span>
+              <div className="flex items-center justify-between py-3 border-b border-border">
+                <div className="flex items-center gap-2 text-foreground/60">
+                  <CalendarDays className="w-4 h-4" />
+                  <span className="text-sm">Date</span>
                 </div>
-              ))}
+                <span className="font-semibold text-foreground text-sm">
+                  {formatDate(selectedSlot.date)}
+                </span>
+              </div>
+              
+              <div className="flex items-center justify-between py-3 border-b border-border">
+                <div className="flex items-center gap-2 text-foreground/60">
+                  <Users className="w-4 h-4" />
+                  <span className="text-sm">Participants</span>
+                </div>
+                <span className="font-semibold text-foreground text-sm">
+                  {participants} person{participants === 1 ? "" : "s"}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between py-3 border-b border-border">
+                <div className="flex items-center gap-2 text-foreground/60">
+                  <IndianRupee className="w-4 h-4" />
+                  <span className="text-sm">Base Fare</span>
+                </div>
+                <span className="font-semibold text-foreground text-sm">
+                  ₹{baseFare.toLocaleString("en-IN")}
+                </span>
+              </div>
+
+              {taxes.map((tax, idx) => {
+                const amount = (baseFare * tax.percentage) / 100;
+                return (
+                  <div key={`${tax.name}-${idx}`} className="flex items-center justify-between py-3 border-b border-border">
+                    <div className="flex items-center gap-2 text-foreground/60 pl-6">
+                      <span className="text-sm">{tax.name} ({tax.percentage}%)</span>
+                    </div>
+                    <span className="font-semibold text-foreground text-sm">
+                      ₹{amount.toLocaleString("en-IN")}
+                    </span>
+                  </div>
+                );
+              })}
+
+              <div className="flex items-center justify-between py-3 border-b border-border last:border-none">
+                <div className="flex items-center gap-2 text-foreground/60">
+                  <IndianRupee className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-bold">Total Amount</span>
+                </div>
+                <span className="font-bold text-primary text-base">
+                  ₹{totalPrice.toLocaleString("en-IN")}
+                </span>
+              </div>
             </div>
 
             <div className="bg-foreground/3 border border-border rounded-xl p-3 text-xs text-foreground/50 text-center">
