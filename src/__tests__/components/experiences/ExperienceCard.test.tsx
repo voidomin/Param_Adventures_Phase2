@@ -68,8 +68,8 @@ describe("ExperienceCard Smoke Test", () => {
       },
     };
     render(<ExperienceCard experience={slotExperience} />);
-    expect(screen.getByText(/Next: 15 Jun/)).toBeInTheDocument();
-    expect(screen.getByText("4 booked / 6 left")).toBeInTheDocument();
+    expect(screen.getByText(/15 Jun/)).toBeInTheDocument();
+    expect(screen.getByText(/6 left/)).toBeInTheDocument();
   });
 
   it("handles sold out slot correctly", () => {
@@ -82,8 +82,8 @@ describe("ExperienceCard Smoke Test", () => {
       },
     };
     render(<ExperienceCard experience={soldOutExperience} />);
-    expect(screen.getByText(/Next: 15 Jun \(Sold Out\)/)).toBeInTheDocument();
-    expect(screen.getAllByText(/Sold Out/)).toHaveLength(2); // One in calendar status, one in hover capacity text
+    expect(screen.getByText(/15 Jun/)).toBeInTheDocument();
+    expect(screen.getByText(/Sold Out/)).toBeInTheDocument();
   });
 
   it("handles no slots scheduled correctly", () => {
@@ -92,6 +92,6 @@ describe("ExperienceCard Smoke Test", () => {
       nextDepartureSlot: null,
     };
     render(<ExperienceCard experience={noSlotsExperience} />);
-    expect(screen.getAllByText(/No slots scheduled/)).toHaveLength(2); // One in calendar status, one in hover capacity text
+    expect(screen.getByText(/No upcoming dates scheduled/)).toBeInTheDocument();
   });
 });

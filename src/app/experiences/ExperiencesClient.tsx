@@ -394,13 +394,13 @@ export default function ExperiencesClient({
       </div>
 
       {/* Content */}
-      <div className="flex-1 max-w-7xl mx-auto px-4 w-full py-12 relative">
+      <div className="flex-1 max-w-7xl mx-auto px-4 w-full pt-4 pb-6 relative">
         {/* Sticky Filter Bar */}
         <div className="sticky top-[72px] z-40 mb-8 bg-background/80 backdrop-blur-xl border-b border-border shadow-sm rounded-b-2xl px-4 pt-4 pb-2 transition-all">
-          {/* Row 1: Categories + Search + Sort */}
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-3">
+          {/* Row 1: Categories (Full width) */}
+          <div className="relative w-full group mb-4 border-b border-border/50 pb-3">
             {/* Category Pills with Scroll Arrows */}
-            <div className="flex items-center gap-1 w-full sm:flex-1 min-w-0">
+            <div className="flex items-center gap-1 w-full min-w-0">
               <button
                 onClick={() => scrollCategories("left")}
                 className="hidden sm:flex shrink-0 w-8 h-8 rounded-full bg-foreground/5 hover:bg-foreground/10 items-center justify-center text-foreground/50 hover:text-foreground transition-colors"
@@ -410,7 +410,7 @@ export default function ExperiencesClient({
               </button>
               <div
                 ref={categoryScrollRef}
-                className="flex gap-2 overflow-x-auto no-scrollbar flex-1 mask-linear-fade pb-2 scroll-smooth"
+                className="flex gap-2 overflow-x-auto no-scrollbar flex-1 mask-linear-fade pb-1.5 scroll-smooth"
               >
                 {[
                   { id: "all", name: "All Trips", slug: "all" },
@@ -419,7 +419,7 @@ export default function ExperiencesClient({
                   <button
                     key={filter.id}
                     onClick={() => setActiveFilter(filter.slug)}
-                    className={`flex items-center gap-2 px-4 py-2 sm:px-5 sm:py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-300 ${
+                    className={`flex items-center gap-1.5 px-3.5 py-1.5 sm:px-5 sm:py-2 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-300 ${
                       activeFilter === filter.slug
                         ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 scale-105"
                         : "bg-foreground/5 text-foreground/70 hover:bg-foreground/10 hover:text-foreground"
@@ -440,36 +440,39 @@ export default function ExperiencesClient({
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
+          </div>
 
-            {/* Actions: Search + Filters + Sort */}
-            <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end shrink-0">
-              {/* Search */}
-              <div className="relative hidden sm:block">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/40" />
-                <input
-                  type="text"
-                  placeholder="Search trips..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-4 py-2.5 bg-foreground/5 border border-border rounded-full text-sm text-foreground placeholder:text-foreground/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary w-48 transition-all focus:w-56"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => setSearchQuery("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
+          {/* Row 2: Search, Filters & Sort Controls */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            {/* Search */}
+            <div className="relative flex-1 min-w-[200px] max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/40" />
+              <input
+                type="text"
+                placeholder="Search trips..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-8 py-2 bg-foreground/5 border border-border rounded-full text-sm text-foreground placeholder:text-foreground/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
 
+            {/* Filter & Sort buttons */}
+            <div className="flex items-center gap-2">
               {/* Filters Toggle */}
               <button
                 onClick={() => setShowFilters((v) => !v)}
-                className={`flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all border ${
+                className={`flex items-center justify-center gap-2 px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all border border-border/50 ${
                   showFilters || activeFilterCount > 0
                     ? "bg-primary/10 text-primary border-primary/30"
-                    : "bg-foreground/5 text-foreground/70 border-transparent hover:bg-foreground/10"
+                    : "bg-foreground/5 text-foreground/70 hover:bg-foreground/10"
                 }`}
               >
                 <SlidersHorizontal className="w-4 h-4" />
@@ -482,10 +485,10 @@ export default function ExperiencesClient({
               </button>
 
               {/* Sort Button */}
-              <div className="relative flex-1 sm:flex-none">
+              <div className="relative">
                 <button
                   onClick={() => setShowSortMenu((v) => !v)}
-                  className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm font-bold whitespace-nowrap bg-foreground/5 text-foreground/70 hover:bg-foreground/10 transition-all border border-transparent"
+                  className="flex items-center justify-center gap-2 px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap bg-foreground/5 text-foreground/70 hover:bg-foreground/10 transition-all border border-border/50"
                 >
                   <ArrowUpDown className="w-4 h-4" />
                   <span>
@@ -493,49 +496,35 @@ export default function ExperiencesClient({
                   </span>
                   <ChevronDown className="w-3.5 h-3.5" />
                 </button>
-              {showSortMenu && (
-                <>
-                  <button
-                    type="button"
-                    aria-label="Close sort menu"
-                    className="fixed inset-0 z-40 w-full h-full bg-transparent cursor-default"
-                    onClick={() => setShowSortMenu(false)}
-                  />
-                  <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-xl z-50 py-2 min-w-[200px]">
-                    {SORT_OPTIONS.map((opt) => (
-                      <button
-                        key={opt.value}
-                        onClick={() => {
-                          setSortBy(opt.value);
-                          setShowSortMenu(false);
-                        }}
-                        className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
-                          sortBy === opt.value
-                            ? "bg-primary/10 text-primary font-bold"
-                            : "text-foreground/70 hover:bg-foreground/5"
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-
-          {/* Mobile Search (visible on small screens) */}
-          <div className="sm:hidden mb-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/40" />
-              <input
-                type="text"
-                placeholder="Search trips..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2.5 bg-foreground/5 border border-border rounded-full text-sm text-foreground placeholder:text-foreground/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
-              />
+                {showSortMenu && (
+                  <>
+                    <button
+                      type="button"
+                      aria-label="Close sort menu"
+                      className="fixed inset-0 z-40 w-full h-full bg-transparent cursor-default"
+                      onClick={() => setShowSortMenu(false)}
+                    />
+                    <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-xl z-50 py-2 min-w-[200px]">
+                      {SORT_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.value}
+                          onClick={() => {
+                            setSortBy(opt.value);
+                            setShowSortMenu(false);
+                          }}
+                          className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                            sortBy === opt.value
+                              ? "bg-primary/10 text-primary font-bold"
+                              : "text-foreground/70 hover:bg-foreground/5"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
 
@@ -710,7 +699,7 @@ export default function ExperiencesClient({
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
           >
             {filteredExperiences.map((exp: Experience) => (
-              <motion.div key={exp.id} variants={itemVariants}>
+              <motion.div key={exp.id} variants={itemVariants} className="flex flex-col">
                 <ExperienceCard 
                   experience={exp} 
                   mediaSettings={mediaSettings} 

@@ -185,7 +185,7 @@ export default function CategoryBar() {
         {/* Scrollable container */}
         <div
           ref={scrollRef}
-          className="flex flex-nowrap overflow-x-auto no-scrollbar py-4 sm:py-5 px-4 sm:px-12 gap-3 sm:gap-4 scroll-smooth mask-linear-fade"
+          className="flex flex-nowrap overflow-x-auto no-scrollbar py-2.5 sm:py-3 px-4 sm:px-12 gap-2 sm:gap-3 scroll-smooth mask-linear-fade"
         >
           {allItems.map((item, index) => {
             const isAll = item.slug === "all";
@@ -195,7 +195,7 @@ export default function CategoryBar() {
               <motion.button
                 key={`${item.id}-${index}`}
                 suppressHydrationWarning
-                whileHover={{ scale: 1.05, y: -2 }}
+                whileHover={{ scale: 1.05, y: -1 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => {
                   setActiveCategory(item.slug);
@@ -205,7 +205,7 @@ export default function CategoryBar() {
                       : `/experiences?category=${item.slug}`,
                   );
                 }}
-                className={`flex items-center gap-2 px-4 py-2 sm:px-6 sm:py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all duration-300 flex-shrink-0 border ${
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 sm:px-5 sm:py-2 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-300 flex-shrink-0 border ${
                   isActive
                     ? "bg-primary text-primary-foreground font-bold shadow-lg shadow-primary/20 border-primary"
                     : "bg-white/5 text-muted-foreground hover:bg-primary hover:text-primary-foreground font-medium border-white/5 hover:border-primary"

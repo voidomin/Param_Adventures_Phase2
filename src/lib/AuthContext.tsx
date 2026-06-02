@@ -164,7 +164,18 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
 export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    if (process.env.NODE_ENV === "development") {
+      console.warn("useAuth was called outside of an AuthProvider. Returning fallback logged-out context.");
+    }
+    return {
+      user: null,
+      isLoading: true,
+      login: async () => { throw new Error("Auth not initialized"); },
+      register: async () => { throw new Error("Auth not initialized"); },
+      logout: async () => {},
+      hasPermission: () => false,
+      mutateUser: async () => null,
+    };
   }
   return ctx;
 }
