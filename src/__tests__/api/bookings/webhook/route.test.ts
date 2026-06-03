@@ -30,6 +30,7 @@ const mockPlatformSettingFindUnique = vi.fn();
 const mockProcessedWebhookEventFindUnique = vi.fn();
 const mockProcessedWebhookEventCreate = vi.fn();
 const mockTransaction = vi.fn();
+const mockPaymentFindFirst = vi.fn();
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -38,12 +39,20 @@ beforeEach(() => {
     findUnique: mockProcessedWebhookEventFindUnique,
     create: mockProcessedWebhookEventCreate,
   };
+  (prisma as any).platformSetting = {
+    findUnique: mockPlatformSettingFindUnique,
+  };
+  (prisma as any).payment = {
+    findFirst: mockPaymentFindFirst,
+  };
   (prisma as any).$transaction = mockTransaction;
   
   // Default mocks
   mockTransaction.mockImplementation(async (callback) => {
     return callback(prisma);
   });
+  mockPlatformSettingFindUnique.mockResolvedValue(null);
+  mockPaymentFindFirst.mockResolvedValue({ bookingId: "booking_test_id" });
 });
 
 function createRequest(body: string, headers: Record<string, string>) {
@@ -147,5 +156,60 @@ describe("POST /api/bookings/webhook", () => {
     // Confirm payment and log activity should NOT be called
     expect(mockConfirmPayment).not.toHaveBeenCalled();
     expect(mockLogActivity).not.toHaveBeenCalled();
+  });
+
+  it("uses the database platform settings webhook secret when configured", async () => {
+    mockProcessedWebhookEventFindUnique.mockResolvedValue(null);
+    mockPlatformSettingFindUnique.mockResolvedValue({ value: "db_webhook_secret" });
+    process.env.RAZORPAY_WEBHOOK_SECRET = "env_secret";
+
+    const dbSignature = crypto.createHmac("sha256", "db_webhook_secret").update(rawBody).digest("hex");
+    const req = createRequest(rawBody, { "x-razorpay-signature": dbSignature });
+    const res = await POST(req);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ status: "ok" });
+    expect(mockPlatformSettingFindUnique).toHaveBeenCalledWith({
+      where: { key: "razorpay_webhook_secret" }
+    });
+  });
+
+  it("processes payment.captured successfully and retrieves bookingId from Payment table", async () => {
+    mockProcessedWebhookEventFindUnique.mockResolvedValue(null);
+    mockPaymentFindFirst.mockResolvedValue({ bookingId: "booking_captured_id" });
+
+    const capturedEventBody = {
+      id: "evt_captured_123",
+      event: "payment.captured",
+      payload: {
+        payment: {
+          entity: {
+            id: "pay_captured_id",
+            order_id: "order_captured_id",
+          },
+        },
+      },
+    };
+
+    const capturedRawBody = JSON.stringify(capturedEventBody);
+    const capturedSignature = crypto.createHmac("sha256", secret).update(capturedRawBody).digest("hex");
+
+    const req = createRequest(capturedRawBody, { "x-razorpay-signature": capturedSignature });
+    const res = await POST(req);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ status: "ok" });
+
+    expect(mockPaymentFindFirst).toHaveBeenCalledWith({
+      where: { providerOrderId: "order_captured_id" },
+      select: { bookingId: true },
+    });
+
+    expect(mockConfirmPayment).toHaveBeenCalledWith(
+      "booking_captured_id",
+      "order_captured_id",
+      "pay_captured_id",
+      capturedEventBody
+    );
   });
 });

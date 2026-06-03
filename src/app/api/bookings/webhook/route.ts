@@ -44,7 +44,10 @@ export async function POST(request: NextRequest) {
     }
 
     // 2. Fetch Webhook Secret
-    const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    const secretSetting = await prisma.platformSetting.findUnique({
+      where: { key: "razorpay_webhook_secret" }
+    });
+    const secret = secretSetting?.value || process.env.RAZORPAY_WEBHOOK_SECRET;
 
     if (!secret) {
       console.error("[Webhook] RAZORPAY_WEBHOOK_SECRET is not configured.");
@@ -125,6 +128,49 @@ export async function POST(request: NextRequest) {
             event: eventType, 
             razorpay_order_id: order.id, 
             razorpay_payment_id: payment.id,
+            ip: forensicsIp
+          }
+        );
+        break;
+      }
+      case "payment.captured": {
+        const payment = payload.payment.entity;
+        const orderId = payment.order_id;
+        const paymentId = payment.id;
+
+        if (!orderId) {
+          console.error("[Webhook] payment.captured event missing order_id. Payment ID:", paymentId);
+          break;
+        }
+
+        const paymentRecord = await prisma.payment.findFirst({
+          where: { providerOrderId: orderId },
+          select: { bookingId: true }
+        });
+
+        const bookingId = paymentRecord?.bookingId || payment.notes?.bookingId || payment.notes?.booking_id;
+
+        if (!bookingId) {
+          console.error("[Webhook] payment.captured could not find bookingId for Order ID:", orderId);
+          break;
+        }
+
+        await BookingService.confirmPayment(
+          bookingId, 
+          orderId, 
+          paymentId, 
+          eventBody
+        );
+
+        await logActivity(
+          "PAYMENT_WEBHOOK_PROCESSED",
+          "SYSTEM",
+          "Booking",
+          bookingId,
+          { 
+            event: eventType, 
+            razorpay_order_id: orderId, 
+            razorpay_payment_id: paymentId,
             ip: forensicsIp
           }
         );

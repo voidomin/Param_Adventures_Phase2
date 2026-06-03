@@ -354,7 +354,7 @@ export default function BookingsPage() {
 
     const rzp = new RazorpayCtor({
       key: keyId,
-      amount: Number.parseInt(payment.amount) * 100,
+      amount: Math.round(Number.parseFloat(payment.amount) * 100),
       order_id: payment.providerOrderId,
       name: "Param Adventures",
       description: booking.experience.title,

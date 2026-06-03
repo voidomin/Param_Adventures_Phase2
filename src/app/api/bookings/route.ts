@@ -50,6 +50,7 @@ export async function POST(request: NextRequest) {
       "INSUFFICIENT_CAPACITY": { message: "Requested slots are no longer available.", status: 409 },
       "OVERBOOKED": { message: "Sorry, those seats were just booked by someone else.", status: 409 },
       "PAYMENT_GATEWAY_ERROR": { message: "Payment gateway unavailable. Please try again.", status: 502 },
+      "ALREADY_REQUESTED": { message: "You already have a pending booking request for this slot. Please complete payment in your profile bookings tab.", status: 400 },
     };
 
     const errorMessage = error instanceof Error ? error.message : "INTERNAL_ERROR";

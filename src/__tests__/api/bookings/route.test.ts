@@ -104,6 +104,16 @@ describe("POST /api/bookings", () => {
     expect(response.status).toBe(502);
   });
 
+  it("returns 400 on ALREADY_REQUESTED", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
+    mockProcessBooking.mockRejectedValueOnce(new Error("ALREADY_REQUESTED"));
+
+    const response = await POST(createRequest(validPayload));
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error).toContain("pending booking request");
+  });
+
   it("returns 500 for unexpected fatal errors", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
     mockProcessBooking.mockRejectedValueOnce(new Error("Database explosion"));

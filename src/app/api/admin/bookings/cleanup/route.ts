@@ -50,13 +50,6 @@ export async function POST(request: NextRequest) {
           where: { id: booking.id },
           data: { bookingStatus: "CANCELLED", paymentStatus: "FAILED" },
         });
-
-        if (booking.slotId) {
-          await tx.slot.update({
-            where: { id: booking.slotId },
-            data: { remainingCapacity: { increment: booking.participantCount } },
-          });
-        }
         restoredCount++;
       }
     });

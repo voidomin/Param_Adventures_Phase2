@@ -51,13 +51,6 @@ export const BookingService = {
       // Create Booking record
       const booking = await BookingRepo.createBooking(tx, userId, data, pricing);
 
-      // Decrement capacity
-      // The real guard is the atomic check at the DB level (count === 0)
-      const slotUpdate = await BookingRepo.updateSlotCapacity(tx, data.slotId, data.participantCount);
-      if (slotUpdate.count === 0) {
-        throw new Error("OVERBOOKED");
-      }
-
       // EXTERNAL READINESS: Create the pending Payment record ATOMICALLY with the booking
       // This ensures if the booking exists, a trace of the intended payment always exists.
       // We don't have the orderId yet, but we'll update it once Razorpay responds.
@@ -122,7 +115,6 @@ export const BookingService = {
       // This maintains the audit trail as requested by senior engineering review.
       await prisma.$transaction(async (rollbackTx) => {
         await BookingRepo.updateStatus(rollbackTx, booking.id, "CANCELLED");
-        await BookingRepo.incrementSlotCapacity(rollbackTx, data.slotId, data.participantCount);
       }, {
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
       });
@@ -139,20 +131,47 @@ export const BookingService = {
    */
   async confirmPayment(bookingId: string, razorpayOrderId: string, razorpayPaymentId: string, payload: Record<string, unknown>) {
     try {
-      const [updatedBooking] = await prisma.$transaction([
-        prisma.booking.update({
-          where: { id: bookingId, paymentStatus: { not: "PAID" } },
+      const updatedBooking = await prisma.$transaction(async (tx) => {
+        const booking = await tx.booking.findUnique({
+          where: { id: bookingId },
+          select: { id: true, bookingStatus: true, participantCount: true, slotId: true },
+        });
+
+        if (!booking) {
+          throw new Error("BOOKING_NOT_FOUND");
+        }
+
+        // If booking is already confirmed, return it (idempotency)
+        if (booking.bookingStatus === "CONFIRMED") {
+          return booking;
+        }
+
+        const updated = await tx.booking.update({
+          where: { id: bookingId },
           data: { bookingStatus: "CONFIRMED", paymentStatus: "PAID" },
-        }),
-        prisma.payment.updateMany({
+        });
+
+        await tx.payment.updateMany({
           where: { providerOrderId: razorpayOrderId, status: { not: "PAID" } },
           data: {
             status: "PAID",
             providerPaymentId: razorpayPaymentId,
             fullPayload: payload as Prisma.InputJsonValue,
           },
-        }),
-      ]);
+        });
+
+        if (booking.slotId) {
+          // Decrement slot remainingCapacity by participantCount
+          await tx.slot.update({
+            where: { id: booking.slotId },
+            data: { remainingCapacity: { decrement: booking.participantCount } },
+          });
+        }
+
+        return updated;
+      }, {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      });
 
       // Revalidate entire layout to refresh slot capacities
       revalidatePath("/", "layout");
