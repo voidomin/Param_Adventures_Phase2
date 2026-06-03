@@ -1,12 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { Clock, MapPin, Users, IndianRupee } from "lucide-react";
+import { Clock, MapPin, IndianRupee } from "lucide-react";
 import type { MediaSettings } from "@/types/media";
 import { motion } from "framer-motion";
-import { useRouter } from "next/navigation";
 import SaveButton from "./SaveButton";
 import ShareButton from "../ui/ShareButton";
 import { getMediaUrl } from "@/lib/media/media-gateway";
@@ -65,37 +64,41 @@ function FlippingDatePill({
   const isSoldOut = remainingCapacity <= 0;
   const statusText = isSoldOut ? "Sold Out" : `${remainingCapacity} left`;
 
-  const frontStyle = isSoldOut
-    ? "bg-red-500/10 text-red-500 border-red-500/20 line-through"
-    : remainingCapacity <= 5
-      ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
-      : "bg-foreground/5 text-foreground/80 border-border hover:border-primary/30";
+  let frontStyle = "bg-foreground/5 text-foreground/80 border-border hover:border-primary/30";
+  if (isSoldOut) {
+    frontStyle = "bg-red-500/10 text-red-500 border-red-500/20 line-through";
+  } else if (remainingCapacity <= 5) {
+    frontStyle = "bg-amber-500/10 text-amber-600 border-amber-500/20";
+  }
 
-  const backStyle = isSoldOut
-    ? "bg-red-500 text-white border-red-500 font-bold"
-    : remainingCapacity <= 5
-      ? "bg-amber-500 text-white border-amber-500 font-bold"
-      : "bg-primary text-primary-foreground border-primary font-bold";
+  let backStyle = "bg-primary text-primary-foreground border-primary font-bold";
+  if (isSoldOut) {
+    backStyle = "bg-red-500 text-white border-red-500 font-bold";
+  } else if (remainingCapacity <= 5) {
+    backStyle = "bg-amber-500 text-white border-amber-500 font-bold";
+  }
 
   return (
-    <div
+    <button
+      type="button"
+      suppressHydrationWarning
       onClick={(e) => {
         e.stopPropagation();
         setIsFlipped(!isFlipped);
       }}
-      className={`flip-card interactive-element w-24 h-8 cursor-pointer ${isFlipped ? "flipped" : ""}`}
+      className={`flip-card interactive-element w-24 h-8 cursor-pointer relative z-10 ${isFlipped ? "flipped" : ""}`}
     >
-      <div className="flip-card-inner relative w-full h-full">
+      <span className="flip-card-inner relative w-full h-full block">
         {/* Front side */}
-        <div className={`flip-card-front absolute inset-0 rounded-lg border text-xs font-bold transition-all shadow-sm ${frontStyle}`}>
+        <span className={`flip-card-front absolute inset-0 rounded-lg border text-xs font-bold transition-all shadow-sm ${frontStyle}`}>
           {formattedDate}
-        </div>
+        </span>
         {/* Back side */}
-        <div className={`flip-card-back absolute inset-0 rounded-lg border text-[10px] uppercase tracking-wider text-center transition-all shadow-sm ${backStyle}`}>
+        <span className={`flip-card-back absolute inset-0 rounded-lg border text-[10px] uppercase tracking-wider text-center transition-all shadow-sm ${backStyle}`}>
           {statusText}
-        </div>
-      </div>
-    </div>
+        </span>
+      </span>
+    </button>
   );
 }
 
@@ -103,7 +106,6 @@ export default function ExperienceCard({
   experience,
   mediaSettings,
 }: Readonly<ExperienceCardProps>) {
-  const router = useRouter();
 
   const getDifficultyColor = (diff: string) => {
     switch (diff) {
@@ -141,27 +143,34 @@ export default function ExperienceCard({
 
   const isVideo = /\.(mp4|webm)$/i.test(rawImage);
 
-  const handleCardClick = (e: React.MouseEvent) => {
-    // Prevent redirect if clicked target is inside an interactive element
-    const target = e.target as HTMLElement;
-    if (target.closest("button") || target.closest("a") || target.closest(".interactive-element")) {
-      return;
+  const upcomingDatesContent = (() => {
+    if (experience.upcomingSlots && experience.upcomingSlots.length > 0) {
+      return experience.upcomingSlots.slice(0, 3).map((slot, index) => (
+        <FlippingDatePill
+          key={`${slot.date}-${index}`}
+          date={slot.date}
+          remainingCapacity={slot.remainingCapacity}
+        />
+      ));
     }
-    router.push(`/experiences/${experience.slug}`);
-  };
+    if (experience.nextDepartureSlot) {
+      return (
+        <FlippingDatePill
+          date={experience.nextDepartureSlot.date}
+          remainingCapacity={experience.nextDepartureSlot.remainingCapacity}
+        />
+      );
+    }
+    return (
+      <span className="text-xs text-foreground/40 font-medium italic">
+        No upcoming dates scheduled
+      </span>
+    );
+  })();
 
   return (
     <div
-      onClick={handleCardClick}
-      className="group/card flex flex-col flex-1 cursor-pointer card-container"
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          router.push(`/experiences/${experience.slug}`);
-        }
-      }}
+      className="group/card flex flex-col flex-1 card-container relative"
     >
       {/* CSS Styles injection for Flipping Date Pills */}
       <style dangerouslySetInnerHTML={{ __html: `
@@ -251,7 +260,9 @@ export default function ExperienceCard({
 
           {/* Title */}
           <h3 className="text-lg font-bold font-heading text-foreground group-hover/card:text-primary transition-colors line-clamp-2 leading-tight mb-2 min-h-12">
-            {experience.title}
+            <Link href={`/experiences/${experience.slug}`} className="after:absolute after:inset-0">
+              {experience.title}
+            </Link>
           </h3>
 
           {/* Location and Duration */}
@@ -273,22 +284,7 @@ export default function ExperienceCard({
           <div className="flex flex-col gap-1.5 mb-4">
             <span className="text-[10px] text-foreground/40 font-black uppercase tracking-widest">Upcoming Dates</span>
             <div className="flex flex-wrap items-center gap-2 min-h-8">
-              {experience.upcomingSlots && experience.upcomingSlots.length > 0 ? (
-                experience.upcomingSlots.slice(0, 3).map((slot, index) => (
-                  <FlippingDatePill
-                    key={`${slot.date}-${index}`}
-                    date={slot.date}
-                    remainingCapacity={slot.remainingCapacity}
-                  />
-                ))
-              ) : experience.nextDepartureSlot ? (
-                <FlippingDatePill
-                  date={experience.nextDepartureSlot.date}
-                  remainingCapacity={experience.nextDepartureSlot.remainingCapacity}
-                />
-              ) : (
-                <span className="text-xs text-foreground/40 font-medium italic">No upcoming dates scheduled</span>
-              )}
+              {upcomingDatesContent}
             </div>
           </div>
 
@@ -309,17 +305,18 @@ export default function ExperienceCard({
                 experienceId={experience.id}
                 size={16}
                 variant="card-inline"
-                className="w-9 h-9 border border-border bg-background/50 hover:bg-foreground/5"
+                className="w-9 h-9 border border-border bg-background/50 hover:bg-foreground/5 relative z-10"
               />
               <ShareButton
                 title={experience.title}
                 url={`/experiences/${experience.slug}`}
-                className="w-9 h-9 border border-border bg-background/50 hover:bg-foreground/5"
+                className="w-9 h-9 border border-border bg-background/50 hover:bg-foreground/5 relative z-10"
                 variant="ghost"
               />
               <Link
+                suppressHydrationWarning
                 href={`/experiences/${experience.slug}?book=true`}
-                className="px-4.5 py-2 bg-primary text-primary-foreground font-black text-xs uppercase tracking-wider rounded-xl shadow-md group-hover/card:scale-[1.05] group-hover/card:shadow-lg group-hover/card:shadow-primary/30 hover:scale-[1.08] active:scale-95 transition-all text-center interactive-element leading-none flex items-center h-9 duration-300"
+                className="px-4.5 py-2 bg-primary text-primary-foreground font-black text-xs uppercase tracking-wider rounded-xl shadow-md group-hover/card:scale-[1.05] group-hover/card:shadow-lg group-hover/card:shadow-primary/30 hover:scale-[1.08] active:scale-95 transition-all text-center interactive-element leading-none flex items-center h-9 duration-300 relative z-10"
               >
                 Book Now
               </Link>

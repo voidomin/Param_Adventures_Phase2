@@ -166,6 +166,8 @@ export default function ExperiencesClient({
   const [selectedDifficulties, setSelectedDifficulties] = useState<
     DifficultyLevel[]
   >([]);
+  const [selectedLocations, setSelectedLocations] = useState<string[]>([]);
+  const [showLocationDropdown, setShowLocationDropdown] = useState(false);
   const [minDays, setMinDays] = useState("");
   const [maxDays, setMaxDays] = useState("");
   const [minPrice, setMinPrice] = useState("");
@@ -183,6 +185,26 @@ export default function ExperiencesClient({
     return [Math.min(...prices), Math.max(...prices)] as [number, number];
   }, [initialExperiences]);
 
+  // Auto-detect unique locations from data
+  const locationsList = useMemo(() => {
+    const locs = initialExperiences
+      .map((e) => e.location.trim())
+      .filter((loc) => loc !== "");
+    return Array.from(new Set(locs)).sort((a, b) => a.localeCompare(b));
+  }, [initialExperiences]);
+
+  const toggleLocation = (loc: string) => {
+    setSelectedLocations((prev) =>
+      prev.includes(loc) ? prev.filter((l) => l !== loc) : [...prev, loc]
+    );
+  };
+
+  const toggleDifficulty = (diff: DifficultyLevel) => {
+    setSelectedDifficulties((prev) =>
+      prev.includes(diff) ? prev.filter((d) => d !== diff) : [...prev, diff],
+    );
+  };
+
   const scrollCategories = (direction: "left" | "right") => {
     if (categoryScrollRef.current) {
       const scrollAmount = 200;
@@ -193,16 +215,18 @@ export default function ExperiencesClient({
     }
   };
 
-  const toggleDifficulty = (diff: DifficultyLevel) => {
-    setSelectedDifficulties((prev) =>
-      prev.includes(diff) ? prev.filter((d) => d !== diff) : [...prev, diff],
-    );
-  };
+
+  const locationSummaryLabel = useMemo(() => {
+    if (selectedLocations.length === 0) return "All Locations";
+    if (selectedLocations.length === 1) return selectedLocations[0];
+    return `${selectedLocations[0]} (+${selectedLocations.length - 1})`;
+  }, [selectedLocations]);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (searchQuery) count++;
     if (selectedDifficulties.length > 0) count++;
+    if (selectedLocations.length > 0) count++;
     if (minDays || maxDays) count++;
     if (minPrice || maxPrice) count++;
     if (hasSlots) count++;
@@ -210,6 +234,7 @@ export default function ExperiencesClient({
   }, [
     searchQuery,
     selectedDifficulties,
+    selectedLocations,
     minDays,
     maxDays,
     minPrice,
@@ -220,6 +245,7 @@ export default function ExperiencesClient({
   const clearAll = () => {
     setSearchQuery("");
     setSelectedDifficulties([]);
+    setSelectedLocations([]);
     setMinDays("");
     setMaxDays("");
     setMinPrice("");
@@ -277,6 +303,13 @@ export default function ExperiencesClient({
       );
     }
 
+    // 3.5. Location
+    if (selectedLocations.length > 0) {
+      results = results.filter((exp) =>
+        selectedLocations.includes(exp.location.trim()),
+      );
+    }
+
     // 4. Duration range
     const min = Number.parseInt(minDays);
     const max = Number.parseInt(maxDays);
@@ -325,6 +358,7 @@ export default function ExperiencesClient({
     activeFilter,
     searchQuery,
     selectedDifficulties,
+    selectedLocations,
     minDays,
     maxDays,
     minPrice,
@@ -398,10 +432,11 @@ export default function ExperiencesClient({
         {/* Sticky Filter Bar */}
         <div className="sticky top-[72px] z-40 mb-8 bg-background/80 backdrop-blur-xl border-b border-border shadow-sm rounded-b-2xl px-4 pt-4 pb-2 transition-all">
           {/* Row 1: Categories (Full width) */}
-          <div className="relative w-full group mb-4 border-b border-border/50 pb-3">
+          <div className="relative w-full group mb-3 border-b border-border/50 pb-3">
             {/* Category Pills with Scroll Arrows */}
             <div className="flex items-center gap-1 w-full min-w-0">
               <button
+                suppressHydrationWarning
                 onClick={() => scrollCategories("left")}
                 className="hidden sm:flex shrink-0 w-8 h-8 rounded-full bg-foreground/5 hover:bg-foreground/10 items-center justify-center text-foreground/50 hover:text-foreground transition-colors"
                 aria-label="Scroll left"
@@ -417,6 +452,7 @@ export default function ExperiencesClient({
                   ...categories,
                 ].map((filter) => (
                   <button
+                    suppressHydrationWarning
                     key={filter.id}
                     onClick={() => setActiveFilter(filter.slug)}
                     className={`flex items-center gap-1.5 px-3.5 py-1.5 sm:px-5 sm:py-2 rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-300 ${
@@ -433,6 +469,7 @@ export default function ExperiencesClient({
                 ))}
               </div>
               <button
+                suppressHydrationWarning
                 onClick={() => scrollCategories("right")}
                 className="hidden sm:flex shrink-0 w-8 h-8 rounded-full bg-foreground/5 hover:bg-foreground/10 items-center justify-center text-foreground/50 hover:text-foreground transition-colors"
                 aria-label="Scroll right"
@@ -442,12 +479,13 @@ export default function ExperiencesClient({
             </div>
           </div>
 
-          {/* Row 2: Search, Filters & Sort Controls */}
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            {/* Search */}
-            <div className="relative flex-1 min-w-[200px] max-w-md">
+          {/* Row 2: Search + Filters + Sort (tight row) */}
+          <div className="flex items-center gap-2 py-2">
+            {/* Search — grows to fill available space */}
+            <div className="relative flex-1 min-w-0">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/40" />
               <input
+                suppressHydrationWarning
                 type="text"
                 placeholder="Search trips..."
                 value={searchQuery}
@@ -456,6 +494,7 @@ export default function ExperiencesClient({
               />
               {searchQuery && (
                 <button
+                  suppressHydrationWarning
                   onClick={() => setSearchQuery("")}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground"
                 >
@@ -464,71 +503,82 @@ export default function ExperiencesClient({
               )}
             </div>
 
-            {/* Filter & Sort buttons */}
-            <div className="flex items-center gap-2">
-              {/* Filters Toggle */}
-              <button
-                onClick={() => setShowFilters((v) => !v)}
-                className={`flex items-center justify-center gap-2 px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all border border-border/50 ${
-                  showFilters || activeFilterCount > 0
-                    ? "bg-primary/10 text-primary border-primary/30"
-                    : "bg-foreground/5 text-foreground/70 hover:bg-foreground/10"
-                }`}
-              >
-                <SlidersHorizontal className="w-4 h-4" />
-                Filters
-                {activeFilterCount > 0 && (
-                  <span className="w-5 h-5 bg-primary text-primary-foreground rounded-full text-[10px] font-black flex items-center justify-center">
-                    {activeFilterCount}
-                  </span>
-                )}
-              </button>
+            {/* Filters Toggle */}
+            <button
+              suppressHydrationWarning
+              onClick={() => setShowFilters((v) => !v)}
+              className={`shrink-0 flex items-center justify-center gap-2 px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all border border-border/50 ${
+                showFilters || activeFilterCount > 0
+                  ? "bg-primary/10 text-primary border-primary/30"
+                  : "bg-foreground/5 text-foreground/70 hover:bg-foreground/10"
+              }`}
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              <span className="hidden sm:inline">Filters</span>
+              {activeFilterCount > 0 && (
+                <span className="w-5 h-5 bg-primary text-primary-foreground rounded-full text-[10px] font-black flex items-center justify-center">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
 
-              {/* Sort Button */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowSortMenu((v) => !v)}
-                  className="flex items-center justify-center gap-2 px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap bg-foreground/5 text-foreground/70 hover:bg-foreground/10 transition-all border border-border/50"
-                >
-                  <ArrowUpDown className="w-4 h-4" />
-                  <span>
-                    {SORT_OPTIONS.find((o) => o.value === sortBy)?.label}
-                  </span>
-                  <ChevronDown className="w-3.5 h-3.5" />
-                </button>
-                {showSortMenu && (
-                  <>
-                    <button
-                      type="button"
-                      aria-label="Close sort menu"
-                      className="fixed inset-0 z-40 w-full h-full bg-transparent cursor-default"
-                      onClick={() => setShowSortMenu(false)}
-                    />
-                    <div className="absolute right-0 top-full mt-2 bg-card border border-border rounded-xl shadow-xl z-50 py-2 min-w-[200px]">
-                      {SORT_OPTIONS.map((opt) => (
-                        <button
-                          key={opt.value}
-                          onClick={() => {
-                            setSortBy(opt.value);
-                            setShowSortMenu(false);
-                          }}
-                          className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
-                            sortBy === opt.value
-                              ? "bg-primary/10 text-primary font-bold"
-                              : "text-foreground/70 hover:bg-foreground/5"
-                          }`}
-                        >
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
+            {/* Sort Button */}
+            <div className="relative shrink-0">
+              <button
+                suppressHydrationWarning
+                onClick={() => setShowSortMenu((v) => !v)}
+                className="flex items-center justify-center gap-2 px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap bg-foreground/5 text-foreground/70 hover:bg-foreground/10 transition-all border border-border/50"
+              >
+                <ArrowUpDown className="w-4 h-4" />
+                <span className="hidden sm:inline">
+                  {SORT_OPTIONS.find((o) => o.value === sortBy)?.label}
+                </span>
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+              {showSortMenu && (
+                <>
+                  <button
+                    suppressHydrationWarning
+                    type="button"
+                    aria-label="Close sort menu"
+                    className="fixed inset-0 z-40 w-full h-full bg-transparent cursor-default"
+                    onClick={() => setShowSortMenu(false)}
+                  />
+                  <div className="absolute right-0 mt-2 bg-card border border-border rounded-xl shadow-xl z-50 py-2 min-w-[200px]">
+                    {SORT_OPTIONS.map((opt) => (
+                      <button
+                        suppressHydrationWarning
+                        key={opt.value}
+                        onClick={() => {
+                          setSortBy(opt.value);
+                          setShowSortMenu(false);
+                        }}
+                        className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                          sortBy === opt.value
+                            ? "bg-primary/10 text-primary font-bold"
+                            : "text-foreground/70 hover:bg-foreground/5"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
             </div>
+
+            {/* Results count */}
+            <motion.div
+              key={filteredExperiences.length}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="hidden sm:block text-sm text-foreground/60 font-semibold shrink-0 ml-auto"
+            >
+              {filteredExperiences.length} trip{filteredExperiences.length !== 1 && "s"}
+            </motion.div>
           </div>
 
-          {/* Row 2: Advanced Filters (collapsible) */}
+          {/* Row 3: Advanced Filters (collapsible) */}
           <AnimatePresence>
             {showFilters && (
               <motion.div
@@ -536,117 +586,179 @@ export default function ExperiencesClient({
                 animate={{ height: "auto", opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
                 transition={{ duration: 0.3, ease: "easeInOut" }}
-                className="overflow-hidden"
+                className="overflow-visible"
               >
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 py-4 border-t border-border">
-                  {/* Difficulty */}
-                  <div>
-                    <span className="block text-xs font-bold text-foreground/50 uppercase tracking-wider mb-2">
-                      Difficulty
-                    </span>
-                    <div className="flex flex-wrap gap-2">
-                      {DIFFICULTIES.map((diff) => (
-                        <button
-                          key={diff.value}
-                          onClick={() => toggleDifficulty(diff.value)}
-                          className={`px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
-                            selectedDifficulties.includes(diff.value)
-                              ? diff.color +
-                                " ring-2 ring-offset-1 ring-current"
-                              : "bg-foreground/5 text-foreground/50 border-transparent hover:bg-foreground/10"
-                          }`}
-                        >
-                          {diff.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Duration Range */}
-                  <div>
-                    <span className="block text-xs font-bold text-foreground/50 uppercase tracking-wider mb-2">
-                      Duration (Days)
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <input
-                        id="min-days"
-                        type="number"
-                        min={1}
-                        placeholder="Min"
-                        aria-label="Minimum days"
-                        value={minDays}
-                        onChange={(e) => setMinDays(e.target.value)}
-                        className="w-20 px-3 py-2 bg-foreground/5 border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-center"
-                      />
-                      <span className="text-foreground/30 text-sm">—</span>
-                      <input
-                        id="max-days"
-                        type="number"
-                        min={1}
-                        placeholder="Max"
-                        aria-label="Maximum days"
-                        value={maxDays}
-                        onChange={(e) => setMaxDays(e.target.value)}
-                        className="w-20 px-3 py-2 bg-foreground/5 border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-center"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Price Range */}
-                  <div>
-                    <span className="block text-xs font-bold text-foreground/50 uppercase tracking-wider mb-2">
-                      Price Range (₹)
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <input
-                        id="min-price"
-                        type="number"
-                        min={0}
-                        placeholder={`Min (${priceExtent[0].toLocaleString("en-IN")})`}
-                        aria-label="Minimum price"
-                        value={minPrice}
-                        onChange={(e) => setMinPrice(e.target.value)}
-                        className="w-28 px-3 py-2 bg-foreground/5 border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-center"
-                      />
-                      <span className="text-foreground/30 text-sm">—</span>
-                      <input
-                        id="max-price"
-                        type="number"
-                        min={0}
-                        placeholder={`Max (${priceExtent[1].toLocaleString("en-IN")})`}
-                        aria-label="Maximum price"
-                        value={maxPrice}
-                        onChange={(e) => setMaxPrice(e.target.value)}
-                        className="w-28 px-3 py-2 bg-foreground/5 border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-center"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Availability + Clear */}
-                  <div className="flex flex-col gap-3">
-                    <div>
-                      <span className="block text-xs font-bold text-foreground/50 uppercase tracking-wider mb-2">
-                        Availability
+                <div className="border-t border-border mt-2 pt-4 pb-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-4 gap-y-5 items-start">
+                    {/* Location Dropdown */}
+                    <div className="relative z-30">
+                      <span className="block text-xs font-bold text-foreground/50 uppercase tracking-wider mb-1.5">
+                        Location
                       </span>
                       <button
-                        onClick={() => setHasSlots((v) => !v)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold border transition-all ${
-                          hasSlots
-                            ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
-                            : "bg-foreground/5 text-foreground/50 border-transparent hover:bg-foreground/10"
-                        }`}
+                        type="button"
+                        onClick={() => setShowLocationDropdown((v) => !v)}
+                        className="w-full flex items-center justify-between px-3 py-2 bg-foreground/5 border border-border rounded-lg text-sm font-semibold text-foreground/80 hover:bg-foreground/10 transition-colors"
                       >
-                        <CalendarCheck className="w-4 h-4" />
-                        Has Upcoming Dates
+                        <span className="truncate">
+                          {locationSummaryLabel}
+                        </span>
+                        <ChevronDown className={`w-4 h-4 text-foreground/40 shrink-0 ml-2 transition-transform ${showLocationDropdown ? "rotate-180" : ""}`} />
                       </button>
+
+                      {showLocationDropdown && (
+                        <>
+                          <button
+                            type="button"
+                            aria-label="Close location menu"
+                            className="fixed inset-0 z-40 w-full h-full bg-transparent cursor-default"
+                            onClick={() => setShowLocationDropdown(false)}
+                          />
+                          <div className="absolute left-0 top-full mt-1 bg-card border border-border rounded-xl shadow-2xl z-50 p-2.5 w-full min-w-[200px] max-h-52 overflow-y-auto custom-scrollbar">
+                            {locationsList.length > 0 ? (
+                              <div className="flex flex-col gap-0.5">
+                                {locationsList.map((loc) => {
+                                  const isSelected = selectedLocations.includes(loc);
+                                  return (
+                                    <label
+                                      key={loc}
+                                      className={`flex items-center gap-2 text-sm font-medium rounded-lg px-2.5 py-2 cursor-pointer transition-colors ${
+                                        isSelected
+                                          ? "bg-primary/10 text-primary"
+                                          : "text-foreground/70 hover:bg-foreground/5 hover:text-foreground"
+                                      }`}
+                                    >
+                                      <input
+                                        suppressHydrationWarning
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={() => toggleLocation(loc)}
+                                        className="w-3.5 h-3.5 rounded border-border text-primary focus:ring-primary focus:ring-offset-0 bg-foreground/5"
+                                      />
+                                      <span className="truncate">{loc}</span>
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-foreground/45 italic px-2">No locations found</span>
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
+
+                    {/* Difficulty */}
+                    <div>
+                      <span className="block text-xs font-bold text-foreground/50 uppercase tracking-wider mb-1.5">
+                        Difficulty
+                      </span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {DIFFICULTIES.map((diff) => (
+                          <button
+                            suppressHydrationWarning
+                            key={diff.value}
+                            onClick={() => toggleDifficulty(diff.value)}
+                            className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all ${
+                              selectedDifficulties.includes(diff.value)
+                                ? diff.color +
+                                  " ring-2 ring-offset-1 ring-current"
+                                : "bg-foreground/5 text-foreground/50 border-transparent hover:bg-foreground/10"
+                            }`}
+                          >
+                            {diff.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Duration Range */}
+                    <div>
+                      <span className="block text-xs font-bold text-foreground/50 uppercase tracking-wider mb-1.5">
+                        Duration (Days)
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          suppressHydrationWarning
+                          id="min-days"
+                          type="number"
+                          min={1}
+                          placeholder="Min"
+                          aria-label="Minimum days"
+                          value={minDays}
+                          onChange={(e) => setMinDays(e.target.value)}
+                          className="w-full px-2 py-2 bg-foreground/5 border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-center"
+                        />
+                        <span className="text-foreground/30 text-xs shrink-0">—</span>
+                        <input
+                          suppressHydrationWarning
+                          id="max-days"
+                          type="number"
+                          min={1}
+                          placeholder="Max"
+                          aria-label="Maximum days"
+                          value={maxDays}
+                          onChange={(e) => setMaxDays(e.target.value)}
+                          className="w-full px-2 py-2 bg-foreground/5 border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-center"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Price Range */}
+                    <div>
+                      <span className="block text-xs font-bold text-foreground/50 uppercase tracking-wider mb-1.5">
+                        Price (₹)
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          suppressHydrationWarning
+                          id="min-price"
+                          type="number"
+                          min={0}
+                          placeholder={`${(priceExtent[0] / 1000).toFixed(0)}k`}
+                          aria-label="Minimum price"
+                          value={minPrice}
+                          onChange={(e) => setMinPrice(e.target.value)}
+                          className="w-full px-2 py-2 bg-foreground/5 border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-center"
+                        />
+                        <span className="text-foreground/30 text-xs shrink-0">—</span>
+                        <input
+                          suppressHydrationWarning
+                          id="max-price"
+                          type="number"
+                          min={0}
+                          placeholder={`${(priceExtent[1] / 1000).toFixed(0)}k`}
+                          aria-label="Maximum price"
+                          value={maxPrice}
+                          onChange={(e) => setMaxPrice(e.target.value)}
+                          className="w-full px-2 py-2 bg-foreground/5 border border-border rounded-lg text-sm text-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-center"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bottom actions: Availability + Clear */}
+                  <div className="flex items-center justify-between gap-3 pt-3 mt-3 border-t border-border/50">
+                    <button
+                      suppressHydrationWarning
+                      onClick={() => setHasSlots((v) => !v)}
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                        hasSlots
+                          ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
+                          : "bg-foreground/5 text-foreground/50 border-transparent hover:bg-foreground/10"
+                      }`}
+                    >
+                      <CalendarCheck className="w-3.5 h-3.5" />
+                      Has Upcoming Dates
+                    </button>
 
                     {activeFilterCount > 0 && (
                       <button
+                        suppressHydrationWarning
                         onClick={clearAll}
-                        className="flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold text-red-500 bg-red-500/5 hover:bg-red-500/10 border border-red-500/20 transition-all self-start"
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-red-500 bg-red-500/5 hover:bg-red-500/10 border border-red-500/20 transition-all"
                       >
-                        <X className="w-4 h-4" />
+                        <X className="w-3.5 h-3.5" />
                         Clear All
                       </button>
                     )}
@@ -655,19 +767,6 @@ export default function ExperiencesClient({
               </motion.div>
             )}
           </AnimatePresence>
-
-          {/* Results count */}
-          <div className="flex items-center justify-between py-2">
-            <motion.div
-              key={filteredExperiences.length}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="text-sm text-foreground/60 font-medium"
-            >
-              Showing {filteredExperiences.length} trip
-              {filteredExperiences.length !== 1 && "s"}
-            </motion.div>
-          </div>
         </div>
 
         {/* Grid */}
@@ -692,7 +791,7 @@ export default function ExperiencesClient({
           </motion.div>
         ) : (
           <motion.div
-            key={`${activeFilter}-${sortBy}-${searchQuery}-${selectedDifficulties.join(",")}-${minDays}-${maxDays}-${minPrice}-${maxPrice}-${hasSlots}`}
+            key={`${activeFilter}-${sortBy}-${searchQuery}-${selectedDifficulties.join(",")}-${selectedLocations.join(",")}-${minDays}-${maxDays}-${minPrice}-${maxPrice}-${hasSlots}`}
             variants={containerVariants}
             initial="hidden"
             animate="show"
