@@ -19,7 +19,7 @@ export async function GET(
       include: {
         _count: {
           select: {
-            bookings: { where: { bookingStatus: { not: "CANCELLED" } } },
+            bookings: { where: { bookingStatus: "CONFIRMED" } },
           },
         },
       },

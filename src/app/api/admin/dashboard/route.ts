@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
         title: true,
         _count: {
           select: {
-            bookings: { where: { bookingStatus: { not: "CANCELLED" } } },
+            bookings: { where: { bookingStatus: "CONFIRMED" } },
           },
         },
       },
