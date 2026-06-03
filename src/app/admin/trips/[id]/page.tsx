@@ -14,6 +14,7 @@ import {
   UserPlus,
   Trash2,
   Download,
+  Loader2,
 } from "lucide-react";
 
 interface TrekLead {
@@ -22,17 +23,35 @@ interface TrekLead {
   email: string;
 }
 
+interface BookingParticipant {
+  id: string;
+  isPrimary: boolean;
+  name: string;
+  email: string | null;
+  phoneNumber: string | null;
+  gender: string | null;
+  age: number | null;
+  bloodGroup: string | null;
+  emergencyContactName: string | null;
+  emergencyContactNumber: string | null;
+  emergencyRelationship: string | null;
+  pickupPoint: string | null;
+  dropPoint: string | null;
+}
+
 interface Participant {
   id: string;
   participantCount: number;
   totalPrice: number;
   bookingStatus: string;
+  createdAt: string;
   user: {
     id: string;
     name: string;
     email: string;
     phoneNumber: string | null;
   };
+  participants: BookingParticipant[];
 }
 
 interface TripSlot {
@@ -59,6 +78,105 @@ export default function TripManifestPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAssigning, setIsAssigning] = useState(false);
   const [error, setError] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async () => {
+    if (manifest.length === 0 || !trip) {
+      alert("No confirmed bookings to export.");
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const rows = manifest.flatMap((booking) => {
+        // If there are no participants, fallback to lead booker info as a row
+        if (!booking.participants || booking.participants.length === 0) {
+          return [
+            {
+              "Trek/Experience": trip.experience.title,
+              "Departure Date": new Date(trip.date).toLocaleDateString("en-IN"),
+              "Booking ID": booking.id,
+              "Lead Booker Name": booking.user.name,
+              "Lead Booker Email": booking.user.email,
+              "Lead Booker Phone": booking.user.phoneNumber || "",
+              "Participant Name": booking.user.name,
+              "Is Primary Booker?": "Yes",
+              "Email": booking.user.email,
+              "Phone Number": booking.user.phoneNumber || "",
+              "Gender": "",
+              "Age": "",
+              "Blood Group": "",
+              "Emergency Contact Name": "",
+              "Emergency Contact Phone": "",
+              "Relationship": "",
+              "Pickup Point": "",
+              "Drop Point": "",
+              "Price Paid (INR)": Number(booking.totalPrice),
+              "Booking Date": new Date(booking.createdAt).toLocaleDateString("en-IN"),
+            },
+          ];
+        }
+
+        return booking.participants.map((p) => ({
+          "Trek/Experience": trip.experience.title,
+          "Departure Date": new Date(trip.date).toLocaleDateString("en-IN"),
+          "Booking ID": booking.id,
+          "Lead Booker Name": booking.user.name,
+          "Lead Booker Email": booking.user.email,
+          "Lead Booker Phone": booking.user.phoneNumber || "",
+          "Participant Name": p.name,
+          "Is Primary Booker?": p.isPrimary ? "Yes" : "No",
+          "Email": p.email || "",
+          "Phone Number": p.phoneNumber || "",
+          "Gender": p.gender || "",
+          "Age": p.age !== null && p.age !== undefined ? String(p.age) : "",
+          "Blood Group": p.bloodGroup || "",
+          "Emergency Contact Name": p.emergencyContactName || "",
+          "Emergency Contact Phone": p.emergencyContactNumber || "",
+          "Relationship": p.emergencyRelationship || "",
+          "Pickup Point": p.pickupPoint || "",
+          "Drop Point": p.dropPoint || "",
+          "Price Paid (INR)": Number(booking.totalPrice),
+          "Booking Date": new Date(booking.createdAt).toLocaleDateString("en-IN"),
+        }));
+      });
+
+      // Dynamically import xlsx (SheetJS)
+      const XLSX = await import("xlsx");
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Manifest");
+
+      // Auto-fit column widths
+      const maxLens = Object.keys(rows[0]).reduce((acc, key) => {
+        acc[key] = key.length;
+        return acc;
+      }, {} as Record<string, number>);
+
+      rows.forEach((row: Record<string, string | number>) => {
+        Object.keys(row).forEach((key) => {
+          const valStr = String(row[key] ?? "");
+          if (valStr.length > maxLens[key]) {
+            maxLens[key] = valStr.length;
+          }
+        });
+      });
+
+      worksheet["!cols"] = Object.keys(maxLens).map((key) => ({
+        wch: Math.max(maxLens[key] + 3, 10),
+      }));
+
+      const dateStr = new Date(trip.date).toISOString().split("T")[0];
+      const sanitizedTitle = trip.experience.title.replace(/[^a-zA-Z0-9]/g, "_");
+      const filename = `${sanitizedTitle}_manifest_${dateStr}.xlsx`;
+      XLSX.writeFile(workbook, filename);
+    } catch (err) {
+      console.error("Export failed:", err);
+      alert("Failed to export manifest. Please try again.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const fetchTripDetails = useCallback(async () => {
     try {
@@ -219,10 +337,17 @@ export default function TripManifestPage() {
               </div>
               <button
                 type="button"
-                className="flex items-center gap-2 px-4 py-2 bg-foreground/5 hover:bg-foreground/10 border border-border rounded-xl text-sm font-semibold transition-colors"
-                title="Export CSV (Coming Soon)"
+                onClick={handleExport}
+                disabled={isExporting || manifest.length === 0}
+                className="flex items-center gap-2 px-4 py-2 bg-foreground/5 hover:bg-foreground/10 border border-border rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Export Excel (.xlsx)"
               >
-                <Download className="w-4 h-4" /> Export
+                {isExporting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4" />
+                )}
+                {isExporting ? "Exporting..." : "Export"}
               </button>
             </div>
 
