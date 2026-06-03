@@ -10,6 +10,7 @@ vi.mock("@/lib/db", () => ({
     booking: {
       findUnique: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
     },
     payment: {
       create: vi.fn(),

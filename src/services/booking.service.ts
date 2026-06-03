@@ -134,7 +134,7 @@ export const BookingService = {
       const updatedBooking = await prisma.$transaction(async (tx) => {
         const booking = await tx.booking.findUnique({
           where: { id: bookingId },
-          select: { id: true, bookingStatus: true, participantCount: true, slotId: true },
+          select: { id: true, userId: true, bookingStatus: true, participantCount: true, slotId: true },
         });
 
         if (!booking) {
@@ -165,6 +165,21 @@ export const BookingService = {
           await tx.slot.update({
             where: { id: booking.slotId },
             data: { remainingCapacity: { decrement: booking.participantCount } },
+          });
+
+          // Cancel any other older pending/requested bookings for this user on the same slot
+          await tx.booking.updateMany({
+            where: {
+              userId: booking.userId,
+              slotId: booking.slotId,
+              id: { not: bookingId },
+              bookingStatus: "REQUESTED",
+              paymentStatus: "PENDING",
+            },
+            data: {
+              bookingStatus: "CANCELLED",
+              paymentStatus: "FAILED",
+            },
           });
         }
 
