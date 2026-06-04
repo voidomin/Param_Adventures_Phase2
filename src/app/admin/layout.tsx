@@ -35,6 +35,19 @@ export default function AdminLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("admin_sidebar_collapsed");
+    if (saved === "true") {
+      setIsSidebarCollapsed(true);
+    }
+  }, []);
+
+  const handleToggleSidebar = (collapsed: boolean) => {
+    setIsSidebarCollapsed(collapsed);
+    localStorage.setItem("admin_sidebar_collapsed", collapsed ? "true" : "false");
+  };
 
   useEffect(() => {
     if (!isLoading) {
@@ -201,9 +214,9 @@ export default function AdminLayout({
       <aside
         className={`w-64 bg-background border-r border-border fixed inset-y-0 left-0 z-40 flex flex-col transition-transform duration-300 ease-in-out ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } md:translate-x-0`}
+        } ${isSidebarCollapsed ? "md:-translate-x-full" : "md:translate-x-0"}`}
       >
-        <div className="p-6 hidden md:block">
+        <div className="p-6 hidden md:flex items-center justify-between border-b border-border/40">
           <Link href="/" className="flex items-center gap-2">
             <span className="text-xl font-heading font-bold text-primary">
               PARAM
@@ -212,6 +225,14 @@ export default function AdminLayout({
               Admin
             </span>
           </Link>
+          <button
+            onClick={() => handleToggleSidebar(true)}
+            className="p-1.5 text-foreground/50 hover:text-foreground hover:bg-foreground/5 rounded-lg transition-colors"
+            title="Collapse Sidebar"
+            aria-label="Collapse Sidebar"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
         </div>
 
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto mt-4 md:mt-0">
@@ -291,8 +312,22 @@ export default function AdminLayout({
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 md:ml-64 relative pt-16 md:pt-0">
-        <div className="p-6 md:p-10 max-w-7xl mx-auto">{children}</div>
+      <div
+        className={`flex-1 relative pt-16 md:pt-0 transition-all duration-300 ${
+          isSidebarCollapsed ? "md:ml-0" : "md:ml-64"
+        }`}
+      >
+        {isSidebarCollapsed && (
+          <button
+            onClick={() => handleToggleSidebar(false)}
+            className="hidden md:flex fixed top-4 left-4 z-50 p-2 bg-background border border-border text-foreground/70 hover:bg-foreground/5 rounded-xl transition-all shadow-md items-center justify-center animate-in fade-in zoom-in duration-200"
+            title="Expand Sidebar"
+            aria-label="Expand Sidebar"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
+        <div className="p-6 md:p-10 max-w-[1600px] w-full mx-auto">{children}</div>
       </div>
     </div>
   );

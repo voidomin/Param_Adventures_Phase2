@@ -272,7 +272,7 @@ export default function SystemSettingsPage() {
 
   return (
     <div className="min-h-screen bg-background text-foreground selection:bg-primary selection:text-white p-4 md:p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
+      <div className="max-w-[1600px] w-full mx-auto space-y-8">
         
         {/* Header Section */}
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-8 border-b border-border/50">
