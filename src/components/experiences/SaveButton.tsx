@@ -99,11 +99,14 @@ export default function SaveButton({
     ? "bg-background/50 border border-border hover:bg-foreground/5 shadow-md"
     : "bg-background/10 border border-border/40 hover:bg-foreground/10 shadow-xl ring-1 ring-border/10 text-white";
 
-  const heartStyle = isSaved
-    ? "fill-red-500 text-red-500"
-    : variant === "card-inline"
-      ? "fill-transparent text-foreground/60 group-hover:text-red-500"
-      : "fill-transparent text-white group-hover:text-red-400";
+  let heartStyle = "";
+  if (isSaved) {
+    heartStyle = "fill-red-500 text-red-500";
+  } else if (variant === "card-inline") {
+    heartStyle = "fill-transparent text-foreground/60 group-hover:text-red-500";
+  } else {
+    heartStyle = "fill-transparent text-white group-hover:text-red-400";
+  }
 
   return (
     <button

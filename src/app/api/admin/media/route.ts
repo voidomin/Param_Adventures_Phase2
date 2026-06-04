@@ -2,6 +2,102 @@ import { NextResponse, NextRequest } from "next/server";
 import { authorizeRequest } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
 
+interface ImageUsage {
+  type: string;
+  id: string;
+  name: string;
+}
+
+interface UsageLookupData {
+  experiences: { id: string; title: string; cardImage: string | null; coverImage: string | null; images: string[] }[];
+  blogs: { id: string; title: string; coverImageUrl: string | null; coverImageId: string | null }[];
+  storyBlocks: { id: string; title: string; imageUrl: string | null }[];
+  tripLogs: { id: string; photoUrls: string[] }[];
+  users: { id: string; name: string; avatarUrl: string | null }[];
+  heroSlides: { id: string; title: string; videoUrl: string | null }[];
+  platformSettings: { key: string; value: string | null }[];
+}
+
+function checkExperienceUsages(url: string, experiences: UsageLookupData["experiences"], usages: ImageUsage[]) {
+  for (const exp of experiences) {
+    if (exp.cardImage === url) {
+      usages.push({ type: "Experience Card", id: exp.id, name: exp.title });
+    }
+    if (exp.coverImage === url) {
+      usages.push({ type: "Experience Cover", id: exp.id, name: exp.title });
+    }
+    if (exp.images.includes(url)) {
+      usages.push({ type: "Experience Gallery", id: exp.id, name: exp.title });
+    }
+  }
+}
+
+function checkBlogUsages(imgId: string, url: string, blogs: UsageLookupData["blogs"], usages: ImageUsage[]) {
+  for (const blog of blogs) {
+    if (blog.coverImageId === imgId || blog.coverImageUrl === url) {
+      usages.push({ type: "Blog Cover", id: blog.id, name: blog.title });
+    }
+  }
+}
+
+function checkStoryBlockUsages(url: string, storyBlocks: UsageLookupData["storyBlocks"], usages: ImageUsage[]) {
+  for (const sb of storyBlocks) {
+    if (sb.imageUrl === url) {
+      usages.push({ type: "Story Block", id: sb.id, name: sb.title });
+    }
+  }
+}
+
+function checkTripLogUsages(url: string, tripLogs: UsageLookupData["tripLogs"], usages: ImageUsage[]) {
+  for (const tl of tripLogs) {
+    if (tl.photoUrls.includes(url)) {
+      usages.push({ type: "Trip Log Photo", id: tl.id, name: `Log for Slot ${tl.id}` });
+    }
+  }
+}
+
+function checkUserUsages(url: string, users: UsageLookupData["users"], usages: ImageUsage[]) {
+  for (const u of users) {
+    if (u.avatarUrl === url) {
+      usages.push({ type: "User Avatar", id: u.id, name: u.name });
+    }
+  }
+}
+
+function checkHeroSlideUsages(url: string, heroSlides: UsageLookupData["heroSlides"], usages: ImageUsage[]) {
+  for (const slide of heroSlides) {
+    if (slide.videoUrl === url) {
+      usages.push({ type: "Hero Slide", id: slide.id, name: slide.title });
+    }
+  }
+}
+
+function checkSettingUsages(url: string, platformSettings: UsageLookupData["platformSettings"], usages: ImageUsage[]) {
+  for (const setting of platformSettings) {
+    if (setting.value === url) {
+      usages.push({ type: "System Setting", id: setting.key, name: setting.key });
+    }
+  }
+}
+
+function getImageUsages(
+  img: { id: string; originalUrl: string },
+  data: UsageLookupData
+): ImageUsage[] {
+  const usages: ImageUsage[] = [];
+  const url = img.originalUrl;
+
+  checkExperienceUsages(url, data.experiences, usages);
+  checkBlogUsages(img.id, url, data.blogs, usages);
+  checkStoryBlockUsages(url, data.storyBlocks, usages);
+  checkTripLogUsages(url, data.tripLogs, usages);
+  checkUserUsages(url, data.users, usages);
+  checkHeroSlideUsages(url, data.heroSlides, usages);
+  checkSettingUsages(url, data.platformSettings, usages);
+
+  return usages;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const auth = await authorizeRequest(request, [
@@ -39,62 +135,15 @@ export async function GET(request: NextRequest) {
     ]);
 
     const imagesWithUsages = images.map(img => {
-      const usages: { type: string; id: string; name: string }[] = [];
-      
-      // 1. Experiences
-      for (const exp of experiences) {
-        if (exp.cardImage === img.originalUrl) {
-          usages.push({ type: "Experience Card", id: exp.id, name: exp.title });
-        }
-        if (exp.coverImage === img.originalUrl) {
-          usages.push({ type: "Experience Cover", id: exp.id, name: exp.title });
-        }
-        if (exp.images.includes(img.originalUrl)) {
-          usages.push({ type: "Experience Gallery", id: exp.id, name: exp.title });
-        }
-      }
-      
-      // 2. Blogs
-      for (const blog of blogs) {
-        if (blog.coverImageId === img.id || blog.coverImageUrl === img.originalUrl) {
-          usages.push({ type: "Blog Cover", id: blog.id, name: blog.title });
-        }
-      }
-      
-      // 3. StoryBlocks
-      for (const sb of storyBlocks) {
-        if (sb.imageUrl === img.originalUrl) {
-          usages.push({ type: "Story Block", id: sb.id, name: sb.title });
-        }
-      }
-      
-      // 4. TripLogs
-      for (const tl of tripLogs) {
-        if (tl.photoUrls.includes(img.originalUrl)) {
-          usages.push({ type: "Trip Log Photo", id: tl.id, name: `Log for Slot ${tl.id}` });
-        }
-      }
-      
-      // 5. Users
-      for (const u of users) {
-        if (u.avatarUrl === img.originalUrl) {
-          usages.push({ type: "User Avatar", id: u.id, name: u.name });
-        }
-      }
-
-      // 6. Hero Slides
-      for (const slide of heroSlides) {
-        if (slide.videoUrl === img.originalUrl) {
-          usages.push({ type: "Hero Slide", id: slide.id, name: slide.title });
-        }
-      }
-
-      // 7. System Settings
-      for (const setting of platformSettings) {
-        if (setting.value === img.originalUrl) {
-          usages.push({ type: "System Setting", id: setting.key, name: setting.key });
-        }
-      }
+      const usages = getImageUsages(img, {
+        experiences,
+        blogs,
+        storyBlocks,
+        tripLogs,
+        users,
+        heroSlides,
+        platformSettings
+      });
 
       return {
         ...img,

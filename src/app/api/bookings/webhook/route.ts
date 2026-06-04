@@ -13,6 +13,105 @@ import { webhookLimiter } from "@/lib/rate-limiter";
  * SECURE: Uses HMAC-SHA256 signature verification and Rate Limiting.
  * PUBLIC: No JWT authentication (Razorpay call).
  */
+async function processWebhookEvent(eventType: string, eventBody: any, forensicsIp: string) {
+  const { payload } = eventBody;
+  switch (eventType) {
+    case "order.paid": {
+      const order = payload.order.entity;
+      const payment = payload.payment.entity;
+      const bookingId = order.receipt; // We use bookingId as receipt during order creation
+
+      if (!bookingId) {
+        console.error("[Webhook] order.paid event missing receipt (bookingId). Order ID:", order.id);
+        break;
+      }
+
+      // Trigger shared confirmation logic
+      await BookingService.confirmPayment(
+        bookingId, 
+        order.id, 
+        payment.id, 
+        eventBody
+      );
+
+      await logActivity(
+        "PAYMENT_WEBHOOK_PROCESSED",
+        "SYSTEM",
+        "Booking",
+        bookingId,
+        { 
+          event: eventType, 
+          razorpay_order_id: order.id, 
+          razorpay_payment_id: payment.id,
+          ip: forensicsIp
+        }
+      );
+      break;
+    }
+    case "payment.captured": {
+      const payment = payload.payment.entity;
+      const orderId = payment.order_id;
+      const paymentId = payment.id;
+
+      if (!orderId) {
+        console.error("[Webhook] payment.captured event missing order_id. Payment ID:", paymentId);
+        break;
+      }
+
+      const paymentRecord = await prisma.payment.findFirst({
+        where: { providerOrderId: orderId },
+        select: { bookingId: true }
+      });
+
+      const bookingId = paymentRecord?.bookingId || payment.notes?.bookingId || payment.notes?.booking_id;
+
+      if (!bookingId) {
+        console.error("[Webhook] payment.captured could not find bookingId for Order ID:", orderId);
+        break;
+      }
+
+      await BookingService.confirmPayment(
+        bookingId, 
+        orderId, 
+        paymentId, 
+        eventBody
+      );
+
+      await logActivity(
+        "PAYMENT_WEBHOOK_PROCESSED",
+        "SYSTEM",
+        "Booking",
+        bookingId,
+        { 
+          event: eventType, 
+          razorpay_order_id: orderId, 
+          razorpay_payment_id: paymentId,
+          ip: forensicsIp
+        }
+      );
+      break;
+    }
+
+    case "payment.failed": {
+      const payment = payload.payment.entity;
+      const orderId = payment.order_id;
+
+      if (orderId) {
+        await prisma.payment.updateMany({
+          where: { providerOrderId: orderId, status: "PENDING" },
+          data: { status: "FAILED", fullPayload: eventBody }
+        });
+        
+        console.log(`[Webhook] Payment failure recorded for Order: ${orderId}`);
+      }
+      break;
+    }
+
+    default:
+      console.log(`[Webhook] Unhandled event type: ${eventType}`);
+  }
+}
+
 export async function POST(request: NextRequest) {
   // 0. Rate Limiting Protection (Abuse Prevention)
   const ip = request.headers.get("x-forwarded-for") || "127.0.0.1";
@@ -68,7 +167,6 @@ export async function POST(request: NextRequest) {
     // 4. Process Event
     const eventBody = JSON.parse(rawBody);
     const eventType = eventBody.event;
-    const { payload } = eventBody;
 
     console.log(`[Webhook] Received Razorpay Event: ${eventType}`);
 
@@ -100,101 +198,7 @@ export async function POST(request: NextRequest) {
     // LOGIC: Capture IP for forensics
     const forensicsIp = request.headers.get("x-forwarded-for") || "unknown";
 
-    switch (eventType) {
-      case "order.paid": {
-        const order = payload.order.entity;
-        const payment = payload.payment.entity;
-        const bookingId = order.receipt; // We use bookingId as receipt during order creation
-
-        if (!bookingId) {
-          console.error("[Webhook] order.paid event missing receipt (bookingId). Order ID:", order.id);
-          break;
-        }
-
-        // Trigger shared confirmation logic
-        await BookingService.confirmPayment(
-          bookingId, 
-          order.id, 
-          payment.id, 
-          eventBody
-        );
-
-        await logActivity(
-          "PAYMENT_WEBHOOK_PROCESSED",
-          "SYSTEM",
-          "Booking",
-          bookingId,
-          { 
-            event: eventType, 
-            razorpay_order_id: order.id, 
-            razorpay_payment_id: payment.id,
-            ip: forensicsIp
-          }
-        );
-        break;
-      }
-      case "payment.captured": {
-        const payment = payload.payment.entity;
-        const orderId = payment.order_id;
-        const paymentId = payment.id;
-
-        if (!orderId) {
-          console.error("[Webhook] payment.captured event missing order_id. Payment ID:", paymentId);
-          break;
-        }
-
-        const paymentRecord = await prisma.payment.findFirst({
-          where: { providerOrderId: orderId },
-          select: { bookingId: true }
-        });
-
-        const bookingId = paymentRecord?.bookingId || payment.notes?.bookingId || payment.notes?.booking_id;
-
-        if (!bookingId) {
-          console.error("[Webhook] payment.captured could not find bookingId for Order ID:", orderId);
-          break;
-        }
-
-        await BookingService.confirmPayment(
-          bookingId, 
-          orderId, 
-          paymentId, 
-          eventBody
-        );
-
-        await logActivity(
-          "PAYMENT_WEBHOOK_PROCESSED",
-          "SYSTEM",
-          "Booking",
-          bookingId,
-          { 
-            event: eventType, 
-            razorpay_order_id: orderId, 
-            razorpay_payment_id: paymentId,
-            ip: forensicsIp
-          }
-        );
-        break;
-      }
-
-      case "payment.failed": {
-        const payment = payload.payment.entity;
-        const orderId = payment.order_id;
-
-        if (orderId) {
-          await prisma.payment.updateMany({
-            where: { providerOrderId: orderId, status: "PENDING" },
-            data: { status: "FAILED", fullPayload: eventBody }
-          });
-          
-          console.log(`[Webhook] Payment failure recorded for Order: ${orderId}`);
-        }
-        break;
-      }
-
-      default:
-        console.log(`[Webhook] Unhandled event type: ${eventType}`);
-    }
+    await processWebhookEvent(eventType, eventBody, forensicsIp);
 
     // Always respond 200 OK to Razorpay to prevent retries
     return NextResponse.json({ status: "ok" });

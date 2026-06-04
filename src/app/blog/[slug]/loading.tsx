@@ -17,9 +17,9 @@ export default function BlogLoading() {
 
         {/* Content skeleton */}
         <div className="space-y-4">
-          {Array.from({ length: 8 }).map((_, i) => (
+          {["line-1", "line-2", "line-3", "line-4", "line-5", "line-6", "line-7", "line-8"].map((lineKey, i) => (
             <div
-              key={i}
+              key={lineKey}
               className="h-4 rounded bg-muted animate-pulse"
               style={{ width: `${75 + (i % 4) * 8}%` }}
             />

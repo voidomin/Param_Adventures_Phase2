@@ -514,14 +514,14 @@ export default function BookingsPage() {
 
             {/* Bookings Render */}
             {activeTab !== "saved" &&
-              (bookings[activeTab as keyof BookingsData].length === 0 ? (
+              (bookings[activeTab].length === 0 ? (
                 <EmptyState
                   title={`No ${activeTab} trips`}
                   msg="Explore our upcoming adventures and book your next journey!"
                 />
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {bookings[activeTab as keyof BookingsData].map((b) => (
+                  {bookings[activeTab].map((b) => (
                     <div
                       key={b.id}
                       className="bg-card border border-border rounded-2xl overflow-hidden flex flex-col"

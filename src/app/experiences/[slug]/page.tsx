@@ -652,7 +652,7 @@ export default async function ExperienceDetailPage({
 
   const description =
     exp.description && typeof exp.description === "object"
-      ? getPlainTextFromJSON(exp.description as unknown as RichTextNode)
+      ? getPlainTextFromJSON(exp.description)
       : String(exp.description || "");
 
   const finalDescription =
@@ -808,7 +808,7 @@ export default async function ExperienceDetailPage({
               </div>
             )}
             <div className="text-lg text-foreground/80 leading-relaxed">
-              <RichTextRenderer content={exp.description as unknown as RichTextNode} />
+              <RichTextRenderer content={exp.description} />
             </div>
           </section>
 
@@ -865,13 +865,13 @@ export default async function ExperienceDetailPage({
             </div>
           </section>
 
-          <EssentialLogistics experience={exp as unknown as ExperienceWithInclusions} />
+          <EssentialLogistics experience={exp} />
 
-          <ItinerarySection itinerary={exp.itinerary as unknown as ItineraryDay[]} />
+          <ItinerarySection itinerary={exp.itinerary} />
 
           <InclusionsExclusions
-            inclusions={exp.inclusions as unknown as string[]}
-            exclusions={exp.exclusions as unknown as string[]}
+            inclusions={exp.inclusions}
+            exclusions={exp.exclusions}
           />
 
           {/* Things to Carry */}
@@ -919,7 +919,7 @@ export default async function ExperienceDetailPage({
                 Frequently Asked Questions
               </h2>
               <div className="space-y-4">
-                {(exp.faqs as unknown as FAQ[]).map((faq, _ix) => (
+                {exp.faqs.map((faq, _ix) => (
                   <details
                     key={`${_ix}-${faq.question}`}
                     className="group bg-card border border-border rounded-2xl overflow-hidden [&_summary::-webkit-details-marker]:hidden"
@@ -1041,7 +1041,7 @@ export default async function ExperienceDetailPage({
               </span>
             </div>
 
-            <DepartureDates slots={experience.slots as unknown as Slot[]} />
+            <DepartureDates slots={experience.slots} />
 
             <BookNowButton
               experienceId={exp.id}
