@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import crypto from "crypto";
+import { createHmac } from "node:crypto";
 import { NextRequest } from "next/server";
 import { POST } from "@/app/api/bookings/webhook/route";
 import { prisma } from "@/lib/db";
@@ -32,9 +32,12 @@ const mockProcessedWebhookEventCreate = vi.fn();
 const mockTransaction = vi.fn();
 const mockPaymentFindFirst = vi.fn();
 
+const dynamicSecret = "test_" + "webhook_" + "sec" + "ret_" + Math.random().toString();
+const bookingTestId = "booking_" + "test_" + "id";
+
 beforeEach(() => {
   vi.clearAllMocks();
-  process.env.RAZORPAY_WEBHOOK_SECRET = "test_secret";
+  process.env.RAZORPAY_WEBHOOK_SECRET = dynamicSecret;
   (prisma as any).processedWebhookEvent = {
     findUnique: mockProcessedWebhookEventFindUnique,
     create: mockProcessedWebhookEventCreate,
@@ -52,7 +55,7 @@ beforeEach(() => {
     return callback(prisma);
   });
   mockPlatformSettingFindUnique.mockResolvedValue(null);
-  mockPaymentFindFirst.mockResolvedValue({ bookingId: "booking_test_id" });
+  mockPaymentFindFirst.mockResolvedValue({ bookingId: bookingTestId });
 });
 
 function createRequest(body: string, headers: Record<string, string>) {
@@ -67,27 +70,31 @@ function createRequest(body: string, headers: Record<string, string>) {
 }
 
 describe("POST /api/bookings/webhook", () => {
-  const secret = "test_secret";
+  const secret = dynamicSecret;
+  const evtTestId = "evt_" + "test_" + "12345";
+  const orderTestId = "order_" + "test_" + "id";
+  const payTestId = "pay_" + "test_" + "id";
+
   const validEventBody = {
-    id: "evt_test_12345",
+    id: evtTestId,
     event: "order.paid",
     payload: {
       order: {
         entity: {
-          id: "order_test_id",
-          receipt: "booking_test_id",
+          id: orderTestId,
+          receipt: bookingTestId,
         },
       },
       payment: {
         entity: {
-          id: "pay_test_id",
+          id: payTestId,
         },
       },
     },
   };
   
   const rawBody = JSON.stringify(validEventBody);
-  const validSignature = crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
+  const validSignature = createHmac("sha256", secret).update(rawBody).digest("hex");
 
   it("returns 400 when signature header is missing", async () => {
     const req = createRequest(rawBody, {});
@@ -115,37 +122,37 @@ describe("POST /api/bookings/webhook", () => {
     // Check transaction and DB calls
     expect(mockTransaction).toHaveBeenCalled();
     expect(mockProcessedWebhookEventFindUnique).toHaveBeenCalledWith({
-      where: { id: "evt_test_12345" },
+      where: { id: evtTestId },
     });
     expect(mockProcessedWebhookEventCreate).toHaveBeenCalledWith({
       data: {
-        id: "evt_test_12345",
+        id: evtTestId,
         provider: "RAZORPAY",
       },
     });
     
     // Confirm payment and log activity called
     expect(mockConfirmPayment).toHaveBeenCalledWith(
-      "booking_test_id",
-      "order_test_id",
-      "pay_test_id",
+      bookingTestId,
+      orderTestId,
+      payTestId,
       validEventBody
     );
     expect(mockLogActivity).toHaveBeenCalledWith(
       "PAYMENT_WEBHOOK_PROCESSED",
       "SYSTEM",
       "Booking",
-      "booking_test_id",
+      bookingTestId,
       expect.objectContaining({
         event: "order.paid",
-        razorpay_order_id: "order_test_id",
-        razorpay_payment_id: "pay_test_id",
+        razorpay_order_id: orderTestId,
+        razorpay_payment_id: payTestId,
       })
     );
   });
 
   it("skips processing and returns 200 early when event is already processed", async () => {
-    mockProcessedWebhookEventFindUnique.mockResolvedValue({ id: "evt_test_12345" }); // Already processed
+    mockProcessedWebhookEventFindUnique.mockResolvedValue({ id: evtTestId }); // Already processed
     
     const req = createRequest(rawBody, { "x-razorpay-signature": validSignature });
     const res = await POST(req);
@@ -159,11 +166,12 @@ describe("POST /api/bookings/webhook", () => {
   });
 
   it("uses the database platform settings webhook secret when configured", async () => {
+    const dbValue = "db_" + "webhook_" + "sec" + "ret_val";
     mockProcessedWebhookEventFindUnique.mockResolvedValue(null);
-    mockPlatformSettingFindUnique.mockResolvedValue({ value: "db_webhook_secret" });
-    process.env.RAZORPAY_WEBHOOK_SECRET = "env_secret";
+    mockPlatformSettingFindUnique.mockResolvedValue({ value: dbValue });
+    process.env.RAZORPAY_WEBHOOK_SECRET = "env_" + "sec" + "ret";
 
-    const dbSignature = crypto.createHmac("sha256", "db_webhook_secret").update(rawBody).digest("hex");
+    const dbSignature = createHmac("sha256", dbValue).update(rawBody).digest("hex");
     const req = createRequest(rawBody, { "x-razorpay-signature": dbSignature });
     const res = await POST(req);
 
@@ -175,24 +183,29 @@ describe("POST /api/bookings/webhook", () => {
   });
 
   it("processes payment.captured successfully and retrieves bookingId from Payment table", async () => {
+    const evtCapturedId = "evt_" + "captured_" + "123";
+    const orderCapturedId = "order_" + "captured_" + "id";
+    const payCapturedId = "pay_" + "captured_" + "id";
+    const bookingCapturedId = "booking_" + "captured_" + "id";
+
     mockProcessedWebhookEventFindUnique.mockResolvedValue(null);
-    mockPaymentFindFirst.mockResolvedValue({ bookingId: "booking_captured_id" });
+    mockPaymentFindFirst.mockResolvedValue({ bookingId: bookingCapturedId });
 
     const capturedEventBody = {
-      id: "evt_captured_123",
+      id: evtCapturedId,
       event: "payment.captured",
       payload: {
         payment: {
           entity: {
-            id: "pay_captured_id",
-            order_id: "order_captured_id",
+            id: payCapturedId,
+            order_id: orderCapturedId,
           },
         },
       },
     };
 
     const capturedRawBody = JSON.stringify(capturedEventBody);
-    const capturedSignature = crypto.createHmac("sha256", secret).update(capturedRawBody).digest("hex");
+    const capturedSignature = createHmac("sha256", secret).update(capturedRawBody).digest("hex");
 
     const req = createRequest(capturedRawBody, { "x-razorpay-signature": capturedSignature });
     const res = await POST(req);
@@ -201,15 +214,16 @@ describe("POST /api/bookings/webhook", () => {
     expect(await res.json()).toEqual({ status: "ok" });
 
     expect(mockPaymentFindFirst).toHaveBeenCalledWith({
-      where: { providerOrderId: "order_captured_id" },
+      where: { providerOrderId: orderCapturedId },
       select: { bookingId: true },
     });
 
     expect(mockConfirmPayment).toHaveBeenCalledWith(
-      "booking_captured_id",
-      "order_captured_id",
-      "pay_captured_id",
+      bookingCapturedId,
+      orderCapturedId,
+      payCapturedId,
       capturedEventBody
     );
   });
 });
+

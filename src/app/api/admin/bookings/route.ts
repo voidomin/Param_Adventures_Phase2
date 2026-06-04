@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
           experience: { select: { id: true, title: true, slug: true } },
           slot: { select: { id: true, date: true } },
           payments: {
-            select: { status: true, amount: true, providerPaymentId: true, provider: true, fullPayload: true },
+            select: { id: true, status: true, amount: true, providerPaymentId: true, provider: true, fullPayload: true },
           },
         },
       }),

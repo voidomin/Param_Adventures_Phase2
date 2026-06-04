@@ -392,10 +392,11 @@ export default function MediaLibraryPage() {
               </div>
 
               <div className="space-y-2">
-                <label className="block text-xs font-semibold text-foreground/50 uppercase tracking-wider">
+                <label htmlFor="merge-target-select" className="block text-xs font-semibold text-foreground/50 uppercase tracking-wider">
                   Select target image from library
                 </label>
                 <select
+                  id="merge-target-select"
                   value={mergeTargetId}
                   onChange={(e) => setMergeTargetId(e.target.value)}
                   className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
@@ -435,9 +436,9 @@ export default function MediaLibraryPage() {
                     Current Usages to be updated:
                   </span>
                   <ul className="text-xs space-y-1.5 max-h-32 overflow-y-auto pr-2">
-                    {mergeSourceItem.usages.map((u, i) => (
+                    {mergeSourceItem.usages.map((u) => (
                       <li
-                        key={i}
+                        key={`${u.type}-${u.id}`}
                         className="flex justify-between items-center bg-background p-2 rounded-lg border border-border/50"
                       >
                         <span className="font-semibold text-foreground/80">{u.name}</span>

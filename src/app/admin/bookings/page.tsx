@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import {
   Users,
   CalendarDays,
-  IndianRupee,
   CheckCircle2,
   XCircle,
   Clock,
@@ -13,6 +12,7 @@ import {
   Download,
   Eye,
   ExternalLink,
+  Archive,
 } from "lucide-react";
 import Link from "next/link";
 import { TableSkeleton } from "@/components/admin/TableSkeleton";
@@ -47,6 +47,7 @@ interface Booking {
     date: string;
   } | null;
   payments: {
+    id: string;
     status: PaymentStatus;
     amount: number;
     providerPaymentId?: string | null;
@@ -211,10 +212,10 @@ function PaymentDetailsModal({
           {payments.length === 0 ? (
             <p className="text-foreground/40 text-sm text-center py-4">No payment records found.</p>
           ) : (
-            payments.map((p, i) => {
+            payments.map((p) => {
               const isManual = p.provider === "MANUAL";
               return (
-                <div key={i} className={`rounded-xl border p-4 space-y-3 ${
+                <div key={`payment-${p.id}`} className={`rounded-xl border p-4 space-y-3 ${
                   isManual
                     ? "bg-blue-500/5 border-blue-500/20"
                     : "bg-foreground/[0.02] border-border"
@@ -294,6 +295,25 @@ function PaymentDetailsModal({
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Payment Mode Detail component to resolve nesting lint error
+function PaymentModeDetail({ payments }: Readonly<{ payments: Booking["payments"] }>) {
+  const paidPayment = payments.find(p => p.status === "PAID") || payments[0];
+  if (!paidPayment) return null;
+  const isManual = paidPayment.provider === "MANUAL";
+  return (
+    <div className="text-[10px] text-foreground/50 whitespace-nowrap flex flex-col">
+      <span className="font-medium text-foreground/60">
+        {isManual ? "🏦 Manual" : "💳 Razorpay"}
+      </span>
+      {paidPayment.providerPaymentId && (
+        <span className="font-mono text-[9px] text-foreground/40 max-w-[120px] truncate" title={paidPayment.providerPaymentId}>
+          ID: {paidPayment.providerPaymentId}
+        </span>
+      )}
     </div>
   );
 }
@@ -455,6 +475,32 @@ export default function AdminBookingsPage() {
     }
   };
 
+  const getConfirmationMode = (booking: Booking): string => {
+    if (booking.bookingStatus !== "CONFIRMED") return "";
+    const paidPayment = booking.payments.find(p => p.status === "PAID");
+    if (paidPayment) {
+      if (paidPayment.provider === "RAZORPAY") return "Razorpay (Auto)";
+      if (paidPayment.provider === "MANUAL") return "Manual (Admin)";
+    }
+    return "System";
+  };
+
+  const handleArchiveBooking = async (id: string) => {
+    if (!confirm("Are you sure you want to archive this booking? This will hide it from the active lists.")) return;
+    try {
+      const res = await fetch(`/api/admin/bookings/${id}`, {
+        method: "DELETE"
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to archive booking");
+      alert("Booking archived successfully.");
+      fetchBookings();
+    } catch (err) {
+      const error = err as Error;
+      alert(error.message);
+    }
+  };
+
   const filtered = bookings.filter((b) => {
     if (!search) return true;
     const q = search.toLowerCase();
@@ -483,155 +529,308 @@ export default function AdminBookingsPage() {
     (b) => b.bookingStatus === "REQUESTED",
   ).length;
 
-  function renderTableContent() {
-    if (isLoading) {
-      return <TableSkeleton columns={8} rows={10} />;
-    }
-    if (filtered.length === 0) {
-      return (
-        <div className="bg-card border border-border rounded-2xl p-16 text-center">
-          <Users className="w-12 h-12 mx-auto mb-4 text-foreground/20" />
-          <p className="text-foreground/50">No bookings found.</p>
-        </div>
-      );
-    }
-    return (
-      <div className="bg-card border border-border rounded-2xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border bg-foreground/[0.02]">
-                {[
-                  "Customer",
-                  "Experience",
-                  "Slot Date",
-                  "Pax",
-                  "Amount",
-                  "Status",
-                  "Payment",
-                  "Booked On",
-                  "",
-                ].map((h) => (
-                  <th
-                    key={h}
-                    className="text-left text-xs font-semibold text-foreground/50 uppercase tracking-wider px-5 py-4 whitespace-nowrap"
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {filtered.map((b) => (
-                <tr
-                  key={b.id}
-                  className="hover:bg-foreground/[0.02] transition-colors"
-                >
-                  <td className="px-5 py-4">
-                    <p className="font-medium text-foreground text-sm">
+  const pendingRefunds = bookings.filter(
+    (b) => b.paymentStatus === "REFUND_PENDING"
+  );
+
+  const isActiveTab = !viewArchived;
+  const isArchivedTab = viewArchived;
+
+  let bookingsContent;
+  if (isLoading) {
+    bookingsContent = <TableSkeleton columns={8} rows={10} />;
+  } else if (filtered.length === 0) {
+    bookingsContent = (
+      <div className="bg-card border border-border rounded-2xl p-16 text-center">
+        <Users className="w-12 h-12 mx-auto mb-4 text-foreground/20" />
+        <p className="text-foreground/50">No bookings found.</p>
+      </div>
+    );
+  } else {
+    bookingsContent = (
+      <div className="space-y-4">
+        {/* Mobile View: Card List */}
+        <div className="block md:hidden space-y-4">
+          {filtered.map((b) => {
+            const confMode = getConfirmationMode(b);
+            
+            return (
+              <div
+                key={b.id}
+                className="bg-card border border-border rounded-2xl p-5 space-y-4 shadow-sm relative hover:shadow-md transition-all duration-200"
+              >
+                {/* Header: Customer and Date */}
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-bold text-foreground text-sm">
                       {b.user.name}
                     </p>
                     <p className="text-xs text-foreground/50">{b.user.email}</p>
                     {b.user.phoneNumber && (
-                      <p className="text-xs text-foreground/40">
-                        {b.user.phoneNumber}
-                      </p>
+                      <p className="text-xs text-foreground/40">{b.user.phoneNumber}</p>
                     )}
-                  </td>
-                  <td className="px-5 py-4">
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-foreground/40">Booked On</p>
+                    <p className="text-xs font-medium text-foreground/75">
+                      {formatDate(b.createdAt)}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Details */}
+                <div className="grid grid-cols-2 gap-3 text-xs border-t border-b border-border/50 py-3">
+                  <div>
+                    <p className="text-foreground/40">Experience</p>
                     <Link
-                      href={`/experiences/${b.experience.slug}`}
-                      className="text-sm font-medium text-primary hover:underline"
-                      target="_blank"
+                      href={`/admin/trips/${b.experience.id}`}
+                      className="font-semibold text-primary hover:underline line-clamp-1"
                     >
                       {b.experience.title}
                     </Link>
-                  </td>
-                  <td className="px-5 py-4">
-                    <div className="flex items-center gap-1.5 text-sm text-foreground/70 whitespace-nowrap">
-                      <CalendarDays className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <p className="text-foreground/40">Trip Date</p>
+                    <p className="font-medium text-foreground">
                       {b.slot ? formatDate(b.slot.date) : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-foreground/40">Pax & Price</p>
+                    <p className="font-medium text-foreground">
+                      {b.participantCount} Pax · ₹{Number(b.totalPrice).toLocaleString("en-IN")}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-foreground/40">Status</p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${statusStyles[b.bookingStatus]}`}
+                      >
+                        {statusIcon(b.bookingStatus)}
+                        {b.bookingStatus}
+                      </span>
                     </div>
-                  </td>
-                  <td className="px-5 py-4 text-sm text-foreground/70">
-                    {b.participantCount}
-                  </td>
-                  <td className="px-5 py-4 text-sm font-semibold text-foreground">
-                    ₹{Number(b.totalPrice).toLocaleString("en-IN")}
-                  </td>
-                  <td className="px-5 py-4">
-                    <span
-                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${statusStyles[b.bookingStatus]}`}
+                  </div>
+                </div>
+
+                {/* Payment & Confirmation Details */}
+                <div className="flex flex-col gap-1 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-foreground/40">Booking Confirmed:</span>
+                    <span className="font-semibold text-foreground">{confMode || "—"}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-foreground/40">Payment Status:</span>
+                    <span className={`font-bold ${paymentStyles[b.paymentStatus]}`}>{b.paymentStatus}</span>
+                  </div>
+                  <div className="mt-1 pt-1.5 border-t border-border/30">
+                    <PaymentModeDetail payments={b.payments} />
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-2 pt-2 border-t border-border/50">
+                  {b.payments.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setViewPaymentBooking(b)}
+                      className="flex-1 py-2 rounded-xl bg-foreground/5 text-foreground/60 font-bold hover:bg-foreground/10 transition-colors flex items-center justify-center gap-1 text-xs"
                     >
-                      {statusIcon(b.bookingStatus)}
-                      {b.bookingStatus}
-                    </span>
-                  </td>
-                  <td className="px-5 py-4">
-                    <span
-                      className={`text-xs font-semibold ${paymentStyles[b.paymentStatus]}`}
+                      <Eye className="w-3.5 h-3.5" />
+                      Payments
+                    </button>
+                  )}
+                  {b.bookingStatus === "REQUESTED" && b.paymentStatus !== "PAID" && (
+                    <button
+                      onClick={() => setSelectedBooking({ id: b.id, amount: Number(b.totalPrice) })}
+                      className="flex-2 py-2 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5 text-xs"
                     >
-                      {b.paymentStatus}
-                    </span>
-                  </td>
-                  <td className="px-5 py-4 text-xs text-foreground/50 whitespace-nowrap">
-                    {formatDate(b.createdAt)}
-                  </td>
-                  <td className="px-5 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {b.payments.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setViewPaymentBooking(b)}
-                          className="p-2 rounded-lg bg-foreground/5 text-foreground/50 hover:bg-foreground/10 hover:text-foreground transition-all"
-                          title="View Payment Records"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                      {b.bookingStatus === "REQUESTED" && b.paymentStatus !== "PAID" && (
-                        <button
-                          onClick={() => setSelectedBooking({ id: b.id, amount: Number(b.totalPrice) })}
-                          className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all flex items-center gap-1.5 text-xs font-bold"
-                          title="Approve Manual Payment"
-                        >
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          Approve Manual
-                        </button>
-                      )}
-                    </div>
-                  </td>
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      Approve
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => handleArchiveBooking(b.id)}
+                    className="p-2 rounded-xl bg-red-500/5 text-red-500 hover:bg-red-500/10 transition-colors"
+                    title="Archive/Hide Booking"
+                  >
+                    <Archive className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desktop View: Table */}
+        <div className="hidden md:block bg-card border border-border rounded-2xl overflow-hidden shadow-xs">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-foreground/[0.02] border-b border-border">
+                  {[
+                    "Customer",
+                    "Experience",
+                    "Trip Date",
+                    "Pax",
+                    "Amount",
+                    "Status",
+                    "Payment",
+                    "Booked On",
+                    "",
+                  ].map((h) => (
+                    <th
+                      key={h}
+                      className="text-left text-xs font-semibold text-foreground/50 uppercase tracking-wider px-5 py-4 whitespace-nowrap"
+                    >
+                      {h}
+                    </th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {filtered.map((b) => {
+                  const confMode = getConfirmationMode(b);
+                  return (
+                    <tr
+                      key={b.id}
+                      className="hover:bg-foreground/[0.02] transition-colors"
+                    >
+                      <td className="px-5 py-4">
+                        <p className="font-medium text-foreground text-sm">
+                          {b.user.name}
+                        </p>
+                        <p className="text-xs text-foreground/50">{b.user.email}</p>
+                        {b.user.phoneNumber && (
+                          <p className="text-xs text-foreground/40">
+                            {b.user.phoneNumber}
+                          </p>
+                        )}
+                      </td>
+                      <td className="px-5 py-4">
+                        <Link
+                          href={`/admin/trips/${b.experience.id}`}
+                          className="font-medium text-primary hover:underline text-sm line-clamp-1"
+                        >
+                          {b.experience.title}
+                        </Link>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-1.5 text-sm text-foreground/70 whitespace-nowrap">
+                          <CalendarDays className="w-3.5 h-3.5" />
+                          {b.slot ? formatDate(b.slot.date) : "—"}
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 text-sm text-foreground/70">
+                        {b.participantCount}
+                      </td>
+                      <td className="px-5 py-4 text-sm font-semibold text-foreground">
+                        ₹{Number(b.totalPrice).toLocaleString("en-IN")}
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex flex-col gap-1">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${statusStyles[b.bookingStatus]}`}
+                          >
+                            {statusIcon(b.bookingStatus)}
+                            {b.bookingStatus}
+                          </span>
+                          {b.bookingStatus === "CONFIRMED" && (
+                            <span className="text-[10px] font-bold text-foreground/40 pl-1">
+                              via {confMode}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex flex-col gap-1">
+                          <span
+                            className={`text-xs font-bold ${paymentStyles[b.paymentStatus]}`}
+                          >
+                            {b.paymentStatus}
+                          </span>
+                          <PaymentModeDetail payments={b.payments} />
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 text-xs text-foreground/50 whitespace-nowrap">
+                        {formatDate(b.createdAt)}
+                      </td>
+                      <td className="px-5 py-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          {b.payments.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setViewPaymentBooking(b)}
+                              className="p-2 rounded-lg bg-foreground/5 text-foreground/50 hover:bg-foreground/10 hover:text-foreground transition-all"
+                              title="View Payment Records"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {b.bookingStatus === "REQUESTED" && b.paymentStatus !== "PAID" && (
+                            <button
+                              onClick={() => setSelectedBooking({ id: b.id, amount: Number(b.totalPrice) })}
+                              className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all flex items-center gap-1.5 text-xs font-bold"
+                              title="Approve Manual Payment"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              Approve Manual
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleArchiveBooking(b.id)}
+                            className="p-2 rounded-lg bg-red-500/5 text-red-500/60 hover:bg-red-500/10 hover:text-red-500 transition-all"
+                            title="Archive/Hide Booking"
+                          >
+                            <Archive className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="p-4 md:p-8 space-y-8 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-heading font-bold text-foreground">
-            {viewArchived ? "Archived Bookings" : "Bookings"}
+            Bookings Dashboard
           </h1>
           <p className="text-foreground/60 mt-1">
-            {viewArchived
-              ? "Bookings archived after 30 days of trip end."
-              : "All active bookings across all experiences."}
+            Manage trip reservations, approve manual uploads, and view payment reports.
           </p>
         </div>
         <button
-          type="button"
-          disabled={isExporting}
           onClick={handleExport}
-          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground font-bold text-sm rounded-xl hover:opacity-90 transition-opacity disabled:opacity-50 shadow-sm border border-primary/20 hover:shadow-primary/5 cursor-pointer"
+          disabled={isExporting}
+          className="w-full sm:w-auto px-5 py-2.5 bg-primary text-primary-foreground font-black text-xs uppercase tracking-widest rounded-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-50 h-11 cursor-pointer"
         >
-          <Download className="w-4 h-4" />
-          {isExporting ? "Exporting..." : "Export to Excel"}
+          {isExporting ? (
+            <>
+              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              Exporting...
+            </>
+          ) : (
+            <>
+              <Download className="w-4 h-4" />
+              Export Paid Manifest (XLSX)
+            </>
+          )}
         </button>
       </div>
 
@@ -644,7 +843,7 @@ export default function AdminBookingsPage() {
             setViewArchived(false);
           }}
           className={`px-4 py-2.5 border-b-2 text-sm font-bold transition-all -mb-px cursor-pointer ${
-            !viewArchived
+            isActiveTab
               ? "border-primary text-primary font-bold"
               : "border-transparent text-foreground/60 hover:text-foreground/90"
           }`}
@@ -658,7 +857,7 @@ export default function AdminBookingsPage() {
             setViewArchived(true);
           }}
           className={`px-4 py-2.5 border-b-2 text-sm font-bold transition-all -mb-px cursor-pointer ${
-            viewArchived
+            isArchivedTab
               ? "border-primary text-primary font-bold"
               : "border-transparent text-foreground/60 hover:text-foreground/90"
           }`}
@@ -669,213 +868,196 @@ export default function AdminBookingsPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {[
-          {
-            label: "Total Bookings",
-            value: bookings.length,
-            icon: <Users className="w-5 h-5" />,
-            color: "text-foreground",
-          },
-          {
-            label: "Confirmed",
-            value: confirmedCount,
-            icon: <CheckCircle2 className="w-5 h-5" />,
-            color: "text-green-500",
-          },
-          {
-            label: "Pending",
-            value: requestedCount,
-            icon: <Clock className="w-5 h-5" />,
-            color: "text-yellow-500",
-          },
-          {
-            label: "Revenue",
-            value: `₹${totalRevenue.toLocaleString("en-IN")}`,
-            icon: <IndianRupee className="w-5 h-5" />,
-            color: "text-primary",
-          },
-        ].map((s) => (
-          <div
-            key={s.label}
-            className="bg-card border border-border rounded-xl p-4 flex items-center gap-3 shadow-xs"
-          >
-            <div className={`${s.color} opacity-70`}>{s.icon}</div>
-            <div>
-              <p className="text-xs text-foreground/50">{s.label}</p>
-              <p className={`font-bold text-lg ${s.color}`}>{s.value}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Search and Status Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/40" />
-          <input
-            type="text"
-            placeholder="Search by name, email, experience..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 bg-card border border-border rounded-xl text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-          />
+        <div className="bg-card border border-border rounded-2xl p-5 shadow-xs">
+          <p className="text-xs font-bold text-foreground/40 uppercase tracking-wider">Confirmed Revenue</p>
+          <p className="text-2xl font-bold mt-1 text-foreground">₹{totalRevenue.toLocaleString("en-IN")}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-foreground/40 shrink-0" />
-          <div className="flex gap-1.5">
-            {STATUS_FILTERS.map((s) => (
-              <button
-                key={s}
-                onClick={() => {
-                  setIsLoading(true);
-                  setStatusFilter(s);
-                }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border cursor-pointer ${
-                  statusFilter === s
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-card border-border text-foreground/60 hover:bg-foreground/5"
-                }`}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
+        <div className="bg-card border border-border rounded-2xl p-5 shadow-xs">
+          <p className="text-xs font-bold text-foreground/40 uppercase tracking-wider">Confirmed Bookings</p>
+          <p className="text-2xl font-bold mt-1 text-foreground">{confirmedCount}</p>
+        </div>
+        <div className="bg-card border border-border rounded-2xl p-5 shadow-xs">
+          <p className="text-xs font-bold text-foreground/40 uppercase tracking-wider">Requested Bookings</p>
+          <p className="text-2xl font-bold mt-1 text-foreground">{requestedCount}</p>
+        </div>
+        <div className="bg-card border border-border rounded-2xl p-5 shadow-xs">
+          <p className="text-xs font-bold text-foreground/40 uppercase tracking-wider">Total Active</p>
+          <p className="text-2xl font-bold mt-1 text-foreground">{bookings.length}</p>
         </div>
       </div>
 
-      {/* Date Range Filters */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-card border border-border rounded-2xl mb-6 shadow-xs">
-        <div className="space-y-1.5">
-          <label className="text-xs font-bold text-foreground/50 uppercase tracking-wider">
-            Booking Date From
-          </label>
-          <input
-            type="date"
-            value={bookingDateStart}
-            onChange={(e) => {
-              setIsLoading(true);
-              setBookingDateStart(e.target.value);
-            }}
-            className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all [color-scheme:dark]"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-xs font-bold text-foreground/50 uppercase tracking-wider">
-            Booking Date To
-          </label>
-          <input
-            type="date"
-            value={bookingDateEnd}
-            onChange={(e) => {
-              setIsLoading(true);
-              setBookingDateEnd(e.target.value);
-            }}
-            className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all [color-scheme:dark]"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-xs font-bold text-foreground/50 uppercase tracking-wider">
-            Slot Date From (Trip)
-          </label>
-          <input
-            type="date"
-            value={slotDateStart}
-            onChange={(e) => {
-              setIsLoading(true);
-              setSlotDateStart(e.target.value);
-            }}
-            className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all [color-scheme:dark]"
-          />
-        </div>
-        <div className="space-y-1.5">
-          <label className="text-xs font-bold text-foreground/50 uppercase tracking-wider">
-            Slot Date To (Trip)
-          </label>
-          <div className="flex gap-2">
+      {/* Filters Bar */}
+      <div className="flex flex-col gap-4 bg-foreground/[0.01] border border-border/60 rounded-2xl p-4 mb-6">
+        <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center justify-between">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-3.5 w-4 h-4 text-foreground/30" />
             <input
-              type="date"
-              value={slotDateEnd}
-              onChange={(e) => {
-                setIsLoading(true);
-                setSlotDateEnd(e.target.value);
-              }}
-              className="w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all [color-scheme:dark]"
+              type="text"
+              placeholder="Search by name, email, experience..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-9 pr-4 py-2.5 bg-card border border-border rounded-xl text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
-            {(bookingDateStart || bookingDateEnd || slotDateStart || slotDateEnd) && (
-              <button
-                type="button"
-                onClick={() => {
-                  setIsLoading(true);
-                  setBookingDateStart("");
-                  setBookingDateEnd("");
-                  setSlotDateStart("");
-                  setSlotDateEnd("");
-                }}
-                className="px-3 py-2 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500/20 text-xs font-bold border border-red-500/20 transition-all shrink-0 cursor-pointer"
-                title="Clear Date Filters"
-              >
-                Clear
-              </button>
-            )}
           </div>
-        </div>
-      </div>
-
-      {renderTableContent()}
-
-      {/* ─── Cancellations Section ───────────────────────── */}
-      {(() => {
-        const pending = bookings.filter(b => b.paymentStatus === "REFUND_PENDING");
-        if (pending.length === 0) return null;
-        return (
-          <div className="mt-12 pt-8 border-t border-border">
-            <div className="mb-6">
-              <h2 className="text-2xl font-heading font-bold text-foreground flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                {" Pending Refunds "}
-                <span className="ml-2 text-sm font-normal bg-amber-400/10 text-amber-400 border border-amber-400/20 px-2.5 py-0.5 rounded-full">
-                  {pending.length}
-                </span>
-              </h2>
-              <p className="text-foreground/50 mt-1 text-sm">
-                Users are waiting for a coupon code or bank refund. Resolve each one manually.
-              </p>
-            </div>
-            <div className="grid gap-4">
-              {pending.map(b => (
-                <div key={b.id} className="bg-card border border-amber-500/20 rounded-xl p-5 flex flex-col md:flex-row gap-4 items-start md:items-center">
-                  <div className="flex-1 space-y-1">
-                    <p className="font-bold text-foreground">{b.user.name}{" "}
-                      <span className="text-foreground/40 font-normal text-sm">&lt;{b.user.email}&gt;</span>
-                    </p>
-                    <p className="text-sm text-foreground/60">{b.experience.title}{b.slot ? ` · ${formatDate(b.slot.date)}` : ""}</p>
-                    <p className="text-sm">₹{Number(b.totalPrice).toLocaleString("en-IN")} · {b.participantCount} pax</p>
-                    {b.cancellationReason && (
-                      <p className="text-xs text-foreground/40">Reason: {b.cancellationReason}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className={`text-sm font-bold px-3 py-1 rounded-full border ${
-                      b.refundPreference === "COUPON"
-                        ? "bg-primary/10 text-primary border-primary/20"
-                        : "bg-blue-500/10 text-blue-400 border-blue-500/20"
-                    }`}>
-                      {b.refundPreference === "COUPON" ? "🎟️ Coupon" : "🏦 Bank Refund"}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setResolvingBooking(b)}
-                      className="px-4 py-2 bg-primary text-primary-foreground font-bold text-sm rounded-xl hover:opacity-90 transition-opacity"
-                    >
-                      Resolve →
-                    </button>
-                  </div>
-                </div>
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-foreground/40 shrink-0" />
+            <div className="flex gap-1.5">
+              {STATUS_FILTERS.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => {
+                    setIsLoading(true);
+                    setStatusFilter(s);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border cursor-pointer ${
+                    statusFilter === s
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-card border-border text-foreground/60 hover:bg-foreground/5"
+                  }`}
+                >
+                  {s}
+                </button>
               ))}
             </div>
           </div>
-        );
-      })()}
+        </div>
+
+        {/* Date Range Filters */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-card border border-border rounded-2xl shadow-xs">
+          <div className="space-y-1.5">
+            <label htmlFor="booking-date-start" className="block text-xs font-bold text-foreground/50 uppercase tracking-wider">
+              <span>Booking Date From</span>
+              <input
+                id="booking-date-start"
+                type="date"
+                value={bookingDateStart}
+                onChange={(e) => {
+                  setIsLoading(true);
+                  setBookingDateStart(e.target.value);
+                }}
+                className="mt-1.5 w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all [color-scheme:dark]"
+              />
+            </label>
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="booking-date-end" className="block text-xs font-bold text-foreground/50 uppercase tracking-wider">
+              <span>Booking Date To</span>
+              <input
+                id="booking-date-end"
+                type="date"
+                value={bookingDateEnd}
+                onChange={(e) => {
+                  setIsLoading(true);
+                  setBookingDateEnd(e.target.value);
+                }}
+                className="mt-1.5 w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all [color-scheme:dark]"
+              />
+            </label>
+          </div>
+          <div className="space-y-1.5">
+            <label htmlFor="slot-date-start" className="block text-xs font-bold text-foreground/50 uppercase tracking-wider">
+              <span>Slot Date From (Trip)</span>
+              <input
+                id="slot-date-start"
+                type="date"
+                value={slotDateStart}
+                onChange={(e) => {
+                  setIsLoading(true);
+                  setSlotDateStart(e.target.value);
+                }}
+                className="mt-1.5 w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all [color-scheme:dark]"
+              />
+            </label>
+          </div>
+          <div className="space-y-1.5">
+            <div className="flex gap-2 items-end">
+              <div className="flex-1 space-y-1.5">
+                <label htmlFor="slot-date-end" className="block text-xs font-bold text-foreground/50 uppercase tracking-wider">
+                  <span>Slot Date To (Trip)</span>
+                  <input
+                    id="slot-date-end"
+                    type="date"
+                    value={slotDateEnd}
+                    onChange={(e) => {
+                      setIsLoading(true);
+                      setSlotDateEnd(e.target.value);
+                    }}
+                    className="mt-1.5 w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all [color-scheme:dark]"
+                  />
+                </label>
+              </div>
+              {(bookingDateStart || bookingDateEnd || slotDateStart || slotDateEnd) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsLoading(true);
+                    setBookingDateStart("");
+                    setBookingDateEnd("");
+                    setSlotDateStart("");
+                    setSlotDateEnd("");
+                  }}
+                  className="px-3 py-2 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500/20 text-xs font-bold border border-red-500/20 transition-all shrink-0 cursor-pointer h-[38px] flex items-center justify-center"
+                  title="Clear Date Filters"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {bookingsContent}
+
+      {/* ─── Cancellations Section ───────────────────────── */}
+      {pendingRefunds.length > 0 && (
+        <div className="mt-12 pt-8 border-t border-border">
+          <div className="mb-6">
+            <h2 className="text-2xl font-heading font-bold text-foreground flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+              {" Pending Refunds "}
+              <span className="ml-2 text-sm font-normal bg-amber-400/10 text-amber-400 border border-amber-400/20 px-2.5 py-0.5 rounded-full">
+                {pendingRefunds.length}
+              </span>
+            </h2>
+            <p className="text-foreground/50 mt-1 text-sm">
+              Users are waiting for a coupon code or bank refund. Resolve each one manually.
+            </p>
+          </div>
+          <div className="grid gap-4">
+            {pendingRefunds.map((b) => (
+              <div key={b.id} className="bg-card border border-amber-500/20 rounded-xl p-5 flex flex-col md:flex-row gap-4 items-start md:items-center">
+                <div className="flex-1 space-y-1">
+                  <p className="font-bold text-foreground">{b.user.name}{" "}
+                    <span className="text-foreground/40 font-normal text-sm">&lt;{b.user.email}&gt;</span>
+                  </p>
+                  <p className="text-sm text-foreground/60">{b.experience.title}{b.slot ? ` · ${formatDate(b.slot.date)}` : ""}</p>
+                  <p className="text-sm">₹{Number(b.totalPrice).toLocaleString("en-IN")} · {b.participantCount} pax</p>
+                  {b.cancellationReason && (
+                    <p className="text-xs text-foreground/40">Reason: {b.cancellationReason}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className={`text-sm font-bold px-3 py-1 rounded-full border ${
+                    b.refundPreference === "COUPON"
+                      ? "bg-primary/10 text-primary border-primary/20"
+                      : "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                  }`}>
+                    {b.refundPreference === "COUPON" ? "🎟️ Coupon" : "🏦 Bank Refund"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setResolvingBooking(b)}
+                    className="px-4 py-2 bg-primary text-primary-foreground font-bold text-sm rounded-xl hover:opacity-90 transition-opacity"
+                  >
+                    Resolve →
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {selectedBooking && (
         <ManualVerifyModal
