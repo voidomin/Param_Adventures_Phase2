@@ -301,7 +301,7 @@ function PaymentDetailsModal({
 
 // Payment Mode Detail component to resolve nesting lint error
 function PaymentModeDetail({ payments }: Readonly<{ payments: Booking["payments"] }>) {
-  const paidPayment = payments.find(p => p.status === "PAID") || payments[0];
+  const paidPayment = payments.find(p => p.status === "PAID" || p.status === "REFUNDED" || p.status === "REFUND_PENDING");
   if (!paidPayment) return null;
   const isManual = paidPayment.provider === "MANUAL";
   return (
