@@ -3,14 +3,16 @@ import { z } from "zod";
 export const participantSchema = z.object({
   isPrimary: z.boolean().optional(),
   name: z.string().min(1, "Participant name is required"),
-  email: z.string().email("Invalid email format").optional().or(z.literal("")),
-  phoneNumber: z.string().optional().or(z.literal("")),
-  gender: z.string().optional().or(z.literal("")),
-  age: z.union([z.number(), z.string()]).optional().or(z.literal("")),
-  bloodGroup: z.string().optional().or(z.literal("")),
-  emergencyContactName: z.string().optional().or(z.literal("")),
-  emergencyContactNumber: z.string().optional().or(z.literal("")),
-  emergencyRelationship: z.string().optional().or(z.literal("")),
+  email: z.email({ message: "Invalid email format" }),
+  phoneNumber: z.string().min(1, "Phone number is required"),
+  gender: z.string().min(1, "Gender is required"),
+  age: z.union([z.number(), z.string()])
+    .transform(val => val.toString())
+    .refine(val => val.trim().length > 0, { message: "Age is required" }),
+  bloodGroup: z.string().min(1, "Blood group is required"),
+  emergencyContactName: z.string().min(1, "Emergency contact name is required"),
+  emergencyContactNumber: z.string().min(1, "Emergency contact number is required"),
+  emergencyRelationship: z.string().min(1, "Emergency relationship is required"),
   pickupPoint: z.string().optional().or(z.literal("")),
   dropPoint: z.string().optional().or(z.literal("")),
 });

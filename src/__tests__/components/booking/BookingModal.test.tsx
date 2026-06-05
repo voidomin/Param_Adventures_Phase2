@@ -19,9 +19,13 @@ const mockUser = {
   id: "user-1",
   name: "John Doe",
   email: "john@example.com",
-  phoneNumber: "919999999999",
+  phoneNumber: "+919999999999",
   gender: "MALE",
   age: 30,
+  bloodGroup: "O+",
+  emergencyContactName: "Emergency Contact",
+  emergencyContactNumber: "+918888888888",
+  emergencyRelationship: "Friend",
 };
 
 const mockUseAuth = vi.fn();
@@ -143,6 +147,12 @@ describe("BookingModal Smoke Test", () => {
     const phoneInput = screen.getByLabelText(/Phone Number \*/i);
     fireEvent.change(phoneInput, { target: { value: "1111111111" } });
 
+    const pickupSelect = screen.getByLabelText(/Pickup Location \*/i);
+    fireEvent.change(pickupSelect, { target: { value: "Point A" } });
+
+    const dropSelect = screen.getByLabelText(/Drop-off Location \*/i);
+    fireEvent.change(dropSelect, { target: { value: "Point B" } });
+
     const summaryBtn = screen.getByRole("button", { name: /Review Booking/i });
     fireEvent.click(summaryBtn);
 
@@ -175,6 +185,10 @@ describe("BookingModal Smoke Test", () => {
     
     await waitFor(() => screen.getByLabelText(/Phone Number \*/i));
     fireEvent.change(screen.getByLabelText(/Phone Number \*/i), { target: { value: "1111111111" } });
+    
+    fireEvent.change(screen.getByLabelText(/Pickup Location \*/i), { target: { value: "Point A" } });
+    fireEvent.change(screen.getByLabelText(/Drop-off Location \*/i), { target: { value: "Point B" } });
+
     fireEvent.click(screen.getByRole("button", { name: /Review Booking/i }));
     
     await waitFor(() => screen.getByText(/Pay ₹/i));
@@ -265,6 +279,8 @@ describe("BookingModal Smoke Test", () => {
     await waitFor(() => screen.getByLabelText(/Full Name \*/i));
     fireEvent.change(screen.getByLabelText(/Full Name \*/i), { target: { value: "Test User" } });
     fireEvent.change(screen.getByLabelText(/Phone Number \*/i), { target: { value: "1111111111" } });
+    fireEvent.change(screen.getByLabelText(/Pickup Location \*/i), { target: { value: "Point A" } });
+    fireEvent.change(screen.getByLabelText(/Drop-off Location \*/i), { target: { value: "Point B" } });
     fireEvent.click(screen.getByRole("button", { name: /Review Booking/i }));
 
     // Step 3: Pay
