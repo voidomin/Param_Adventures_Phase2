@@ -160,6 +160,7 @@ model Slot {
   trekEndedAt       DateTime?
   trekStartedAt     DateTime?
   vendorContacts    Json?
+  whatsAppUrl       String?
   bookings          Booking[]
   experience        Experience       @relation(fields: [experienceId], references: [id])
   manager           User?            @relation("SlotManager", fields: [managerId], references: [id])

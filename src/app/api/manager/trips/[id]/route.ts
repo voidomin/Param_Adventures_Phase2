@@ -11,6 +11,7 @@ const vendorContactSchema = z.object({
 
 const tripUpdateSchema = z.object({
   vendorContacts: z.array(vendorContactSchema).optional().nullable(),
+  whatsAppUrl: z.string().regex(/^https?:\/\/.+$/, { message: "Must be a valid URL" }).or(z.literal("")).optional().nullable(),
 });
 
 type RouteContext = { params: Promise<{ id: string }> };
@@ -116,7 +117,7 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
         { status: 400 },
       );
     }
-    const { vendorContacts } = parseResult.data;
+    const { vendorContacts, whatsAppUrl } = parseResult.data;
 
     // Verify this manager owns the slot
     const slot = await prisma.slot.findUnique({
@@ -141,11 +142,17 @@ export async function PATCH(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: "Forbidden." }, { status: 403 });
     }
 
+    const updateData: Prisma.SlotUpdateInput = {};
+    if (vendorContacts !== undefined) {
+      updateData.vendorContacts = vendorContacts ?? [];
+    }
+    if (whatsAppUrl !== undefined) {
+      updateData.whatsAppUrl = whatsAppUrl || null;
+    }
+
     const updated = await prisma.slot.update({
       where: { id: slotId },
-      data: {
-        vendorContacts: (vendorContacts ?? []) as Prisma.InputJsonValue,
-      },
+      data: updateData,
     });
 
     return NextResponse.json({ slot: updated });

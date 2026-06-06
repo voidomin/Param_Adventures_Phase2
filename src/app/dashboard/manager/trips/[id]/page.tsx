@@ -49,6 +49,7 @@ interface TripSlot {
   remainingCapacity: number;
   status: string;
   vendorContacts: VendorContact[] | null;
+  whatsAppUrl?: string | null;
   experience: {
     title: string;
     location: string;
@@ -73,6 +74,78 @@ function formatDate(dateStr: string) {
   });
 }
 
+function ConfirmedParticipantsTable({
+  bookings,
+  totalParticipants,
+}: {
+  bookings: Booking[];
+  totalParticipants: number;
+}) {
+  if (bookings.length === 0) {
+    return (
+      <div className="bg-card border border-border rounded-2xl p-6">
+        <h2 className="text-lg font-bold text-foreground mb-4">Confirmed Participants</h2>
+        <p className="text-foreground/50 text-sm">No confirmed bookings yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-6">
+      <h2 className="text-lg font-bold text-foreground mb-4">
+        Confirmed Participants ({bookings.length} booking
+        {bookings.length === 1 ? "" : "s"} · {totalParticipants} people)
+      </h2>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-foreground/40 border-b border-border">
+              <th className="pb-3 pr-4 font-semibold">#</th>
+              <th className="pb-3 pr-4 font-semibold">Name</th>
+              <th className="pb-3 pr-4 font-semibold">Email</th>
+              <th className="pb-3 pr-4 font-semibold flex items-center gap-1.5">
+                <Phone className="w-3.5 h-3.5" /> Phone
+              </th>
+              <th className="pb-3 font-semibold text-right">Participants</th>
+            </tr>
+          </thead>
+          <tbody>
+            {bookings.map((booking, idx) => (
+              <tr
+                key={booking.id}
+                className="border-b border-border/50 last:border-0"
+              >
+                <td className="py-3 pr-4 text-foreground/40">{idx + 1}</td>
+                <td className="py-3 pr-4 font-medium text-foreground">
+                  {booking.user.name}
+                </td>
+                <td className="py-3 pr-4 text-foreground/60">
+                  {booking.user.email}
+                </td>
+                <td className="py-3 pr-4 text-foreground/60">
+                  {booking.user.phoneNumber ?? "—"}
+                </td>
+                <td className="py-3 text-right">
+                  <div className="font-semibold text-foreground mb-1">
+                    {booking.participantCount}
+                  </div>
+                  {booking.participants && booking.participants.length > 0 && (
+                    <div className="text-xs text-foreground/50 space-y-0.5 mt-1 border-t border-border/50 pt-1 inline-block">
+                      {booking.participants.map((p) => (
+                        <div key={p.id}>{p.name}</div>
+                      ))}
+                    </div>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default function ManagerTripDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -86,6 +159,12 @@ export default function ManagerTripDetailPage() {
   const [contacts, setContacts] = useState<VendorContact[]>([]);
   const [isSavingContacts, setIsSavingContacts] = useState(false);
   const [contactsSaved, setContactsSaved] = useState(false);
+
+  // WhatsApp Group Link editing state
+  const [whatsAppUrl, setWhatsAppUrl] = useState("");
+  const [isSavingWhatsAppUrl, setIsSavingWhatsAppUrl] = useState(false);
+  const [whatsAppUrlSaved, setWhatsAppUrlSaved] = useState(false);
+  const [whatsAppUrlError, setWhatsAppUrlError] = useState("");
 
   // Trek Lead assignment
   const [availableLeads, setAvailableLeads] = useState<TrekLead[]>([]);
@@ -112,6 +191,7 @@ export default function ManagerTripDetailPage() {
       }
       const data = await res.json();
       setSlot(data.slot);
+      setWhatsAppUrl(data.slot.whatsAppUrl ?? "");
       setContacts(
         (data.slot.vendorContacts ?? []).map(
           (c: { label: string; value: string }) => ({
@@ -169,6 +249,42 @@ export default function ManagerTripDetailPage() {
     } finally {
       setIsSavingContacts(false);
     }
+  };
+
+  const saveWhatsAppUrl = async () => {
+    setIsSavingWhatsAppUrl(true);
+    setWhatsAppUrlSaved(false);
+    setWhatsAppUrlError("");
+
+    if (whatsAppUrl && !whatsAppUrl.startsWith("http://") && !whatsAppUrl.startsWith("https://")) {
+      setWhatsAppUrlError("URL must start with http:// or https://");
+      setIsSavingWhatsAppUrl(false);
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/manager/trips/${slotId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ whatsAppUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to save");
+      setWhatsAppUrlSaved(true);
+      setTimeout(() => setWhatsAppUrlSaved(false), 3000);
+    } catch (e: unknown) {
+      setWhatsAppUrlError(
+        e instanceof Error ? e.message : "Failed to save WhatsApp group link"
+      );
+    } finally {
+      setIsSavingWhatsAppUrl(false);
+    }
+  };
+
+  const getWhatsAppIcon = () => {
+    if (isSavingWhatsAppUrl) return <Loader2 className="w-4 h-4 animate-spin" />;
+    if (whatsAppUrlSaved) return <Check className="w-4 h-4" />;
+    return <Save className="w-4 h-4" />;
   };
 
   // ─── Trek Lead Assignment ──────────────────────────────────
@@ -356,57 +472,92 @@ export default function ManagerTripDetailPage() {
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        {/* ── Trek Lead Assignment ── */}
-        <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-foreground">Trek Leads</h2>
-            <button
-              onClick={() => {
-                setShowLeadModal(true);
-                setLeadAssignError("");
-                setSelectedLeadId("");
-              }}
-              disabled={unassignedLeads.length === 0}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold bg-primary/10 text-primary border border-primary/20 rounded-lg hover:bg-primary/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <UserPlus className="w-4 h-4" /> Assign Lead
-            </button>
+        <div className="space-y-6">
+          {/* ── Trek Lead Assignment ── */}
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-foreground">Trek Leads</h2>
+              <button
+                onClick={() => {
+                  setShowLeadModal(true);
+                  setLeadAssignError("");
+                  setSelectedLeadId("");
+                }}
+                disabled={unassignedLeads.length === 0}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold bg-primary/10 text-primary border border-primary/20 rounded-lg hover:bg-primary/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <UserPlus className="w-4 h-4" /> Assign Lead
+              </button>
+            </div>
+
+            {slot.assignments.length === 0 ? (
+              <div className="flex items-center gap-2 text-sm text-orange-400 bg-orange-500/10 border border-orange-500/20 rounded-xl p-4">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                No Trek Lead assigned yet. Assign at least one before starting.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {slot.assignments.map((a) => (
+                  <div
+                    key={a.trekLead.id}
+                    className="flex items-center justify-between px-4 py-3 bg-foreground/5 border border-border rounded-xl"
+                  >
+                    <div className="flex items-center gap-2">
+                      <UserCheck className="w-4 h-4 text-green-500" />
+                      <div>
+                        <p className="text-sm font-medium text-foreground">
+                          {a.trekLead.name}
+                        </p>
+                        <p className="text-xs text-foreground/50">
+                          {a.trekLead.email}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleRemoveLead(a.trekLead.id)}
+                      className="text-foreground/30 hover:text-red-500 transition-colors"
+                      title="Remove"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {slot.assignments.length === 0 ? (
-            <div className="flex items-center gap-2 text-sm text-orange-400 bg-orange-500/10 border border-orange-500/20 rounded-xl p-4">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              No Trek Lead assigned yet. Assign at least one before starting.
+          {/* ── WhatsApp Group Link ── */}
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+            <div className="flex items-center gap-2 text-foreground">
+              <svg className="w-5 h-5 text-green-500 fill-current shrink-0" viewBox="0 0 24 24">
+                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.717-1.458L0 24zm6.26-4.821c1.644.976 3.255 1.489 4.887 1.49 5.541.002 10.051-4.505 10.054-10.046.002-2.684-1.038-5.207-2.93-7.099-1.892-1.892-4.409-2.934-7.098-2.935-5.552 0-10.06 4.507-10.064 10.049-.002 1.776.47 3.51 1.365 5.048l-1.01 3.688 3.796-1.195zm11.38-4.526c-.305-.153-1.805-.89-2.083-.99-.278-.102-.48-.153-.68.152-.2.304-.775.98-.95 1.18-.175.203-.35.229-.655.076-1.879-.942-3.153-2.046-4.148-3.754-.262-.451.262-.418.75-1.393.076-.153.038-.288-.019-.402-.057-.113-.48-1.157-.658-1.585-.173-.415-.347-.359-.48-.365-.123-.005-.264-.006-.405-.006s-.37.053-.564.264c-.194.21-.74.723-.74 1.761s.755 2.039.86 2.179c.107.14 1.488 2.274 3.602 3.185.503.216.896.346 1.203.443.506.161.966.138 1.33.084.405-.06 1.805-.738 2.062-1.45.258-.713.258-1.322.18-1.45-.078-.127-.283-.203-.588-.356z" />
+              </svg>
+              <h2 className="text-lg font-bold">WhatsApp Group Link</h2>
             </div>
-          ) : (
-            <div className="space-y-2">
-              {slot.assignments.map((a) => (
-                <div
-                  key={a.trekLead.id}
-                  className="flex items-center justify-between px-4 py-3 bg-foreground/5 border border-border rounded-xl"
-                >
-                  <div className="flex items-center gap-2">
-                    <UserCheck className="w-4 h-4 text-green-500" />
-                    <div>
-                      <p className="text-sm font-medium text-foreground">
-                        {a.trekLead.name}
-                      </p>
-                      <p className="text-xs text-foreground/50">
-                        {a.trekLead.email}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleRemoveLead(a.trekLead.id)}
-                    className="text-foreground/30 hover:text-red-500 transition-colors"
-                    title="Remove"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
+            <p className="text-sm text-foreground/50 leading-relaxed">
+              Provide the invite link for the participants' WhatsApp group. Once saved, it will show up automatically under their bookings.
+            </p>
+            <div className="space-y-3">
+              <input
+                type="url"
+                value={whatsAppUrl}
+                onChange={(e) => setWhatsAppUrl(e.target.value)}
+                placeholder="https://chat.whatsapp.com/..."
+                className="w-full px-4 py-2.5 text-sm bg-background border border-border rounded-xl text-foreground placeholder-foreground/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+              {whatsAppUrlError && (
+                <p className="text-xs text-red-400 font-medium">{whatsAppUrlError}</p>
+              )}
+              <button
+                onClick={saveWhatsAppUrl}
+                disabled={isSavingWhatsAppUrl}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-primary text-primary-foreground rounded-xl hover:scale-105 transition-transform disabled:opacity-50 shadow-lg shadow-primary/20"
+              >
+                {getWhatsAppIcon()}
+                {whatsAppUrlSaved ? "Saved!" : "Save Link"}
+              </button>
             </div>
-          )}
+          </div>
         </div>
 
         {/* ── Vendor Contacts ── */}
@@ -480,68 +631,7 @@ export default function ManagerTripDetailPage() {
       </div>
 
       {/* ── Confirmed Participants ── */}
-      <div className="bg-card border border-border rounded-2xl p-6">
-        <h2 className="text-lg font-bold text-foreground mb-4">
-          Confirmed Participants ({slot.bookings.length} booking
-          {slot.bookings.length === 1 ? "" : "s"} · {totalParticipants} people)
-        </h2>
-
-        {slot.bookings.length === 0 ? (
-          <p className="text-foreground/50 text-sm">
-            No confirmed bookings yet.
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-foreground/40 border-b border-border">
-                  <th className="pb-3 pr-4 font-semibold">#</th>
-                  <th className="pb-3 pr-4 font-semibold">Name</th>
-                  <th className="pb-3 pr-4 font-semibold">Email</th>
-                  <th className="pb-3 pr-4 font-semibold flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5" /> Phone
-                  </th>
-                  <th className="pb-3 font-semibold text-right">
-                    Participants
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {slot.bookings.map((booking, idx) => (
-                  <tr
-                    key={booking.id}
-                    className="border-b border-border/50 last:border-0"
-                  >
-                    <td className="py-3 pr-4 text-foreground/40">{idx + 1}</td>
-                    <td className="py-3 pr-4 font-medium text-foreground">
-                      {booking.user.name}
-                    </td>
-                    <td className="py-3 pr-4 text-foreground/60">
-                      {booking.user.email}
-                    </td>
-                    <td className="py-3 pr-4 text-foreground/60">
-                      {booking.user.phoneNumber ?? "—"}
-                    </td>
-                    <td className="py-3 text-right">
-                      <div className="font-semibold text-foreground mb-1">
-                        {booking.participantCount}
-                      </div>
-                      {booking.participants &&
-                        booking.participants.length > 0 && (
-                          <div className="text-xs text-foreground/50 space-y-0.5 mt-1 border-t border-border/50 pt-1 inline-block">
-                            {booking.participants.map((p) => (
-                              <div key={p.id}>{p.name}</div>
-                            ))}
-                          </div>
-                        )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <ConfirmedParticipantsTable bookings={slot.bookings} totalParticipants={totalParticipants} />
 
       {/* ── Completion Approval: only when TREK_ENDED ── */}
       {slot.status === "TREK_ENDED" && (

@@ -352,6 +352,31 @@ export default async function BookingSuccessPage({
           {/* Right Column (Narrower) */}
           <div className="space-y-6">
             
+            {/* WhatsApp Group Chat Link */}
+            {slot?.whatsAppUrl && (
+              <div className="bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-500/25 shadow-sm rounded-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-3 duration-300">
+                <div className="bg-emerald-100/30 dark:bg-emerald-900/20 px-5 py-4 border-b border-emerald-100 dark:border-emerald-500/15 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center shrink-0">
+                    <MessageCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <h3 className="text-base font-bold text-emerald-800 dark:text-emerald-400">Official Group Chat</h3>
+                </div>
+                <div className="p-5 space-y-4">
+                  <p className="text-xs text-foreground/70 leading-relaxed">
+                    Connect with fellow travelers and your expedition team. Group updates, coordinates, and details will be shared here.
+                  </p>
+                  <a
+                    href={slot.whatsAppUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="w-full text-center py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-sm shadow-md shadow-emerald-900/10 dark:shadow-emerald-950/30"
+                  >
+                    Join WhatsApp Group
+                  </a>
+                </div>
+              </div>
+            )}
+
             {/* Essential Downloads */}
             <div className="bg-card border border-border shadow-sm rounded-2xl overflow-hidden">
               <div className="bg-muted/30 px-5 py-4 border-b border-border/50">

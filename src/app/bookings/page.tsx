@@ -4,7 +4,7 @@ import { useEffect, useState, type SVGProps } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import Link from "next/link";
 import Image from "next/image";
-import { Clock, MapPin, IndianRupee, Loader2, X, AlertTriangle } from "lucide-react";
+import { Clock, MapPin, IndianRupee, Loader2, X, AlertTriangle, MessageCircle } from "lucide-react";
 import SaveButton from "@/components/experiences/SaveButton";
 
 type TabStatus = "saved" | "pending" | "upcoming" | "past" | "cancelled";
@@ -43,6 +43,7 @@ interface BookingItem {
   };
   slot?: {
     date: string;
+    whatsAppUrl?: string | null;
   };
   payments: {
     id: string;
@@ -656,6 +657,17 @@ export default function BookingsPage() {
                             // upcoming
                             return (
                               <>
+                                {b.slot?.whatsAppUrl && (
+                                  <a
+                                    href={b.slot.whatsAppUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="w-full py-2.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-500/20 dark:hover:bg-emerald-950/45 transition-colors text-sm font-bold rounded-xl flex items-center justify-center gap-2 shadow-xs"
+                                  >
+                                    <MessageCircle className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                                    Join WhatsApp Group
+                                  </a>
+                                )}
                                 <Link
                                   href={`/bookings/${b.id}/success`}
                                   className="w-full text-center py-2.5 bg-foreground/5 hover:bg-foreground/10 text-foreground font-bold rounded-xl transition"
