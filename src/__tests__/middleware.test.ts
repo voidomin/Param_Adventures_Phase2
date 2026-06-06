@@ -14,7 +14,7 @@ vi.mock("@/lib/rate-limit-config", () => ({
 
 // Helper to create next request
 function createRequest(url: string, init?: RequestInit & { cookies?: Record<string, string> }) {
-  const { cookies, ...requestInit } = init || {};
+  const { cookies, ...requestInit } = init ?? {};
   const req = new NextRequest(url, requestInit as any);
   if (cookies) {
     for (const [key, val] of Object.entries(cookies)) {
@@ -68,7 +68,7 @@ describe("Next.js Middleware (Proxy)", () => {
 
   describe("Public Routes Routing", () => {
     it("allows public page routes without authentication", () => {
-      const publicPaths = ["/", "/experiences", "/about", "/login", "/register"];
+      const publicPaths = ["/", "/experiences", "/about", "/login", "/register", "/privacy", "/terms", "/refunds", "/why-param-adventures"];
       for (const path of publicPaths) {
         const req = createRequest(`http://localhost${path}`);
         const res = proxy(req);
