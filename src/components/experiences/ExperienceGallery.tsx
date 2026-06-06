@@ -19,8 +19,10 @@ export default function ExperienceGallery({
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
 
-  // Filter out any potential empty strings
-  const galleryImages = images.filter((img) => img !== "");
+  // Filter out any potential empty strings and duplicates
+  const galleryImages = Array.from(
+    new Set(images.filter((img) => img !== ""))
+  );
 
   // Show at most 24 images initially (which is 6 rows on mobile, 2 rows on XL desktop)
   const INITIAL_VISIBLE_COUNT = 24;
