@@ -688,20 +688,20 @@ export default async function ExperienceDetailPage({
   );
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-20 pt-16 md:pt-0">
+    <div className="min-h-screen bg-background text-foreground pb-20 pt-16">
       <ExperienceJsonLd
         experience={exp}
         url={`${process.env.NEXT_PUBLIC_APP_URL || ""}/experiences/${slug}`}
         description={finalDescription}
       />
       {/* Hero Section */}
-      <section className="relative aspect-[16/9] w-full mt-0 overflow-hidden">
+      <section className="relative aspect-[16/9] md:aspect-auto md:h-[75vh] lg:h-[80vh] w-full mt-0 overflow-hidden">
         <div className="absolute inset-0 z-0 bg-black">
           {isVideo ? (
             <div className="relative w-full h-full">
               <video
                 src={heroMediaUrl}
-                className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-105"
+                className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-105 md:hidden"
                 muted
                 loop
                 autoPlay
@@ -709,7 +709,7 @@ export default async function ExperienceDetailPage({
               />
               <video
                 src={heroMediaUrl}
-                className="absolute inset-0 w-full h-full object-contain"
+                className="absolute inset-0 w-full h-full object-contain md:object-cover"
                 muted
                 loop
                 autoPlay
@@ -718,23 +718,23 @@ export default async function ExperienceDetailPage({
             </div>
           ) : (
             <div className="relative w-full h-full">
-              {/* Blurred background copy to prevent solid black bars on non-16:9 images */}
+              {/* Blurred background copy to prevent solid black bars on non-16:9 images - hidden on PC */}
               <Image
                 src={heroMediaUrl}
                 alt=""
                 fill
                 priority
                 sizes="100vw"
-                className="object-cover blur-2xl opacity-40 scale-105"
+                className="object-cover blur-2xl opacity-40 scale-105 md:hidden"
               />
-              {/* Main crisp contained image (no cropping/cut-off) */}
+              {/* Main crisp contained image (no cropping on mobile, fills container on PC) */}
               <Image
                 src={heroMediaUrl}
                 alt={exp.title}
                 fill
                 priority
                 sizes="100vw"
-                className="object-contain"
+                className="object-contain md:object-cover"
               />
             </div>
           )}
@@ -745,7 +745,7 @@ export default async function ExperienceDetailPage({
         </div>
 
         {/* Action Buttons - Standardized positioning */}
-        <div className="absolute top-4 right-4 md:top-28 md:right-8 z-40 flex items-center gap-3">
+        <div className="absolute top-4 right-4 md:top-6 md:right-8 z-40 flex items-center gap-3">
           <SaveButton
             experienceId={exp.id}
             className="scale-100 md:scale-110"
@@ -758,8 +758,8 @@ export default async function ExperienceDetailPage({
         </div>
 
         <div className="relative z-20 h-full max-w-7xl mx-auto px-4 flex flex-col">
-          {/* Safe zone for fixed navbar */}
-          <div className="h-16 md:h-32 lg:h-40 shrink-0" />
+          {/* Spacing from the top */}
+          <div className="h-4 md:h-8 lg:h-12 shrink-0" />
 
           <div className="hidden md:flex flex-1 flex-col justify-end pb-12">
             <h1 className="text-4xl md:text-5xl lg:text-7xl font-heading font-black text-white leading-tight drop-shadow-2xl max-w-4xl">
