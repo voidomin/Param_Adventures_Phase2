@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Fragment } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -21,7 +21,10 @@ import {
   Play,
   FlagOff,
   CheckCircle,
+  ChevronDown,
 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import BookingDetailsCollapse, { BookingParticipant } from "@/components/admin/BookingDetailsCollapse";
 
 interface TrekLead {
   id: string;
@@ -32,7 +35,7 @@ interface TrekLead {
 interface Booking {
   id: string;
   participantCount: number;
-  participants: { id: string; name: string }[];
+  participants: BookingParticipant[];
   user: { id: string; name: string; email: string; phoneNumber: string | null };
 }
 
@@ -77,10 +80,12 @@ function formatDate(dateStr: string) {
 function ConfirmedParticipantsTable({
   bookings,
   totalParticipants,
-}: {
-  bookings: Booking[];
+}: Readonly<{
+  bookings: readonly Booking[];
   totalParticipants: number;
-}) {
+}>) {
+  const [expandedBookingId, setExpandedBookingId] = useState<string | null>(null);
+
   if (bookings.length === 0) {
     return (
       <div className="bg-card border border-border rounded-2xl p-6">
@@ -107,38 +112,71 @@ function ConfirmedParticipantsTable({
                 <Phone className="w-3.5 h-3.5" /> Phone
               </th>
               <th className="pb-3 font-semibold text-right">Participants</th>
+              <th className="pb-3 font-semibold text-right w-10"></th>
             </tr>
           </thead>
           <tbody>
-            {bookings.map((booking, idx) => (
-              <tr
-                key={booking.id}
-                className="border-b border-border/50 last:border-0"
-              >
-                <td className="py-3 pr-4 text-foreground/40">{idx + 1}</td>
-                <td className="py-3 pr-4 font-medium text-foreground">
-                  {booking.user.name}
-                </td>
-                <td className="py-3 pr-4 text-foreground/60">
-                  {booking.user.email}
-                </td>
-                <td className="py-3 pr-4 text-foreground/60">
-                  {booking.user.phoneNumber ?? "—"}
-                </td>
-                <td className="py-3 text-right">
-                  <div className="font-semibold text-foreground mb-1">
-                    {booking.participantCount}
-                  </div>
-                  {booking.participants && booking.participants.length > 0 && (
-                    <div className="text-xs text-foreground/50 space-y-0.5 mt-1 border-t border-border/50 pt-1 inline-block">
-                      {booking.participants.map((p) => (
-                        <div key={p.id}>{p.name}</div>
-                      ))}
-                    </div>
-                  )}
-                </td>
-              </tr>
-            ))}
+            {bookings.map((booking, idx) => {
+              const isExpanded = expandedBookingId === booking.id;
+              return (
+                <Fragment key={booking.id}>
+                  <tr className="border-b border-border/50 last:border-0 hover:bg-foreground/[0.01] transition-colors">
+                    <td className="py-3 pr-4 text-foreground/40">{idx + 1}</td>
+                    <td className="py-3 pr-4 font-medium text-foreground">
+                      {booking.user.name}
+                    </td>
+                    <td className="py-3 pr-4 text-foreground/60">
+                      {booking.user.email}
+                    </td>
+                    <td className="py-3 pr-4 text-foreground/60">
+                      {booking.user.phoneNumber ?? "—"}
+                    </td>
+                    <td className="py-3 text-right">
+                      <div className="font-semibold text-foreground mb-1">
+                        {booking.participantCount}
+                      </div>
+                      {booking.participants && booking.participants.length > 0 && (
+                        <div className="text-xs text-foreground/50 space-y-0.5 mt-1 border-t border-border/50 pt-1 inline-block">
+                          {booking.participants.map((p) => (
+                            <div key={p.id}>{p.name}</div>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-3 text-right pl-4">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedBookingId(isExpanded ? null : booking.id)}
+                        className="p-1.5 text-foreground/40 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors inline-flex items-center justify-center cursor-pointer"
+                        title={isExpanded ? "Hide Details" : "View Booking & Guest Details"}
+                        aria-expanded={isExpanded}
+                      >
+                        <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+                      </button>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colSpan={6} className="p-0 bg-foreground/[0.01]">
+                      <AnimatePresence initial={false}>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.25, ease: "easeInOut" }}
+                            className="overflow-hidden border-b border-border/50"
+                          >
+                            <div className="p-6">
+                              <BookingDetailsCollapse booking={booking} />
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </td>
+                  </tr>
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>
@@ -154,6 +192,7 @@ export default function ManagerTripDetailPage() {
   const [slot, setSlot] = useState<TripSlot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  // State managed internally inside table component
 
   // Vendor contacts editing state
   const [contacts, setContacts] = useState<VendorContact[]>([]);

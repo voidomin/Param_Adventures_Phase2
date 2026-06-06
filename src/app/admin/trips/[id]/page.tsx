@@ -17,7 +17,10 @@ import {
   Loader2,
   Check,
   Save,
+  ChevronDown,
 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import BookingDetailsCollapse from "@/components/admin/BookingDetailsCollapse";
 
 interface TrekLead {
   id: string;
@@ -77,6 +80,7 @@ export default function TripManifestPage() {
   const [manifest, setManifest] = useState<Participant[]>([]);
   const [availableLeads, setAvailableLeads] = useState<TrekLead[]>([]);
   const [selectedLeadId, setSelectedLeadId] = useState<string>("");
+  const [expandedBookingId, setExpandedBookingId] = useState<string | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isAssigning, setIsAssigning] = useState(false);
@@ -406,37 +410,63 @@ export default function TripManifestPage() {
               </div>
             ) : (
               <div className="divide-y divide-border">
-                {manifest.map((p, ix) => (
-                  <div
-                    key={p.id}
-                    className="p-6 flex flex-col sm:flex-row gap-4 sm:items-center justify-between hover:bg-foreground/[0.02] transition-colors"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">
-                        {ix + 1}
-                      </div>
-                      <div>
-                        <p className="font-bold text-foreground">
-                          {p.user.name}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-foreground/60">
-                          <span className="flex items-center gap-1">
-                            <Mail className="w-3 h-3" /> {p.user.email}
-                          </span>
-                          {p.user.phoneNumber && (
-                            <span className="flex items-center gap-1">
-                              <Phone className="w-3 h-3" /> {p.user.phoneNumber}
-                            </span>
-                          )}
+                {manifest.map((p, ix) => {
+                  const isExpanded = expandedBookingId === p.id;
+                  return (
+                    <div key={p.id} className="border-b border-border last:border-0">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedBookingId(isExpanded ? null : p.id)}
+                        aria-label={`View participant details for ${p.user.name}`}
+                        aria-expanded={isExpanded}
+                        className="w-full text-left p-6 flex flex-col sm:flex-row gap-4 sm:items-center justify-between hover:bg-foreground/[0.04] cursor-pointer transition-colors outline-none focus-visible:bg-foreground/[0.04] focus-visible:ring-2 focus-visible:ring-primary/50"
+                      >
+                        <div className="flex items-center gap-4">
+                          <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0">
+                            {ix + 1}
+                          </div>
+                          <div>
+                            <p className="font-bold text-foreground">
+                              {p.user.name}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-foreground/60">
+                              <span className="flex items-center gap-1">
+                                <Mail className="w-3 h-3" /> {p.user.email}
+                              </span>
+                              {p.user.phoneNumber && (
+                                <span className="flex items-center gap-1">
+                                  <Phone className="w-3 h-3" /> {p.user.phoneNumber}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                      </div>
+                        <div className="flex items-center gap-4 ml-auto sm:ml-0">
+                          <div className="bg-foreground/5 border border-border px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap text-center">
+                            {p.participantCount} Guest
+                            {p.participantCount === 1 ? "" : "s"}
+                          </div>
+                          <ChevronDown className={`w-5 h-5 text-foreground/45 transition-transform duration-200 shrink-0 ${isExpanded ? "rotate-180" : ""}`} />
+                        </div>
+                      </button>
+                      <AnimatePresence initial={false}>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.25, ease: "easeInOut" }}
+                            className="overflow-hidden bg-foreground/[0.01] border-t border-border/50"
+                          >
+                            <div className="p-6 border-b border-border/50">
+                              <BookingDetailsCollapse booking={p} />
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
-                    <div className="bg-foreground/5 border border-border px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap text-center">
-                      {p.participantCount} Guest
-                      {p.participantCount === 1 ? "" : "s"}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 

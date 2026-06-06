@@ -18,7 +18,10 @@ import {
   Square,
   Info,
   FlagOff,
+  ChevronDown,
 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import BookingDetailsCollapse, { BookingDetails } from "@/components/admin/BookingDetailsCollapse";
 
 interface Participant {
   id: string;
@@ -27,6 +30,14 @@ interface Participant {
   phoneNumber: string | null;
   attended: boolean;
   isPrimary: boolean;
+  gender?: string | null;
+  age?: number | null;
+  bloodGroup?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactNumber?: string | null;
+  emergencyRelationship?: string | null;
+  pickupPoint?: string | null;
+  dropPoint?: string | null;
 }
 
 interface Booking {
@@ -86,6 +97,7 @@ export default function TrekLeadTripDetailPage() {
   const [currentDateIST, setCurrentDateIST] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [expandedBookingId, setExpandedBookingId] = useState<string | null>(null);
 
   // Attendance state — map of participantId → attended
   const [attendance, setAttendance] = useState<Record<string, boolean>>({});
@@ -353,40 +365,76 @@ export default function TrekLeadTripDetailPage() {
 
           <div className="space-y-2">
             {slot.bookings.flatMap((booking) =>
-              booking.participants.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => canActToday && toggleAttendance(p.id)}
-                  disabled={!canActToday}
-                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-all text-left ${
-                    attendance[p.id]
-                      ? "bg-green-500/10 border-green-500/30"
-                      : "bg-foreground/5 border-border hover:border-primary/30"
-                  } ${canActToday ? "cursor-pointer" : "cursor-default"}`}
-                >
-                  <div className="flex items-center gap-3">
-                    {attendance[p.id] ? (
-                      <CheckSquare className="w-5 h-5 text-green-400 shrink-0" />
-                    ) : (
-                      <Square className="w-5 h-5 text-foreground/30 shrink-0" />
-                    )}
-                    <div>
-                      <p className="text-sm font-semibold text-foreground">
-                        {p.name}{" "}
-                        {p.isPrimary && (
-                          <span className="text-[10px] ml-1 uppercase text-primary border border-primary/20 bg-primary/10 px-1 rounded">
-                            Primary
-                          </span>
+              booking.participants.map((p) => {
+                const isExpanded = expandedBookingId === booking.id;
+                return (
+                  <div
+                    key={p.id}
+                    className="flex flex-col border border-border rounded-xl overflow-hidden bg-card transition-all"
+                  >
+                    <div
+                      className={`w-full flex items-center justify-between px-4 py-3 ${
+                        attendance[p.id] ? "bg-green-500/10" : ""
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => canActToday && toggleAttendance(p.id)}
+                        className={`flex items-center gap-3 flex-1 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 rounded-lg p-1 ${canActToday ? "cursor-pointer" : "cursor-default"}`}
+                        aria-label={`Toggle attendance for ${p.name}`}
+                      >
+                        {attendance[p.id] ? (
+                          <CheckSquare className="w-5 h-5 text-green-400 shrink-0" />
+                        ) : (
+                          <Square className="w-5 h-5 text-foreground/30 shrink-0" />
                         )}
-                      </p>
-                      <p className="text-xs text-foreground/50">
-                        {p.email}
-                        {p.phoneNumber ? ` · ${p.phoneNumber}` : ""}
-                      </p>
+                        <div>
+                          <p className="text-sm font-semibold text-foreground">
+                            {p.name}{" "}
+                            {p.isPrimary && (
+                              <span className="text-[10px] ml-1 uppercase text-primary border border-primary/20 bg-primary/10 px-1 rounded">
+                                Primary
+                              </span>
+                            )}
+                          </p>
+                          <p className="text-xs text-foreground/50">
+                            {p.email}
+                            {p.phoneNumber ? ` · ${p.phoneNumber}` : ""}
+                          </p>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedBookingId(isExpanded ? null : booking.id);
+                        }}
+                        className="p-1.5 text-foreground/40 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors ml-2"
+                        title={isExpanded ? "Hide Details" : "View Booking & Guest Details"}
+                        aria-expanded={isExpanded}
+                      >
+                        <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+                      </button>
                     </div>
+                    <AnimatePresence initial={false}>
+                      {isExpanded && (
+                        <motion.div
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.25, ease: "easeInOut" }}
+                          className="overflow-hidden border-t border-border/50 bg-foreground/[0.005]"
+                        >
+                          <div className="p-4">
+                            <BookingDetailsCollapse booking={booking as unknown as BookingDetails} />
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
-                </button>
-              )),
+                );
+              }),
             )}
           </div>
 
