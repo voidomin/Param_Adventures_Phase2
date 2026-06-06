@@ -597,6 +597,26 @@ function InclusionsExclusions({
   );
 }
 
+function getExperienceDescription(exp: ExperienceWithInclusions): string {
+  const description =
+    exp.description && typeof exp.description === "object"
+      ? getPlainTextFromJSON(exp.description)
+      : String(exp.description || "");
+
+  return (
+    description ||
+    `Explore ${exp.title} in ${exp.location || "India"} with Param Adventures.`
+  );
+}
+
+function getPrimaryMedia(exp: ExperienceWithInclusions): string {
+  return (
+    exp.coverImage ||
+    exp.images[0] ||
+    "https://picsum.photos/seed/placeholder/1920/1080"
+  );
+}
+
 export default async function ExperienceDetailPage({
   params,
 }: Readonly<{
@@ -650,19 +670,8 @@ export default async function ExperienceDetailPage({
   // Cast after null check for type safety
   const exp = experience as unknown as ExperienceWithInclusions;
 
-  const description =
-    exp.description && typeof exp.description === "object"
-      ? getPlainTextFromJSON(exp.description)
-      : String(exp.description || "");
-
-  const finalDescription =
-    description ||
-    `Explore ${exp.title} in ${exp.location || "India"} with Param Adventures.`;
-
-  const primaryMedia =
-    exp.coverImage ||
-    exp.images[0] ||
-    "https://picsum.photos/seed/placeholder/1920/1080";
+  const finalDescription = getExperienceDescription(exp);
+  const primaryMedia = getPrimaryMedia(exp);
   
   const isVideo = /\.(mp4|webm)$/i.exec(primaryMedia);
 
@@ -679,80 +688,116 @@ export default async function ExperienceDetailPage({
   );
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-20">
+    <div className="min-h-screen bg-background text-foreground pb-20 pt-16 md:pt-0">
       <ExperienceJsonLd
         experience={exp}
         url={`${process.env.NEXT_PUBLIC_APP_URL || ""}/experiences/${slug}`}
         description={finalDescription}
       />
       {/* Hero Section */}
-      <section className="relative h-[65vh] md:h-[75vh] lg:h-[80vh] w-full mt-0">
+      <section className="relative aspect-[16/9] w-full mt-0 overflow-hidden">
         <div className="absolute inset-0 z-0 bg-black">
           {isVideo ? (
-            <video
-              src={heroMediaUrl}
-              className="w-full h-full object-cover"
-              muted
-              loop
-              autoPlay
-              playsInline
-            />
+            <div className="relative w-full h-full">
+              <video
+                src={heroMediaUrl}
+                className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-105"
+                muted
+                loop
+                autoPlay
+                playsInline
+              />
+              <video
+                src={heroMediaUrl}
+                className="absolute inset-0 w-full h-full object-contain"
+                muted
+                loop
+                autoPlay
+                playsInline
+              />
+            </div>
           ) : (
             <div className="relative w-full h-full">
+              {/* Blurred background copy to prevent solid black bars on non-16:9 images */}
+              <Image
+                src={heroMediaUrl}
+                alt=""
+                fill
+                priority
+                sizes="100vw"
+                className="object-cover blur-2xl opacity-40 scale-105"
+              />
+              {/* Main crisp contained image (no cropping/cut-off) */}
               <Image
                 src={heroMediaUrl}
                 alt={exp.title}
                 fill
                 priority
                 sizes="100vw"
-                className="object-cover"
+                className="object-contain"
               />
             </div>
           )}
 
-          <div className="absolute inset-0 bg-black/40 z-10" />
-          <div className="absolute inset-x-0 bottom-0 h-2/3 bg-linear-to-t from-black/90 via-black/40 to-transparent z-10" />
+          <div className="absolute inset-0 bg-black/20 md:bg-black/40 z-10" />
+          <div className="absolute inset-x-0 bottom-0 h-2/3 bg-linear-to-t from-black/90 via-black/40 to-transparent z-10 hidden md:block" />
 
         </div>
 
         {/* Action Buttons - Standardized positioning */}
-        <div className="absolute top-24 right-6 md:top-28 md:right-8 z-40 flex items-center gap-3">
+        <div className="absolute top-4 right-4 md:top-28 md:right-8 z-40 flex items-center gap-3">
           <SaveButton
             experienceId={exp.id}
-            className="scale-110"
+            className="scale-100 md:scale-110"
           />
           <ShareButton
             title={exp.title}
-            className="scale-110"
+            className="scale-100 md:scale-110"
             variant="outline"
           />
         </div>
 
         <div className="relative z-20 h-full max-w-7xl mx-auto px-4 flex flex-col">
           {/* Safe zone for fixed navbar */}
-          <div className="h-24 md:h-32 lg:h-40 shrink-0" />
+          <div className="h-16 md:h-32 lg:h-40 shrink-0" />
 
-          <div className="flex-1 flex flex-col justify-end pb-12">
+          <div className="hidden md:flex flex-1 flex-col justify-end pb-12">
             <h1 className="text-4xl md:text-5xl lg:text-7xl font-heading font-black text-white leading-tight drop-shadow-2xl max-w-4xl">
-            {exp.title}
-          </h1>
-          <div className="flex flex-wrap items-center gap-6 mt-6 text-white font-medium text-lg drop-shadow-md">
-            <div className="flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-primary" /> {exp.location}
+              {exp.title}
+            </h1>
+            <div className="flex flex-wrap items-center gap-6 mt-6 text-white font-medium text-lg drop-shadow-md">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-primary" /> {exp.location}
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock className="w-5 h-5 text-primary" />{" "}
+                {exp.durationDays} Days /{" "}
+                {exp.durationDays > 1 ? exp.durationDays - 1 : 0}{" "}
+                Nights
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Clock className="w-5 h-5 text-primary" />{" "}
-              {exp.durationDays} Days /{" "}
-              {exp.durationDays > 1 ? exp.durationDays - 1 : 0}{" "}
-              Nights
-            </div>
-          </div>
           </div>
         </div>
       </section>
 
+      {/* Mobile Title & Meta Section (Visible only on mobile) */}
+      <div className="md:hidden px-4 pt-6 pb-2 space-y-4">
+        <h1 className="text-3xl font-heading font-black text-foreground leading-tight">
+          {exp.title}
+        </h1>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-foreground/75 font-semibold text-sm">
+          <div className="flex items-center gap-1.5">
+            <MapPin className="w-4 h-4 text-primary" /> {exp.location}
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Clock className="w-4 h-4 text-primary" />{" "}
+            {exp.durationDays} Days / {exp.durationDays > 1 ? exp.durationDays - 1 : 0} Nights
+          </div>
+        </div>
+      </div>
+
       {/* Main Content Layout */}
-      <div className="max-w-7xl mx-auto px-4 mt-12 grid grid-cols-1 lg:grid-cols-3 gap-12">
+      <div className="max-w-7xl mx-auto px-4 mt-6 md:mt-12 grid grid-cols-1 lg:grid-cols-3 gap-12">
         {/* Left Column - Details */}
         <div className="lg:col-span-2 space-y-16 min-w-0">
           <ExperienceStickyNav
