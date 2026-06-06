@@ -232,7 +232,7 @@ export default async function Home() {
               {featuredExperiences.map((exp: any) => (
                 <div
                   key={exp.id}
-                  className="w-[85vw] sm:w-87.5 md:w-100 shrink-0 snap-start flex flex-col"
+                  className="w-[85vw] sm:w-87.5 md:w-100 shrink-0 snap-center sm:snap-start flex flex-col"
                 >
                   <ExperienceCard experience={exp} mediaSettings={mediaSettings} />
                 </div>
@@ -282,7 +282,7 @@ export default async function Home() {
                 {recentBlogs.map((blog) => (
                   <div
                     key={blog.id}
-                    className="w-[85vw] sm:w-87.5 md:w-100 shrink-0 snap-start h-full flex flex-col"
+                    className="w-[85vw] sm:w-87.5 md:w-100 shrink-0 snap-center sm:snap-start h-full flex flex-col"
                   >
                     <Link
                       href={`/blog/${blog.slug}`}

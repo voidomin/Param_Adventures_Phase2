@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Clock, MapPin, IndianRupee } from "lucide-react";
@@ -56,6 +56,15 @@ function FlippingDatePill({
   remainingCapacity: number;
 }>) {
   const [isFlipped, setIsFlipped] = useState(false);
+
+  useEffect(() => {
+    if (isFlipped) {
+      const timer = setTimeout(() => {
+        setIsFlipped(false);
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [isFlipped]);
 
   const formattedDate = new Date(date).toLocaleDateString("en-IN", {
     day: "numeric",
@@ -184,13 +193,11 @@ export default function ExperienceCard({
           transform-style: preserve-3d;
           -webkit-transform-style: preserve-3d;
         }
-        .card-container:hover .flip-card-inner {
-          transform: rotateY(180deg);
-          -webkit-transform: rotateY(180deg);
-        }
-        .card-container:active .flip-card-inner {
-          transform: rotateY(180deg);
-          -webkit-transform: rotateY(180deg);
+        @media (hover: hover) {
+          .card-container:hover .flip-card-inner {
+            transform: rotateY(180deg);
+            -webkit-transform: rotateY(180deg);
+          }
         }
         .flip-card.flipped .flip-card-inner {
           transform: rotateY(180deg);

@@ -9,20 +9,31 @@ export default function Carousel({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
+  const [isAtStart, setIsAtStart] = useState(true);
+  const [isMounted, setIsMounted] = useState(false);
 
   const checkScroll = () => {
     if (scrollRef.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollRef.current;
       setCanScrollLeft(scrollLeft > 0);
       setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 5); // 5px buffer
+      setIsAtStart(scrollLeft < 50);
     }
   };
 
   useEffect(() => {
+    setIsMounted(true);
     checkScroll();
+    
+    // Run checkScroll after a brief delay to ensure DOM is fully laid out and painted
+    const timer = setTimeout(checkScroll, 300);
+
     window.addEventListener("resize", checkScroll);
-    return () => window.removeEventListener("resize", checkScroll);
-  }, []);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("resize", checkScroll);
+    };
+  }, [children]);
 
   const scroll = (direction: "left" | "right") => {
     if (scrollRef.current) {
@@ -63,11 +74,35 @@ export default function Carousel({
           .hide-scrollbar::-webkit-scrollbar {
             display: none;
           }
+          @keyframes bounce-horizontal {
+            0%, 100% {
+              transform: translateY(-50%) translateX(0);
+            }
+            50% {
+              transform: translateY(-50%) translateX(6px);
+            }
+          }
+          .animate-bounce-horizontal {
+            animation: bounce-horizontal 1.2s infinite ease-in-out;
+          }
         `,
           }}
         />
         {children}
       </div>
+
+      {/* Mobile Swipe Hint */}
+      {isMounted && isAtStart && canScrollRight && (
+        <button
+          onClick={() => {
+            scroll("right");
+          }}
+          aria-label="Swipe right hint"
+          className="absolute right-3 top-1/2 -translate-y-1/2 z-20 md:hidden flex items-center justify-center w-10 h-10 rounded-full bg-primary text-primary-foreground shadow-xl border border-primary/20 animate-bounce-horizontal cursor-pointer"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
+      )}
 
       {/* Right Arrow */}
       <button
