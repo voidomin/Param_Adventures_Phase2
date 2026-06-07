@@ -73,7 +73,7 @@ describe("DownloadInvoiceBtn", () => {
     await waitFor(() => {
       expect(globalThis.fetch).toHaveBeenCalledWith("/api/bookings/book-1234/invoice");
       expect(autoTable).toHaveBeenCalled();
-      expect(jsPDF.prototype.save).toHaveBeenCalledWith("Invoice_PARAM_book.pdf");
+      expect(jsPDF.prototype.save).toHaveBeenCalledWith("Invoice_PARAM_BOOK.pdf");
     });
 
     expect(screen.getByRole("button", { name: /download tax invoice/i })).toBeEnabled();
@@ -103,7 +103,7 @@ describe("DownloadInvoiceBtn", () => {
     fireEvent.click(screen.getByRole("button", { name: /download tax invoice/i }));
 
     await waitFor(() => {
-      expect(jsPDF.prototype.save).toHaveBeenCalledWith("Invoice_PARAM_abc.pdf");
+      expect(jsPDF.prototype.save).toHaveBeenCalledWith("Invoice_PARAM_ABC.pdf");
     });
 
     expect(globalThis.alert).not.toHaveBeenCalled();
