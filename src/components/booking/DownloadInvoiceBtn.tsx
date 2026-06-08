@@ -64,9 +64,46 @@ export default function DownloadInvoiceBtn({ bookingId }: Readonly<{ bookingId: 
     setIsDownloading(true);
     try {
       // 1. Fetch data
-      const res = await fetch(`/api/bookings/${bookingId}/invoice`);
-      if (!res.ok) throw new Error("Failed to fetch invoice data");
-      const data: InvoiceData = await res.json();
+      let data: InvoiceData;
+      if (bookingId === "dummy") {
+        data = {
+          booking: {
+            id: "32765c47-d803-4cfb-9ce1-0fd2c40a11a2",
+            date: "2026-03-31T09:05:52.115Z",
+            status: "CONFIRMED",
+            participantCount: 1,
+            baseFare: 900,
+            totalPrice: 900,
+            taxBreakdown: []
+          },
+          company: {
+            companyName: "Param Adventures",
+            companyAddress: "Kuvempu Nagar Main Rd, \nDoddakallasandra,\nBengaluru, Karnataka 560062",
+            gstNumber: "NIL",
+            stateCode: "62",
+            panNumber: "ABJFPI574A"
+          },
+          experience: {
+            title: "Kedarkantha Winter Trek: The Summit of Dreams",
+            location: "Bengaluru"
+          },
+          primaryContact: {
+            name: "Akashkbhat216",
+            email: "akashkbhat216@gmail.com",
+            phoneNumber: "+91-097163748"
+          },
+          payment: {
+            providerPaymentId: "12345567"
+          }
+        };
+      } else {
+        const res = await fetch(`/api/bookings/${bookingId}/invoice`);
+        if (!res.ok) {
+          const errBody = await res.json().catch(() => ({}));
+          throw new Error(`Failed to fetch invoice data: Status ${res.status} - ${errBody.error || "Unknown Error"}`);
+        }
+        data = await res.json();
+      }
 
       // Fetch logo as base64
       const logoBase64 = await fetchImageAsBase64(`${globalThis.location.origin}/param-logo.png`);
