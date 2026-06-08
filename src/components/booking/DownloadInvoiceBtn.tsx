@@ -98,9 +98,20 @@ export default function DownloadInvoiceBtn({ bookingId }: Readonly<{ bookingId: 
       doc.setFontSize(8.5);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(100, 100, 100);
-      doc.text(company.companyAddress || "", companyDetailsStartX, 23, { maxWidth: pageWidth - companyDetailsStartX - 70 });
-      doc.text(`GSTIN: ${company.gstNumber || "N/A"} | PAN: ${company.panNumber || "N/A"}`, companyDetailsStartX, 27);
-      doc.text(`State Code: ${company.stateCode || "N/A"}`, companyDetailsStartX, 31);
+      
+      // Split and render address dynamically to handle any address length without overlap
+      const addressText = company.companyAddress || "";
+      const addressLines = doc.splitTextToSize(addressText, pageWidth - companyDetailsStartX - 70) as string[];
+      const addressLineHeight = 3.6;
+      addressLines.forEach((line, index) => {
+        doc.text(line, companyDetailsStartX, 23 + (index * addressLineHeight));
+      });
+
+      const gstY = 23 + (addressLines.length * addressLineHeight) + 0.5;
+      doc.text(`GSTIN: ${company.gstNumber || "N/A"} | PAN: ${company.panNumber || "N/A"}`, companyDetailsStartX, gstY);
+      
+      const stateCodeY = gstY + 3.8;
+      doc.text(`State Code: ${company.stateCode || "N/A"}`, companyDetailsStartX, stateCodeY);
 
       // TAX INVOICE Title (top-right)
       doc.setFontSize(18);
@@ -108,15 +119,16 @@ export default function DownloadInvoiceBtn({ bookingId }: Readonly<{ bookingId: 
       doc.setTextColor(15, 118, 110); // Teal-700
       doc.text("TAX INVOICE", pageWidth - 14, 18, { align: "right" });
 
-      // Divider Line
+      // Divider Line placed dynamically below the company info
+      const dividerY = Math.max(36, stateCodeY + 5);
       doc.setDrawColor(226, 232, 240); // Slate-200
       doc.setLineWidth(0.5);
-      doc.line(14, 36, pageWidth - 14, 36);
+      doc.line(14, dividerY, pageWidth - 14, dividerY);
 
       // 4. Details Section (Two card containers side-by-side)
       const cardWidth = (pageWidth - 34) / 2;
       const cardHeight = 32;
-      const cardY = 42;
+      const cardY = dividerY + 6;
 
       // Left Card: Invoice details
       doc.setFillColor(248, 250, 252); // Slate-50
@@ -161,7 +173,7 @@ export default function DownloadInvoiceBtn({ bookingId }: Readonly<{ bookingId: 
       ];
 
       autoTable(doc, {
-        startY: 80,
+        startY: cardY + cardHeight + 6,
         head: [['S.No', 'Description of Services', 'SAC', 'Qty', 'Taxable Value']],
         body: tableData,
         theme: 'grid',
