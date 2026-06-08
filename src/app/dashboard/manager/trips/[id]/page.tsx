@@ -45,13 +45,30 @@ interface VendorContact {
   value: string;
 }
 
+interface StayDetails {
+  _id: string;
+  name: string;
+  contactNumber: string;
+  location: string;
+  locationLink: string;
+  address: string;
+}
+
+interface TransportDetails {
+  _id: string;
+  driverName: string;
+  contactNumber: string;
+  vehicleNumber: string;
+  vehicleType: string;
+}
+
 interface TripSlot {
   id: string;
   date: string;
   capacity: number;
   remainingCapacity: number;
   status: string;
-  vendorContacts: VendorContact[] | null;
+  vendorContacts: any;
   whatsAppUrl?: string | null;
   experience: {
     title: string;
@@ -196,6 +213,8 @@ export default function ManagerTripDetailPage() {
 
   // Vendor contacts editing state
   const [contacts, setContacts] = useState<VendorContact[]>([]);
+  const [stays, setStays] = useState<StayDetails[]>([]);
+  const [transports, setTransports] = useState<TransportDetails[]>([]);
   const [isSavingContacts, setIsSavingContacts] = useState(false);
   const [contactsSaved, setContactsSaved] = useState(false);
 
@@ -231,14 +250,39 @@ export default function ManagerTripDetailPage() {
       const data = await res.json();
       setSlot(data.slot);
       setWhatsAppUrl(data.slot.whatsAppUrl ?? "");
-      setContacts(
-        (data.slot.vendorContacts ?? []).map(
-          (c: { label: string; value: string }) => ({
+      
+      const rawContacts = data.slot.vendorContacts;
+      if (rawContacts && typeof rawContacts === "object" && !Array.isArray(rawContacts)) {
+        // Structured object
+        setStays(
+          (rawContacts.stays ?? []).map((s: any) => ({
+            ...s,
+            _id: s._id || crypto.randomUUID(),
+          }))
+        );
+        setTransports(
+          (rawContacts.transports ?? []).map((t: any) => ({
+            ...t,
+            _id: t._id || crypto.randomUUID(),
+          }))
+        );
+        setContacts(
+          (rawContacts.otherContacts ?? []).map((c: any) => ({
+            ...c,
+            _id: c._id || crypto.randomUUID(),
+          }))
+        );
+      } else {
+        // Flat array fallback
+        setStays([]);
+        setTransports([]);
+        setContacts(
+          (rawContacts ?? []).map((c: { label: string; value: string }) => ({
             ...c,
             _id: crypto.randomUUID(),
-          }),
-        ),
-      );
+          }))
+        );
+      }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load trip");
     } finally {
@@ -253,6 +297,49 @@ export default function ManagerTripDetailPage() {
       .then((d) => setAvailableLeads(d.trekLeads ?? []))
       .catch(console.error);
   }, [fetchSlot]);
+
+  // ─── Stays ─────────────────────────────────────────────────
+  const addStay = () =>
+    setStays((prev) => [
+      ...prev,
+      {
+        _id: crypto.randomUUID(),
+        name: "",
+        contactNumber: "",
+        location: "",
+        locationLink: "",
+        address: "",
+      },
+    ]);
+
+  const removeStay = (id: string) =>
+    setStays((prev) => prev.filter((s) => s._id !== id));
+
+  const updateStay = (id: string, key: keyof Omit<StayDetails, "_id">, val: string) =>
+    setStays((prev) =>
+      prev.map((s) => (s._id === id ? { ...s, [key]: val } : s)),
+    );
+
+  // ─── Transports ────────────────────────────────────────────
+  const addTransport = () =>
+    setTransports((prev) => [
+      ...prev,
+      {
+        _id: crypto.randomUUID(),
+        driverName: "",
+        contactNumber: "",
+        vehicleNumber: "",
+        vehicleType: "",
+      },
+    ]);
+
+  const removeTransport = (id: string) =>
+    setTransports((prev) => prev.filter((t) => t._id !== id));
+
+  const updateTransport = (id: string, key: keyof Omit<TransportDetails, "_id">, val: string) =>
+    setTransports((prev) =>
+      prev.map((t) => (t._id === id ? { ...t, [key]: val } : t)),
+    );
 
   // ─── Vendor Contacts ───────────────────────────────────────
   const addContact = () =>
@@ -273,8 +360,27 @@ export default function ManagerTripDetailPage() {
     setIsSavingContacts(true);
     setContactsSaved(false);
     try {
-      // Strip client-only _id before sending to API
-      const payload = contacts.map(({ label, value }) => ({ label, value }));
+      const staysPayload = stays.map(({ name, contactNumber, location, locationLink, address }) => ({
+        name,
+        contactNumber,
+        location,
+        locationLink,
+        address,
+      }));
+      const transportsPayload = transports.map(({ driverName, contactNumber, vehicleNumber, vehicleType }) => ({
+        driverName,
+        contactNumber,
+        vehicleNumber,
+        vehicleType,
+      }));
+      const otherContactsPayload = contacts.map(({ label, value }) => ({ label, value }));
+
+      const payload = {
+        stays: staysPayload,
+        transports: transportsPayload,
+        otherContacts: otherContactsPayload,
+      };
+
       const res = await fetch(`/api/manager/trips/${slotId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -585,7 +691,7 @@ export default function ManagerTripDetailPage() {
                 className="w-full px-4 py-2.5 text-sm bg-background border border-border rounded-xl text-foreground placeholder-foreground/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
               />
               {whatsAppUrlError && (
-                <p className="text-xs text-red-400 font-medium">{whatsAppUrlError}</p>
+                <p className="text-xs text-red-400">{whatsAppUrlError}</p>
               )}
               <button
                 onClick={saveWhatsAppUrl}
@@ -599,73 +705,259 @@ export default function ManagerTripDetailPage() {
           </div>
         </div>
 
-        {/* ── Vendor Contacts ── */}
-        <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-foreground">
-              Vendor Contacts
-            </h2>
+        <div className="space-y-6">
+          {/* ── Trip Operations & Vendor Details ── */}
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
+            <div>
+              <h2 className="text-xl font-bold text-foreground">
+                Trip Operations & Vendor Details
+              </h2>
+              <p className="text-sm text-foreground/50 mt-1">
+                Manage lodging/stays, transport drivers, and other operational contacts for this trip.
+              </p>
+            </div>
+
+            <hr className="border-border/50" />
+
+            {/* 1. Lodging / Stays Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">1</span>
+                  Lodging / Stays
+                </h3>
+                <button
+                  type="button"
+                  onClick={addStay}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-primary/10 text-primary border border-primary/20 rounded-lg hover:bg-primary/20 transition-colors cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add Stay
+                </button>
+              </div>
+
+              {stays.length === 0 ? (
+                <p className="text-xs text-foreground/40 italic pl-8">No lodging/stays added yet.</p>
+              ) : (
+                <div className="space-y-4 pl-8">
+                  {stays.map((s) => (
+                    <div key={s._id} className="relative bg-foreground/[0.02] border border-border/60 rounded-xl p-4 space-y-3">
+                      <button
+                        type="button"
+                        onClick={() => removeStay(s._id)}
+                        className="absolute top-3 right-3 text-foreground/30 hover:text-red-500 transition-colors cursor-pointer"
+                        aria-label="Remove stay"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-foreground/50">Stay Name</label>
+                          <input
+                            type="text"
+                            value={s.name}
+                            onChange={(e) => updateStay(s._id, "name", e.target.value)}
+                            placeholder="e.g. Hotel Mountain View"
+                            className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-foreground/50">Contact Number</label>
+                          <input
+                            type="text"
+                            value={s.contactNumber}
+                            onChange={(e) => updateStay(s._id, "contactNumber", e.target.value)}
+                            placeholder="e.g. +91 98765 43210"
+                            className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-foreground/50">Location / City</label>
+                          <input
+                            type="text"
+                            value={s.location}
+                            onChange={(e) => updateStay(s._id, "location", e.target.value)}
+                            placeholder="e.g. Manali"
+                            className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-foreground/50">Location Link (Google Maps)</label>
+                          <input
+                            type="text"
+                            value={s.locationLink}
+                            onChange={(e) => updateStay(s._id, "locationLink", e.target.value)}
+                            placeholder="e.g. https://maps.google.com/..."
+                            className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-xs font-medium text-foreground/50">Physical Address</label>
+                        <textarea
+                          value={s.address}
+                          onChange={(e) => updateStay(s._id, "address", e.target.value)}
+                          placeholder="e.g. Near Mall Road, Manali, HP"
+                          rows={2}
+                          className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <hr className="border-border/30 pl-8" />
+
+            {/* 2. Transport Drivers Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">2</span>
+                  Transport Drivers
+                </h3>
+                <button
+                  type="button"
+                  onClick={addTransport}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-primary/10 text-primary border border-primary/20 rounded-lg hover:bg-primary/20 transition-colors cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add Driver
+                </button>
+              </div>
+
+              {transports.length === 0 ? (
+                <p className="text-xs text-foreground/40 italic pl-8">No transport driver details added yet.</p>
+              ) : (
+                <div className="space-y-4 pl-8">
+                  {transports.map((t) => (
+                    <div key={t._id} className="relative bg-foreground/[0.02] border border-border/60 rounded-xl p-4 space-y-3">
+                      <button
+                        type="button"
+                        onClick={() => removeTransport(t._id)}
+                        className="absolute top-3 right-3 text-foreground/30 hover:text-red-500 transition-colors cursor-pointer"
+                        aria-label="Remove driver"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-foreground/50">Driver Name</label>
+                          <input
+                            type="text"
+                            value={t.driverName}
+                            onChange={(e) => updateTransport(t._id, "driverName", e.target.value)}
+                            placeholder="e.g. Ramesh Kumar"
+                            className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-foreground/50">Contact Number</label>
+                          <input
+                            type="text"
+                            value={t.contactNumber}
+                            onChange={(e) => updateTransport(t._id, "contactNumber", e.target.value)}
+                            placeholder="e.g. +91 98765 12345"
+                            className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-foreground/50">Vehicle Number</label>
+                          <input
+                            type="text"
+                            value={t.vehicleNumber}
+                            onChange={(e) => updateTransport(t._id, "vehicleNumber", e.target.value)}
+                            placeholder="e.g. KA-51-AB-1234"
+                            className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-medium text-foreground/50">Vehicle Type / Model</label>
+                          <input
+                            type="text"
+                            value={t.vehicleType}
+                            onChange={(e) => updateTransport(t._id, "vehicleType", e.target.value)}
+                            placeholder="e.g. Tempo Traveler / Force"
+                            className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <hr className="border-border/30 pl-8" />
+
+            {/* 3. Other Contacts Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">3</span>
+                  Other Operational Contacts
+                </h3>
+                <button
+                  type="button"
+                  onClick={addContact}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-primary/10 text-primary border border-primary/20 rounded-lg hover:bg-primary/20 transition-colors cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add Contact
+                </button>
+              </div>
+
+              {contacts.length === 0 ? (
+                <p className="text-xs text-foreground/40 italic pl-8">No other operational contacts added yet.</p>
+              ) : (
+                <div className="space-y-2 pl-8">
+                  {contacts.map((c) => (
+                    <div key={c._id} className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        value={c.label}
+                        aria-label="Contact label"
+                        onChange={(e) => updateContact(c._id, "label", e.target.value)}
+                        placeholder="Label (e.g. Cook)"
+                        className="w-1/3 px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground placeholder-foreground/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                      <input
+                        type="text"
+                        value={c.value}
+                        aria-label="Contact value"
+                        onChange={(e) => updateContact(c._id, "value", e.target.value)}
+                        placeholder="Value (e.g. +91 99999...)"
+                        className="flex-1 px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground placeholder-foreground/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeContact(c._id)}
+                        className="text-foreground/30 hover:text-red-500 transition-colors cursor-pointer"
+                        aria-label="Remove contact"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <hr className="border-border/50" />
+
             <button
-              onClick={addContact}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold bg-primary/10 text-primary border border-primary/20 rounded-lg hover:bg-primary/20 transition-colors"
+              onClick={saveContacts}
+              disabled={isSavingContacts}
+              className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold bg-primary text-primary-foreground rounded-xl hover:scale-105 transition-transform disabled:opacity-50 shadow-lg shadow-primary/20 cursor-pointer"
             >
-              <Plus className="w-4 h-4" /> Add
+              {(() => {
+                if (isSavingContacts) return <Loader2 className="w-4 h-4 animate-spin" />;
+                if (contactsSaved) return <Check className="w-4 h-4" />;
+                return <Save className="w-4 h-4" />;
+              })()}
+              {contactsSaved ? "Saved Details!" : "Save Operations Details"}
             </button>
           </div>
-
-          {contacts.length === 0 ? (
-            <p className="text-sm text-foreground/40 italic">
-              No vendor contacts yet. Add driver numbers, hotel names, etc.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {contacts.map((c) => (
-                <div key={c._id} className="flex gap-2 items-center">
-                  <input
-                    type="text"
-                    value={c.label}
-                    aria-label="Contact label"
-                    onChange={(e) =>
-                      updateContact(c._id, "label", e.target.value)
-                    }
-                    placeholder="Label (e.g. Driver)"
-                    className="w-1/3 px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground placeholder-foreground/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
-                  />
-                  <input
-                    type="text"
-                    value={c.value}
-                    aria-label="Contact value"
-                    onChange={(e) =>
-                      updateContact(c._id, "value", e.target.value)
-                    }
-                    placeholder="Value (e.g. +91 98765...)"
-                    className="flex-1 px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground placeholder-foreground/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
-                  />
-                  <button
-                    onClick={() => removeContact(c._id)}
-                    className="text-foreground/30 hover:text-red-500 transition-colors"
-                    aria-label="Remove contact"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <button
-            onClick={saveContacts}
-            disabled={isSavingContacts}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-primary text-primary-foreground rounded-xl hover:scale-105 transition-transform disabled:opacity-50 shadow-lg shadow-primary/20"
-          >
-            {(() => {
-              if (isSavingContacts)
-                return <Loader2 className="w-4 h-4 animate-spin" />;
-              if (contactsSaved) return <Check className="w-4 h-4" />;
-              return <Save className="w-4 h-4" />;
-            })()}
-            {contactsSaved ? "Saved!" : "Save Contacts"}
-          </button>
         </div>
       </div>
 

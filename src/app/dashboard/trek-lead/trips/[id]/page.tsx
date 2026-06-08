@@ -51,7 +51,7 @@ interface TripSlot {
   id: string;
   date: string;
   status: string;
-  vendorContacts: { label: string; value: string }[] | null;
+  vendorContacts: any;
   experience: {
     title: string;
     location: string;
@@ -327,26 +327,100 @@ export default function TrekLeadTripDetailPage() {
           </div>
         )}
 
-        {slot.vendorContacts && slot.vendorContacts.length > 0 && (
-          <div className="bg-card border border-border rounded-2xl p-5">
-            <h2 className="text-sm font-bold text-foreground/50 uppercase tracking-wider mb-3">
-              Vendor Contacts
-            </h2>
-            <div className="space-y-2">
-              {slot.vendorContacts.map((vc) => (
-                <div
-                  key={`${vc.label}-${vc.value}`}
-                  className="flex items-center justify-between text-sm"
-                >
-                  <span className="text-foreground/50">{vc.label}</span>
-                  <span className="font-medium text-foreground">
-                    {vc.value}
-                  </span>
-                </div>
-              ))}
+        {slot.vendorContacts && (() => {
+          const raw = slot.vendorContacts;
+          const isStructured = raw && typeof raw === "object" && !Array.isArray(raw);
+          
+          let stays: any[] = [];
+          let transports: any[] = [];
+          let other: any[] = [];
+
+          if (isStructured) {
+            stays = raw.stays ?? [];
+            transports = raw.transports ?? [];
+            other = raw.otherContacts ?? [];
+          } else if (Array.isArray(raw)) {
+            other = raw;
+          }
+
+          const hasData = stays.length > 0 || transports.length > 0 || other.length > 0;
+          if (!hasData) return null;
+
+          return (
+            <div className="bg-card border border-border rounded-2xl p-5 space-y-4 sm:col-span-2">
+              <h2 className="text-sm font-bold text-foreground/50 uppercase tracking-wider">
+                Trip Operations & Vendor Details
+              </h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Stays */}
+                {stays.length > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-bold text-foreground/70 uppercase">Stays / Lodging</h3>
+                    <div className="space-y-3">
+                      {stays.map((s: any) => (
+                        <div key={`stay-${s.name}-${s.location}`} className="bg-foreground/[0.02] border border-border/50 rounded-xl p-3 space-y-1">
+                          <p className="font-semibold text-foreground text-sm">{s.name}</p>
+                          <p className="text-xs text-foreground/60">{s.address}</p>
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-xs">
+                            <span className="text-foreground/50">{s.location}</span>
+                            {s.contactNumber && (
+                              <a href={`tel:${s.contactNumber}`} className="text-primary hover:underline flex items-center gap-1 font-medium">
+                                <Phone className="w-3 h-3" /> Call
+                              </a>
+                            )}
+                            {s.locationLink && (
+                              <a href={s.locationLink} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">
+                                Maps ↗
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Transports */}
+                {transports.length > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-bold text-foreground/70 uppercase">Transport & Drivers</h3>
+                    <div className="space-y-3">
+                      {transports.map((t: any) => (
+                        <div key={`transport-${t.driverName}-${t.vehicleNumber}`} className="bg-foreground/[0.02] border border-border/50 rounded-xl p-3 space-y-1">
+                          <p className="font-semibold text-foreground text-sm">{t.driverName}</p>
+                          <p className="text-xs text-foreground/60">{t.vehicleType} · <span className="font-mono">{t.vehicleNumber}</span></p>
+                          {t.contactNumber && (
+                            <div className="pt-1">
+                              <a href={`tel:${t.contactNumber}`} className="text-primary hover:underline flex items-center gap-1 text-xs font-medium">
+                                <Phone className="w-3 h-3" /> {t.contactNumber}
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Other Contacts */}
+                {other.length > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-bold text-foreground/70 uppercase">Other Contacts</h3>
+                    <div className="bg-foreground/[0.02] border border-border/50 rounded-xl p-3 space-y-2">
+                      {other.map((vc: any) => (
+                        <div key={`other-${vc.label}-${vc.value}`} className="flex justify-between text-xs py-0.5 border-b border-border/30 last:border-0">
+                          <span className="text-foreground/50">{vc.label}</span>
+                          <span className="font-medium text-foreground">{vc.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
 
       {/* Attendance + Trek Start — D-Day ACTIVE or trek in progress */}

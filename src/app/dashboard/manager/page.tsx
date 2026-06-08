@@ -26,7 +26,7 @@ interface TripSlot {
   capacity: number;
   remainingCapacity: number;
   status: string;
-  vendorContacts: { label: string; value: string }[] | null;
+  vendorContacts: any;
   experience: {
     title: string;
     location: string;
@@ -87,18 +87,37 @@ export default function ManagerTripsPage() {
           {trips.map((trip) => {
             const statusColor =
               STATUS_COLORS[trip.status] ?? STATUS_COLORS.UPCOMING;
-            const vendorCount = trip.vendorContacts?.length ?? 0;
+            const rawContacts = trip.vendorContacts as any;
+            const isStructured = rawContacts && typeof rawContacts === "object" && !Array.isArray(rawContacts);
+
+            let vendorCount = 0;
+            let vendorText = "No Vendor Contacts Yet";
+
+            if (isStructured) {
+              const staysCount = rawContacts.stays?.length ?? 0;
+              const transportsCount = rawContacts.transports?.length ?? 0;
+              const otherCount = rawContacts.otherContacts?.length ?? 0;
+              vendorCount = staysCount + transportsCount + otherCount;
+
+              const parts: string[] = [];
+              if (staysCount > 0) parts.push(`${staysCount} Stay${staysCount === 1 ? "" : "s"}`);
+              if (transportsCount > 0) parts.push(`${transportsCount} Transport${transportsCount === 1 ? "" : "s"}`);
+              if (otherCount > 0) parts.push(`${otherCount} Other`);
+              if (parts.length > 0) {
+                vendorText = parts.join(" · ");
+              }
+            } else if (Array.isArray(rawContacts)) {
+              vendorCount = rawContacts.length;
+              if (vendorCount === 1) vendorText = "1 Vendor Contact";
+              else if (vendorCount > 1) vendorText = `${vendorCount} Vendor Contacts`;
+            }
+
             const leadCount = trip.assignments.length;
 
             let leadText = "No Trek Lead Assigned";
             if (leadCount === 1) leadText = "1 Trek Lead Assigned";
             else if (leadCount > 1)
               leadText = `${leadCount} Trek Leads Assigned`;
-
-            let vendorText = "No Vendor Contacts Yet";
-            if (vendorCount === 1) vendorText = "1 Vendor Contact";
-            else if (vendorCount > 1)
-              vendorText = `${vendorCount} Vendor Contacts`;
 
             return (
               <div

@@ -9,8 +9,32 @@ const vendorContactSchema = z.object({
   value: z.string().min(1, "Value is required"),
 });
 
+const staySchema = z.object({
+  name: z.string().min(1, "Stay name is required"),
+  contactNumber: z.string().min(1, "Contact number is required"),
+  location: z.string().min(1, "Location is required"),
+  locationLink: z.string().min(1, "Location link is required"),
+  address: z.string().min(1, "Address is required"),
+});
+
+const transportSchema = z.object({
+  driverName: z.string().min(1, "Driver name is required"),
+  contactNumber: z.string().min(1, "Contact number is required"),
+  vehicleNumber: z.string().min(1, "Vehicle number is required"),
+  vehicleType: z.string().min(1, "Vehicle type is required"),
+});
+
+const vendorContactsStructureSchema = z.object({
+  stays: z.array(staySchema).optional().nullable(),
+  transports: z.array(transportSchema).optional().nullable(),
+  otherContacts: z.array(vendorContactSchema).optional().nullable(),
+});
+
 const tripUpdateSchema = z.object({
-  vendorContacts: z.array(vendorContactSchema).optional().nullable(),
+  vendorContacts: z.union([
+    vendorContactsStructureSchema,
+    z.array(vendorContactSchema)
+  ]).optional().nullable(),
   whatsAppUrl: z.string().regex(/^https?:\/\/.+$/, { message: "Must be a valid URL" }).or(z.literal("")).optional().nullable(),
 });
 

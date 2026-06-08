@@ -70,6 +70,7 @@ interface TripSlot {
   };
   whatsAppUrl?: string | null;
   assignments: { trekLead: TrekLead }[];
+  vendorContacts?: any;
 }
 
 export default function TripManifestPage() {
@@ -193,16 +194,12 @@ export default function TripManifestPage() {
 
   const fetchTripDetails = useCallback(async () => {
     try {
-      // In a real app we'd need a specific GET /api/admin/trips/[id] endpoint,
-      // but we can just filter from the full list for now or assume an endpoint exists.
-      // Wait, we don't have a GET /api/admin/trips/[id] route yet.
-      // Let's just fetch all trips and find it.
-      const res = await fetch("/api/admin/trips");
+      const res = await fetch(`/api/manager/trips/${tripId}`);
+      if (!res.ok) throw new Error("Failed to fetch trip details");
       const data = await res.json();
-      const found = data.trips?.find((t: { id: string }) => t.id === tripId);
-      if (found) {
-        setTrip(found);
-        setWhatsAppUrl(found.whatsAppUrl ?? "");
+      if (data.slot) {
+        setTrip(data.slot);
+        setWhatsAppUrl(data.slot.whatsAppUrl ?? "");
       }
     } catch (err) {
       console.error(err);
@@ -619,6 +616,102 @@ export default function TripManifestPage() {
               </button>
             </div>
           </div>
+
+          {/* Trip Operations & Vendor Details */}
+          {trip.vendorContacts && (() => {
+            const raw = trip.vendorContacts;
+            const isStructured = raw && typeof raw === "object" && !Array.isArray(raw);
+            
+            let stays: any[] = [];
+            let transports: any[] = [];
+            let other: any[] = [];
+
+            if (isStructured) {
+              stays = raw.stays ?? [];
+              transports = raw.transports ?? [];
+              other = raw.otherContacts ?? [];
+            } else if (Array.isArray(raw)) {
+              other = raw;
+            }
+
+            const hasData = stays.length > 0 || transports.length > 0 || other.length > 0;
+            if (!hasData) return null;
+
+            return (
+              <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
+                <h3 className="text-sm font-bold text-foreground/60 uppercase tracking-wider flex items-center gap-2">
+                  Trip Operations & Vendor Details
+                </h3>
+                
+                <div className="space-y-5">
+                  {/* Stays */}
+                  {stays.length > 0 && (
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-bold text-foreground/50 uppercase">Stays / Lodging</h4>
+                      <div className="space-y-3">
+                        {stays.map((s: any) => (
+                          <div key={`stay-${s.name}-${s.location}`} className="bg-foreground/[0.02] border border-border/50 rounded-xl p-3 space-y-1">
+                            <p className="font-semibold text-foreground text-sm">{s.name}</p>
+                            <p className="text-xs text-foreground/60">{s.address}</p>
+                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1 text-xs">
+                              <span className="text-foreground/50">{s.location}</span>
+                              {s.contactNumber && (
+                                <a href={`tel:${s.contactNumber}`} className="text-primary hover:underline flex items-center gap-1 font-medium">
+                                  <Phone className="w-3 h-3" /> Call
+                                </a>
+                              )}
+                              {s.locationLink && (
+                                <a href={s.locationLink} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">
+                                  Maps ↗
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Transports */}
+                  {transports.length > 0 && (
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-bold text-foreground/50 uppercase">Transport & Drivers</h4>
+                      <div className="space-y-3">
+                        {transports.map((t: any) => (
+                          <div key={`transport-${t.driverName}-${t.vehicleNumber}`} className="bg-foreground/[0.02] border border-border/50 rounded-xl p-3 space-y-1">
+                            <p className="font-semibold text-foreground text-sm">{t.driverName}</p>
+                            <p className="text-xs text-foreground/60">{t.vehicleType} · <span className="font-mono">{t.vehicleNumber}</span></p>
+                            {t.contactNumber && (
+                              <div className="pt-1">
+                                <a href={`tel:${t.contactNumber}`} className="text-primary hover:underline flex items-center gap-1 text-xs font-medium">
+                                  <Phone className="w-3 h-3" /> {t.contactNumber}
+                                </a>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Other Contacts */}
+                  {other.length > 0 && (
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-bold text-foreground/50 uppercase">Other Contacts</h4>
+                      <div className="bg-foreground/[0.02] border border-border/50 rounded-xl p-3 space-y-2">
+                        {other.map((vc: any) => (
+                          <div key={`other-${vc.label}-${vc.value}`} className="flex justify-between text-xs py-0.5 border-b border-border/30 last:border-0">
+                            <span className="text-foreground/50">{vc.label}</span>
+                            <span className="font-medium text-foreground">{vc.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>
