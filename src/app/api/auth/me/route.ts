@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyAccessToken } from "@/lib/auth";
+import { calculateAge } from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   try {
@@ -63,7 +64,7 @@ export async function GET(request: NextRequest) {
         phoneNumber: user.phoneNumber,
         avatarUrl: user.avatarUrl,
         gender: user.gender,
-        age: user.age,
+        age: user.dateOfBirth ? calculateAge(user.dateOfBirth) : user.age,
         dateOfBirth: user.dateOfBirth ? user.dateOfBirth.toISOString().split("T")[0] : null,
         bloodGroup: user.bloodGroup,
         emergencyContactName: user.emergencyContactName,

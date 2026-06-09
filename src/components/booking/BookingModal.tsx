@@ -540,6 +540,23 @@ function HealthLocationFields({
               validationErrors?.dateOfBirth ? "border-red-500 focus:ring-red-500" : "border-border"
             }`}
           />
+          {p.dateOfBirth && (() => {
+            const birthDate = new Date(p.dateOfBirth);
+            const today = new Date();
+            let calculatedAge = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+              calculatedAge--;
+            }
+            if (!Number.isNaN(calculatedAge) && calculatedAge >= 0) {
+              return (
+                <p className="text-[11px] text-foreground/50 mt-1 font-medium">
+                  Calculated Age: <span className="text-primary font-bold">{calculatedAge} years</span>
+                </p>
+              );
+            }
+            return null;
+          })()}
           {validationErrors?.dateOfBirth && (
             <p className="text-red-500 text-[11px] mt-1 font-medium">
               {validationErrors.dateOfBirth}

@@ -358,6 +358,23 @@ export default function SettingsPage() {
                     required
                     className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm"
                   />
+                  {dateOfBirth && (() => {
+                    const birthDate = new Date(dateOfBirth);
+                    const today = new Date();
+                    let calculatedAge = today.getFullYear() - birthDate.getFullYear();
+                    const m = today.getMonth() - birthDate.getMonth();
+                    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                      calculatedAge--;
+                    }
+                    if (!Number.isNaN(calculatedAge) && calculatedAge >= 0) {
+                      return (
+                        <p className="text-xs text-foreground/50 mt-1.5 font-medium">
+                          Calculated Age: <span className="text-primary font-bold">{calculatedAge} years</span>
+                        </p>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
                 <div>
                   <label
