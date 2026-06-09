@@ -1,5 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { BookingInput, ParticipantInput } from "@/lib/validators/booking.schema";
+import { calculateAge } from "@/lib/utils";
 
 export interface BookingPricing {
   totalPrice: number;
@@ -57,7 +58,8 @@ export const BookingRepo = {
             email: p.email || null,
             phoneNumber: p.phoneNumber || null,
             gender: p.gender || null,
-            age: p.age ? Number(p.age) : null,
+            age: p.dateOfBirth ? calculateAge(p.dateOfBirth) : null,
+            dateOfBirth: p.dateOfBirth ? new Date(p.dateOfBirth) : null,
             bloodGroup: p.bloodGroup || null,
             emergencyContactName: p.emergencyContactName || null,
             emergencyContactNumber: p.emergencyContactNumber || null,

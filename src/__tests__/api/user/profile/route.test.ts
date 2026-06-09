@@ -39,7 +39,7 @@ const validBody = {
   phoneNumber: " 9999999999 ",
   avatarUrl: "https://cdn.example/avatar.jpg",
   gender: "F",
-  age: 28,
+  dateOfBirth: `${new Date().getFullYear() - 28}-01-01`,
   bloodGroup: "O+",
   emergencyContactName: "John",
   emergencyContactNumber: "8888888888",
@@ -111,6 +111,7 @@ describe("PATCH /api/user/profile", () => {
           name: "Jane Doe",
           phoneNumber: "9999999999",
           age: 28,
+          dateOfBirth: new Date(validBody.dateOfBirth),
         }),
       }),
     );
@@ -126,7 +127,6 @@ describe("PATCH /api/user/profile", () => {
       createRequest({
         ...validBody,
         avatarUrl: "",
-        age: null,
         bloodGroup: "",
         emergencyContactName: "",
         emergencyContactNumber: "",
@@ -139,7 +139,8 @@ describe("PATCH /api/user/profile", () => {
       expect.objectContaining({
         data: expect.objectContaining({
           avatarUrl: null,
-          age: null,
+          age: 28,
+          dateOfBirth: new Date(validBody.dateOfBirth),
           bloodGroup: null,
           emergencyContactName: null,
           emergencyContactNumber: null,

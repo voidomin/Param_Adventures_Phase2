@@ -26,6 +26,7 @@ describe("app/dashboard/settings/page", () => {
         phoneNumber: "+91 9876543210",
         gender: "Female",
         age: 29,
+        dateOfBirth: "1997-03-26",
         bloodGroup: "O+",
         emergencyContactName: "John",
         emergencyContactNumber: "+91 9123456780",

@@ -377,7 +377,7 @@ export default function DashboardPage() {
   const { user, upcomingBookings, pastBookings, stats } = data;
 
   // Profile completeness check
-  const isIncompleteProfile = !user.name || !user.phoneNumber || !user.gender;
+  const isIncompleteProfile = !user.name || !user.phoneNumber || user.phoneNumber.includes("0000000000") || !user.gender;
 
   const currentAvatarUrl = avatarUrl ?? user.avatarUrl;
   const initials = user.name

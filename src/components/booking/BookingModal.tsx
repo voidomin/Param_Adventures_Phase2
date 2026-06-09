@@ -43,7 +43,7 @@ interface ParticipantDetails {
   email: string;
   phoneNumber: string;
   gender: string;
-  age: string;
+  dateOfBirth: string;
   bloodGroup: string;
   emergencyContactName: string;
   emergencyContactNumber: string;
@@ -130,13 +130,13 @@ function validateBasicDetails(p: ParticipantDetails, pErrors: Record<string, str
   if (!p.gender) {
     pErrors.gender = "Gender is required";
   }
-  if (p.age.trim()) {
-    const ageNum = Number.parseInt(p.age, 10);
-    if (Number.isNaN(ageNum) || ageNum <= 0) {
-      pErrors.age = "Age must be a positive number";
+  if (p.dateOfBirth.trim()) {
+    const dob = new Date(p.dateOfBirth);
+    if (Number.isNaN(dob.getTime()) || dob > new Date()) {
+      pErrors.dateOfBirth = "Date of birth must be a valid date in the past";
     }
   } else {
-    pErrors.age = "Age is required";
+    pErrors.dateOfBirth = "Date of birth is required";
   }
   if (!p.bloodGroup) {
     pErrors.bloodGroup = "Blood group is required";
@@ -226,7 +226,7 @@ function updatePrimaryParticipant(
       email: "",
       phoneNumber: "",
       gender: "",
-      age: "",
+      dateOfBirth: "",
       bloodGroup: "",
       emergencyContactName: "",
       emergencyContactNumber: "",
@@ -523,27 +523,26 @@ function HealthLocationFields({
         </div>
         <div>
           <label
-            htmlFor={`age-${index}`}
+            htmlFor={`dob-${index}`}
             className="block text-xs font-bold text-foreground/60 mb-1"
           >
-            Age *
+            Date of Birth *
           </label>
           <input
-            id={`age-${index}`}
-            type="number"
-            value={p.age}
+            id={`dob-${index}`}
+            type="date"
+            value={p.dateOfBirth}
             onChange={(e) => {
-              updatePart(index, "age", e.target.value);
-              clearFieldError("age");
+              updatePart(index, "dateOfBirth", e.target.value);
+              clearFieldError("dateOfBirth");
             }}
             className={`w-full px-2 py-2 bg-card border rounded-lg outline-none transition-colors ${
-              validationErrors?.age ? "border-red-500 focus:ring-red-500" : "border-border"
+              validationErrors?.dateOfBirth ? "border-red-500 focus:ring-red-500" : "border-border"
             }`}
-            placeholder="e.g 25"
           />
-          {validationErrors?.age && (
+          {validationErrors?.dateOfBirth && (
             <p className="text-red-500 text-[11px] mt-1 font-medium">
-              {validationErrors.age}
+              {validationErrors.dateOfBirth}
             </p>
           )}
         </div>
@@ -950,7 +949,7 @@ export default function BookingModal({
         email: "",
         phoneNumber: "",
         gender: "",
-        age: "",
+        dateOfBirth: "",
         bloodGroup: "",
         emergencyContactName: "",
         emergencyContactNumber: "",
@@ -967,7 +966,7 @@ export default function BookingModal({
         email: user.email ?? "",
         phoneNumber: user.phoneNumber ?? "",
         gender: user.gender ?? "",
-        age: user.age ? user.age.toString() : "",
+        dateOfBirth: user.dateOfBirth ?? "",
         bloodGroup: user.bloodGroup ?? "",
         emergencyContactName: user.emergencyContactName ?? "",
         emergencyContactNumber: user.emergencyContactNumber ?? "",

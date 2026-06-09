@@ -6,9 +6,7 @@ export const participantSchema = z.object({
   email: z.email({ message: "Invalid email format" }),
   phoneNumber: z.string().min(1, "Phone number is required"),
   gender: z.string().min(1, "Gender is required"),
-  age: z.union([z.number(), z.string()])
-    .transform(val => val.toString())
-    .refine(val => val.trim().length > 0, { message: "Age is required" }),
+  dateOfBirth: z.string().min(1, "Date of birth is required"),
   bloodGroup: z.string().min(1, "Blood group is required"),
   emergencyContactName: z.string().min(1, "Emergency contact name is required"),
   emergencyContactNumber: z.string().min(1, "Emergency contact number is required"),

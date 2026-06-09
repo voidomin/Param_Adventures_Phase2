@@ -64,6 +64,7 @@ export async function GET(request: NextRequest) {
         avatarUrl: user.avatarUrl,
         gender: user.gender,
         age: user.age,
+        dateOfBirth: user.dateOfBirth ? user.dateOfBirth.toISOString().split("T")[0] : null,
         bloodGroup: user.bloodGroup,
         emergencyContactName: user.emergencyContactName,
         emergencyContactNumber: user.emergencyContactNumber,

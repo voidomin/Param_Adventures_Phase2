@@ -25,7 +25,7 @@ const validPayload = {
     {
       name: "A",
       isPrimary: true,
-      age: 28,
+      dateOfBirth: "1998-03-26",
       email: "a@example.com",
       phoneNumber: "+919999999999",
       gender: "MALE",
@@ -38,7 +38,7 @@ const validPayload = {
     },
     {
       name: "B",
-      age: 32,
+      dateOfBirth: "1994-06-09",
       email: "b@example.com",
       phoneNumber: "+918888888888",
       gender: "FEMALE",

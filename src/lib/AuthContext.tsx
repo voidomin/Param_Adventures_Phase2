@@ -21,6 +21,7 @@ interface User {
   avatarUrl?: string | null;
   gender?: string | null;
   age?: number | null;
+  dateOfBirth?: string | null;
   bloodGroup?: string | null;
   emergencyContactName?: string | null;
   emergencyContactNumber?: string | null;
