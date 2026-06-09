@@ -181,23 +181,46 @@ function RefundResolveModal({
   );
 }
 
-// Payment Details Modal
-function PaymentDetailsModal({
+// Booking Details Modal
+function BookingDetailsModal({
   booking,
   onClose,
+  onApprove,
+  onArchive,
 }: Readonly<{
   booking: Booking;
   onClose: () => void;
+  onApprove?: () => void;
+  onArchive?: () => void;
 }>) {
   const payments = booking.payments;
+  const isCancelled = booking.bookingStatus === "CANCELLED";
+  const hasRefund = booking.paymentStatus === "REFUND_PENDING" || booking.paymentStatus === "REFUNDED";
+
+  const handleCopyId = () => {
+    navigator.clipboard.writeText(booking.id);
+    alert("Booking ID copied to clipboard!");
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
+      <div className="bg-card border border-border w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        {/* Header */}
         <div className="p-6 border-b border-border flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-bold text-foreground">Payment Records</h3>
-            <p className="text-foreground/50 text-sm mt-0.5">
-              {booking.user.name} — {booking.experience.title}
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-lg font-bold text-foreground">Booking Details</h3>
+              <button
+                type="button"
+                onClick={handleCopyId}
+                className="text-[10px] font-mono bg-foreground/5 text-foreground/60 px-2 py-0.5 rounded hover:bg-foreground/10 transition-colors"
+                title="Click to copy ID"
+              >
+                ID: {booking.id.substring(0, 8)}... (copy)
+              </button>
+            </div>
+            <p className="text-foreground/50 text-xs mt-0.5">
+              Booked on {new Date(booking.createdAt).toLocaleString("en-IN")}
             </p>
           </div>
           <button
@@ -208,88 +231,240 @@ function PaymentDetailsModal({
             <XCircle className="w-5 h-5" />
           </button>
         </div>
-        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-          {payments.length === 0 ? (
-            <p className="text-foreground/40 text-sm text-center py-4">No payment records found.</p>
-          ) : (
-            payments.map((p) => {
-              const isManual = p.provider === "MANUAL";
-              return (
-                <div key={`payment-${p.id}`} className={`rounded-xl border p-4 space-y-3 ${
-                  isManual
-                    ? "bg-blue-500/5 border-blue-500/20"
-                    : "bg-foreground/[0.02] border-border"
-                }`}>
-                  <div className="flex items-center justify-between">
-                    <span className={`text-xs font-bold px-2.5 py-1 rounded-full border uppercase tracking-wider ${
-                      isManual
-                        ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
-                        : "bg-primary/10 text-primary border-primary/20"
-                    }`}>
-                      {isManual ? "🏦 Manual" : "💳 Razorpay"}
-                    </span>
-                    <span className={`text-xs font-bold ${
-                      p.status === "PAID" ? "text-green-500" : "text-yellow-500"
-                    }`}>
-                      {p.status}
-                    </span>
-                  </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <p className="text-foreground/40 text-xs">Amount</p>
-                      <p className="font-bold text-foreground">₹{Number(p.amount).toLocaleString("en-IN")}</p>
-                    </div>
-                    {p.providerPaymentId && (
-                      <div>
-                        <p className="text-foreground/40 text-xs">Transaction / Reference ID</p>
-                        <p className="font-mono text-xs text-foreground break-all">{p.providerPaymentId}</p>
-                      </div>
-                    )}
-                  </div>
-
-                  {isManual && p.fullPayload && (
-                    <div className="space-y-2 pt-2 border-t border-border/50">
-                      {p.fullPayload.adminNotes && (
-                        <div>
-                          <p className="text-foreground/40 text-xs">Admin Notes</p>
-                          <p className="text-sm text-foreground">{p.fullPayload.adminNotes}</p>
-                        </div>
-                      )}
-                      {p.fullPayload.verifiedAt && (
-                        <div>
-                          <p className="text-foreground/40 text-xs">Verified At</p>
-                          <p className="text-sm text-foreground">
-                            {new Date(p.fullPayload.verifiedAt).toLocaleString("en-IN")}
-                          </p>
-                        </div>
-                      )}
-                      {p.fullPayload.proofUrl && (
-                        <div>
-                          <p className="text-foreground/40 text-xs mb-1.5">Payment Proof</p>
-                          <a
-                            href={p.fullPayload.proofUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline"
-                          >
-                            <ExternalLink className="w-3.5 h-3.5" />
-                            View Screenshot
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  )}
+        {/* Content */}
+        <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+          {/* Main Info Columns */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Customer Details */}
+            <div className="bg-foreground/[0.01] border border-border/60 rounded-xl p-4 space-y-3">
+              <h4 className="text-xs font-bold text-foreground/50 uppercase tracking-wider">Customer Details</h4>
+              <div className="space-y-2 text-sm">
+                <div>
+                  <p className="text-xs text-foreground/45">Name</p>
+                  <p className="font-semibold text-foreground">{booking.user.name}</p>
                 </div>
-              );
-            })
+                <div>
+                  <p className="text-xs text-foreground/45">Email</p>
+                  <p className="font-medium text-foreground">{booking.user.email}</p>
+                </div>
+                {booking.user.phoneNumber && (
+                  <div>
+                    <p className="text-xs text-foreground/45">Phone Number</p>
+                    <a
+                      href={`tel:${booking.user.phoneNumber}`}
+                      className="font-medium text-primary hover:underline flex items-center gap-1 mt-0.5"
+                    >
+                      {booking.user.phoneNumber}
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Trip Details */}
+            <div className="bg-foreground/[0.01] border border-border/60 rounded-xl p-4 space-y-3">
+              <h4 className="text-xs font-bold text-foreground/50 uppercase tracking-wider">Trip Details</h4>
+              <div className="space-y-2 text-sm">
+                <div>
+                  <p className="text-xs text-foreground/45">Experience</p>
+                  <Link
+                    href={`/admin/trips/${booking.experience.id}`}
+                    onClick={onClose}
+                    className="font-semibold text-primary hover:underline flex items-center gap-1 mt-0.5"
+                  >
+                    {booking.experience.title}
+                  </Link>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="text-xs text-foreground/45">Trip Date</p>
+                    <p className="font-medium text-foreground">
+                      {booking.slot ? formatDate(booking.slot.date) : "—"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-foreground/45">Participants</p>
+                    <p className="font-medium text-foreground">{booking.participantCount} Pax</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <p className="text-xs text-foreground/45">Booking Status</p>
+                    <span
+                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 mt-1 rounded-full text-[10px] font-bold border ${statusStyles[booking.bookingStatus]}`}
+                    >
+                      {booking.bookingStatus}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-xs text-foreground/45">Payment Status</p>
+                    <span className={`inline-block font-bold mt-1 text-xs ${paymentStyles[booking.paymentStatus]}`}>
+                      {booking.paymentStatus}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Refund & Cancellation Section (if applicable) */}
+          {(isCancelled || hasRefund) && (
+            <div className="bg-red-500/[0.02] border border-red-500/10 rounded-xl p-4 space-y-3">
+              <h4 className="text-xs font-bold text-red-500/60 uppercase tracking-wider flex items-center gap-1.5">
+                Cancellation & Refund Status
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                {booking.cancelledAt && (
+                  <div>
+                    <p className="text-xs text-foreground/45">Cancelled At</p>
+                    <p className="font-medium text-foreground">{new Date(booking.cancelledAt).toLocaleString("en-IN")}</p>
+                  </div>
+                )}
+                {booking.refundPreference && (
+                  <div>
+                    <p className="text-xs text-foreground/45">Refund Preference</p>
+                    <span className="font-semibold text-foreground">
+                      {booking.refundPreference === "COUPON" ? "🎟️ Adventure Coupon" : "🏦 Bank Refund"}
+                    </span>
+                  </div>
+                )}
+                {booking.cancellationReason && (
+                  <div className="md:col-span-2">
+                    <p className="text-xs text-foreground/45">Cancellation Reason</p>
+                    <p className="text-foreground/80 mt-0.5">{booking.cancellationReason}</p>
+                  </div>
+                )}
+                {booking.refundNote && (
+                  <div className="md:col-span-2">
+                    <p className="text-xs text-foreground/45">Refund UTR / Coupon Code</p>
+                    <p className="font-mono text-xs text-primary font-bold bg-primary/5 border border-primary/10 rounded px-2.5 py-1.5 mt-1">
+                      {booking.refundNote}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
           )}
+
+          {/* Payments List */}
+          <div className="space-y-3">
+            <h4 className="text-xs font-bold text-foreground/50 uppercase tracking-wider">Transaction History</h4>
+            {payments.length === 0 ? (
+              <p className="text-foreground/40 text-sm text-center py-4 border border-dashed border-border rounded-xl">
+                No transaction attempts found.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {payments.map((p) => {
+                  const isManual = p.provider === "MANUAL";
+                  return (
+                    <div
+                      key={`modal-payment-${p.id}`}
+                      className={`rounded-xl border p-4 space-y-3 ${
+                        isManual ? "bg-blue-500/[0.02] border-blue-500/20" : "bg-foreground/[0.01] border-border"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span
+                          className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border uppercase tracking-wider ${
+                            isManual
+                              ? "bg-blue-500/10 text-blue-400 border-blue-500/20"
+                              : "bg-primary/10 text-primary border-primary/20"
+                          }`}
+                        >
+                          {isManual ? "🏦 Manual" : "💳 Razorpay"}
+                        </span>
+                        <span className={`text-xs font-bold ${p.status === "PAID" ? "text-green-500" : "text-yellow-500"}`}>
+                          {p.status}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <p className="text-foreground/45 text-xs">Amount</p>
+                          <p className="font-bold text-foreground">₹{Number(p.amount).toLocaleString("en-IN")}</p>
+                        </div>
+                        {p.providerPaymentId && (
+                          <div>
+                            <p className="text-foreground/45 text-xs">Transaction ID / Reference ID</p>
+                            <p className="font-mono text-xs text-foreground break-all">{p.providerPaymentId}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {isManual && p.fullPayload && (
+                        <div className="space-y-2 pt-2 border-t border-border/50 text-xs">
+                          {p.fullPayload.adminNotes && (
+                            <div>
+                              <p className="text-foreground/45 text-xs">Admin Notes</p>
+                              <p className="text-foreground">{p.fullPayload.adminNotes}</p>
+                            </div>
+                          )}
+                          <div className="grid grid-cols-2 gap-2">
+                            {p.fullPayload.verifiedBy && (
+                              <div>
+                                <p className="text-foreground/45 text-xs">Verified By</p>
+                                <p className="text-foreground">{p.fullPayload.verifiedBy}</p>
+                              </div>
+                            )}
+                            {p.fullPayload.verifiedAt && (
+                              <div>
+                                <p className="text-foreground/45 text-xs">Verified At</p>
+                                <p className="text-foreground">
+                                  {new Date(p.fullPayload.verifiedAt).toLocaleString("en-IN")}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                          {p.fullPayload.proofUrl && (
+                            <div className="pt-1">
+                              <a
+                                href={p.fullPayload.proofUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-primary hover:underline font-semibold"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" /> View Payment Screenshot
+                              </a>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
-        <div className="p-4 border-t border-border">
+
+        {/* Footer Actions */}
+        <div className="p-4 border-t border-border flex flex-wrap gap-3">
+          {onArchive && (
+            <button
+              type="button"
+              onClick={onArchive}
+              className="px-4 py-2.5 rounded-xl bg-red-500/10 text-red-500 font-bold hover:bg-red-500/20 transition-all text-xs"
+            >
+              Archive Booking
+            </button>
+          )}
+          {onApprove && booking.bookingStatus === "REQUESTED" && booking.paymentStatus !== "PAID" && (
+            <button
+              type="button"
+              onClick={onApprove}
+              className="px-4 py-2.5 rounded-xl bg-primary text-primary-foreground font-black text-xs uppercase tracking-widest hover:opacity-90 transition-opacity ml-auto"
+            >
+              Approve Payment
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}
-            className="w-full py-2.5 rounded-xl border border-border text-foreground/60 font-bold hover:bg-foreground/5 transition-colors"
+            className={`py-2.5 px-6 rounded-xl border border-border text-foreground/60 font-bold hover:bg-foreground/5 transition-colors text-xs ${
+              booking.bookingStatus !== "REQUESTED" || booking.paymentStatus === "PAID" ? "ml-auto" : ""
+            }`}
           >
             Close
           </button>
@@ -327,7 +502,7 @@ export default function AdminBookingsPage() {
   const [search, setSearch] = useState("");
   const [selectedBooking, setSelectedBooking] = useState<{ id: string; amount: number } | null>(null);
   const [resolvingBooking, setResolvingBooking] = useState<Booking | null>(null);
-  const [viewPaymentBooking, setViewPaymentBooking] = useState<Booking | null>(null);
+  const [activeDetailsBooking, setActiveDetailsBooking] = useState<Booking | null>(null);
 
   // New filters state
   const [bookingDateStart, setBookingDateStart] = useState("");
@@ -336,6 +511,7 @@ export default function AdminBookingsPage() {
   const [slotDateEnd, setSlotDateEnd] = useState("");
   const [viewArchived, setViewArchived] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [hideFinishedTrips, setHideFinishedTrips] = useState(true);
 
   const fetchBookings = () => {
     const params = new URLSearchParams();
@@ -502,6 +678,12 @@ export default function AdminBookingsPage() {
   };
 
   const filtered = bookings.filter((b) => {
+    if (hideFinishedTrips && b.slot) {
+      const tripDate = new Date(b.slot.date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (tripDate < today) return false;
+    }
     if (!search) return true;
     const q = search.toLowerCase();
     return (
@@ -560,7 +742,11 @@ export default function AdminBookingsPage() {
                 className="bg-card border border-border rounded-2xl p-5 space-y-4 shadow-sm relative hover:shadow-md transition-all duration-200"
               >
                 {/* Header: Customer and Date */}
-                <div className="flex items-start justify-between gap-2">
+                <div 
+                  className="flex items-start justify-between gap-2 cursor-pointer hover:opacity-80 transition-all"
+                  onClick={() => setActiveDetailsBooking(b)}
+                  title="Click to view details"
+                >
                   <div>
                     <p className="font-bold text-foreground text-sm">
                       {b.user.name}
@@ -631,16 +817,14 @@ export default function AdminBookingsPage() {
 
                 {/* Action Buttons */}
                 <div className="flex gap-2 pt-2 border-t border-border/50">
-                  {b.payments.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setViewPaymentBooking(b)}
-                      className="flex-1 py-2 rounded-xl bg-foreground/5 text-foreground/60 font-bold hover:bg-foreground/10 transition-colors flex items-center justify-center gap-1 text-xs"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                      Payments
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setActiveDetailsBooking(b)}
+                    className="flex-1 py-2 rounded-xl bg-foreground/5 text-foreground/60 font-bold hover:bg-foreground/10 transition-colors flex items-center justify-center gap-1 text-xs"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    Details
+                  </button>
                   {b.bookingStatus === "REQUESTED" && b.paymentStatus !== "PAID" && (
                     <button
                       onClick={() => setSelectedBooking({ id: b.id, amount: Number(b.totalPrice) })}
@@ -698,8 +882,12 @@ export default function AdminBookingsPage() {
                       key={b.id}
                       className="hover:bg-foreground/[0.02] transition-colors"
                     >
-                      <td className="px-5 py-4">
-                        <p className="font-medium text-foreground text-sm">
+                      <td 
+                        className="px-5 py-4 cursor-pointer hover:text-primary transition-all"
+                        onClick={() => setActiveDetailsBooking(b)}
+                        title="Click to view details"
+                      >
+                        <p className="font-semibold text-foreground text-sm">
                           {b.user.name}
                         </p>
                         <p className="text-xs text-foreground/50">{b.user.email}</p>
@@ -759,16 +947,14 @@ export default function AdminBookingsPage() {
                       </td>
                       <td className="px-5 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          {b.payments.length > 0 && (
-                            <button
-                              type="button"
-                              onClick={() => setViewPaymentBooking(b)}
-                              className="p-2 rounded-lg bg-foreground/5 text-foreground/50 hover:bg-foreground/10 hover:text-foreground transition-all"
-                              title="View Payment Records"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          <button
+                            type="button"
+                            onClick={() => setActiveDetailsBooking(b)}
+                            className="p-2 rounded-lg bg-foreground/5 text-foreground/50 hover:bg-foreground/10 hover:text-foreground transition-all"
+                            title="View Booking Details"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
                           {b.bookingStatus === "REQUESTED" && b.paymentStatus !== "PAID" && (
                             <button
                               onClick={() => setSelectedBooking({ id: b.id, amount: Number(b.totalPrice) })}
@@ -899,25 +1085,37 @@ export default function AdminBookingsPage() {
               className="w-full pl-9 pr-4 py-2.5 bg-card border border-border rounded-xl text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>
-          <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-foreground/40 shrink-0" />
-            <div className="flex gap-1.5">
-              {STATUS_FILTERS.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => {
-                    setIsLoading(true);
-                    setStatusFilter(s);
-                  }}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border cursor-pointer ${
-                    statusFilter === s
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-card border-border text-foreground/60 hover:bg-foreground/5"
-                  }`}
-                >
-                  {s}
-                </button>
-              ))}
+          <div className="flex flex-wrap items-center gap-4">
+            <label htmlFor="hide-finished-trips" className="flex items-center gap-2 text-xs font-bold text-foreground/60 cursor-pointer select-none">
+              <input
+                id="hide-finished-trips"
+                type="checkbox"
+                checked={hideFinishedTrips}
+                onChange={(e) => setHideFinishedTrips(e.target.checked)}
+                className="w-4 h-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer"
+              />
+              Hide Completed Trips
+            </label>
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-foreground/40 shrink-0" />
+              <div className="flex gap-1.5">
+                {STATUS_FILTERS.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => {
+                      setIsLoading(true);
+                      setStatusFilter(s);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors border cursor-pointer ${
+                      statusFilter === s
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-card border-border text-foreground/60 hover:bg-foreground/5"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -1080,10 +1278,18 @@ export default function AdminBookingsPage() {
         />
       )}
 
-      {viewPaymentBooking && (
-        <PaymentDetailsModal
-          booking={viewPaymentBooking}
-          onClose={() => setViewPaymentBooking(null)}
+      {activeDetailsBooking && (
+        <BookingDetailsModal
+          booking={activeDetailsBooking}
+          onClose={() => setActiveDetailsBooking(null)}
+          onApprove={() => {
+            setActiveDetailsBooking(null);
+            setSelectedBooking({ id: activeDetailsBooking.id, amount: Number(activeDetailsBooking.totalPrice) });
+          }}
+          onArchive={() => {
+            setActiveDetailsBooking(null);
+            handleArchiveBooking(activeDetailsBooking.id);
+          }}
         />
       )}
     </div>
