@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/lib/AuthContext";
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { SYSTEM_ADMIN_EMAILS } from "@/lib/constants/auth";
@@ -49,22 +49,37 @@ export default function AdminLayout({
     localStorage.setItem("admin_sidebar_collapsed", collapsed ? "true" : "false");
   };
 
+  const isAuthorized = useMemo(() => {
+    if (!user) return false;
+    if (["TRIP_MANAGER", "TREK_LEAD", "REGISTERED_USER"].includes(user.role)) return false;
+    return (
+      hasPermission("system:config") ||
+      hasPermission("trip:manage-categories") ||
+      hasPermission("trip:create") ||
+      hasPermission("media:upload") ||
+      hasPermission("ops:view-all-trips")
+    );
+  }, [user, hasPermission]);
+
   useEffect(() => {
     if (!isLoading) {
       if (!user && pathname !== "/monitoring" && !pathname.startsWith("/login")) {
         router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
-      } else if (
-        !hasPermission("system:config") &&
-        !hasPermission("trip:manage-categories") &&
-        !hasPermission("trip:create") &&
-        !hasPermission("media:upload") &&
-        !hasPermission("ops:view-all-trips")
-      ) {
+      } else if (user && ["TRIP_MANAGER", "TREK_LEAD", "REGISTERED_USER"].includes(user.role)) {
+        // Prevent managers, trek leads, and registered users from accessing any admin pages
+        let redirectPath = "/dashboard";
+        if (user.role === "TRIP_MANAGER") {
+          redirectPath = "/dashboard/manager";
+        } else if (user.role === "TREK_LEAD") {
+          redirectPath = "/dashboard/trek-lead";
+        }
+        router.push(redirectPath);
+      } else if (!isAuthorized) {
         // Basic check: if they don't have at least one admin-ish permission, kick them out
         router.push("/");
       }
     }
-  }, [user, isLoading, hasPermission, router, pathname]);
+  }, [user, isLoading, isAuthorized, router, pathname]);
 
   // Close sidebar on navigation change (mobile)
   useEffect(() => {
@@ -72,7 +87,7 @@ export default function AdminLayout({
     setIsSidebarOpen(false);
   }, [pathname]);
 
-  if (isLoading || !user) {
+  if (isLoading || !user || !isAuthorized) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>

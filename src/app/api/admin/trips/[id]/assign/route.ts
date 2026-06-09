@@ -23,6 +23,13 @@ export async function PATCH(
   const auth = await authorizeRequest(request, "ops:assign-trek-leads");
   if (!auth.authorized) return auth.response;
 
+  if (!["ADMIN", "SUPER_ADMIN"].includes(auth.roleName)) {
+    return NextResponse.json(
+      { error: "Only administrators can assign trip managers." },
+      { status: 403 },
+    );
+  }
+
   try {
     const { id: slotId } = await params;
     const body = await request.json();
