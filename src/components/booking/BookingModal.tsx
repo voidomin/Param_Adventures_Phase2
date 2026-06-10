@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
@@ -14,9 +14,7 @@ import {
   AlertCircle,
   ChevronDown,
   User,
-  ChevronUp,
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 
 interface Slot {
   id: string;
@@ -33,6 +31,7 @@ interface BookingModalProps {
   pickupPoints: string[];
   dropPoints?: string[];
   maxCapacity: number;
+  initialSelectedSlotId?: string;
   onClose: () => void;
 }
 
@@ -930,6 +929,7 @@ export default function BookingModal({
   maxCapacity,
   pickupPoints,
   dropPoints = [],
+  initialSelectedSlotId,
   onClose,
 }: Readonly<BookingModalProps>) {
   const [mounted, setMounted] = useState(false);
@@ -941,12 +941,50 @@ export default function BookingModal({
   const [slots, setSlots] = useState<Slot[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(true);
   const [selectedSlot, setSelectedSlot] = useState<Slot | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<string>("All");
+
+  // Extract unique months chronologically from slots
+  const months = useMemo(() => {
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const uniqueMonths = new Map<string, { label: string; key: string }>();
+
+    const sortedSlots = [...slots].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+
+    sortedSlots.forEach((slot) => {
+      const d = new Date(slot.date);
+      const m = d.getMonth();
+      const y = d.getFullYear();
+      const key = `${m}-${y}`;
+      if (!uniqueMonths.has(key)) {
+        uniqueMonths.set(key, {
+          label: `${monthNames[m]} ${y}`,
+          key,
+        });
+      }
+    });
+
+    return Array.from(uniqueMonths.values());
+  }, [slots]);
+
+  // Filter slots by selected month
+  const filteredSlots = useMemo(() => {
+    if (selectedMonth === "All") {
+      return slots;
+    }
+    return slots.filter((slot) => {
+      const d = new Date(slot.date);
+      const key = `${d.getMonth()}-${d.getFullYear()}`;
+      return key === selectedMonth;
+    });
+  }, [slots, selectedMonth]);
+
   const [participants, setParticipants] = useState(1);
   const [step, setStep] = useState<Step>("slots");
   const [errorMsg, setErrorMsg] = useState("");
   const [partInfo, setPartInfo] = useState<ParticipantDetails[]>([]);
   const [includeMyself, setIncludeMyself] = useState(!!user);
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [taxes, setTaxes] = useState<
     { id: string; name: string; percentage: number }[]
   >([]);
@@ -1009,6 +1047,15 @@ export default function BookingModal({
   useEffect(() => {
     fetchSlots();
   }, [fetchSlots]);
+
+  useEffect(() => {
+    if (initialSelectedSlotId && slots.length > 0) {
+      const matched = slots.find((s) => s.id === initialSelectedSlotId);
+      if (matched) {
+        setSelectedSlot(matched);
+      }
+    }
+  }, [initialSelectedSlotId, slots]);
 
   useEffect(() => {
     const fetchTaxes = async () => {
@@ -1261,80 +1308,86 @@ export default function BookingModal({
 
             {!slotsLoading && slots.length > 0 && (
               <div className="space-y-6">
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                    className="w-full flex items-center justify-between pl-4 pr-4 py-4 bg-card border border-border rounded-2xl outline-none focus:border-primary/50 transition-all font-bold text-left shadow-sm hover:bg-foreground/2"
-                  >
-                    <div className="flex items-center gap-3">
-                      <CalendarDays className="h-5 w-5 text-primary" />
-                      <span
-                        className={
-                          selectedSlot
-                            ? "text-foreground"
-                            : "text-foreground/40"
-                        }
+                {/* Month filter buttons */}
+                {months.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 pb-1">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMonth("All")}
+                      className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border whitespace-nowrap ${
+                        selectedMonth === "All"
+                          ? "bg-primary border-primary text-primary-foreground"
+                          : "bg-background border-border text-foreground/75 hover:bg-foreground/5"
+                      }`}
+                    >
+                      All Months
+                    </button>
+                    {months.map((m: { label: string; key: string }) => (
+                      <button
+                        key={m.key}
+                        type="button"
+                        onClick={() => setSelectedMonth(m.key)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border whitespace-nowrap ${
+                          selectedMonth === m.key
+                            ? "bg-primary border-primary text-primary-foreground"
+                            : "bg-background border-border text-foreground/75 hover:bg-foreground/5"
+                        }`}
                       >
-                        {selectedSlot
-                          ? formatDate(selectedSlot.date)
-                          : "Select an upcoming date"}
-                      </span>
-                    </div>
-                    {isDropdownOpen ? (
-                      <ChevronUp className="h-5 w-5 text-foreground/40" />
-                    ) : (
-                      <ChevronDown className="h-5 w-5 text-foreground/40" />
-                    )}
-                  </button>
+                        {m.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
 
-                  <AnimatePresence>
-                    {isDropdownOpen && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: "auto", opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        transition={{ duration: 0.3, ease: "easeInOut" }}
-                        className="overflow-hidden bg-card border border-border rounded-2xl mt-2 shadow-sm"
+                {/* Slots Grid */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
+                  {filteredSlots.map((slot: Slot) => {
+                    const isSelected = selectedSlot?.id === slot.id;
+                    const isSoldOut = slot.remainingCapacity <= 0;
+
+                    const getCardClasses = () => {
+                      if (isSelected) {
+                        return "bg-primary/5 border-primary shadow-sm ring-1 ring-primary";
+                      }
+                      if (isSoldOut) {
+                        return "bg-foreground/[0.01] border-border/40 opacity-45 cursor-not-allowed";
+                      }
+                      return "bg-background border-border hover:border-foreground/20 hover:bg-foreground/[0.01]";
+                    };
+
+                    const getBadgeClasses = () => {
+                      if (isSoldOut) {
+                        return "bg-red-500/10 text-red-500";
+                      }
+                      if (isSelected) {
+                        return "bg-primary/10 text-primary";
+                      }
+                      return "bg-foreground/5 text-foreground/50";
+                    };
+
+                    return (
+                      <button
+                        key={slot.id}
+                        type="button"
+                        disabled={isSoldOut}
+                        onClick={() => setSelectedSlot(isSelected ? null : slot)}
+                        className={`flex flex-col items-center justify-center p-3 rounded-xl border transition-all text-center relative group select-none ${getCardClasses()}`}
                       >
-                        <div className="max-h-75 overflow-y-auto p-2 space-y-1 custom-scrollbar">
-                          {slots.map((slot) => (
-                            <button
-                              key={slot.id}
-                              type="button"
-                              onClick={() => {
-                                setSelectedSlot(slot);
-                                setIsDropdownOpen(false);
-                              }}
-                              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all text-left ${
-                                selectedSlot?.id === slot.id
-                                  ? "bg-primary/10 border border-primary/20"
-                                  : "hover:bg-foreground/3 border border-transparent"
-                              }`}
-                            >
-                              <div>
-                                <p
-                                  className={`font-bold text-sm ${
-                                    selectedSlot?.id === slot.id
-                                      ? "text-primary"
-                                      : "text-foreground"
-                                  }`}
-                                >
-                                  {formatDate(slot.date)}
-                                </p>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-foreground/40 mt-0.5">
-                                  {slot.remainingCapacity} spots remaining
-                                </p>
-                              </div>
-                              {selectedSlot?.id === slot.id && (
-                                <CheckCircle2 className="h-4 w-4 text-primary" />
-                              )}
-                            </button>
-                          ))}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                        <span className={`text-[10px] font-black uppercase tracking-wider ${
+                          isSelected ? "text-primary" : "text-foreground/45"
+                        }`}>
+                          {new Date(slot.date).toLocaleDateString("en-IN", { weekday: "short" })}
+                        </span>
+                        <span className="text-sm font-black text-foreground mt-0.5">
+                          {new Date(slot.date).toLocaleDateString("en-IN", { day: "numeric" })}{" "}
+                          {new Date(slot.date).toLocaleDateString("en-IN", { month: "short" })}
+                        </span>
+                        <span className={`text-[9px] font-bold mt-1 px-1.5 py-0.5 rounded-full ${getBadgeClasses()}`}>
+                          {isSoldOut ? "Sold Out" : `${slot.remainingCapacity} left`}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {selectedSlot && (
@@ -1401,8 +1454,11 @@ export default function BookingModal({
                           </p>
                           {taxAmount > 0 && (
                             <p className="text-[10px] text-foreground/40 mt-0.5">
-                              Base: ₹{baseFare.toLocaleString("en-IN")} + Taxes:
-                              ₹{taxAmount.toLocaleString("en-IN")}
+                              Base: ₹{baseFare.toLocaleString("en-IN")}
+                              {taxes.map((tax) => {
+                                const amount = (baseFare * tax.percentage) / 100;
+                                return ` + ${tax.name} (${tax.percentage}%): ₹${amount.toLocaleString("en-IN")}`;
+                              })}
                             </p>
                           )}
                         </div>

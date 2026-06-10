@@ -130,11 +130,8 @@ describe("BookingModal Smoke Test", () => {
   it("progresses through booking steps", async () => {
     render(<BookingModal {...defaultProps} />);
 
-    // Wait for slots to load
-    const dateBtn = await screen.findByText(/Select an upcoming date/i);
-    fireEvent.click(dateBtn);
-
-    const slotOption = await screen.findByText(/5 spots remaining/i);
+    // Wait for slots to load and select
+    const slotOption = await screen.findByText(/5 left/i);
     fireEvent.click(slotOption);
 
     const continueBtn = screen.getByRole("button", { name: /Continue to Details/i });
@@ -183,8 +180,7 @@ describe("BookingModal Smoke Test", () => {
     });
 
     render(<BookingModal {...defaultProps} />);
-    fireEvent.click(await screen.findByText(/Select an upcoming date/i));
-    fireEvent.click(await screen.findByText(/5 spots remaining/i));
+    fireEvent.click(await screen.findByText(/5 left/i));
     fireEvent.click(screen.getByRole("button", { name: /Continue to Details/i }));
     
     await waitFor(() => screen.getByLabelText(/Phone Number \*/i));
@@ -276,8 +272,7 @@ describe("BookingModal Smoke Test", () => {
     render(<BookingModal {...defaultProps} />);
 
     // Step 1: Select slot
-    fireEvent.click(await screen.findByText(/Select an upcoming date/i));
-    fireEvent.click(await screen.findByText(/5 spots remaining/i));
+    fireEvent.click(await screen.findByText(/5 left/i));
     fireEvent.click(screen.getByRole("button", { name: /Continue to Details/i }));
 
     // Step 2: Fill required fields (Name + Phone)
@@ -301,8 +296,7 @@ describe("BookingModal Smoke Test", () => {
     render(<BookingModal {...defaultProps} />);
 
     // Select slot
-    fireEvent.click(await screen.findByText(/Select an upcoming date/i));
-    fireEvent.click(await screen.findByText(/5 spots remaining/i));
+    fireEvent.click(await screen.findByText(/5 left/i));
 
     // Default is 1 participant: ₹5,000 (appears in breakdown and total)
     const priceElements = screen.getAllByText(/₹5,000/);

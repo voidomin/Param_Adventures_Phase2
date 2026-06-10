@@ -14,7 +14,6 @@ import {
   Backpack, 
   Info, 
   Shield, 
-  IndianRupee, 
   Wifi, 
   Activity, 
   CarFront, 
@@ -27,7 +26,7 @@ import {
 } from "lucide-react";
 import type { MediaSettings } from "@/types/media";
 import { getPlainTextFromJSON } from "@/lib/utils/rich-text";
-import BookNowButton from "@/components/booking/BookNowButton";
+import BookingSidebarCard from "@/components/booking/BookingSidebarCard";
 import ExperienceReviews from "@/components/experiences/ExperienceReviews";
 import SaveButton from "@/components/experiences/SaveButton";
 import SimilarTrips from "@/components/experiences/SimilarTrips";
@@ -37,7 +36,6 @@ import MobileBookingBar from "@/components/booking/MobileBookingBar";
 import ExperienceStickyNav from "@/components/experiences/ExperienceStickyNav";
 import DifficultyMeter, { type DifficultyLevel } from "@/components/experiences/DifficultyMeter";
 import RichTextRenderer from "@/components/blog/RichTextRenderer";
-import DownloadItineraryBtn from "@/components/experiences/DownloadItineraryBtn";
 import ShareButton from "@/components/ui/ShareButton";
 import type { RichTextNode } from "@/lib/utils/rich-text";
 
@@ -403,62 +401,6 @@ function EssentialLogistics({ experience }: Readonly<{ experience: ExperienceWit
         </div>
       )}
     </section>
-  );
-}
-
-interface Slot {
-  id: string;
-  date: Date;
-  status: string;
-  remainingCapacity: number;
-}
-
-function DepartureDates({ slots }: Readonly<{ slots: Slot[] }>) {
-  if (!Array.isArray(slots) || slots.length === 0) return null;
-
-  const nextDeparture = slots[0].date;
-  const otherDates = slots.slice(1);
-
-  return (
-    <div className="mb-8 space-y-4">
-      <div className="flex flex-col gap-1.5 p-4 rounded-2xl bg-primary/5 border border-primary/20">
-        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Next Departure</span>
-        <div className="flex items-center gap-2 text-foreground font-bold">
-          <CalendarDays className="w-5 h-5 text-primary" />
-          <span className="text-lg">
-            {new Date(nextDeparture).toLocaleDateString("en-IN", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            })}
-          </span>
-        </div>
-      </div>
-
-      {otherDates.length > 0 && (
-        <details className="group border border-border rounded-xl bg-foreground/[0.02] overflow-hidden [&_summary::-webkit-details-marker]:hidden">
-          <summary className="flex items-center justify-between p-3 cursor-pointer text-xs font-bold uppercase tracking-wider text-foreground/50 hover:bg-foreground/5 transition-colors list-none">
-            Upcoming Batches ({otherDates.length})
-            <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" />
-          </summary>
-          <div className="p-3 pt-0 space-y-2 max-h-40 overflow-y-auto no-scrollbar">
-            {otherDates.map((slot) => (
-              <div key={slot.id} className="flex items-center justify-between py-2 border-t border-border/50 first:border-t-0">
-                <span className="text-sm font-medium">
-                  {new Date(slot.date).toLocaleDateString("en-IN", {
-                    day: "numeric",
-                    month: "short",
-                  })}
-                </span>
-                <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">
-                  {slot.remainingCapacity > 0 ? "Seats Available" : "Full"}
-                </span>
-              </div>
-            ))}
-          </div>
-        </details>
-      )}
-    </div>
   );
 }
 
@@ -1067,45 +1009,23 @@ export default async function ExperienceDetailPage({
         </div>
 
         {/* Right Column - Sticky Sidebar */}
-        <div className="lg:col-span-1">
-          <div className="sticky top-24 bg-card border border-border rounded-3xl p-8 shadow-2xl shadow-black/5">
-            <h3 className="text-2xl font-bold mb-2 font-heading">
-              Reserve Your Spot
-            </h3>
-            <p className="text-foreground/60 mb-6">
-              Join the waitlist for the next departure date.
-            </p>
+        <div className="lg:col-span-1 flex flex-col gap-6">
+          <BookingSidebarCard
+            experienceId={exp.id}
+            experienceTitle={exp.title}
+            experienceSlug={exp.slug}
+            basePrice={Number(exp.basePrice)}
+            maxCapacity={exp.capacity}
+            pickupPoints={exp.pickupPoints || []}
+            dropPoints={exp.dropPoints || []}
+            slots={experience.slots}
+          />
 
-            <div className="flex items-end gap-2 mb-8 pb-8 border-b border-border">
-              <span className="text-4xl font-black flex items-center">
-                <IndianRupee className="w-8 h-8" />
-                {Number(exp.basePrice).toLocaleString("en-IN")}
-              </span>
-              <span className="text-foreground/50 font-medium mb-1">
-                / person
-              </span>
-            </div>
-
-            <DepartureDates slots={experience.slots} />
-
-            <BookNowButton
-              experienceId={exp.id}
-              experienceTitle={exp.title}
-              experienceSlug={exp.slug}
-              basePrice={Number(exp.basePrice)}
-              maxCapacity={exp.capacity}
-              pickupPoints={exp.pickupPoints || []}
-              dropPoints={exp.dropPoints || []}
-            />
-
-            <DownloadItineraryBtn slug={exp.slug} />
-
-            <SimilarTrips
-              currentExperienceId={exp.id}
-              categoryIds={exp.categories.map((c: CategoryWithRelation) => c.category.id)}
-              mediaSettings={mediaSettings}
-            />
-          </div>
+          <SimilarTrips
+            currentExperienceId={exp.id}
+            categoryIds={exp.categories.map((c: CategoryWithRelation) => c.category.id)}
+            mediaSettings={mediaSettings}
+          />
         </div>
       </div>
 
