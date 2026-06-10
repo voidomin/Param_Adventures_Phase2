@@ -884,9 +884,9 @@ function drawContactFooterBox(doc: jsPDF, data: ItineraryBookingData, y: number,
   const waPhone = companyPhone.replace(/\D/g, "");
   const whatsappUrl = `https://wa.me/${waPhone || "919876543210"}`;
 
-  drawSocialButton(doc, "FACEBOOK", "https://www.facebook.com/profile.php?id=61576234846405", startX, btnY, [24, 119, 242], "fb");
-  drawSocialButton(doc, "INSTAGRAM", "https://www.instagram.com/param.adventures?igsh=MXUzc25yYTN5NXRmZw%3D%3D&utm_source=qr", startX + 38, btnY, [225, 48, 108], "insta");
-  drawSocialButton(doc, "YOUTUBE", "https://www.youtube.com/@ParamAdventures", startX + 76, btnY, [255, 0, 0], "yt");
+  drawSocialButton(doc, "FACEBOOK", "https://www.facebook.com/profile.php?id=61590660992017&sk=directory_contact_info", startX, btnY, [24, 119, 242], "fb");
+  drawSocialButton(doc, "INSTAGRAM", "https://www.instagram.com/param.adventures/", startX + 38, btnY, [225, 48, 108], "insta");
+  drawSocialButton(doc, "YOUTUBE", "https://www.youtube.com/", startX + 76, btnY, [255, 0, 0], "yt");
   drawSocialButton(doc, "WHATSAPP", whatsappUrl, startX + 114, btnY, [37, 211, 102], "wa");
 
   y += 58;
