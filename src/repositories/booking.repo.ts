@@ -14,6 +14,69 @@ export interface PaymentData {
   totalPrice: number;
 }
 
+export function getMissingProfileFields(
+  user: {
+    name?: string | null;
+    phoneNumber?: string | null;
+    gender?: string | null;
+    dateOfBirth?: Date | null;
+    bloodGroup?: string | null;
+    emergencyContactName?: string | null;
+    emergencyContactNumber?: string | null;
+    emergencyRelationship?: string | null;
+    age?: number | null;
+  },
+  participant: {
+    name?: string | null;
+    phoneNumber?: string | null;
+    gender?: string | null;
+    dateOfBirth?: string | Date | null;
+    bloodGroup?: string | null;
+    emergencyContactName?: string | null;
+    emergencyContactNumber?: string | null;
+    emergencyRelationship?: string | null;
+  }
+) {
+  const updateData: Record<string, any> = {};
+
+  const isStringEmpty = (val: string | null | undefined) => !val || val.trim() === "";
+
+  const isPhoneEmpty = (phone: string | null | undefined) => {
+    if (!phone) return true;
+    const trimmed = phone.trim();
+    return trimmed === "" || /^0+$/.test(trimmed);
+  };
+
+  const stringFields = [
+    "name",
+    "gender",
+    "bloodGroup",
+    "emergencyContactName",
+    "emergencyContactNumber",
+    "emergencyRelationship",
+  ];
+
+  for (const field of stringFields) {
+    const userVal = (user as any)[field];
+    const partVal = (participant as any)[field];
+    if (isStringEmpty(userVal) && !isStringEmpty(partVal)) {
+      updateData[field] = partVal.trim();
+    }
+  }
+
+  if (isPhoneEmpty(user.phoneNumber) && !isPhoneEmpty(participant.phoneNumber)) {
+    updateData.phoneNumber = participant.phoneNumber!.trim();
+  }
+
+  if (!user.dateOfBirth && participant.dateOfBirth) {
+    const dob = new Date(participant.dateOfBirth);
+    updateData.dateOfBirth = dob;
+    updateData.age = calculateAge(dob);
+  }
+
+  return updateData;
+}
+
 /**
  * Repository for Booking-related Data Access.
  * Methods accept a 'tx' (Transaction Client) to support atomic operations.
@@ -40,6 +103,34 @@ export const BookingRepo = {
   },
 
   async createBooking(tx: Prisma.TransactionClient, userId: string, data: BookingInput, pricing: BookingPricing) {
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: {
+        name: true,
+        phoneNumber: true,
+        gender: true,
+        dateOfBirth: true,
+        bloodGroup: true,
+        emergencyContactName: true,
+        emergencyContactNumber: true,
+        emergencyRelationship: true,
+        age: true,
+      }
+    });
+
+    const primaryParticipant = data.participants.find(p => p.isPrimary) || data.participants[0];
+
+    if (user && primaryParticipant) {
+      const updateData = getMissingProfileFields(user, primaryParticipant);
+
+      if (Object.keys(updateData).length > 0) {
+        await tx.user.update({
+          where: { id: userId },
+          data: updateData,
+        });
+      }
+    }
+
     return tx.booking.create({
       data: {
         userId,
