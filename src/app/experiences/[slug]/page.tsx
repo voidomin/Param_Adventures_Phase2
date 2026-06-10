@@ -1098,13 +1098,13 @@ export default async function ExperienceDetailPage({
               dropPoints={exp.dropPoints || []}
             />
 
+            <DownloadItineraryBtn slug={exp.slug} />
+
             <SimilarTrips
               currentExperienceId={exp.id}
               categoryIds={exp.categories.map((c: CategoryWithRelation) => c.category.id)}
               mediaSettings={mediaSettings}
             />
-
-            <DownloadItineraryBtn slug={exp.slug} />
           </div>
         </div>
       </div>

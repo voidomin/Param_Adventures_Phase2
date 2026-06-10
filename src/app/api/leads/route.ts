@@ -10,6 +10,7 @@ const leadSchema = z.object({
   requirements: z
     .string()
     .min(10, "Please provide more details on your requirements"),
+  source: z.string().optional(),
 });
 
 export async function POST(req: Request) {

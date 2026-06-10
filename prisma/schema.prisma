@@ -377,6 +377,7 @@ model CustomLead {
   email        String
   phone        String
   requirements String
+  source       String     @default("HOMEPAGE")
   status       LeadStatus @default(NEW)
   adminNotes   String?
   createdAt    DateTime   @default(now())
