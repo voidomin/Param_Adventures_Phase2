@@ -120,7 +120,7 @@ interface ItineraryDay {
   id?: string;
   _id?: string;
   title: string;
-  description: string;
+  description: string | object;
   meals?: string[] | string;
   accommodation?: string;
 }
@@ -439,9 +439,13 @@ function ItinerarySection({ itinerary }: Readonly<{ itinerary: ItineraryDay[] }>
                 <ChevronDown className="w-5 h-5 text-primary transition-transform duration-300 group-open:-rotate-180 shrink-0" />
               </summary>
               <div className="px-6 pb-6 pt-0">
-                <p className="text-foreground/70 leading-relaxed whitespace-pre-line border-t border-border/10 pt-4">
-                  {dayItem.description}
-                </p>
+                <div className="text-foreground/70 leading-relaxed border-t border-border/10 pt-4 prose prose-sm max-w-none">
+                  {typeof dayItem.description === "string" ? (
+                    <p className="whitespace-pre-line">{dayItem.description}</p>
+                  ) : (
+                    <RichTextRenderer content={dayItem.description} />
+                  )}
+                </div>
                 {(dayItem.meals || dayItem.accommodation) && (
                   <div className="mt-4 pt-4 border-t border-border/10 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                     {dayItem.meals &&

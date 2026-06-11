@@ -29,7 +29,7 @@ interface Category {
 export interface ItineraryDay {
   _id?: string;
   title: string;
-  description: string;
+  description: string | object;
   meals?: string[];
   accommodation?: string;
 }
@@ -78,6 +78,25 @@ export interface ExperienceFormData {
 }
 
 const MEAL_OPTIONS = ["Breakfast", "Lunch", "Dinner", "Snacks"];
+
+function parseCancellationPolicyData(policyStr: string | null | undefined) {
+  let template = "custom";
+  let text = "";
+  if (policyStr) {
+    try {
+      const parsed = JSON.parse(policyStr);
+      if (parsed && typeof parsed === "object" && "template" in parsed) {
+        template = parsed.template || "custom";
+        text = parsed.text || "";
+      } else {
+        text = policyStr;
+      }
+    } catch {
+      text = policyStr;
+    }
+  }
+  return { template, text };
+}
 
 function MealButtons({
   meals,
@@ -209,24 +228,8 @@ export default function ExperienceForm({
     })),
   );
 
-  // Parse initial cancellationPolicy JSON if present
   const getInitialCancellationPolicy = () => {
-    let template = "custom";
-    let text = "";
-    if (initialData?.cancellationPolicy) {
-      try {
-        const parsed = JSON.parse(initialData.cancellationPolicy);
-        if (parsed && typeof parsed === "object" && "template" in parsed) {
-          template = parsed.template || "custom";
-          text = parsed.text || "";
-        } else {
-          text = initialData.cancellationPolicy;
-        }
-      } catch {
-        text = initialData.cancellationPolicy;
-      }
-    }
-    return { template, text };
+    return parseCancellationPolicyData(initialData?.cancellationPolicy);
   };
 
   const initialPolicy = getInitialCancellationPolicy();
@@ -326,7 +329,7 @@ export default function ExperienceForm({
   const handleItineraryChange = (
     index: number,
     field: keyof ItineraryDay,
-    value: string | string[],
+    value: string | string[] | object,
   ) => {
     setItinerary((prev) => {
       const updated = [...prev];
@@ -570,7 +573,7 @@ export default function ExperienceForm({
     if (
       data.description &&
       typeof data.description === "object" &&
-      Object.keys(data.description as object).length > 0
+      Object.keys(data.description).length > 0
     )
       setDescription(data.description);
     if (data.basePrice !== undefined) setBasePrice(data.basePrice);
@@ -610,19 +613,9 @@ export default function ExperienceForm({
 
   const applyLogisticsData = (data: Partial<ExperienceFormData>) => {
     if (data.cancellationPolicy !== undefined) {
-      try {
-        const parsed = JSON.parse(data.cancellationPolicy || "{}");
-        if (parsed && typeof parsed === "object" && "template" in parsed) {
-          setCancelPolicyType(parsed.template || "custom");
-          setCancelPolicyText(parsed.text || "");
-        } else {
-          setCancelPolicyType("custom");
-          setCancelPolicyText(data.cancellationPolicy || "");
-        }
-      } catch {
-        setCancelPolicyType("custom");
-        setCancelPolicyText(data.cancellationPolicy || "");
-      }
+      const { template, text } = parseCancellationPolicyData(data.cancellationPolicy);
+      setCancelPolicyType(template);
+      setCancelPolicyText(text);
     }
     if (data.meetingPoint !== undefined)
       setMeetingPoint(data.meetingPoint || "");
@@ -941,7 +934,7 @@ export default function ExperienceForm({
       const wb = XLSX.read(data, { type: "array" });
 
       const imported: Partial<ExperienceFormData> = {};
-      parseExcelBasicInfo(imported as Record<string, unknown>, wb, XLSX);
+      parseExcelBasicInfo(imported, wb, XLSX);
       parseExcelItinerary(imported, wb, XLSX);
       parseExcelFaqs(imported, wb, XLSX);
       parseExcelLists(imported, wb, XLSX);
@@ -1132,7 +1125,7 @@ export default function ExperienceForm({
                 Description
               </label>
               <TiptapEditor
-                content={description as string | object}
+                content={description}
                 onChange={setDescription}
                 placeholder="Describe the experience..."
               />
@@ -1197,15 +1190,12 @@ export default function ExperienceForm({
                     placeholder={`Day ${ix + 1} Title (e.g. Arrival in Kathmandu)`}
                     required
                   />
-                  <textarea
-                    rows={2}
-                    value={day.description}
-                    onChange={(e) =>
-                      handleItineraryChange(ix, "description", e.target.value)
+                  <TiptapEditor
+                    content={day.description}
+                    onChange={(val) =>
+                      handleItineraryChange(ix, "description", val)
                     }
-                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:border-primary/50"
                     placeholder="Day description..."
-                    required
                   />
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-border/50">
                     <div>

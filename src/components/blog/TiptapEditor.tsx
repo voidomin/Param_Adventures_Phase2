@@ -6,6 +6,8 @@ import Placeholder from "@tiptap/extension-placeholder";
 import {
   Bold,
   Italic,
+  Strikethrough,
+  Code,
   Heading2,
   Heading3,
   List,
@@ -14,6 +16,8 @@ import {
   Minus,
   Image as ImageIcon,
   Video,
+  Undo,
+  Redo,
 } from "lucide-react";
 import Image from "@tiptap/extension-image";
 import Youtube from "@tiptap/extension-youtube";
@@ -63,7 +67,7 @@ export default function TiptapEditor({
 }: Readonly<TiptapEditorProps>) {
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure(),
       Placeholder.configure({ placeholder }),
       Image,
       Youtube.configure({
@@ -100,6 +104,20 @@ export default function TiptapEditor({
             title="Italic"
           >
             <Italic className="w-4 h-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleStrike().run()}
+            active={editor.isActive("strike")}
+            title="Strikethrough"
+          >
+            <Strikethrough className="w-4 h-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleCode().run()}
+            active={editor.isActive("code")}
+            title="Code"
+          >
+            <Code className="w-4 h-4" />
           </ToolbarButton>
           <div className="w-px h-5 bg-border mx-1" />
           <ToolbarButton
@@ -190,6 +208,19 @@ export default function TiptapEditor({
             title="Insert YouTube Video"
           >
             <Video className="w-4 h-4 text-red-500" />
+          </ToolbarButton>
+          <div className="w-px h-5 bg-border mx-1" />
+          <ToolbarButton
+            onClick={() => editor.chain().focus().undo().run()}
+            title="Undo"
+          >
+            <Undo className="w-4 h-4" />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().redo().run()}
+            title="Redo"
+          >
+            <Redo className="w-4 h-4" />
           </ToolbarButton>
         </div>
       )}

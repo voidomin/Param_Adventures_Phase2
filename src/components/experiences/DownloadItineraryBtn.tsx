@@ -5,6 +5,7 @@ import { Download, Loader2, FileDown, X } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useAuth } from "@/lib/AuthContext";
+import { getPlainTextFromJSON } from "@/lib/utils/rich-text";
 
 // ─── Constants & Brand Colors ────────────────────────────
 const COLORS = {
@@ -39,7 +40,7 @@ interface ItineraryBookingData {
   description?: string;
   itinerary?: {
     title?: string;
-    description?: string;
+    description?: string | object;
     meals?: string | string[];
     accommodation?: string;
   }[];
@@ -492,7 +493,8 @@ function drawItinerary(doc: jsPDF, data: ItineraryBookingData, y: number): numbe
 
   data.itinerary.forEach((day, index) => {
     const dayNum = index + 1;
-    const descLen = day.description?.length ?? 0;
+    const plainDesc = getPlainTextFromJSON(day.description);
+    const descLen = plainDesc.length;
     const neededHeight = 40 + (descLen / 4);
     y = checkPageBreak(doc, y, neededHeight);
 
@@ -516,11 +518,11 @@ function drawItinerary(doc: jsPDF, data: ItineraryBookingData, y: number): numbe
     doc.setTextColor(...COLORS.navy);
     doc.text(cleanTextForPdf(day.title || `Day ${dayNum}`), 32, y + 8);
 
-    if (day.description) {
+    if (plainDesc) {
       doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(...COLORS.darkText);
-      const dayDescLines = doc.splitTextToSize(cleanTextForPdf(day.description), pageWidth - 48);
+      const dayDescLines = doc.splitTextToSize(cleanTextForPdf(plainDesc), pageWidth - 48);
       doc.text(dayDescLines, 32, y + 15);
       y += 15 + dayDescLines.length * 4.8;
     } else {

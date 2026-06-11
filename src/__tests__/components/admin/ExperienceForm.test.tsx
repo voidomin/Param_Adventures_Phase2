@@ -57,6 +57,7 @@ const { mockExtension, mockEditor } = vi.hoisted(() => {
     toggleHeading: () => mockRun,
     toggleBlockquote: () => mockRun,
     toggleCodeBlock: () => mockRun,
+    toggleCode: () => mockRun,
     undo: () => mockRun,
     redo: () => mockRun,
     run: vi.fn(),
