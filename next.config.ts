@@ -30,6 +30,7 @@ const nextConfig: NextConfig = {
     webpackBuildWorker: true, // run webpack builds in a separate worker to limit memory usage
   },
   images: {
+    unoptimized: true,
     qualities: [75, 90],
     remotePatterns: [
       {

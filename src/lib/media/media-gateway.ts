@@ -15,6 +15,28 @@ export interface MediaOptions {
 
 type MediaProvider = 'CLOUDINARY' | 'AWS_S3' | (string & {});
 
+function parseCloudinaryPath(path: string): string {
+  const uploadIndex = path.indexOf("/upload/");
+  if (uploadIndex !== -1) {
+    let tempPath = path.substring(uploadIndex + "/upload/".length);
+    // Strip Cloudinary version prefix if present (e.g. /v1234567/)
+    if (/^v\d+\//.test(tempPath)) {
+      tempPath = tempPath.replace(/^v\d+\//, "");
+    }
+    return tempPath;
+  }
+  return path;
+}
+
+function parseS3Path(path: string): string {
+  try {
+    const urlObj = new URL(path);
+    return urlObj.pathname.substring(1);
+  } catch {
+    return path;
+  }
+}
+
 export function getMediaUrl(
   path: string, 
   provider: MediaProvider,
@@ -29,20 +51,34 @@ export function getMediaUrl(
   options: MediaOptions = {}
 ): string {
   if (!path) return '';
-  if (path.startsWith('http')) return path;
+
+  let processedPath = path;
+  let detectedProvider = provider;
+
+  if (path.startsWith('http')) {
+    if (path.includes("res.cloudinary.com")) {
+      detectedProvider = 'CLOUDINARY';
+      processedPath = parseCloudinaryPath(path);
+    } else if (path.includes(".amazonaws.com") || (settings.cdnUrl && path.includes(settings.cdnUrl))) {
+      detectedProvider = 'AWS_S3';
+      processedPath = parseS3Path(path);
+    } else {
+      return path;
+    }
+  }
 
   const quality = options.quality ?? settings.globalQuality ?? 95;
   const isHighFid = settings.highFidelity ?? true;
 
-  if (provider === 'CLOUDINARY' && settings.cloudinaryCloudName) {
-    return getCloudinaryUrl(path, settings.cloudinaryCloudName, quality, isHighFid, options);
+  if (detectedProvider === 'CLOUDINARY' && settings.cloudinaryCloudName) {
+    return getCloudinaryUrl(processedPath, settings.cloudinaryCloudName, quality, isHighFid, options);
   }
 
-  if ((provider === 'AWS_S3' || provider === 'S3') && settings.s3Bucket) {
-    return getS3Url(path, settings.s3Bucket, settings.s3Region, settings.cdnUrl);
+  if ((detectedProvider === 'AWS_S3' || detectedProvider === 'S3') && settings.s3Bucket) {
+    return getS3Url(processedPath, settings.s3Bucket, settings.s3Region, settings.cdnUrl);
   }
 
-  return path.startsWith('/') ? path : `/${path}`;
+  return processedPath.startsWith('/') ? processedPath : `/${processedPath}`;
 }
 
 function getCloudinaryUrl(
