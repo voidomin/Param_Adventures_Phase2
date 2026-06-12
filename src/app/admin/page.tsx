@@ -174,102 +174,39 @@ export default function AdminDashboardPage() {
       {/* ── Charts ──────────────────────────────────────── */}
       <DashboardCharts charts={data.charts} />
 
-      {/* ── Actions & Activity Row ─────────────────────── */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-        {/* Left: Alerts */}
-        <div className="space-y-6 lg:col-span-4">
-          <h2 className="text-xl font-bold flex items-center gap-2">
-            <AlertCircle className="h-5 w-5 text-orange-500" /> Action Required
-          </h2>
+      {/* ── Action Required Row ─────────────────────────── */}
+      <div className="space-y-6 max-w-3xl">
+        <h2 className="text-xl font-bold flex items-center gap-2">
+          <AlertCircle className="h-5 w-5 text-orange-500" /> Action Required
+        </h2>
 
-          <div className="flex flex-col gap-4">
-            <button
-              onClick={() => router.push("/admin/blogs")}
-              className="flex w-full items-center justify-between rounded-xl border border-border bg-card p-4 hover:border-primary/50 transition-colors cursor-pointer text-left"
-            >
-              <div>
-                <div className="font-bold text-foreground">Pending Blogs</div>
-                <div className="text-sm text-foreground/60">
-                  Awaiting review
-                </div>
-              </div>
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-500/10 text-orange-500 font-bold">
-                {data.pendingActions.blogs}
-              </div>
-            </button>
-
-            <div className="flex w-full items-center justify-between rounded-xl border border-border bg-card p-4 opacity-75">
-              <div>
-                <div className="font-bold text-foreground">Unpaid Bookings</div>
-                <div className="text-sm text-foreground/60">
-                  Payment aborted/pending
-                </div>
-              </div>
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-border text-foreground/50 font-bold">
-                {data.pendingActions.bookings}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <button
+            onClick={() => router.push("/admin/blogs")}
+            className="flex w-full items-center justify-between rounded-xl border border-border bg-card p-4 hover:border-primary/50 transition-colors cursor-pointer text-left shadow-sm"
+          >
+            <div>
+              <div className="font-bold text-foreground">Pending Blogs</div>
+              <div className="text-sm text-foreground/60">
+                Awaiting review
               </div>
             </div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-500/10 text-orange-500 font-bold">
+              {data.pendingActions.blogs}
+            </div>
+          </button>
 
-
+          <div className="flex w-full items-center justify-between rounded-xl border border-border bg-card p-4 opacity-75 shadow-sm">
+            <div>
+              <div className="font-bold text-foreground">Unpaid Bookings</div>
+              <div className="text-sm text-foreground/60">
+                Payment aborted/pending
+              </div>
+            </div>
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-border text-foreground/50 font-bold">
+              {data.pendingActions.bookings}
+            </div>
           </div>
-        </div>
-
-        {/* Right: Activity Feed */}
-        <div className="space-y-6 lg:col-span-8">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold flex items-center gap-2">
-              <Clock className="h-5 w-5 text-primary" /> Recent Activity
-            </h2>
-            <Link
-              href="/admin/audit-logs"
-              className="text-sm text-primary hover:text-primary/80 flex items-center gap-1 font-medium transition-colors"
-            >
-              View Full Log <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-
-          {data.recentActivity.length === 0 ? (
-            <div className="rounded-2xl border border-border bg-card p-8 text-center text-foreground/50">
-              No recent activity recorded.
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-border bg-card divide-y divide-border overflow-hidden">
-              {data.recentActivity.map((log) => (
-                <div
-                  key={log.id}
-                  className="flex gap-4 p-4 hover:bg-foreground/5 transition-colors"
-                >
-                  <div className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                    <User className="h-4 w-4" />
-                  </div>
-                  <div className="flex-1 space-y-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-bold text-foreground truncate">
-                        {log.action.replaceAll("_", " ")}
-                      </p>
-                      <time className="text-xs text-foreground/50 whitespace-nowrap">
-                        {new Date(log.timestamp).toLocaleString("en-IN", {
-                          month: "short",
-                          day: "numeric",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </time>
-                    </div>
-                    <div className="text-xs text-foreground/70">
-                      {log.targetType}
-                      {log.targetId && (
-                        <span className="text-foreground/40">
-                          {" "}
-                          · {log.targetId.slice(0, 8)}…
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>
