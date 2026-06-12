@@ -70,6 +70,24 @@ interface ItineraryBookingData {
 // ─── Helpers ──────────────────────────────────────────
 async function fetchImageAsBase64(url: string): Promise<string | null> {
   try {
+    const isCloudinary = url.includes("res.cloudinary.com");
+    if (isCloudinary) {
+      try {
+        const directRes = await fetch(url, { mode: "cors" });
+        if (directRes.ok) {
+          const blob = await directRes.blob();
+          return await new Promise<string | null>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string || null);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(blob);
+          });
+        }
+      } catch (err) {
+        console.warn("Direct image fetch failed, falling back to proxy:", err);
+      }
+    }
+
     const res = await fetch(
       `/api/proxy-image?url=${encodeURIComponent(url)}`
     );
