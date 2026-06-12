@@ -21,6 +21,11 @@ export class ZohoAPIProvider implements EmailProvider {
   }
 
   async send(options: EmailOptions): Promise<void> {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+    }, 10000); // 10 seconds timeout
+
     try {
       const response = await fetch(this.baseUrl, {
         method: "POST",
@@ -35,6 +40,7 @@ export class ZohoAPIProvider implements EmailProvider {
           subject: options.subject,
           htmlbody: options.html,
         }),
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -43,9 +49,15 @@ export class ZohoAPIProvider implements EmailProvider {
       }
 
       console.log(`✅ [Zoho API] HTTP Delivery successful to ${options.to}`);
-    } catch (error) {
+    } catch (error: any) {
+      if (error.name === "AbortError") {
+        console.error(`❌ [Zoho API] Delivery timed out after 10s to ${options.to}`);
+        throw new Error(`Zoho API delivery timed out to ${options.to}`);
+      }
       console.error(`❌ [Zoho API] Delivery failed to ${options.to}:`, error);
       throw error;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 }
