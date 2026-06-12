@@ -45,8 +45,8 @@ export default function ExperienceStickyNav({ sections }: Readonly<{ sections: S
   if (!sections.length) return null;
 
   return (
-    <div className="sticky top-16 z-40 bg-background/90 backdrop-blur-xl border-b border-border/50 py-2 sm:py-3 mb-8 -mx-4 px-4 sm:mx-0 sm:px-0">
-      <nav className="flex flex-wrap gap-1.5 md:flex-nowrap md:overflow-x-auto md:no-scrollbar md:snap-x items-center py-1">
+    <div className="sticky top-[68px] z-40 bg-background/90 backdrop-blur-xl border-b border-border/50 py-1.5 sm:py-2 mb-8 -mx-4 px-4 sm:mx-0 sm:px-0">
+      <nav className="flex flex-wrap gap-1.5 md:flex-nowrap md:overflow-x-auto md:no-scrollbar md:snap-x items-center py-2">
         {sections.map((section) => (
           <button
             key={section.id}
@@ -63,4 +63,5 @@ export default function ExperienceStickyNav({ sections }: Readonly<{ sections: S
       </nav>
     </div>
   );
+
 }
