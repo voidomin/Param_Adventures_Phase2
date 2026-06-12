@@ -247,11 +247,11 @@ function ExperienceJsonLd({
 // Helper components to reduce page complexity
 function HeroTags({ experience }: Readonly<{ experience: ExperienceWithInclusions }>) {
   return (
-    <div className="flex gap-2 mb-8 bg-foreground/2 p-4 pb-20 md:pb-4 rounded-2xl border border-border/50 overflow-x-auto md:overflow-visible md:flex-wrap no-scrollbar snap-x relative z-30">
+    <div className="flex flex-wrap gap-2 mb-8 bg-foreground/2 p-4 rounded-2xl border border-border/50 relative z-30">
       {experience.categories.map((c: CategoryWithRelation) => (
         <span
           key={c.category.id}
-          className="bg-primary text-primary-foreground px-4 py-1.5 rounded-full text-sm font-bold shadow-sm snap-start whitespace-nowrap"
+          className="bg-primary text-primary-foreground px-4 py-1.5 rounded-full text-sm font-bold shadow-sm whitespace-nowrap"
         >
           {c.category.name}
         </span>
@@ -259,22 +259,22 @@ function HeroTags({ experience }: Readonly<{ experience: ExperienceWithInclusion
       {experience.vibeTags?.map((tag: string) => (
         <span
           key={tag}
-          className="bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-bold border border-primary/20 shadow-sm flex items-center gap-1.5 snap-start whitespace-nowrap"
+          className="bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-bold border border-primary/20 shadow-sm flex items-center gap-1.5 whitespace-nowrap"
         >
           {tag}
         </span>
       ))}
-      <div className="snap-start whitespace-nowrap relative">
+      <div className="whitespace-nowrap relative">
         <DifficultyMeter difficulty={experience.difficulty} />
       </div>
       {!!experience.maxGroupSize && (
-        <span className="bg-background text-foreground px-4 py-1.5 rounded-full text-sm font-bold border border-border shadow-sm flex items-center gap-1.5 snap-start whitespace-nowrap">
+        <span className="bg-background text-foreground px-4 py-1.5 rounded-full text-sm font-bold border border-border shadow-sm flex items-center gap-1.5 whitespace-nowrap">
           <Users className="w-4 h-4 text-primary" /> Max Group:{" "}
           {experience.maxGroupSize}
         </span>
       )}
       {!!(experience.minAge || experience.ageRange) && (
-        <span className="bg-background text-foreground px-4 py-1.5 rounded-full text-sm font-bold border border-border shadow-sm flex items-center gap-1.5 snap-start whitespace-nowrap">
+        <span className="bg-background text-foreground px-4 py-1.5 rounded-full text-sm font-bold border border-border shadow-sm flex items-center gap-1.5 whitespace-nowrap">
           <Baby className="w-4 h-4 text-primary" /> Age:{" "}
           {experience.minAge || experience.ageRange}+
         </span>
@@ -295,114 +295,128 @@ function EssentialLogistics({ experience }: Readonly<{ experience: ExperienceWit
   )
     return null;
 
+  const hasStats = !!(experience.networkConnectivity || experience.fitnessRequirement || experience.ageRange);
+  const hasLocations = !!(experience.meetingTime || experience.meetingPoint || (experience.pickupPoints && experience.pickupPoints.length > 0) || experience.dropoffTime || (experience.dropPoints && experience.dropPoints.length > 0));
+
   return (
-    <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 items-start">
-      {experience.networkConnectivity && (
-        <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors">
-          <Wifi className="w-5 h-5 text-primary" />
-          <div>
-            <p className="text-xs text-foreground/60 font-medium">
-              Network/Wifi
-            </p>
-            <p className="font-bold text-sm leading-tight">
-              {experience.networkConnectivity}
-            </p>
-          </div>
-        </div>
-      )}
-      {experience.fitnessRequirement && (
-        <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors">
-          <Activity className="w-5 h-5 text-primary" />
-          <div>
-            <p className="text-xs text-foreground/60 font-medium">Fitness</p>
-            <p className="font-bold text-sm leading-tight">
-              {experience.fitnessRequirement}
-            </p>
-          </div>
-        </div>
-      )}
-      {experience.ageRange && (
-        <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors">
-          <Users className="w-5 h-5 text-primary" />
-          <div>
-            <p className="text-xs text-foreground/60 font-medium">Age Range</p>
-            <p className="font-bold text-sm leading-tight">
-              {experience.ageRange}
-            </p>
-          </div>
-        </div>
-      )}
-      {(experience.meetingTime || experience.meetingPoint || (experience.pickupPoints && experience.pickupPoints.length > 0)) && (
-        <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors col-span-2">
-          <div className="flex items-center gap-3">
-            <CarFront className="w-5 h-5 text-primary shrink-0" />
-            <div>
-              <p className="text-xs text-foreground/60 font-medium">
-                Starting Point
-              </p>
-              <p className="font-bold text-sm leading-tight mt-0.5">
-                {experience.meetingPoint || "Multiple options available"} {experience.meetingTime && `\u2022 ${experience.meetingTime}`}
-              </p>
+    <div className="space-y-4">
+      {hasStats && (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 items-start">
+          {experience.networkConnectivity && (
+            <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors">
+              <Wifi className="w-5 h-5 text-primary" />
+              <div>
+                <p className="text-xs text-foreground/60 font-medium">
+                  Network/Wifi
+                </p>
+                <p className="font-bold text-sm leading-tight">
+                  {experience.networkConnectivity}
+                </p>
+              </div>
             </div>
-          </div>
-
-          {experience.pickupPoints && experience.pickupPoints.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-border/50">
-              <details className="group [&_summary::-webkit-details-marker]:hidden">
-                <summary className="flex items-center justify-between cursor-pointer text-xs font-bold uppercase tracking-wider text-primary hover:text-primary/80 transition-colors list-none select-none">
-                  <span>Available Pickup Locations ({experience.pickupPoints.length})</span>
-                  <ChevronDown className="w-4 h-4 text-primary transition-transform duration-200 group-open:rotate-180" />
-                </summary>
-                <div className="mt-2.5 flex flex-col gap-2 text-xs font-semibold text-foreground/80 max-h-52 overflow-y-auto custom-scrollbar pt-1">
-                  {experience.pickupPoints.map((point) => (
-                    <div key={point} className="flex items-center gap-2 bg-foreground/[0.03] border border-border/40 px-3 py-2 rounded-xl hover:bg-primary/5 hover:border-primary/20 transition-all">
-                      <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                      <span>{point}</span>
-                    </div>
-                  ))}
-                </div>
-              </details>
+          )}
+          {experience.fitnessRequirement && (
+            <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors">
+              <Activity className="w-5 h-5 text-primary" />
+              <div>
+                <p className="text-xs text-foreground/60 font-medium">Fitness</p>
+                <p className="font-bold text-sm leading-tight">
+                  {experience.fitnessRequirement}
+                </p>
+              </div>
+            </div>
+          )}
+          {experience.ageRange && (
+            <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors">
+              <Users className="w-5 h-5 text-primary" />
+              <div>
+                <p className="text-xs text-foreground/60 font-medium">Age Range</p>
+                <p className="font-bold text-sm leading-tight">
+                  {experience.ageRange}
+                </p>
+              </div>
             </div>
           )}
         </div>
       )}
-      {(experience.dropoffTime || (experience.dropPoints && experience.dropPoints.length > 0)) && (
-        <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors col-span-2">
-          <div className="flex items-center gap-3">
-            <MapPin className="w-5 h-5 text-primary shrink-0" />
-            <div>
-              <p className="text-xs text-foreground/60 font-medium">
-                Drop-off Details
-              </p>
-              <p className="font-bold text-sm leading-tight mt-0.5">
-                {experience.meetingPoint || "Multiple options available"} {experience.dropoffTime && `\u2022 ${experience.dropoffTime}`}
-              </p>
-            </div>
-          </div>
 
-          {experience.dropPoints && experience.dropPoints.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-border/50">
-              <details className="group [&_summary::-webkit-details-marker]:hidden">
-                <summary className="flex items-center justify-between cursor-pointer text-xs font-bold uppercase tracking-wider text-primary hover:text-primary/80 transition-colors list-none select-none">
-                  <span>Available Drop-off Locations ({experience.dropPoints.length})</span>
-                  <ChevronDown className="w-4 h-4 text-primary transition-transform duration-200 group-open:rotate-180" />
-                </summary>
-                <div className="mt-2.5 flex flex-col gap-2 text-xs font-semibold text-foreground/80 max-h-52 overflow-y-auto custom-scrollbar pt-1">
-                  {experience.dropPoints.map((point) => (
-                    <div key={point} className="flex items-center gap-2 bg-foreground/[0.03] border border-border/40 px-3 py-2 rounded-xl hover:bg-primary/5 hover:border-primary/20 transition-all">
-                      <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                      <span>{point}</span>
-                    </div>
-                  ))}
+      {hasLocations && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+          {(experience.meetingTime || experience.meetingPoint || (experience.pickupPoints && experience.pickupPoints.length > 0)) && (
+            <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors">
+              <div className="flex items-center gap-3">
+                <CarFront className="w-5 h-5 text-primary shrink-0" />
+                <div>
+                  <p className="text-xs text-foreground/60 font-medium">
+                    Starting Point
+                  </p>
+                  <p className="font-bold text-sm leading-tight mt-0.5">
+                    {experience.meetingPoint || "Multiple options available"} {experience.meetingTime && `\u2022 ${experience.meetingTime}`}
+                  </p>
                 </div>
-              </details>
+              </div>
+
+              {experience.pickupPoints && experience.pickupPoints.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-border/50">
+                  <details className="group [&_summary::-webkit-details-marker]:hidden">
+                    <summary className="flex items-center justify-between cursor-pointer text-xs font-bold uppercase tracking-wider text-primary hover:text-primary/80 transition-colors list-none select-none">
+                      <span>Available Pickup Locations ({experience.pickupPoints.length})</span>
+                      <ChevronDown className="w-4 h-4 text-primary transition-transform duration-200 group-open:rotate-180" />
+                    </summary>
+                    <div className="mt-2.5 flex flex-col gap-2 text-xs font-semibold text-foreground/80 max-h-52 overflow-y-auto custom-scrollbar pt-1">
+                      {experience.pickupPoints.map((point) => (
+                        <div key={point} className="flex items-center gap-2 bg-foreground/[0.03] border border-border/40 px-3 py-2 rounded-xl hover:bg-primary/5 hover:border-primary/20 transition-all">
+                          <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                          <span>{point}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                </div>
+              )}
+            </div>
+          )}
+
+          {(experience.dropoffTime || (experience.dropPoints && experience.dropPoints.length > 0)) && (
+            <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors">
+              <div className="flex items-center gap-3">
+                <MapPin className="w-5 h-5 text-primary shrink-0" />
+                <div>
+                  <p className="text-xs text-foreground/60 font-medium">
+                    Drop-off Details
+                  </p>
+                  <p className="font-bold text-sm leading-tight mt-0.5">
+                    {experience.meetingPoint || "Multiple options available"} {experience.dropoffTime && `\u2022 ${experience.dropoffTime}`}
+                  </p>
+                </div>
+              </div>
+
+              {experience.dropPoints && experience.dropPoints.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-border/50">
+                  <details className="group [&_summary::-webkit-details-marker]:hidden">
+                    <summary className="flex items-center justify-between cursor-pointer text-xs font-bold uppercase tracking-wider text-primary hover:text-primary/80 transition-colors list-none select-none">
+                      <span>Available Drop-off Locations ({experience.dropPoints.length})</span>
+                      <ChevronDown className="w-4 h-4 text-primary transition-transform duration-200 group-open:rotate-180" />
+                    </summary>
+                    <div className="mt-2.5 flex flex-col gap-2 text-xs font-semibold text-foreground/80 max-h-52 overflow-y-auto custom-scrollbar pt-1">
+                      {experience.dropPoints.map((point) => (
+                        <div key={point} className="flex items-center gap-2 bg-foreground/[0.03] border border-border/40 px-3 py-2 rounded-xl hover:bg-primary/5 hover:border-primary/20 transition-all">
+                          <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                          <span>{point}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                </div>
+              )}
             </div>
           )}
         </div>
       )}
-    </section>
+    </div>
   );
 }
+
 
 function ItinerarySection({ itinerary }: Readonly<{ itinerary: ItineraryDay[] }>) {
   if (!Array.isArray(itinerary) || itinerary.length === 0) return null;
@@ -810,7 +824,7 @@ export default async function ExperienceDetailPage({
                 <Clock className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-sm text-foreground/60 font-medium whitespace-nowrap">
+                <p className="text-sm text-foreground/60 font-medium">
                   Duration
                 </p>
                 <p className="font-bold">{exp.durationDays} Days</p>
@@ -822,7 +836,7 @@ export default async function ExperienceDetailPage({
                 <Mountain className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-sm text-foreground/60 font-medium whitespace-nowrap">
+                <p className="text-sm text-foreground/60 font-medium">
                   Max Altitude
                 </p>
                 <p className="font-bold">{exp.maxAltitude || "N/A"}</p>
@@ -834,7 +848,7 @@ export default async function ExperienceDetailPage({
                 <Footprints className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-sm text-foreground/60 font-medium whitespace-nowrap">
+                <p className="text-sm text-foreground/60 font-medium">
                   Total Distance (Both Ways)
                 </p>
                 <p className="font-bold">{exp.trekDistance || "N/A"}</p>
@@ -846,7 +860,7 @@ export default async function ExperienceDetailPage({
                 <CalendarDays className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-sm text-foreground/60 font-medium whitespace-nowrap">
+                <p className="text-sm text-foreground/60 font-medium">
                   Best Season
                 </p>
                 <p className="font-bold">
