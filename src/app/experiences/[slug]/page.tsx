@@ -1013,7 +1013,7 @@ export default async function ExperienceDetailPage({
         </div>
 
         {/* Right Column - Sticky Sidebar */}
-        <div className="lg:col-span-1 flex flex-col gap-6">
+        <div className="lg:col-span-1 lg:sticky lg:top-28 lg:h-fit flex flex-col gap-6 z-20">
           <BookingSidebarCard
             experienceId={exp.id}
             experienceTitle={exp.title}
