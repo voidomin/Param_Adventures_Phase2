@@ -97,7 +97,7 @@ export default function BookingSidebarCard({
 
 
   return (
-    <div className="bg-card border border-border rounded-2xl p-5 shadow-xl flex flex-col gap-5 sticky top-28">
+    <div className="bg-card border border-border rounded-2xl p-5 shadow-xl flex flex-col gap-5 sticky top-28 z-20">
       <div>
         <h3 className="text-lg font-heading font-bold text-foreground">
           Reserve Your Spot
