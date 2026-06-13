@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { generateSlug } from "@/lib/slugify";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { logActivity } from "@/lib/audit-logger";
 
 // GET /api/admin/experiences/[id]
 export async function GET(
@@ -167,6 +168,14 @@ export async function PUT(
       });
     });
 
+    await logActivity(
+      "EXPERIENCE_UPDATED",
+      result.userId,
+      "Experience",
+      id,
+      { title: updatedExperience.title, status: updatedExperience.status }
+    );
+
     revalidatePath("/", "layout");
 
     return NextResponse.json({
@@ -213,11 +222,25 @@ export async function DELETE(
         where: { id },
         data: { deletedAt: new Date() },
       });
+      await logActivity(
+        "EXPERIENCE_DELETED",
+        result.userId,
+        "Experience",
+        id,
+        { title: existingExp.title, deleteType: "soft" }
+      );
       revalidatePath("/", "layout");
       return NextResponse.json({ message: "Experience soft-deleted" });
     } else {
       // Hard Delete
       await prisma.experience.delete({ where: { id } });
+      await logActivity(
+        "EXPERIENCE_DELETED",
+        result.userId,
+        "Experience",
+        id,
+        { title: existingExp.title, deleteType: "hard" }
+      );
       revalidatePath("/", "layout");
       return NextResponse.json({ message: "Experience permanently deleted" });
     }

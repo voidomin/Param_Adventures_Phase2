@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
+import { logActivity } from "@/lib/audit-logger";
 
 import { z } from "zod";
 
@@ -65,6 +66,19 @@ export async function PATCH(
         experience: { select: { title: true, slug: true } },
       },
     });
+
+    await logActivity(
+      "REVIEW_MODERATED",
+      auth.userId,
+      "Review",
+      id,
+      {
+        experience: review.experience?.title || "N/A",
+        reviewer: review.user?.name || "N/A",
+        isFeaturedHome,
+        isFeaturedExperience
+      }
+    );
 
     revalidatePath("/", "layout");
 

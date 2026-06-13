@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
+import { logActivity } from "@/lib/audit-logger";
 
 // GET /api/admin/experiences/[id]/slots - List all slots for an experience
 export async function GET(
@@ -83,6 +84,14 @@ export async function POST(
         remainingCapacity: Number(capacity),
       },
     });
+
+    await logActivity(
+      "SLOT_CREATED",
+      auth.userId,
+      "Slot",
+      slot.id,
+      { date: slot.date, capacity: slot.capacity }
+    );
 
     return NextResponse.json({ slot }, { status: 201 });
   } catch (error) {

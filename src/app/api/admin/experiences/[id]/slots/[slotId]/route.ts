@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
+import { logActivity } from "@/lib/audit-logger";
 
 import { z } from "zod";
 
@@ -73,6 +74,14 @@ export async function PATCH(
       },
     });
 
+    await logActivity(
+      "SLOT_UPDATED",
+      auth.userId,
+      "Slot",
+      slotId,
+      { date: updatedSlot.date, capacity: updatedSlot.capacity }
+    );
+
     return NextResponse.json({ slot: updatedSlot });
   } catch (error) {
     console.error("Update slot error:", error);
@@ -119,6 +128,14 @@ export async function DELETE(
     await prisma.slot.delete({
       where: { id: slotId },
     });
+
+    await logActivity(
+      "SLOT_DELETED",
+      auth.userId,
+      "Slot",
+      slotId,
+      { date: slot.date }
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {

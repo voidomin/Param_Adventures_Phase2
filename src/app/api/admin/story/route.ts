@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
+import { logActivity } from "@/lib/audit-logger";
 import { z } from "zod";
 
 const storyBlockSchema = z.object({
@@ -72,6 +73,14 @@ export async function POST(request: NextRequest) {
         isActive: result.data.isActive ?? true,
       },
     });
+
+    await logActivity(
+      "STORY_BLOCK_CREATED",
+      auth.userId,
+      "StoryBlock",
+      block.id,
+      { title: block.title, type: block.type }
+    );
 
     revalidatePath("/our-story");
     return NextResponse.json({ block }, { status: 201 });

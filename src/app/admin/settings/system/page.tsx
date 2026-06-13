@@ -15,13 +15,9 @@ import {
   RefreshCw,
   AlertTriangle,
   CreditCard,
-  History,
   Image as ImageIcon,
-  User as UserIcon,
   Puzzle,
 } from "lucide-react";
-import Image from "next/image";
-import { getMediaUrl } from "@/lib/media/media-gateway";
 
 // Modular Components
 import { StatCard } from "@/components/admin/settings/Common";
@@ -50,22 +46,7 @@ interface Setting {
   value: string;
 }
 
-interface AuditLog {
-  id: string;
-  action: string;
-  targetId: string;
-  timestamp: string;
-  actor?: {
-    name: string;
-    email: string;
-    avatarUrl?: string;
-  };
-  metadata?: {
-    from?: string | number | null;
-    to?: string | number | null;
-    ip?: string;
-  };
-}
+
 
 interface DBStats {
   status: string;
@@ -88,10 +69,6 @@ export default function SystemSettingsPage() {
   const [siteSettings, setSiteSettings] = useState<Setting[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [isLogsLoading, setIsLogsLoading] = useState(false);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [hasMoreLogs, setHasMoreLogs] = useState(true);
   const [activeTab, setActiveTab] = useState("communications");
   const [dbStats, setDbStats] = useState<DBStats | null>(null);
 
@@ -126,39 +103,14 @@ export default function SystemSettingsPage() {
     }
   }, [isWhitelisted]);
 
-  const fetchLogs = useCallback(async (cursor?: string) => {
-    if (!isWhitelisted) return;
-    setIsLogsLoading(true);
-    try {
-      const url = new URL("/api/admin/audit-logs", globalThis.origin);
-      if (cursor) url.searchParams.set("cursor", cursor);
-      
-      const res = await fetch(url);
-      const data = await res.json();
-      
-      if (cursor) {
-        setAuditLogs(prev => [...prev, ...data.logs]);
-      } else {
-        setAuditLogs(data.logs);
-      }
-      setNextCursor(data.nextCursor);
-      setHasMoreLogs(!!data.nextCursor);
-    } catch (err) {
-      console.error("Audit log fetch error:", err);
-    } finally {
-      setIsLogsLoading(false);
-    }
-  }, [isWhitelisted]);
-
   useEffect(() => {
     if (isWhitelisted) {
       fetchData();
-      fetchLogs();
       fetchDbStats();
     } else if (!authLoading && user) {
        setIsLoading(false);
     }
-  }, [isWhitelisted, fetchData, fetchLogs, fetchDbStats, authLoading, user]);
+  }, [isWhitelisted, fetchData, fetchDbStats, authLoading, user]);
 
   const updateSetting = (type: "PLATFORM" | "SITE", key: string, value: string) => {
     if (type === "PLATFORM") {
@@ -189,19 +141,7 @@ export default function SystemSettingsPage() {
     return list.find(s => s.key === key)?.value || "";
   };
 
-  const getAuditorAvatarUrl = (path?: string) => {
-    if (!path) return "";
-    return getMediaUrl(
-      path, 
-      getVal("PLATFORM", "media_provider") as "CLOUDINARY" | "AWS_S3" | "LOCAL", 
-      {
-        cloudinaryCloudName: getVal("PLATFORM", "cloudinary_cloud_name"),
-        s3Bucket: getVal("PLATFORM", "s3_bucket"),
-        s3Region: getVal("PLATFORM", "s3_region"),
-      },
-      {}
-    );
-  };
+
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -216,7 +156,6 @@ export default function SystemSettingsPage() {
       });
 
       if (res.ok) {
-        await fetchLogs();
         globalThis.alert?.("Settings updated successfully!");
       } else {
         const err = await res.json();
@@ -267,7 +206,6 @@ export default function SystemSettingsPage() {
     { id: "security", label: "Security & Keys", icon: Lock },
     { id: "integrations", label: "Integrations", icon: Puzzle },
     { id: "system", label: "Core Platform", icon: Database },
-    { id: "logs", label: "Audit Logs", icon: History },
   ];
 
   return (
@@ -386,67 +324,7 @@ export default function SystemSettingsPage() {
               {activeTab === "integrations" && <IntegrationsTab getVal={getVal} updateSetting={updateSetting} />}
               {activeTab === "system" && <SystemTab getVal={getVal} updateSetting={updateSetting} />}
 
-              {activeTab === "logs" && (
-                <div className="space-y-8 animate-in slide-in-from-left-4 duration-300">
-                  <div className="flex items-center justify-between pb-4 border-b border-border/50">
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 rounded-2xl bg-primary/10 text-primary">
-                        <History className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <h3 className="text-xl font-bold font-heading">Audit Trail</h3>
-                        <p className="text-sm text-foreground/50">Cryptographic log of all architectural mutations.</p>
-                      </div>
-                    </div>
-                  </div>
 
-                  <div className="space-y-4">
-                    {auditLogs.map((log) => (
-                      <div key={log.id} className="group p-5 rounded-2xl border border-border hover:border-primary/30 transition-all hover:bg-primary/[0.01]">
-                        <div className="flex items-start justify-between">
-                          <div className="flex gap-4">
-                            <div className="w-10 h-10 rounded-full bg-foreground/5 border border-border overflow-hidden relative group-hover:scale-110 transition-transform">
-                              {log.actor?.avatarUrl && (
-                                <Image 
-                                  src={getAuditorAvatarUrl(log.actor.avatarUrl)} 
-                                  alt="" 
-                                  fill
-                                  className="object-cover"
-                                />
-                              )}
-                              {!log.actor?.avatarUrl && <UserIcon className="w-full h-full p-2.5 text-foreground/20" />}
-                            </div>
-                            <div className="space-y-1">
-                              <p className="text-xs font-black uppercase tracking-widest text-primary">{log.action.replace("_", " ")}</p>
-                              <p className="text-sm font-bold">{log.actor?.name || "System Automated"} <span className="text-foreground/40 font-medium">did an action on</span> {log.targetId}</p>
-                              <p className="text-[10px] text-foreground/30 font-medium">{new Date(log.timestamp).toLocaleString("en-IN", { dateStyle: 'full', timeStyle: 'short' })}</p>
-                            </div>
-                          </div>
-                          
-                          {log.metadata?.to !== undefined && (
-                             <div className="text-right space-y-1">
-                                <div className="px-3 py-1 rounded-lg bg-foreground/5 text-[10px] font-bold">
-                                   Modified Value: <span className="text-primary">{maskValue(log.targetId, log.metadata.to)}</span>
-                                </div>
-                             </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                    
-                    {hasMoreLogs && (
-                      <button 
-                        onClick={() => fetchLogs(nextCursor!)}
-                        disabled={isLogsLoading}
-                        className="w-full py-4 text-sm font-bold text-foreground/40 hover:text-primary transition-colors flex items-center justify-center gap-2"
-                      >
-                        {isLogsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                        Retrieve Older Mutations
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
 
             </div>
           </main>

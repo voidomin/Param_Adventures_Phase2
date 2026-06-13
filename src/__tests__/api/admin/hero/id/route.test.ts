@@ -151,6 +151,7 @@ describe("/api/admin/hero/[id]", () => {
 
   it("DELETE removes slide and returns success", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockFindUnique.mockResolvedValue({ id: "h1", title: "Slide 1" } as any);
     mockDelete.mockResolvedValue({ id: "h1" } as any);
 
     const response = await DELETE({} as NextRequest, {
@@ -175,6 +176,7 @@ describe("/api/admin/hero/[id]", () => {
 
   it("DELETE returns 500 on failure", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockFindUnique.mockResolvedValue({ id: "h1", title: "Slide 1" } as any);
     mockDelete.mockRejectedValue(new Error("db fail"));
 
     const response = await DELETE({} as NextRequest, {
