@@ -108,7 +108,7 @@ export default function TripManifestPage() {
           return [
             {
               "Trek/Experience": trip.experience.title,
-              "Departure Date": new Date(trip.date).toLocaleDateString("en-IN"),
+              "Departure Date": new Date(trip.date),
               "Booking ID": booking.id,
               "Lead Booker Name": booking.user.name,
               "Lead Booker Email": booking.user.email,
@@ -126,14 +126,14 @@ export default function TripManifestPage() {
               "Pickup Point": "",
               "Drop Point": "",
               "Price Paid (INR)": Number(booking.totalPrice),
-              "Booking Date": new Date(booking.createdAt).toLocaleDateString("en-IN"),
+              "Booking Date": new Date(booking.createdAt),
             },
           ];
         }
 
         return booking.participants.map((p) => ({
           "Trek/Experience": trip.experience.title,
-          "Departure Date": new Date(trip.date).toLocaleDateString("en-IN"),
+          "Departure Date": new Date(trip.date),
           "Booking ID": booking.id,
           "Lead Booker Name": booking.user.name,
           "Lead Booker Email": booking.user.email,
@@ -151,13 +151,13 @@ export default function TripManifestPage() {
           "Pickup Point": p.pickupPoint || "",
           "Drop Point": p.dropPoint || "",
           "Price Paid (INR)": Number(booking.totalPrice),
-          "Booking Date": new Date(booking.createdAt).toLocaleDateString("en-IN"),
+          "Booking Date": new Date(booking.createdAt),
         }));
       });
 
       // Dynamically import xlsx (SheetJS)
       const XLSX = await import("xlsx");
-      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const worksheet = XLSX.utils.json_to_sheet(rows, { cellDates: true, dateNF: "yyyy-mm-dd" });
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Manifest");
 
@@ -167,9 +167,11 @@ export default function TripManifestPage() {
         return acc;
       }, {} as Record<string, number>);
 
-      rows.forEach((row: Record<string, string | number>) => {
+      rows.forEach((row: Record<string, any>) => {
         Object.keys(row).forEach((key) => {
-          const valStr = String(row[key] ?? "");
+          const valStr = row[key] instanceof Date
+            ? row[key].toISOString().split("T")[0]
+            : String(row[key] ?? "");
           if (valStr.length > maxLens[key]) {
             maxLens[key] = valStr.length;
           }

@@ -12,10 +12,7 @@ import {
   Map,
   Users,
   LogOut,
-  Tags,
   Image as ImageIcon,
-  MonitorPlay,
-  BookOpen,
   PenLine,
   ClipboardList,
   Star,
@@ -24,6 +21,7 @@ import {
   Menu,
   X as CloseIcon,
   ArrowLeft,
+  Sliders,
 } from "lucide-react";
 
 export default function AdminLayout({
@@ -95,7 +93,15 @@ export default function AdminLayout({
     );
   }
 
-  const navItems = [
+  interface NavItem {
+    name: string;
+    href: string;
+    icon: React.ElementType;
+    permission?: string | string[];
+    role?: string;
+  }
+
+  const navItems: NavItem[] = [
     {
       name: "Dashboard",
       href: "/admin",
@@ -109,10 +115,10 @@ export default function AdminLayout({
       role: "SUPER_ADMIN",
     },
     {
-      name: "Categories",
-      href: "/admin/categories",
-      icon: Tags,
-      permission: "trip:manage-categories",
+      name: "Customization",
+      href: "/admin/customization",
+      icon: Sliders,
+      permission: ["trip:create", "trip:manage-categories"],
     },
     {
       name: "Experiences",
@@ -124,18 +130,6 @@ export default function AdminLayout({
       name: "Media Library",
       href: "/admin/media",
       icon: ImageIcon,
-      permission: "trip:create",
-    },
-    {
-      name: "Hero Slider",
-      href: "/admin/hero",
-      icon: MonitorPlay,
-      permission: "trip:create",
-    },
-    {
-      name: "Our Story",
-      href: "/admin/story",
-      icon: BookOpen,
       permission: "trip:create",
     },
     {
@@ -180,13 +174,7 @@ export default function AdminLayout({
       icon: ScrollText,
       role: "SUPER_ADMIN",
     },
-  ] satisfies {
-    name: string;
-    href: string;
-    icon: React.ElementType;
-    permission?: string | string[];
-    role?: string;
-  }[];
+  ];
 
   return (
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
@@ -272,7 +260,8 @@ export default function AdminLayout({
               item.href === "/admin"
                 ? pathname === "/admin"
                 : pathname === item.href ||
-                  pathname.startsWith(`${item.href}/`);
+                  (pathname.startsWith(item.href) && item.href !== "/admin");
+
             return (
               <Link
                 key={item.href}

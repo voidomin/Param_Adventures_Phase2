@@ -608,17 +608,17 @@ export default function AdminBookingsPage() {
         "Customer Email": b.user?.email || "—",
         "Customer Phone": b.user?.phoneNumber || "—",
         "Experience Title": b.experience?.title || "—",
-        "Slot Date": b.slot ? new Date(b.slot.date).toLocaleDateString("en-IN") : "—",
+        "Slot Date": b.slot ? new Date(b.slot.date) : "—",
         "Pax Count": b.participantCount,
         "Total Paid (INR)": Number(b.totalPrice),
         "Booking Status": b.bookingStatus,
         "Payment Status": b.paymentStatus,
-        "Booking Date": new Date(b.createdAt).toLocaleDateString("en-IN"),
+        "Booking Date": new Date(b.createdAt),
       }));
 
       // Dynamically import xlsx (SheetJS)
       const XLSX = await import("xlsx");
-      const worksheet = XLSX.utils.json_to_sheet(rows);
+      const worksheet = XLSX.utils.json_to_sheet(rows, { cellDates: true, dateNF: "yyyy-mm-dd" });
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Bookings");
 
@@ -628,9 +628,11 @@ export default function AdminBookingsPage() {
         return acc;
       }, {} as Record<string, number>);
 
-      rows.forEach((row: Record<string, string | number>) => {
+      rows.forEach((row: Record<string, any>) => {
         Object.keys(row).forEach((key) => {
-          const valStr = String(row[key]);
+          const valStr = row[key] instanceof Date
+            ? row[key].toISOString().split("T")[0]
+            : String(row[key] ?? "");
           if (valStr.length > maxLens[key]) {
             maxLens[key] = valStr.length;
           }
@@ -742,12 +744,13 @@ export default function AdminBookingsPage() {
                 className="bg-card border border-border rounded-2xl p-5 space-y-4 shadow-sm relative hover:shadow-md transition-all duration-200"
               >
                 {/* Header: Customer and Date */}
-                <div 
-                  className="flex items-start justify-between gap-2 cursor-pointer hover:opacity-80 transition-all"
+                <button
+                  type="button"
+                  className="w-full text-left bg-transparent border-0 p-0 flex items-start justify-between gap-2 cursor-pointer hover:opacity-80 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
                   onClick={() => setActiveDetailsBooking(b)}
                   title="Click to view details"
                 >
-                  <div>
+                  <div className="flex-1">
                     <p className="font-bold text-foreground text-sm">
                       {b.user.name}
                     </p>
@@ -756,13 +759,13 @@ export default function AdminBookingsPage() {
                       <p className="text-xs text-foreground/40">{b.user.phoneNumber}</p>
                     )}
                   </div>
-                  <div className="text-right">
+                  <div className="text-right shrink-0">
                     <p className="text-xs text-foreground/40">Booked On</p>
                     <p className="text-xs font-medium text-foreground/75">
                       {formatDate(b.createdAt)}
                     </p>
                   </div>
-                </div>
+                </button>
 
                 {/* Details */}
                 <div className="grid grid-cols-2 gap-3 text-xs border-t border-b border-border/50 py-3">
@@ -1093,7 +1096,7 @@ export default function AdminBookingsPage() {
                 checked={hideFinishedTrips}
                 onChange={(e) => setHideFinishedTrips(e.target.checked)}
                 className="w-4 h-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer"
-              />
+              />{" "}
               Hide Completed Trips
             </label>
             <div className="flex items-center gap-2">

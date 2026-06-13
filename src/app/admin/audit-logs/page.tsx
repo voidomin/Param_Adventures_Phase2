@@ -134,18 +134,20 @@ export default function AuditLogsPage() {
           "Target Type": log.targetType,
           "Target ID": log.targetId || "N/A",
           "Actor ID": log.actorId || "System / Automated",
-          "Timestamp": new Date(log.timestamp).toLocaleString("en-IN"),
+          "Timestamp": new Date(log.timestamp),
           "Metadata Payload": log.metadata ? JSON.stringify(log.metadata) : "N/A",
         }));
 
-        const worksheet = XLSX.utils.json_to_sheet(rows);
+        const worksheet = XLSX.utils.json_to_sheet(rows, { cellDates: true, dateNF: "yyyy-mm-dd hh:mm:ss" });
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Audit Trail");
 
         // Auto-fit column widths
         const maxLen = rows.reduce((acc: any, row: any) => {
           Object.keys(row).forEach((key) => {
-            const val = String(row[key]);
+            const val = row[key] instanceof Date
+              ? row[key].toISOString().replace("T", " ").substring(0, 19)
+              : String(row[key] ?? "");
             acc[key] = Math.max(acc[key] || 10, val.length);
           });
           return acc;
