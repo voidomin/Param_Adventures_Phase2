@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/api-auth", () => ({ authorizeRequest: vi.fn() }));
+vi.mock("@/lib/audit-logger", () => ({ logActivity: vi.fn() }));
 vi.mock("@/lib/db", () => ({
   prisma: {
     blog: {
@@ -14,15 +15,18 @@ vi.mock("@/lib/db", () => ({
 import { DELETE } from "@/app/api/admin/blogs/[id]/route";
 import { revalidatePath } from "next/cache";
 import { authorizeRequest } from "@/lib/api-auth";
+import { logActivity } from "@/lib/audit-logger";
 import { prisma } from "@/lib/db";
 
 const mockAuthorizeRequest = vi.mocked(authorizeRequest);
+const mockLogActivity = vi.mocked(logActivity);
 const mockBlogUpdate = vi.mocked(prisma.blog.update);
 const mockRevalidatePath = vi.mocked(revalidatePath);
 
 describe("DELETE /api/admin/blogs/[id]", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockLogActivity.mockResolvedValue(undefined as any);
   });
 
   it("returns auth response when unauthorized", async () => {
@@ -39,8 +43,8 @@ describe("DELETE /api/admin/blogs/[id]", () => {
   });
 
   it("soft deletes blog and revalidates", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
-    mockBlogUpdate.mockResolvedValue({ id: "b1", status: "DRAFT" } as any);
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "admin-1" } as any);
+    mockBlogUpdate.mockResolvedValue({ id: "b1", status: "DRAFT", title: "My Blog" } as any);
 
     const response = await DELETE({} as NextRequest, {
       params: Promise.resolve({ id: "b1" }),
@@ -57,6 +61,13 @@ describe("DELETE /api/admin/blogs/[id]", () => {
           deletedAt: expect.any(Date),
         }),
       }),
+    );
+    expect(mockLogActivity).toHaveBeenCalledWith(
+      "BLOG_DELETED",
+      "admin-1",
+      "Blog",
+      "b1",
+      { title: "My Blog", deletedBy: "ADMIN" }
     );
     expect(mockRevalidatePath).toHaveBeenCalledWith("/", "layout");
   });

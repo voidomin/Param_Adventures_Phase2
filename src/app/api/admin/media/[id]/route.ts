@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authorizeRequest } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
 import { mediaFactory } from "@/lib/media/factory";
+import { logActivity } from "@/lib/audit-logger";
 
 async function deleteFromCloudStorage(url: string, type: "IMAGE" | "VIDEO") {
   try {
@@ -63,6 +64,14 @@ export async function DELETE(
     await prisma.image.delete({
       where: { id },
     });
+
+    await logActivity(
+      "MEDIA_DELETED",
+      auth.userId,
+      "Image",
+      id,
+      { url: image.originalUrl, type: image.type }
+    );
 
     return NextResponse.json({ success: true, deleteSuccess });
   } catch (error: unknown) {

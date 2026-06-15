@@ -7,6 +7,8 @@ vi.mock("@/lib/api-auth", () => ({
   authorizeRequest: vi.fn(),
 }));
 
+vi.mock("@/lib/audit-logger", () => ({ logActivity: vi.fn() }));
+
 vi.mock("@/services/settings.service", () => ({
   SettingsService: {
     getMergedSettings: vi.fn(),
@@ -16,8 +18,10 @@ vi.mock("@/services/settings.service", () => ({
 }));
 
 import { DELETE, GET, PUT } from "@/app/api/admin/settings/route";
+import { logActivity } from "@/lib/audit-logger";
 
 const mockAuthorizeRequest = vi.mocked(authorizeRequest);
+const mockLogActivity = vi.mocked(logActivity);
 const mockGetMergedSettings = vi.mocked(SettingsService.getMergedSettings);
 const mockUpdateSettings = vi.mocked(SettingsService.updateSettings);
 const mockDeleteSetting = vi.mocked(SettingsService.deleteSetting);
@@ -32,6 +36,7 @@ const createJsonRequest = (url: string, body: unknown) =>
 describe("/api/admin/settings", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockLogActivity.mockResolvedValue(undefined as any);
   });
 
   it("GET returns 403 when unauthorized", async () => {
@@ -99,7 +104,7 @@ describe("/api/admin/settings", () => {
   });
 
   it("DELETE delegates deletion to SettingsService", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "admin-1" } as any);
     mockDeleteSetting.mockResolvedValue({ count: 1 } as any);
 
     const response = await DELETE(
@@ -110,6 +115,13 @@ describe("/api/admin/settings", () => {
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
     expect(mockDeleteSetting).toHaveBeenCalledWith("test_setting");
+    expect(mockLogActivity).toHaveBeenCalledWith(
+      "SETTING_DELETED",
+      "admin-1",
+      "SiteSetting",
+      "test_setting",
+      { key: "test_setting" }
+    );
   });
 
   it("GET returns 500 on service failure", async () => {

@@ -4,6 +4,7 @@ import { NextRequest } from "next/server";
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/auth", () => ({ verifyAccessToken: vi.fn() }));
 vi.mock("@/lib/sanitize", () => ({ sanitizeEditorContent: vi.fn() }));
+vi.mock("@/lib/audit-logger", () => ({ logActivity: vi.fn() }));
 vi.mock("@/lib/db", () => ({
   prisma: {
     blog: {
@@ -17,11 +18,13 @@ import { DELETE, PATCH } from "@/app/api/user/blogs/[id]/route";
 import { revalidatePath } from "next/cache";
 import { verifyAccessToken } from "@/lib/auth";
 import { sanitizeEditorContent } from "@/lib/sanitize";
+import { logActivity } from "@/lib/audit-logger";
 import { prisma } from "@/lib/db";
 
 const mockRevalidatePath = vi.mocked(revalidatePath);
 const mockVerifyAccessToken = vi.mocked(verifyAccessToken);
 const mockSanitizeEditorContent = vi.mocked(sanitizeEditorContent);
+const mockLogActivity = vi.mocked(logActivity);
 const mockBlogFindUnique = vi.mocked(prisma.blog.findUnique);
 const mockBlogUpdate = vi.mocked(prisma.blog.update);
 
@@ -41,6 +44,7 @@ const deleteRequest = (token?: string) =>
 describe("/api/user/blogs/[id] route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockLogActivity.mockResolvedValue(undefined as any);
   });
 
   describe("PATCH", () => {
@@ -255,6 +259,7 @@ describe("/api/user/blogs/[id] route", () => {
         id: "blog-1",
         authorId: "u1",
         status: "DRAFT",
+        title: "User draft blog title",
       } as any);
       mockBlogUpdate.mockResolvedValue({ id: "blog-1" } as any);
 
@@ -270,6 +275,13 @@ describe("/api/user/blogs/[id] route", () => {
           where: { id: "blog-1" },
           data: { deletedAt: expect.any(Date) },
         }),
+      );
+      expect(mockLogActivity).toHaveBeenCalledWith(
+        "BLOG_DELETED",
+        "u1",
+        "Blog",
+        "blog-1",
+        { title: "User draft blog title", deletedBy: "AUTHOR" }
       );
       expect(mockRevalidatePath).toHaveBeenCalledWith("/", "layout");
     });

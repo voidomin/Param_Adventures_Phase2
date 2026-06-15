@@ -5,6 +5,8 @@ vi.mock("@/lib/api-auth", () => ({
   authorizeRequest: vi.fn(),
 }));
 
+vi.mock("@/lib/audit-logger", () => ({ logActivity: vi.fn() }));
+
 vi.mock("@/lib/db", () => ({
   prisma: {
     user: {
@@ -23,9 +25,11 @@ vi.mock("@/lib/db", () => ({
 
 import { DELETE, PATCH, POST } from "@/app/api/admin/trips/[id]/assign/route";
 import { authorizeRequest } from "@/lib/api-auth";
+import { logActivity } from "@/lib/audit-logger";
 import { prisma } from "@/lib/db";
 
 const mockAuthorizeRequest = vi.mocked(authorizeRequest);
+const mockLogActivity = vi.mocked(logActivity);
 const mockUserFindUnique = vi.mocked(prisma.user.findUnique);
 const mockSlotFindUnique = vi.mocked(prisma.slot.findUnique);
 const mockSlotUpdate = vi.mocked(prisma.slot.update);
@@ -41,6 +45,7 @@ const createJsonRequest = (body: unknown, url = "http://localhost/api/admin/trip
 describe("/api/admin/trips/[id]/assign", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockLogActivity.mockResolvedValue(undefined as any);
   });
 
   it("PATCH returns auth response when unauthorized", async () => {
@@ -299,6 +304,13 @@ describe("/api/admin/trips/[id]/assign", () => {
     expect(mockTripDeleteMany).toHaveBeenCalledWith({
       where: { slotId: "slot-1", trekLeadId: "lead-1" },
     });
+    expect(mockLogActivity).toHaveBeenCalledWith(
+      "TREK_LEAD_UNASSIGNED",
+      "admin-1",
+      "TripAssignment",
+      "slot-1",
+      { trekLeadId: "lead-1" }
+    );
   });
 
   it("DELETE returns 403 when caller cannot modify slot", async () => {

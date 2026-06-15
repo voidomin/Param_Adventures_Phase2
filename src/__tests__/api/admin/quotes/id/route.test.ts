@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 vi.mock("@/lib/api-auth", () => ({ authorizeRequest: vi.fn() }));
+vi.mock("@/lib/audit-logger", () => ({ logActivity: vi.fn() }));
 vi.mock("@/lib/db", () => ({
   prisma: {
     adventureQuote: {
@@ -14,9 +15,11 @@ vi.mock("@/lib/db", () => ({
 
 import { DELETE, GET, PUT } from "@/app/api/admin/quotes/[id]/route";
 import { authorizeRequest } from "@/lib/api-auth";
+import { logActivity } from "@/lib/audit-logger";
 import { prisma } from "@/lib/db";
 
 const mockAuthorizeRequest = vi.mocked(authorizeRequest);
+const mockLogActivity = vi.mocked(logActivity);
 const mockFindUnique = vi.mocked(prisma.adventureQuote.findUnique);
 const mockUpdate = vi.mocked(prisma.adventureQuote.update);
 const mockDelete = vi.mocked(prisma.adventureQuote.delete);
@@ -29,6 +32,7 @@ const createRequest = (body?: unknown) =>
 describe("/api/admin/quotes/[id] route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockLogActivity.mockResolvedValue(undefined as any);
   });
 
   it("GET returns 403 when unauthorized", async () => {
@@ -149,8 +153,20 @@ describe("/api/admin/quotes/[id] route", () => {
     expect(response.status).toBe(403);
   });
 
-  it("DELETE removes quote", async () => {
+  it("DELETE returns 404 when quote is not found", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockFindUnique.mockResolvedValue(null);
+
+    const response = await DELETE({} as NextRequest, {
+      params: Promise.resolve({ id: "q1" }),
+    });
+
+    expect(response.status).toBe(404);
+  });
+
+  it("DELETE removes quote", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "admin-1" } as any);
+    mockFindUnique.mockResolvedValue({ id: "q1", author: "Mark Twain", text: "Go." } as any);
     mockDelete.mockResolvedValue({ id: "q1" } as any);
 
     const response = await DELETE({} as NextRequest, {
@@ -161,10 +177,18 @@ describe("/api/admin/quotes/[id] route", () => {
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
     expect(mockDelete).toHaveBeenCalledWith({ where: { id: "q1" } });
+    expect(mockLogActivity).toHaveBeenCalledWith(
+      "QUOTE_DELETED",
+      "admin-1",
+      "AdventureQuote",
+      "q1",
+      { author: "Mark Twain", text: "Go." }
+    );
   });
 
   it("returns 500 when delete fails", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockFindUnique.mockResolvedValue({ id: "q1" } as any);
     mockDelete.mockRejectedValue(new Error("db down"));
 
     const response = await DELETE({} as NextRequest, {

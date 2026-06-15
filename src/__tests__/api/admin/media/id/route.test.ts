@@ -6,6 +6,7 @@ const { mockDeleteFromCloud } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/lib/api-auth", () => ({ authorizeRequest: vi.fn() }));
+vi.mock("@/lib/audit-logger", () => ({ logActivity: vi.fn() }));
 vi.mock("@/lib/media/factory", () => ({
   mediaFactory: {
     getProvider: vi.fn().mockResolvedValue({
@@ -24,15 +25,18 @@ vi.mock("@/lib/db", () => ({
 
 import { DELETE } from "@/app/api/admin/media/[id]/route";
 import { authorizeRequest } from "@/lib/api-auth";
+import { logActivity } from "@/lib/audit-logger";
 import { prisma } from "@/lib/db";
 
 const mockAuthorizeRequest = vi.mocked(authorizeRequest);
+const mockLogActivity = vi.mocked(logActivity);
 const mockFindUnique = vi.mocked(prisma.image.findUnique);
 const mockDelete = vi.mocked(prisma.image.delete);
 
 describe("DELETE /api/admin/media/[id]", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockLogActivity.mockResolvedValue(undefined as any);
   });
 
   it("returns 403 when unauthorized", async () => {
@@ -61,7 +65,7 @@ describe("DELETE /api/admin/media/[id]", () => {
   });
 
   it("deletes record and returns deleteSuccess true", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "admin-1" } as any);
     mockFindUnique.mockResolvedValue({
       id: "img-1",
       originalUrl: "https://bucket.s3.ap-south-1.amazonaws.com/uploads/a.jpg",
@@ -79,10 +83,17 @@ describe("DELETE /api/admin/media/[id]", () => {
     expect(data).toEqual({ success: true, deleteSuccess: true });
     expect(mockDeleteFromCloud).toHaveBeenCalledWith("uploads/a.jpg");
     expect(mockDelete).toHaveBeenCalledWith({ where: { id: "img-1" } });
+    expect(mockLogActivity).toHaveBeenCalledWith(
+      "MEDIA_DELETED",
+      "admin-1",
+      "Image",
+      "img-1",
+      { url: "https://bucket.s3.ap-south-1.amazonaws.com/uploads/a.jpg", type: "IMAGE" }
+    );
   });
 
   it("still deletes record when cloud deletion fails", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "admin-1" } as any);
     mockFindUnique.mockResolvedValue({
       id: "img-1",
       originalUrl: "https://bucket.s3.ap-south-1.amazonaws.com/uploads/a.jpg",
@@ -99,6 +110,13 @@ describe("DELETE /api/admin/media/[id]", () => {
     expect(response.status).toBe(200);
     expect(data).toEqual({ success: true, deleteSuccess: false });
     expect(mockDelete).toHaveBeenCalledTimes(1);
+    expect(mockLogActivity).toHaveBeenCalledWith(
+      "MEDIA_DELETED",
+      "admin-1",
+      "Image",
+      "img-1",
+      { url: "https://bucket.s3.ap-south-1.amazonaws.com/uploads/a.jpg", type: "IMAGE" }
+    );
   });
 
   it("returns 500 on unexpected error", async () => {

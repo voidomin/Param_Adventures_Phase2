@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
+import { logActivity } from "@/lib/audit-logger";
 import { z } from "zod";
 
 const managerAssignSchema = z.object({
@@ -233,6 +234,14 @@ export async function DELETE(
         trekLeadId: userId,
       },
     });
+
+    await logActivity(
+      "TREK_LEAD_UNASSIGNED",
+      auth.userId,
+      "TripAssignment",
+      slotId,
+      { trekLeadId: userId }
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {
