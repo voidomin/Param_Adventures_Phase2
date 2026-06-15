@@ -127,12 +127,13 @@ export default function SlotsManagementPage() {
   }
 
   async function handleDelete(slot: Slot) {
-    if (
-      !globalThis.confirm(
-        `Delete slot on ${formatDate(slot.date)}? This cannot be undone.`,
-      )
-    )
-      return;
+    const booked = bookedCount(slot);
+    let message = `Delete slot on ${formatDate(slot.date)}? This cannot be undone.`;
+    if (booked > 0) {
+      message = `Warning: This trip has ${booked} booking(s). Deleting this trip will disassociate all bookings from this trip. This cannot be undone.\n\nAre you sure you want to proceed?`;
+    }
+
+    if (!globalThis.confirm(message)) return;
 
     try {
       const res = await fetch(
@@ -140,7 +141,7 @@ export default function SlotsManagementPage() {
         { method: "DELETE" },
       );
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.error || "Failed to delete slot.");
       fetchSlots();
     } catch (err: unknown) {
       globalThis.alert(
@@ -306,13 +307,8 @@ export default function SlotsManagementPage() {
                         </button>
                         <button
                           onClick={() => handleDelete(slot)}
-                          disabled={booked > 0}
-                          className="p-1.5 hover:bg-red-500/10 rounded-lg transition-colors text-foreground/50 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed"
-                          title={
-                            booked > 0
-                              ? "Cannot delete: has bookings"
-                              : "Delete"
-                          }
+                          className="p-1.5 hover:bg-red-500/10 rounded-lg transition-colors text-foreground/50 hover:text-red-500"
+                          title="Delete"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>

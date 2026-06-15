@@ -100,41 +100,58 @@ export async function DELETE(
   const auth = await authorizeRequest(request, ["trip:create", "trip:edit"]);
   if (!auth.authorized) return auth.response;
 
+  // Restrict slot deletion strictly to SUPER_ADMIN and ADMIN roles
+  if (auth.roleName !== "SUPER_ADMIN" && auth.roleName !== "ADMIN") {
+    return NextResponse.json(
+      { error: "Insufficient permissions. Only administrators can delete trips." },
+      { status: 403 },
+    );
+  }
+
   try {
     const { id, slotId } = await params;
 
     const slot = await prisma.slot.findUnique({
       where: { id: slotId },
-      include: {
-        _count: {
-          select: {
-            bookings: true,
-          },
-        },
-      },
     });
 
     if (slot?.experienceId !== id) {
       return NextResponse.json({ error: "Slot not found" }, { status: 404 });
     }
 
-    if (slot._count.bookings > 0) {
-      return NextResponse.json(
-        { error: "Cannot delete a slot that has bookings associated with it." },
-        { status: 409 },
-      );
-    }
-
-    await prisma.slot.delete({
-      where: { id: slotId },
+    // Fetch associated bookings before deletion for audit logging
+    const associatedBookings = await prisma.booking.findMany({
+      where: { slotId },
+      select: { id: true, userId: true },
     });
+
+    // Safely delete the slot and all related assignments/logs, and disassociate bookings
+    await prisma.$transaction([
+      prisma.tripAssignment.deleteMany({
+        where: { slotId },
+      }),
+      prisma.tripLog.deleteMany({
+        where: { slotId },
+      }),
+      prisma.booking.updateMany({
+        where: { slotId },
+        data: { slotId: null },
+      }),
+      prisma.slot.delete({
+        where: { id: slotId },
+      }),
+    ]);
 
     await logActivity(
       "SLOT_DELETED",
       auth.userId,
       "Slot",
       slotId,
-      { date: slot.date }
+      {
+        date: slot.date,
+        disassociatedBookingsCount: associatedBookings.length,
+        disassociatedBookingIds: associatedBookings.map((b) => b.id),
+      }
     );
 
     return NextResponse.json({ success: true });

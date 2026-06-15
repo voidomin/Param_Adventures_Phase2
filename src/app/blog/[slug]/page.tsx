@@ -96,6 +96,8 @@ export default async function BlogArticlePage({ params }: Props) {
               location: true,
               basePrice: true,
               images: true,
+              status: true,
+              deletedAt: true,
             },
           },
         },
@@ -256,7 +258,7 @@ export default async function BlogArticlePage({ params }: Props) {
         </div>
 
         {/* Experience CTA */}
-        {blog.experience && (
+        {blog.experience && blog.experience.status !== "DRAFT" && blog.experience.status !== "ARCHIVED" && !blog.experience.deletedAt && (
           <div className="bg-card border border-border rounded-2xl p-6 flex flex-col sm:flex-row items-start sm:items-center gap-6">
             <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-muted">
               {blog.experience.images[0] ? (

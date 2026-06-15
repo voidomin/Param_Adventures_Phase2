@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/db";
 import { withBuildSafety } from "@/lib/db-utils";
 import { getMediaUrl } from "@/lib/media/media-gateway";
+import Link from "next/link";
 
-import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { 
   Mountain, 
@@ -22,7 +22,8 @@ import {
   ChevronDown, 
   CalendarDays,
   Footprints,
-  Utensils
+  Utensils,
+  ArrowLeft
 } from "lucide-react";
 import type { MediaSettings } from "@/types/media";
 import { getPlainTextFromJSON } from "@/lib/utils/rich-text";
@@ -58,12 +59,16 @@ export async function generateMetadata({
           cardImage: true,
           images: true,
           location: true,
+          status: true,
+          deletedAt: true,
         },
       }),
     null,
   );
 
-  if (!experience) return { title: "Experience Not Found" };
+  if (!experience || experience.status === "DRAFT" || experience.status === "ARCHIVED" || !!experience.deletedAt) {
+    return { title: "Experience Not Found" };
+  }
 
   const ogImage =
     experience.coverImage ||
@@ -623,8 +628,109 @@ export default async function ExperienceDetailPage({
     null,
   );
 
-  if (!experience) {
-    notFound();
+  if (!experience || experience.status === "DRAFT" || experience.status === "ARCHIVED" || !!experience.deletedAt) {
+    const activeExperiences = await withBuildSafety(
+      () =>
+        prisma.experience.findMany({
+          where: {
+            status: "PUBLISHED",
+            deletedAt: null,
+          },
+          take: 3,
+          orderBy: { isFeatured: "desc" },
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            location: true,
+            basePrice: true,
+            cardImage: true,
+            durationDays: true,
+          },
+        }),
+      [],
+    );
+
+    return (
+      <div className="flex min-h-[80vh] flex-col items-center justify-center px-4 pt-24 pb-20 text-center max-w-7xl mx-auto">
+        <div className="rounded-full bg-primary/10 p-4 mb-6">
+          <Mountain className="h-12 w-12 text-primary" />
+        </div>
+        <h1 className="text-3xl md:text-5xl font-heading font-black text-foreground mb-4">
+          Adventure Currently Unavailable
+        </h1>
+        <p className="text-foreground/60 mb-12 max-w-lg text-base leading-relaxed">
+          This trail is currently in draft or has been archived. But don't worry, there are plenty of other active paths to explore!
+        </p>
+
+        {activeExperiences.length > 0 && (
+          <div className="w-full max-w-4xl mt-6">
+            <h2 className="text-xl font-bold text-foreground mb-6 uppercase tracking-wider">
+              Recommended Trails
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {activeExperiences.map((item) => (
+                <Link
+                  key={item.id}
+                  href={`/experiences/${item.slug}`}
+                  className="group flex flex-col bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/50 transition-all text-left shadow-xs hover:shadow-md"
+                >
+                  <div className="relative aspect-[16/10] bg-muted w-full overflow-hidden">
+                    {item.cardImage ? (
+                      <Image
+                        src={item.cardImage}
+                        alt={item.title}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        sizes="(max-width: 768px) 100vw, 30vw"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-foreground/20">
+                        <Mountain className="w-8 h-8" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-4 flex flex-col justify-between flex-1">
+                    <div>
+                      <h3 className="font-bold text-foreground text-sm line-clamp-2 group-hover:text-primary transition-colors">
+                        {item.title}
+                      </h3>
+                      <div className="flex items-center gap-1.5 text-foreground/50 text-xs mt-1.5 font-medium">
+                        <MapPin className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{item.location || "India"}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-border/50 pt-3 mt-4 text-xs font-semibold">
+                      <span className="text-foreground/50">
+                        {item.durationDays} {item.durationDays === 1 ? "Day" : "Days"}
+                      </span>
+                      <span className="text-foreground font-bold text-sm">
+                        ₹{Number(item.basePrice).toLocaleString("en-IN")}
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-12 flex gap-4">
+          <Link
+            href="/experiences"
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 font-bold text-primary-foreground hover:opacity-90 transition-all shadow-lg shadow-primary/25"
+          >
+            Browse All Trails
+          </Link>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 rounded-xl bg-foreground/5 border border-border px-6 py-3 font-bold text-foreground hover:bg-foreground/10 transition-all"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back to Base Camp
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   // Cast after null check for type safety

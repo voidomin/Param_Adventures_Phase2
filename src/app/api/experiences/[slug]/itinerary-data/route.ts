@@ -22,7 +22,7 @@ export async function GET(
       },
     });
 
-    if (experience?.status !== "PUBLISHED") {
+    if (!experience || experience.status === "DRAFT" || experience.status === "ARCHIVED" || !!experience.deletedAt) {
       return NextResponse.json(
         { error: "Experience not found" },
         { status: 404 }
