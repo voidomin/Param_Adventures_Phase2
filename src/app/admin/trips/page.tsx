@@ -15,7 +15,6 @@ import {
   Check,
   Loader2,
   Plus,
-  Trash2,
 } from "lucide-react";
 
 interface TrekLead {
@@ -150,31 +149,6 @@ export default function AdminTripsPage() {
     }
   };
 
-  const handleDeleteTrip = async (trip: TripSlot) => {
-    const booked = trip.confirmedParticipants;
-    let message = `Delete trip on ${formatDate(trip.date)}? This cannot be undone.`;
-    if (booked > 0) {
-      message = `Warning: This trip has ${booked} booking(s). Deleting this trip will disassociate all bookings from this trip. This cannot be undone.\n\nAre you sure you want to proceed?`;
-    }
-
-    if (!globalThis.confirm(message)) return;
-
-    setIsLoading(true);
-    try {
-      const res = await fetch(
-        `/api/admin/experiences/${trip.experienceId}/slots/${trip.id}`,
-        { method: "DELETE" },
-      );
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to delete trip");
-      await fetchTrips();
-    } catch (err: unknown) {
-      globalThis.alert(
-        err instanceof Error ? err.message : "Failed to delete trip.",
-      );
-      setIsLoading(false);
-    }
-  };
 
   useEffect(() => {
     fetchTrips();
@@ -392,18 +366,8 @@ export default function AdminTripsPage() {
                   </div>
                 </div>
 
-                {/* Manage and Delete buttons */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
-                  <div>
-                    <button
-                      onClick={() => handleDeleteTrip(trip)}
-                      className="flex items-center gap-2 px-4 py-2.5 text-red-500 hover:bg-red-500/10 rounded-xl font-semibold border border-red-500/20 hover:border-red-500/30 transition-colors text-sm cursor-pointer"
-                      title="Delete Trip"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      Delete Trip
-                    </button>
-                  </div>
+                {/* Manage button */}
+                <div className="flex justify-end pt-2">
                   <Link
                     href={`/admin/trips/${trip.id}`}
                     className="flex items-center justify-center gap-2 px-5 py-2.5 bg-background border border-border rounded-xl font-semibold hover:bg-foreground/5 transition-colors text-foreground text-sm"

@@ -204,9 +204,6 @@ export async function DELETE(
   try {
     const existingExp = await prisma.experience.findUnique({
       where: { id },
-      include: {
-        _count: { select: { bookings: true } },
-      },
     });
 
     if (!existingExp) {
@@ -216,8 +213,43 @@ export async function DELETE(
       );
     }
 
-    if (existingExp._count.bookings > 0) {
-      // Soft Delete
+    // 1. Check if there are active (non-completed) slots
+    const activeSlotsCount = await prisma.slot.count({
+      where: {
+        experienceId: id,
+        status: { not: "COMPLETED" },
+      },
+    });
+
+    // 2. Check if there are active/future bookings
+    const activeBookingsCount = await prisma.booking.count({
+      where: {
+        experienceId: id,
+        bookingStatus: { in: ["CONFIRMED", "REQUESTED"] },
+        OR: [
+          { slotId: null },
+          { slot: { status: { not: "COMPLETED" } } },
+        ],
+      },
+    });
+
+    if (activeSlotsCount > 0 || activeBookingsCount > 0) {
+      return NextResponse.json(
+        { error: "Cannot delete experience with active/uncompleted slots or future/active bookings." },
+        { status: 400 },
+      );
+    }
+
+    // Check if there are any slots or bookings at all (past/completed ones)
+    const totalSlotsCount = await prisma.slot.count({
+      where: { experienceId: id },
+    });
+    const totalBookingsCount = await prisma.booking.count({
+      where: { experienceId: id },
+    });
+
+    if (totalSlotsCount > 0 || totalBookingsCount > 0) {
+      // Soft Delete to retain history
       await prisma.experience.update({
         where: { id },
         data: { deletedAt: new Date() },
@@ -233,7 +265,15 @@ export async function DELETE(
       return NextResponse.json({ message: "Experience soft-deleted" });
     } else {
       // Hard Delete
-      await prisma.experience.delete({ where: { id } });
+      // Update any blogs referencing this experience to avoid foreign key issues
+      await prisma.$transaction([
+        prisma.blog.updateMany({
+          where: { experienceId: id },
+          data: { experienceId: null },
+        }),
+        prisma.experience.delete({ where: { id } }),
+      ]);
+
       await logActivity(
         "EXPERIENCE_DELETED",
         result.userId,

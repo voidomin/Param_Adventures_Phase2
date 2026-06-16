@@ -24,6 +24,15 @@ vi.mock("@/lib/db", () => ({
     experienceCategory: {
       deleteMany: vi.fn(),
     },
+    slot: {
+      count: vi.fn(),
+    },
+    booking: {
+      count: vi.fn(),
+    },
+    blog: {
+      updateMany: vi.fn(),
+    },
     $transaction: vi.fn(),
   },
 }));
@@ -42,6 +51,9 @@ const mockUpdate = vi.mocked(prisma.experience.update);
 const mockDelete = vi.mocked(prisma.experience.delete);
 const mockTransaction = vi.mocked(prisma.$transaction);
 const mockRevalidatePath = vi.mocked(revalidatePath);
+const mockSlotCount = vi.mocked(prisma.slot.count);
+const mockBookingCount = vi.mocked(prisma.booking.count);
+const mockBlogUpdateMany = vi.mocked(prisma.blog.updateMany);
 
 const createJsonRequest = (body: unknown) =>
   ({ json: vi.fn().mockResolvedValue(body) }) as unknown as NextRequest;
@@ -409,10 +421,13 @@ describe("/api/admin/experiences/[id]", () => {
 
     expect(response.status).toBe(500);
   });
-
-  it("DELETE soft-deletes when bookings exist", async () => {
+  it("DELETE soft-deletes when past bookings/slots exist", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
-    mockFindUnique.mockResolvedValue({ id: "exp-1", _count: { bookings: 5 } } as any);
+    mockFindUnique.mockResolvedValue({ id: "exp-1", title: "Exp 1" } as any);
+    mockSlotCount.mockResolvedValueOnce(0 as any) // for active check
+                 .mockResolvedValueOnce(2 as any); // for total slots check
+    mockBookingCount.mockResolvedValueOnce(0 as any) // for active check
+                   .mockResolvedValueOnce(5 as any); // for total bookings check
     mockUpdate.mockResolvedValue({ id: "exp-1" } as any);
 
     const response = await DELETE({} as NextRequest, {
@@ -437,10 +452,42 @@ describe("/api/admin/experiences/[id]", () => {
     expect(response.status).toBe(404);
   });
 
-  it("DELETE hard-deletes when no bookings exist", async () => {
+  it("DELETE returns 400 when active slots exist", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
-    mockFindUnique.mockResolvedValue({ id: "exp-1", _count: { bookings: 0 } } as any);
-    mockDelete.mockResolvedValue({ id: "exp-1" } as any);
+    mockFindUnique.mockResolvedValue({ id: "exp-1", title: "Exp 1" } as any);
+    mockSlotCount.mockResolvedValue(1); // active slot exists
+    mockBookingCount.mockResolvedValue(0);
+
+    const response = await DELETE({} as NextRequest, {
+      params: Promise.resolve({ id: "exp-1" }),
+    });
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toContain("active/uncompleted slots or future/active bookings");
+  });
+
+  it("DELETE returns 400 when active bookings exist", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockFindUnique.mockResolvedValue({ id: "exp-1", title: "Exp 1" } as any);
+    mockSlotCount.mockResolvedValue(0);
+    mockBookingCount.mockResolvedValue(1); // active booking exists
+
+    const response = await DELETE({} as NextRequest, {
+      params: Promise.resolve({ id: "exp-1" }),
+    });
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toContain("active/uncompleted slots or future/active bookings");
+  });
+
+  it("DELETE hard-deletes and disassociates blogs when no slots or bookings exist", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockFindUnique.mockResolvedValue({ id: "exp-1", title: "Exp 1" } as any);
+    mockSlotCount.mockResolvedValue(0);
+    mockBookingCount.mockResolvedValue(0);
+    mockTransaction.mockResolvedValue([{}, {}] as any);
 
     const response = await DELETE({} as NextRequest, {
       params: Promise.resolve({ id: "exp-1" }),
@@ -449,13 +496,15 @@ describe("/api/admin/experiences/[id]", () => {
 
     expect(response.status).toBe(200);
     expect(data.message).toContain("permanently deleted");
-    expect(mockDelete).toHaveBeenCalledWith({ where: { id: "exp-1" } });
+    expect(mockTransaction).toHaveBeenCalled();
   });
 
-  it("DELETE returns 500 when delete operation fails", async () => {
+  it("DELETE returns 500 when transaction/delete operation fails", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
-    mockFindUnique.mockResolvedValue({ id: "exp-1", _count: { bookings: 0 } } as any);
-    mockDelete.mockRejectedValue(new Error("db down"));
+    mockFindUnique.mockResolvedValue({ id: "exp-1", title: "Exp 1" } as any);
+    mockSlotCount.mockResolvedValue(0);
+    mockBookingCount.mockResolvedValue(0);
+    mockTransaction.mockRejectedValue(new Error("db down"));
 
     const response = await DELETE({} as NextRequest, {
       params: Promise.resolve({ id: "exp-1" }),
@@ -477,3 +526,4 @@ describe("/api/admin/experiences/[id]", () => {
     expect(response.status).toBe(401);
   });
 });
+

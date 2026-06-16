@@ -92,6 +92,7 @@ export async function PATCH(
   }
 }
 
+
 // DELETE /api/admin/experiences/[id]/slots/[slotId]
 export async function DELETE(
   request: NextRequest,
@@ -117,6 +118,21 @@ export async function DELETE(
 
     if (slot?.experienceId !== id) {
       return NextResponse.json({ error: "Slot not found" }, { status: 404 });
+    }
+
+    // Check if slot has active/confirmed bookings
+    const activeBookingsCount = await prisma.booking.count({
+      where: {
+        slotId,
+        bookingStatus: "CONFIRMED",
+      },
+    });
+
+    if (activeBookingsCount > 0 && slot.status !== "COMPLETED") {
+      return NextResponse.json(
+        { error: "Cannot delete slot with active/confirmed bookings unless the trip is completed." },
+        { status: 400 },
+      );
     }
 
     // Fetch associated bookings before deletion for audit logging

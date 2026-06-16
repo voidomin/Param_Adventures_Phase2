@@ -21,6 +21,7 @@ vi.mock("@/lib/db", () => ({
     booking: {
       updateMany: vi.fn(),
       findMany: vi.fn(),
+      count: vi.fn(),
     },
     $transaction: vi.fn(),
   },
@@ -39,6 +40,7 @@ const mockSlotUpdate = vi.mocked(prisma.slot.update);
 const mockSlotDelete = vi.mocked(prisma.slot.delete);
 const mockTransaction = vi.mocked(prisma.$transaction);
 const mockBookingFindMany = vi.mocked(prisma.booking.findMany);
+const mockBookingCount = vi.mocked(prisma.booking.count);
 
 const createJsonRequest = (body: unknown) =>
   ({ json: vi.fn().mockResolvedValue(body) }) as unknown as NextRequest;
@@ -253,12 +255,58 @@ describe("/api/admin/experiences/[id]/slots/[slotId]", () => {
     expect(response.status).toBe(404);
   });
 
-  it("DELETE removes slot using a transaction and disassociates bookings", async () => {
+  it("DELETE removes slot when there are no bookings", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, roleName: "ADMIN" } as any);
     mockSlotFindUnique.mockResolvedValue({
       id: "slot-1",
       experienceId: "exp-1",
+      status: "UPCOMING",
     } as any);
+    mockBookingCount.mockResolvedValue(0);
+    mockTransaction.mockResolvedValue([[], [], [], { id: "slot-1" }] as any);
+
+    const response = await DELETE({} as NextRequest, {
+      params: Promise.resolve({ id: "exp-1", slotId: "slot-1" }),
+    });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(mockBookingCount).toHaveBeenCalledWith({
+      where: {
+        slotId: "slot-1",
+        bookingStatus: "CONFIRMED",
+      },
+    });
+    expect(mockTransaction).toHaveBeenCalled();
+  });
+
+  it("DELETE returns 400 when slot has bookings and status is not COMPLETED", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, roleName: "ADMIN" } as any);
+    mockSlotFindUnique.mockResolvedValue({
+      id: "slot-1",
+      experienceId: "exp-1",
+      status: "UPCOMING",
+    } as any);
+    mockBookingCount.mockResolvedValue(1);
+
+    const response = await DELETE({} as NextRequest, {
+      params: Promise.resolve({ id: "exp-1", slotId: "slot-1" }),
+    });
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toContain("Cannot delete slot with active/confirmed bookings unless the trip is completed");
+  });
+
+  it("DELETE removes slot when slot has bookings and status is COMPLETED", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, roleName: "ADMIN" } as any);
+    mockSlotFindUnique.mockResolvedValue({
+      id: "slot-1",
+      experienceId: "exp-1",
+      status: "COMPLETED",
+    } as any);
+    mockBookingCount.mockResolvedValue(1);
     mockTransaction.mockResolvedValue([[], [], [], { id: "slot-1" }] as any);
 
     const response = await DELETE({} as NextRequest, {
