@@ -24,7 +24,7 @@ export async function GET(
       },
     });
 
-    if (!experience) {
+    if (!experience || experience.deletedAt) {
       return NextResponse.json(
         { error: "Experience not found" },
         { status: 404 },
@@ -115,7 +115,7 @@ export async function PUT(
     const { categoryIds, ...directData } = parseResult.data;
 
     const existingExp = await prisma.experience.findUnique({ where: { id } });
-    if (!existingExp) {
+    if (!existingExp || existingExp.deletedAt) {
       return NextResponse.json(
         { error: "Experience not found" },
         { status: 404 },
@@ -206,7 +206,7 @@ export async function DELETE(
       where: { id },
     });
 
-    if (!existingExp) {
+    if (!existingExp || existingExp.deletedAt) {
       return NextResponse.json(
         { error: "Experience not found" },
         { status: 404 },

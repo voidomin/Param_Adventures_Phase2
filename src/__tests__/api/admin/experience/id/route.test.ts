@@ -89,6 +89,19 @@ describe("/api/admin/experiences/[id]", () => {
     expect(data.error).toBe("Experience not found");
   });
 
+  it("GET returns 404 when experience is soft-deleted", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockFindUnique.mockResolvedValue({ id: "exp-1", deletedAt: new Date() } as any);
+
+    const response = await GET({} as NextRequest, {
+      params: Promise.resolve({ id: "exp-1" }),
+    });
+    const data = await response.json();
+
+    expect(response.status).toBe(404);
+    expect(data.error).toBe("Experience not found");
+  });
+
   it("GET returns experience payload on success", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
     mockFindUnique.mockResolvedValue({ id: "exp-1", title: "Trip" } as any);

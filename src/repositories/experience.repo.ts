@@ -8,6 +8,7 @@ export const ExperienceRepo = {
    */
   async findMany() {
     return prisma.experience.findMany({
+      where: { deletedAt: null },
       orderBy: { createdAt: "desc" },
       include: {
         categories: { include: { category: true } },
