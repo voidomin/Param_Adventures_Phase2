@@ -680,7 +680,8 @@ export default function AdminBookingsPage() {
   };
 
   const filtered = bookings.filter((b) => {
-    if (hideFinishedTrips && b.slot) {
+    if (hideFinishedTrips && !viewArchived) {
+      if (!b.slot) return false;
       const tripDate = new Date(b.slot.date);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
