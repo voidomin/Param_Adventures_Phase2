@@ -213,34 +213,7 @@ export async function DELETE(
       );
     }
 
-    // 1. Check if there are active (non-completed) slots
-    const activeSlotsCount = await prisma.slot.count({
-      where: {
-        experienceId: id,
-        status: { not: "COMPLETED" },
-      },
-    });
-
-    // 2. Check if there are active/future bookings
-    const activeBookingsCount = await prisma.booking.count({
-      where: {
-        experienceId: id,
-        bookingStatus: { in: ["CONFIRMED", "REQUESTED"] },
-        OR: [
-          { slotId: null },
-          { slot: { status: { not: "COMPLETED" } } },
-        ],
-      },
-    });
-
-    if (activeSlotsCount > 0 || activeBookingsCount > 0) {
-      return NextResponse.json(
-        { error: "Cannot delete experience with active/uncompleted slots or future/active bookings." },
-        { status: 400 },
-      );
-    }
-
-    // Check if there are any slots or bookings at all (past/completed ones)
+    // Check if there are any slots or bookings at all
     const totalSlotsCount = await prisma.slot.count({
       where: { experienceId: id },
     });
@@ -248,12 +221,20 @@ export async function DELETE(
       where: { experienceId: id },
     });
 
-    if (totalSlotsCount > 0 || totalBookingsCount > 0) {
+    if (totalSlotsCount > 0) {
+      return NextResponse.json(
+        { error: "Cannot delete experience with active slots. Please delete the slots first." },
+        { status: 400 },
+      );
+    }
+
+    if (totalBookingsCount > 0) {
       // Soft Delete to retain history
       await prisma.experience.update({
         where: { id },
         data: { deletedAt: new Date() },
       });
+
       await logActivity(
         "EXPERIENCE_DELETED",
         result.userId,
@@ -262,28 +243,28 @@ export async function DELETE(
         { title: existingExp.title, deleteType: "soft" }
       );
       revalidatePath("/", "layout");
-      return NextResponse.json({ message: "Experience soft-deleted" });
-    } else {
-      // Hard Delete
-      // Update any blogs referencing this experience to avoid foreign key issues
-      await prisma.$transaction([
-        prisma.blog.updateMany({
-          where: { experienceId: id },
-          data: { experienceId: null },
-        }),
-        prisma.experience.delete({ where: { id } }),
-      ]);
-
-      await logActivity(
-        "EXPERIENCE_DELETED",
-        result.userId,
-        "Experience",
-        id,
-        { title: existingExp.title, deleteType: "hard" }
-      );
-      revalidatePath("/", "layout");
-      return NextResponse.json({ message: "Experience permanently deleted" });
+      return NextResponse.json({ message: "Experience archived/soft-deleted to preserve booking records." });
     }
+
+    // Hard Delete
+    // Update any blogs referencing this experience to avoid foreign key issues
+    await prisma.$transaction([
+      prisma.blog.updateMany({
+        where: { experienceId: id },
+        data: { experienceId: null },
+      }),
+      prisma.experience.delete({ where: { id } }),
+    ]);
+
+    await logActivity(
+      "EXPERIENCE_DELETED",
+      result.userId,
+      "Experience",
+      id,
+      { title: existingExp.title, deleteType: "hard" }
+    );
+    revalidatePath("/", "layout");
+    return NextResponse.json({ message: "Experience permanently deleted" });
   } catch (err: unknown) {
     console.error("Failed to delete experience:", err);
     return NextResponse.json(

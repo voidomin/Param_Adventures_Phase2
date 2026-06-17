@@ -434,24 +434,19 @@ describe("/api/admin/experiences/[id]", () => {
 
     expect(response.status).toBe(500);
   });
-  it("DELETE soft-deletes when past bookings/slots exist", async () => {
+  it("DELETE returns 400 when slots exist", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
     mockFindUnique.mockResolvedValue({ id: "exp-1", title: "Exp 1" } as any);
-    mockSlotCount.mockResolvedValueOnce(0 as any) // for active check
-                 .mockResolvedValueOnce(2 as any); // for total slots check
-    mockBookingCount.mockResolvedValueOnce(0 as any) // for active check
-                   .mockResolvedValueOnce(5 as any); // for total bookings check
-    mockUpdate.mockResolvedValue({ id: "exp-1" } as any);
+    mockSlotCount.mockResolvedValue(1);
+    mockBookingCount.mockResolvedValue(0);
 
     const response = await DELETE({} as NextRequest, {
       params: Promise.resolve({ id: "exp-1" }),
     });
     const data = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(data.message).toContain("soft-deleted");
-    expect(mockDelete).not.toHaveBeenCalled();
-    expect(mockRevalidatePath).toHaveBeenCalledWith("/", "layout");
+    expect(response.status).toBe(400);
+    expect(data.error).toContain("active slots");
   });
 
   it("DELETE returns 404 when experience is missing", async () => {
@@ -465,34 +460,26 @@ describe("/api/admin/experiences/[id]", () => {
     expect(response.status).toBe(404);
   });
 
-  it("DELETE returns 400 when active slots exist", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
-    mockFindUnique.mockResolvedValue({ id: "exp-1", title: "Exp 1" } as any);
-    mockSlotCount.mockResolvedValue(1); // active slot exists
-    mockBookingCount.mockResolvedValue(0);
-
-    const response = await DELETE({} as NextRequest, {
-      params: Promise.resolve({ id: "exp-1" }),
-    });
-    const data = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(data.error).toContain("active/uncompleted slots or future/active bookings");
-  });
-
-  it("DELETE returns 400 when active bookings exist", async () => {
+  it("DELETE soft-deletes and retains history when bookings exist but slots are 0", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
     mockFindUnique.mockResolvedValue({ id: "exp-1", title: "Exp 1" } as any);
     mockSlotCount.mockResolvedValue(0);
-    mockBookingCount.mockResolvedValue(1); // active booking exists
+    mockBookingCount.mockResolvedValue(1);
+    mockUpdate.mockResolvedValue({ id: "exp-1", title: "Exp 1" } as any);
 
     const response = await DELETE({} as NextRequest, {
       params: Promise.resolve({ id: "exp-1" }),
     });
     const data = await response.json();
 
-    expect(response.status).toBe(400);
-    expect(data.error).toContain("active/uncompleted slots or future/active bookings");
+    expect(response.status).toBe(200);
+    expect(data.message).toContain("archived/soft-deleted");
+    expect(mockUpdate).toHaveBeenCalledWith({
+      where: { id: "exp-1" },
+      data: { deletedAt: expect.any(Date) },
+    });
+    expect(mockDelete).not.toHaveBeenCalled();
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/", "layout");
   });
 
   it("DELETE hard-deletes and disassociates blogs when no slots or bookings exist", async () => {

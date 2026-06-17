@@ -15,7 +15,7 @@ export const ExperienceRepo = {
         _count: {
           select: {
             slots: true,
-            bookings: { where: { bookingStatus: "CONFIRMED" } },
+            bookings: true,
           },
         },
       },

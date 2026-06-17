@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -78,7 +78,6 @@ interface TripSlot {
 
 export default function TripManifestPage() {
   const params = useParams();
-  const router = useRouter();
   const tripId = params.id as string;
 
   const [trip, setTrip] = useState<TripSlot | null>(null);
@@ -92,35 +91,6 @@ export default function TripManifestPage() {
   const [error, setError] = useState("");
   const [isExporting, setIsExporting] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  const handleDeleteTrip = async () => {
-    if (!trip) return;
-    const booked = manifest.reduce((acc, p) => acc + p.participantCount, 0);
-    
-    let message = `Delete trip/slot on ${new Date(trip.date).toLocaleDateString("en-IN")}? This cannot be undone.`;
-    if (booked > 0) {
-      message = `Warning: This trip has ${booked} booking(s). Deleting this trip will disassociate all bookings from this slot. This cannot be undone.\n\nAre you sure you want to proceed?`;
-    }
-
-    if (!globalThis.confirm(message)) return;
-
-    setIsDeleting(true);
-    setError("");
-    try {
-      const res = await fetch(
-        `/api/admin/experiences/${trip.experience.id}/slots/${trip.id}`,
-        { method: "DELETE" }
-      );
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to delete trip.");
-      
-      router.push("/admin/trips");
-    } catch (err: any) {
-      setError(err.message || "Failed to delete trip.");
-      setIsDeleting(false);
-    }
-  };
 
   const handleForceCompleteTrip = async () => {
     if (!globalThis.confirm("Are you sure you want to end/complete this trip? This will mark the trip status as COMPLETED and allow experience/slot deletions.")) return;
@@ -566,22 +536,6 @@ export default function TripManifestPage() {
                 )}
               </button>
             )}
-
-            <button
-              type="button"
-              onClick={handleDeleteTrip}
-              disabled={isDeleting}
-              className="w-full py-2.5 bg-foreground/5 hover:bg-red-500/10 text-foreground hover:text-red-500 border border-border hover:border-red-500/30 rounded-xl font-bold transition-all text-sm flex items-center justify-center gap-2 cursor-pointer"
-            >
-              {isDeleting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <>
-                  <Trash2 className="w-4 h-4" />
-                  <span>Delete Trip Slot</span>
-                </>
-              )}
-            </button>
           </div>
 
           {/* Capacity Snapshot */}
