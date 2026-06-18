@@ -161,6 +161,31 @@ export async function POST(request: NextRequest) {
 
     if (expectedSignature !== signature) {
       console.warn("[Webhook] Invalid signature received from IP:", request.headers.get("x-forwarded-for"));
+      
+      try {
+        let eventBody: any = null;
+        try {
+          eventBody = JSON.parse(rawBody);
+        } catch {}
+
+        await logActivity(
+          "PAYMENT_WEBHOOK_SIGNATURE_INVALID",
+          "SYSTEM",
+          "Booking",
+          eventBody?.id || null,
+          {
+            signature,
+            expectedSignature,
+            ip: request.headers.get("x-forwarded-for") || "unknown",
+            bodyLength: rawBody.length,
+            event: eventBody?.event || null,
+            orderId: eventBody?.payload?.payment?.entity?.order_id || eventBody?.payload?.order?.entity?.id || null
+          }
+        );
+      } catch (logErr) {
+        console.error("[Webhook] Failed to log signature failure to DB:", logErr);
+      }
+
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
     }
 
