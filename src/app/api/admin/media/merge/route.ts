@@ -9,28 +9,39 @@ const mergeSchema = z.object({
   targetId: z.string().min(1, "targetId is required"),
 });
 
+function extractCloudinaryPublicId(url: string): string | null {
+  const parts = url.split("/upload/");
+  if (parts.length < 2) return null;
+
+  const pathParts = parts[1].split("/");
+  if (pathParts[0].startsWith("v") && /^\d+$/.test(pathParts[0].substring(1))) {
+    pathParts.shift();
+  }
+  const pathWithoutVersion = pathParts.join("/");
+  const dotIndex = pathWithoutVersion.lastIndexOf(".");
+  return dotIndex > -1 ? pathWithoutVersion.substring(0, dotIndex) : pathWithoutVersion;
+}
+
 async function deleteFromCloudStorage(url: string, type: "IMAGE" | "VIDEO") {
   try {
     const provider = await mediaFactory.getProvider();
-    let deleted = true;
-    if (url.includes("cloudinary.com")) {
-      const parts = url.split("/upload/");
-      if (parts.length >= 2) {
-        const pathParts = parts[1].split("/");
-        if (pathParts[0].startsWith("v") && /^\d+$/.test(pathParts[0].substring(1))) {
-          pathParts.shift();
-        }
-        const pathWithoutVersion = pathParts.join("/");
-        const dotIndex = pathWithoutVersion.lastIndexOf(".");
-        const publicId = dotIndex > -1 ? pathWithoutVersion.substring(0, dotIndex) : pathWithoutVersion;
-        deleted = await provider.delete(publicId, type === "VIDEO" ? "video" : "image");
-      }
-    } else if (url.includes(".amazonaws.com") || url.includes("s3")) {
-      const urlObj = new URL(url);
-      const key = urlObj.pathname.substring(1);
-      deleted = await provider.delete(key);
+    let urlObj: URL;
+    try {
+      urlObj = new URL(url);
+    } catch {
+      return false;
     }
-    return deleted;
+    const host = urlObj.hostname;
+    if (host.endsWith("cloudinary.com")) {
+      const publicId = extractCloudinaryPublicId(url);
+      if (publicId) {
+        return await provider.delete(publicId, type === "VIDEO" ? "video" : "image");
+      }
+    } else if (host.endsWith("amazonaws.com") || host.includes("s3")) {
+      const key = urlObj.pathname.substring(1);
+      return await provider.delete(key);
+    }
+    return true;
   } catch (error) {
     console.error("Failed to delete duplicate from cloud storage:", error);
     return false;

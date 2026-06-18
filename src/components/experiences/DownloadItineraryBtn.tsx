@@ -70,7 +70,14 @@ interface ItineraryBookingData {
 // ─── Helpers ──────────────────────────────────────────
 async function fetchImageAsBase64(url: string): Promise<string | null> {
   try {
-    const isDirectFetchable = url.includes("res.cloudinary.com") || url.includes("amazonaws.com");
+    let urlObj: URL;
+    try {
+      urlObj = new URL(url);
+    } catch {
+      return null;
+    }
+    const host = urlObj.hostname;
+    const isDirectFetchable = host.endsWith("res.cloudinary.com") || host.endsWith("amazonaws.com");
     if (isDirectFetchable) {
       try {
         const directRes = await fetch(url, { mode: "cors" });
