@@ -7,6 +7,28 @@ vi.mock("@/lib/db", () => ({
     image: {
       findMany: vi.fn(),
       create: vi.fn(),
+      findFirst: vi.fn(),
+    },
+    experience: {
+      findMany: vi.fn(),
+    },
+    blog: {
+      findMany: vi.fn(),
+    },
+    storyBlock: {
+      findMany: vi.fn(),
+    },
+    tripLog: {
+      findMany: vi.fn(),
+    },
+    user: {
+      findMany: vi.fn(),
+    },
+    heroSlide: {
+      findMany: vi.fn(),
+    },
+    platformSetting: {
+      findMany: vi.fn(),
     },
   },
 }));
@@ -18,6 +40,14 @@ import { prisma } from "@/lib/db";
 const mockAuthorizeRequest = vi.mocked(authorizeRequest);
 const mockFindMany = vi.mocked(prisma.image.findMany);
 const mockCreate = vi.mocked(prisma.image.create);
+const mockFindFirst = vi.mocked(prisma.image.findFirst);
+const mockFindManyExp = vi.mocked(prisma.experience.findMany);
+const mockFindManyBlog = vi.mocked(prisma.blog.findMany);
+const mockFindManySb = vi.mocked(prisma.storyBlock.findMany);
+const mockFindManyTl = vi.mocked(prisma.tripLog.findMany);
+const mockFindManyUser = vi.mocked(prisma.user.findMany);
+const mockFindManyHero = vi.mocked(prisma.heroSlide.findMany);
+const mockFindManySetting = vi.mocked(prisma.platformSetting.findMany);
 
 const createRequest = (body?: unknown) =>
   ({
@@ -27,6 +57,14 @@ const createRequest = (body?: unknown) =>
 describe("/api/admin/media route", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockFindManyExp.mockResolvedValue([]);
+    mockFindManyBlog.mockResolvedValue([]);
+    mockFindManySb.mockResolvedValue([]);
+    mockFindManyTl.mockResolvedValue([]);
+    mockFindManyUser.mockResolvedValue([]);
+    mockFindManyHero.mockResolvedValue([]);
+    mockFindManySetting.mockResolvedValue([]);
+    mockFindFirst.mockResolvedValue(null);
   });
 
   describe("GET", () => {

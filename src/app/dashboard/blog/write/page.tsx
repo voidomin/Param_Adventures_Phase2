@@ -76,75 +76,83 @@ export default function WriteBlogPage() {
       .finally(() => setIsLoadingExp(false));
   }, [router]);
 
-  const handleSaveDraft = async () => {
+  const handleSaveDraft = async (): Promise<string | null> => {
     setError("");
     if (!selectedExp) {
       setError("Please select an experience first.");
-      return;
+      return null;
     }
     if (!title.trim()) {
       setError("Please enter a title.");
-      return;
+      return null;
     }
     setIsSaving(true);
     try {
-      if (blogId === null) {
-        // Create new blog
+      let currentBlogId = blogId;
+
+      if (currentBlogId === null) {
+        // Create new blog — capture the new ID in a local variable immediately
         const res = await fetch("/api/user/blogs", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             experienceId: selectedExp,
             title,
-            coverImageUrl,
+            coverImageUrl: coverImageUrl || null,
             theme,
             authorSocials: socials,
           }),
         });
         const data = await res.json();
         if (!res.ok) {
-          setError(data.error);
-          return;
+          setError(data.error || "Failed to create blog.");
+          return null;
         }
-        setBlogId(data.blog.id);
-        // Save content
-        await fetch(`/api/user/blogs/${data.blog.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content }),
-        });
-        await fetch(`/api/user/blogs/${blogId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title,
-            content,
-            coverImageUrl,
-            theme,
-            authorSocials: socials,
-          }),
-        });
+        currentBlogId = data.blog.id;
+        setBlogId(currentBlogId); // update state (async, but local var is already set)
       }
+
+      // Always PATCH the blog with the latest content/metadata using the local ID
+      const patchRes = await fetch(`/api/user/blogs/${currentBlogId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          content,
+          coverImageUrl: coverImageUrl || null,
+          theme,
+          authorSocials: socials,
+        }),
+      });
+      if (!patchRes.ok) {
+        const patchData = await patchRes.json();
+        setError(patchData.error || "Failed to save draft.");
+        return null;
+      }
+
       setSavedAt(new Date().toLocaleTimeString("en-IN"));
+      return currentBlogId;
     } catch {
       setError("Failed to save draft.");
+      return null;
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleSubmit = async () => {
-    // Save draft first
-    await handleSaveDraft();
-    if (error || !blogId) return;
+    // Save draft first — get the blog ID back directly
+    const savedBlogId = await handleSaveDraft();
+    if (!savedBlogId) return; // save failed or validation error
+
     setIsSubmitting(true);
     try {
-      const res = await fetch(`/api/user/blogs/${blogId}/submit`, {
+      const res = await fetch(`/api/user/blogs/${savedBlogId}/submit`, {
         method: "POST",
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error);
+        setError(data.error || "Failed to submit blog.");
         return;
       }
       router.push("/dashboard/blog?submitted=1");

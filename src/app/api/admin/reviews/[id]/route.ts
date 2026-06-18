@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
+import { logActivity } from "@/lib/audit-logger";
 
 import { z } from "zod";
 
@@ -66,6 +67,19 @@ export async function PATCH(
       },
     });
 
+    await logActivity(
+      "REVIEW_MODERATED",
+      auth.userId,
+      "Review",
+      id,
+      {
+        experience: review.experience?.title || "N/A",
+        reviewer: review.user?.name || "N/A",
+        isFeaturedHome,
+        isFeaturedExperience
+      }
+    );
+
     revalidatePath("/", "layout");
 
     return NextResponse.json({ review });
@@ -77,3 +91,69 @@ export async function PATCH(
     );
   }
 }
+
+/**
+ * DELETE /api/admin/reviews/[id]
+ * Deletes a review.
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const auth = await authorizeRequest(request);
+  if (!auth.authorized) return auth.response;
+
+  const isAdminOrAbove = ["ADMIN", "SUPER_ADMIN"].includes(auth.roleName);
+  if (!isAdminOrAbove) {
+    return NextResponse.json(
+      { error: "Insufficient permissions." },
+      { status: 403 },
+    );
+  }
+
+  try {
+    const { id } = await params;
+
+    // Fetch review before deletion to get details for audit logging
+    const review = await prisma.experienceReview.findUnique({
+      where: { id },
+      include: {
+        user: { select: { name: true } },
+        experience: { select: { title: true } },
+      },
+    });
+
+    if (!review) {
+      return NextResponse.json(
+        { error: "Review not found." },
+        { status: 404 },
+      );
+    }
+
+    await prisma.experienceReview.delete({
+      where: { id },
+    });
+
+    await logActivity(
+      "REVIEW_DELETED",
+      auth.userId,
+      "Review",
+      id,
+      {
+        experience: review.experience?.title || "N/A",
+        reviewer: review.user?.name || "N/A",
+      }
+    );
+
+    revalidatePath("/", "layout");
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Admin review DELETE error:", error);
+    return NextResponse.json(
+      { error: "Failed to delete review." },
+      { status: 500 },
+    );
+  }
+}
+

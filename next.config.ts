@@ -1,7 +1,36 @@
 import type { NextConfig } from "next";
 
+const isProd = process.env.NODE_ENV === "production";
+const scriptSrcPolicy = [
+  "'self'",
+  "'unsafe-inline'",
+  isProd ? "" : "'unsafe-eval'",
+  "https://www.youtube.com",
+  "https://s.ytimg.com",
+  "https://checkout.razorpay.com",
+  "https://www.googletagmanager.com",
+].filter(Boolean).join(" ");
+
+const extraDomains: string[] = [];
+if (process.env.NEXT_PUBLIC_CDN_URL) {
+  try {
+    extraDomains.push(new URL(process.env.NEXT_PUBLIC_CDN_URL).hostname);
+  } catch {}
+}
+if (process.env.NEXT_PUBLIC_CDN_DOMAIN) {
+  extraDomains.push(process.env.NEXT_PUBLIC_CDN_DOMAIN);
+}
+
+const allowedHosts = ["*.amazonaws.com", ...extraDomains];
+const allowedHostsStr = allowedHosts.map(h => `https://${h}`).join(" ");
+
 const nextConfig: NextConfig = {
+  cacheMaxMemorySize: 50 * 1024 * 1024, // 50MB in-memory cache limit (essential for 512MB RAM limit on Render)
+  experimental: {
+    webpackBuildWorker: true, // run webpack builds in a separate worker to limit memory usage
+  },
   images: {
+    unoptimized: true,
     qualities: [75, 90],
     remotePatterns: [
       {
@@ -20,6 +49,14 @@ const nextConfig: NextConfig = {
         protocol: "https",
         hostname: "lh3.googleusercontent.com",
       },
+      {
+        protocol: "https",
+        hostname: "*.amazonaws.com",
+      },
+      ...extraDomains.map(domain => ({
+        protocol: "https" as const,
+        hostname: domain,
+      })),
     ],
   },
   async headers() {
@@ -73,13 +110,13 @@ const nextConfig: NextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://s.ytimg.com https://checkout.razorpay.com https://www.googletagmanager.com",
+              `script-src ${scriptSrcPolicy}`,
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              "img-src 'self' data: blob: https://res.cloudinary.com https://picsum.photos https://images.unsplash.com https://lh3.googleusercontent.com https://checkout.razorpay.com https://www.google-analytics.com",
+              `img-src 'self' data: blob: https://res.cloudinary.com https://picsum.photos https://images.unsplash.com https://lh3.googleusercontent.com https://checkout.razorpay.com https://www.google-analytics.com ${allowedHostsStr}`,
               "font-src 'self' https://fonts.gstatic.com",
-              "connect-src 'self' https://res.cloudinary.com https://api.cloudinary.com https://api.razorpay.com https://lumberjack.razorpay.com https://*.sentry.io https://www.google-analytics.com",
+              `connect-src 'self' https://res.cloudinary.com https://api.cloudinary.com https://api.razorpay.com https://lumberjack.razorpay.com https://*.sentry.io https://www.google-analytics.com ${allowedHostsStr}`,
               "frame-src 'self' https://www.youtube.com https://api.razorpay.com https://checkout.razorpay.com",
-              "media-src 'self' https://res.cloudinary.com",
+              `media-src 'self' https://res.cloudinary.com ${allowedHostsStr}`,
               "worker-src 'self' blob:",
             ].join("; "),
           },

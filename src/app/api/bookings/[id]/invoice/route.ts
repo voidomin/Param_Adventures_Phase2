@@ -36,7 +36,11 @@ export async function GET(
     });
 
     if (!booking) return NextResponse.json({ error: "Booking not found" }, { status: 404 });
-    if (booking.userId !== payload.userId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    
+    const isManagerOrAdmin = ["SUPER_ADMIN", "ADMIN", "TRIP_MANAGER", "TREK_LEAD"].includes(payload.roleName);
+    if (booking.userId !== payload.userId && !isManagerOrAdmin) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
 
     // Fetch live company details right now for the header (Even though tax rates are frozen, the header usually matches current business address unless historically versioned too, but for now we pull current).
     const settings = await prisma.platformSetting.findMany({

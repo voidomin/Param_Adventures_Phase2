@@ -169,22 +169,7 @@ async function computeFileHash(file: File | Blob): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-async function uploadSingleFile(
-  file: File | Blob,
-  apiPrefix: string,
-  onProgress?: (percent: number) => void,
-): Promise<string> {
-  const isVideo = file.type.startsWith("video/");
-  const isImage = file.type.startsWith("image/");
-
-  if (!isImage && !isVideo) {
-    throw new Error("Only images and videos are supported.");
-  }
-
-  // 1. Compute file hash for deduplication
-  const fileHash = await computeFileHash(file);
-
-  // 2. Check if this file already exists (dedup check)
+async function checkDuplicate(apiPrefix: string, fileHash: string): Promise<string | null> {
   try {
     const dupRes = await fetch(`${apiPrefix}/check-duplicate`, {
       method: "POST",
@@ -195,43 +180,48 @@ async function uploadSingleFile(
     if (dupRes.ok) {
       const dupData = await dupRes.json();
       if (dupData.exists) {
-        if (onProgress) onProgress(100);
         console.log("Dedup: reusing existing upload", dupData.url);
         return dupData.url;
       }
     }
   } catch {
-    // If dedup check fails, continue with normal upload
     console.warn("Dedup check failed, proceeding with upload");
   }
+  return null;
+}
 
-  // 3. Normal upload flow (no duplicate found)
+async function executeDirectUpload(
+  file: File | Blob,
+  apiPrefix: string,
+  onProgress?: (percent: number) => void,
+): Promise<string> {
   const fileName = (file as File).name || "upload";
   const presignRes = await fetch(`${apiPrefix}/presign`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      fileName: fileName,
+      fileName,
       contentType: file.type,
     }),
   });
 
   if (!presignRes.ok) {
-    throw new Error(
-      `Failed to get upload authorization (Status ${presignRes.status}).`,
-    );
+    throw new Error(`Failed to get upload authorization (Status ${presignRes.status}).`);
   }
 
   const uploadData = await presignRes.json();
 
-  const uploadedUrl =
-    uploadData.provider === "cloudinary"
-      ? await uploadToCloudinaryDirect(file, uploadData, onProgress)
-      : await uploadToS3Direct(file, uploadData, onProgress);
+  return uploadData.provider === "cloudinary"
+    ? uploadToCloudinaryDirect(file, uploadData, onProgress)
+    : uploadToS3Direct(file, uploadData, onProgress);
+}
 
-  if (onProgress) onProgress(100);
-
-  // 4. Register with hash so future uploads can be deduped
+async function registerUploadedFile(
+  apiPrefix: string,
+  uploadedUrl: string,
+  isVideo: boolean,
+  fileHash: string,
+): Promise<void> {
   const registerRes = await fetch(`${apiPrefix}/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -243,12 +233,43 @@ async function uploadSingleFile(
   });
 
   if (!registerRes.ok) {
-    throw new Error(
-      `Failed to register media in database (Status ${registerRes.status}).`,
-    );
+    throw new Error(`Failed to register media in database (Status ${registerRes.status}).`);
   }
 
   await registerRes.json();
+}
+
+async function uploadSingleFile(
+  file: File | Blob,
+  apiPrefix: string,
+  onProgress?: (percent: number) => void,
+  onReused?: () => void,
+): Promise<string> {
+  const isVideo = file.type.startsWith("video/");
+  const isImage = file.type.startsWith("image/");
+
+  if (!isImage && !isVideo) {
+    throw new Error("Only images and videos are supported.");
+  }
+
+  // 1. Compute file hash for deduplication
+  const fileHash = await computeFileHash(file);
+
+  // 2. Check duplicate
+  const duplicateUrl = await checkDuplicate(apiPrefix, fileHash);
+  if (duplicateUrl) {
+    onProgress?.(100);
+    onReused?.();
+    return duplicateUrl;
+  }
+
+  // 3. Normal upload flow (no duplicate found)
+  const uploadedUrl = await executeDirectUpload(file, apiPrefix, onProgress);
+  onProgress?.(100);
+
+  // 4. Register with hash so future uploads can be deduped
+  await registerUploadedFile(apiPrefix, uploadedUrl, isVideo, fileHash);
+
   return uploadedUrl;
 }
 
@@ -269,6 +290,7 @@ export default function MediaUploader({
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [reusedCount, setReusedCount] = useState(0);
 
   // States for cropping
   const [cropImageUrl, setCropImageUrl] = useState<string | null>(null);
@@ -316,11 +338,17 @@ export default function MediaUploader({
     setError(null);
     setIsUploading(true);
     setProgress(0);
+    setReusedCount(0);
     try {
       const uploadedUrls: string[] = [];
       for (const file of files) {
         uploadedUrls.push(
-          await uploadSingleFile(file, apiPrefix, (p) => setProgress(p)),
+          await uploadSingleFile(
+            file,
+            apiPrefix,
+            (p) => setProgress(p),
+            () => setReusedCount((prev) => prev + 1)
+          ),
         );
       }
       if (onUploadSuccess) onUploadSuccess(uploadedUrls);
@@ -413,6 +441,19 @@ export default function MediaUploader({
           <p className="text-red-500 text-sm font-medium bg-red-500/10 p-3 rounded-lg border border-red-500/20">
             Error: {error}
           </p>
+        </div>
+      )}
+
+      {reusedCount > 0 && (
+        <div className="mt-3 p-3 bg-blue-500/10 border border-blue-500/20 text-blue-500 rounded-xl text-sm font-medium flex items-center justify-between animate-in fade-in duration-200">
+          <span>♻️ Storage Deduplication: Reused {reusedCount} duplicate {reusedCount === 1 ? "file" : "files"} to save storage space.</span>
+          <button
+            type="button"
+            onClick={() => setReusedCount(0)}
+            className="text-xs font-bold underline uppercase tracking-wider hover:text-blue-400"
+          >
+            Dismiss
+          </button>
         </div>
       )}
 

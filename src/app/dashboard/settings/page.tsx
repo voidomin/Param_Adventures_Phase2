@@ -33,7 +33,7 @@ export default function SettingsPage() {
   const [countryCode, setCountryCode] = useState("+91");
   const [phone, setPhone] = useState("");
   const [gender, setGender] = useState("");
-  const [age, setAge] = useState<string>("");
+  const [dateOfBirth, setDateOfBirth] = useState<string>("");
   const [bloodGroup, setBloodGroup] = useState("");
 
   // Emergency Contact State
@@ -75,7 +75,7 @@ export default function SettingsPage() {
       setPhone(number);
 
       setGender(user.gender || "");
-      setAge(user.age?.toString() || "");
+      setDateOfBirth(user.dateOfBirth || "");
       setBloodGroup(user.bloodGroup || "");
       setEcName(user.emergencyContactName || "");
 
@@ -118,6 +118,11 @@ export default function SettingsPage() {
       setIsUpdatingProfile(false);
       return;
     }
+    if (!dateOfBirth) {
+      setProfileMsg({ type: "error", text: "Date of Birth is required" });
+      setIsUpdatingProfile(false);
+      return;
+    }
 
     if (ecPhone?.trim() === phone.trim()) {
       setProfileMsg({
@@ -136,7 +141,7 @@ export default function SettingsPage() {
           name,
           phoneNumber: `${countryCode} ${phone.trim()}`,
           gender,
-          age: age ? Number.parseInt(age, 10) : null,
+          dateOfBirth,
           bloodGroup,
           emergencyContactName: ecName,
           emergencyContactNumber: ecPhone
@@ -340,20 +345,36 @@ export default function SettingsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label
-                    htmlFor="age"
+                    htmlFor="dateOfBirth"
                     className="block text-sm font-bold text-foreground mb-2"
                   >
-                    Age
+                    Date of Birth <span className="text-primary">*</span>
                   </label>
                   <input
-                    id="age"
-                    type="number"
-                    value={age}
-                    onChange={(e) => setAge(e.target.value)}
-                    placeholder="e.g. 25"
-                    min="1"
+                    id="dateOfBirth"
+                    type="date"
+                    value={dateOfBirth}
+                    onChange={(e) => setDateOfBirth(e.target.value)}
+                    required
                     className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm"
                   />
+                  {dateOfBirth && (() => {
+                    const birthDate = new Date(dateOfBirth);
+                    const today = new Date();
+                    let calculatedAge = today.getFullYear() - birthDate.getFullYear();
+                    const m = today.getMonth() - birthDate.getMonth();
+                    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                      calculatedAge--;
+                    }
+                    if (!Number.isNaN(calculatedAge) && calculatedAge >= 0) {
+                      return (
+                        <p className="text-xs text-foreground/50 mt-1.5 font-medium">
+                          Calculated Age: <span className="text-primary font-bold">{calculatedAge} years</span>
+                        </p>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
                 <div>
                   <label

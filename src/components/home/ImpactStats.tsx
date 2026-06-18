@@ -81,7 +81,7 @@ export default function ImpactStats({
   ];
 
   return (
-    <section className="py-24 bg-card border-y border-border relative overflow-hidden">
+    <section className="py-12 bg-card border-y border-border relative overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 relative z-10">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
           {stats.map((stat, idx) => (

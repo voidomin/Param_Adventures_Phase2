@@ -68,3 +68,100 @@
     display: none;
   }
 }
+
+@utility mask-linear-fade {
+  mask-image: linear-gradient(to right, transparent, white 12px, white calc(100% - 12px), transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, white 12px, white calc(100% - 12px), transparent);
+}
+
+/* Custom Prose (Rich Text) Styling */
+.prose h1, .ProseMirror h1,
+.prose h2, .ProseMirror h2,
+.prose h3, .ProseMirror h3,
+.prose h4, .ProseMirror h4,
+.prose h5, .ProseMirror h5,
+.prose h6, .ProseMirror h6 {
+  color: var(--foreground);
+  font-weight: 700;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  line-height: 1.25;
+}
+
+.prose h1, .ProseMirror h1 { font-size: 2em; }
+.prose h2, .ProseMirror h2 { font-size: 1.5em; }
+.prose h3, .ProseMirror h3 { font-size: 1.25em; }
+
+.prose p, .ProseMirror p {
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
+  line-height: 1.625;
+}
+
+.prose strong, .ProseMirror strong,
+.prose b, .ProseMirror b {
+  font-weight: 700;
+}
+
+.prose em, .ProseMirror em,
+.prose i, .ProseMirror i {
+  font-style: italic;
+}
+
+.prose blockquote, .ProseMirror blockquote {
+  border-left: 4px solid var(--primary);
+  padding-left: 1.25rem;
+  font-style: italic;
+  color: var(--foreground);
+  opacity: 0.85;
+  margin: 1.5rem 0;
+}
+
+.prose ul, .ProseMirror ul {
+  list-style-type: disc !important;
+  padding-left: 1.5rem !important;
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
+}
+
+.prose ol, .ProseMirror ol {
+  list-style-type: decimal !important;
+  padding-left: 1.5rem !important;
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
+}
+
+.prose li, .ProseMirror li {
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
+  padding-left: 0.25rem;
+}
+
+.prose a, .ProseMirror a {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  font-weight: 500;
+}
+
+.prose a:hover, .ProseMirror a:hover {
+  opacity: 0.8;
+}
+
+.prose hr, .ProseMirror hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 2rem 0;
+}
+
+.prose img, .ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
+  margin: 1.5rem 0;
+}
+
+.prose iframe, .ProseMirror iframe {
+  border-radius: 0.75rem;
+  margin: 1.5rem 0;
+}

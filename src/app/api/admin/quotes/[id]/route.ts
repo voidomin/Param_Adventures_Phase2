@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from "next/server";
 import { authorizeRequest } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
+import { logActivity } from "@/lib/audit-logger";
 import { z } from "zod";
 
 const quoteSchema = z.object({
@@ -89,9 +90,24 @@ export async function DELETE(
 
     const { id } = await params;
 
+    const existing = await prisma.adventureQuote.findUnique({
+      where: { id },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "Quote not found" }, { status: 404 });
+    }
+
     await prisma.adventureQuote.delete({
       where: { id },
     });
+
+    await logActivity(
+      "QUOTE_DELETED",
+      auth.userId,
+      "AdventureQuote",
+      id,
+      { author: existing.author, text: existing.text }
+    );
 
     return NextResponse.json({ success: true });
   } catch (error: unknown) {

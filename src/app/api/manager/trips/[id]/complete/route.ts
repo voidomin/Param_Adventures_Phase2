@@ -4,6 +4,7 @@ import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
 import { sendTripCompletedEmail } from "@/lib/email";
 import { z } from "zod";
+import { dateInIST, todayInIST } from "@/lib/ist-utils";
 
 const tripCompleteSchema = z.object({
   managerNote: z.string().max(2000, "Note is too long").optional().nullable(),
@@ -46,7 +47,16 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
 
     const slot = await prisma.slot.findUnique({
       where: { id: slotId },
-      select: { managerId: true, status: true },
+      select: {
+        managerId: true,
+        status: true,
+        date: true,
+        experience: {
+          select: {
+            durationDays: true,
+          },
+        },
+      },
     });
 
     if (!slot) {
@@ -69,11 +79,33 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       );
     }
 
-    if (slot.status !== "TREK_ENDED") {
+    if (slot.status !== "TREK_ENDED" && !isAdminOrAbove) {
       return NextResponse.json(
         { error: "Trip must be in TREK_ENDED state to complete it." },
         { status: 409 },
       );
+    }
+
+    if (slot.status !== "TREK_ENDED" && isAdminOrAbove) {
+      const confirmedBookingsCount = await prisma.booking.count({
+        where: {
+          slotId,
+          bookingStatus: "CONFIRMED",
+        },
+      });
+
+      if (confirmedBookingsCount > 0) {
+        const lastDay = new Date(slot.date);
+        lastDay.setDate(lastDay.getDate() + (slot.experience.durationDays - 1));
+        const lastDayStr = dateInIST(lastDay);
+        
+        if (todayInIST() < lastDayStr) {
+          return NextResponse.json(
+            { error: `Cannot force complete trip before the end date (${lastDayStr} IST).` },
+            { status: 400 },
+          );
+        }
+      }
     }
 
     // Run completion in a transaction

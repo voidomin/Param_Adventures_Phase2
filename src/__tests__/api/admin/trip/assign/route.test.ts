@@ -5,6 +5,8 @@ vi.mock("@/lib/api-auth", () => ({
   authorizeRequest: vi.fn(),
 }));
 
+vi.mock("@/lib/audit-logger", () => ({ logActivity: vi.fn() }));
+
 vi.mock("@/lib/db", () => ({
   prisma: {
     user: {
@@ -23,9 +25,11 @@ vi.mock("@/lib/db", () => ({
 
 import { DELETE, PATCH, POST } from "@/app/api/admin/trips/[id]/assign/route";
 import { authorizeRequest } from "@/lib/api-auth";
+import { logActivity } from "@/lib/audit-logger";
 import { prisma } from "@/lib/db";
 
 const mockAuthorizeRequest = vi.mocked(authorizeRequest);
+const mockLogActivity = vi.mocked(logActivity);
 const mockUserFindUnique = vi.mocked(prisma.user.findUnique);
 const mockSlotFindUnique = vi.mocked(prisma.slot.findUnique);
 const mockSlotUpdate = vi.mocked(prisma.slot.update);
@@ -41,6 +45,7 @@ const createJsonRequest = (body: unknown, url = "http://localhost/api/admin/trip
 describe("/api/admin/trips/[id]/assign", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockLogActivity.mockResolvedValue(undefined as any);
   });
 
   it("PATCH returns auth response when unauthorized", async () => {
@@ -57,7 +62,7 @@ describe("/api/admin/trips/[id]/assign", () => {
   });
 
   it("PATCH validates managerId", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, roleName: "ADMIN" } as any);
 
     const response = await PATCH(createJsonRequest({ managerId: "" }), {
       params: Promise.resolve({ id: "slot-1" }),
@@ -67,7 +72,7 @@ describe("/api/admin/trips/[id]/assign", () => {
   });
 
   it("PATCH returns 403 when manager role is invalid", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, roleName: "ADMIN" } as any);
     mockUserFindUnique.mockResolvedValue({ status: "ACTIVE", role: { name: "REGISTERED_USER" } } as any);
 
     const response = await PATCH(createJsonRequest({ managerId: "u1" }), {
@@ -79,8 +84,20 @@ describe("/api/admin/trips/[id]/assign", () => {
     expect(data.error).toContain("Trip Manager role");
   });
 
+  it("PATCH returns 403 when caller is not an administrator", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, roleName: "TRIP_MANAGER" } as any);
+
+    const response = await PATCH(createJsonRequest({ managerId: "u1" }), {
+      params: Promise.resolve({ id: "slot-1" }),
+    });
+    const data = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(data.error).toContain("Only administrators");
+  });
+
   it("PATCH returns 404 when manager is inactive", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, roleName: "ADMIN" } as any);
     mockUserFindUnique.mockResolvedValue({ status: "INACTIVE", role: { name: "TRIP_MANAGER" } } as any);
 
     const response = await PATCH(createJsonRequest({ managerId: "u1" }), {
@@ -91,7 +108,7 @@ describe("/api/admin/trips/[id]/assign", () => {
   });
 
   it("PATCH assigns manager for allowed role", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, roleName: "ADMIN" } as any);
     mockUserFindUnique.mockResolvedValue({ status: "ACTIVE", role: { name: "TRIP_MANAGER" } } as any);
     mockSlotUpdate.mockResolvedValue({ id: "slot-1", manager: { id: "u1" } } as any);
 
@@ -105,7 +122,7 @@ describe("/api/admin/trips/[id]/assign", () => {
   });
 
   it("PATCH returns 500 on unexpected failure", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, roleName: "ADMIN" } as any);
     mockUserFindUnique.mockResolvedValue({ status: "ACTIVE", role: { name: "TRIP_MANAGER" } } as any);
     mockSlotUpdate.mockRejectedValue(new Error("db fail"));
 
@@ -287,6 +304,13 @@ describe("/api/admin/trips/[id]/assign", () => {
     expect(mockTripDeleteMany).toHaveBeenCalledWith({
       where: { slotId: "slot-1", trekLeadId: "lead-1" },
     });
+    expect(mockLogActivity).toHaveBeenCalledWith(
+      "TREK_LEAD_UNASSIGNED",
+      "admin-1",
+      "TripAssignment",
+      "slot-1",
+      { trekLeadId: "lead-1" }
+    );
   });
 
   it("DELETE returns 403 when caller cannot modify slot", async () => {

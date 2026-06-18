@@ -131,13 +131,31 @@ describe("POST /api/auth/login", () => {
 
     expect(response.status).toBe(200);
     expect(data.user.id).toBe("u1");
-    expect(data.accessToken).toBe("access-1");
+    expect(data.accessToken).toBeUndefined();
     expect(mockFindUnique).toHaveBeenCalledWith({
       where: { email: "user@example.com" },
       include: { role: true },
     });
     expect(response.headers.get("set-cookie")).toContain("accessToken=");
     expect(response.headers.get("set-cookie")).toContain("refreshToken=");
+  });
+
+  it("returns 429 when rate limit is exceeded", async () => {
+    const { authLimiter } = await import("@/lib/rate-limiter");
+    vi.mocked(authLimiter.check).mockReturnValueOnce({
+      success: false,
+      limit: 20,
+      remaining: 0,
+      reset: 0,
+    });
+
+    const response = await POST(
+      createRequest({ email: "user@example.com", password: TEST_PASSWORD }),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(429);
+    expect(data.error).toBe("Too many requests. Please try again later.");
   });
 
   it("returns 500 on unexpected error", async () => {

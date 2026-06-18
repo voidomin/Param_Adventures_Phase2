@@ -47,7 +47,7 @@ export async function GET(request: NextRequest) {
       prisma.user.count({ where: whereClause }), // for pagination
       prisma.user.count({ where: { status: "ACTIVE" } }), // for stats
       prisma.user.count({ where: { status: "ACTIVE", role: { name: { in: ["ADMIN", "SUPER_ADMIN"] } } } }),
-      prisma.user.count({ where: { status: "ACTIVE", role: { name: "CUSTOMER" } } }),
+      prisma.user.count({ where: { status: "ACTIVE", role: { name: "REGISTERED_USER" } } }),
       prisma.user.count({ where: { status: "ACTIVE", role: { name: "TREK_LEAD" } } }),
     ]);
 

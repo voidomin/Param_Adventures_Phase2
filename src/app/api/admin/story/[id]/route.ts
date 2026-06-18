@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
+import { logActivity } from "@/lib/audit-logger";
 import { z } from "zod";
 
 const updateSchema = z.object({
@@ -52,6 +53,14 @@ export async function PUT(
       data: result.data,
     });
 
+    await logActivity(
+      "STORY_BLOCK_UPDATED",
+      auth.userId,
+      "StoryBlock",
+      id,
+      { title: block.title, type: block.type }
+    );
+
     revalidatePath("/our-story");
     return NextResponse.json({ block });
   } catch (error) {
@@ -84,6 +93,14 @@ export async function DELETE(
     }
 
     await prisma.storyBlock.delete({ where: { id } });
+
+    await logActivity(
+      "STORY_BLOCK_DELETED",
+      auth.userId,
+      "StoryBlock",
+      id,
+      { title: existing.title }
+    );
 
     revalidatePath("/our-story");
     return NextResponse.json({ message: "Story block deleted." });

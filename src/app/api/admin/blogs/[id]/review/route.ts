@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
+import { logActivity } from "@/lib/audit-logger";
 
 type Params = { params: Promise<{ id: string }> };
 
@@ -58,6 +59,14 @@ export async function POST(request: NextRequest, { params }: Params) {
           ? { status: "PUBLISHED", rejectionReason: null }
           : { status: "DRAFT", rejectionReason: rejectionReason?.trim() || "Rejected by admin" },
     });
+
+    await logActivity(
+      action === "approve" ? "BLOG_APPROVED" : "BLOG_REJECTED",
+      auth.userId,
+      "Blog",
+      id,
+      { title: blog.title, ...(rejectionReason ? { rejectionReason } : {}) }
+    );
 
     revalidatePath("/", "layout");
 

@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { verifyAccessToken } from "@/lib/auth";
 import { sanitizeEditorContent } from "@/lib/sanitize";
+import { logActivity } from "@/lib/audit-logger";
 import { z } from "zod";
 
 type Params = { params: Promise<{ id: string }> };
@@ -111,6 +112,14 @@ export async function DELETE(request: NextRequest, { params }: Params) {
     where: { id },
     data: { deletedAt: new Date() },
   });
+
+  await logActivity(
+    "BLOG_DELETED",
+    result.userId,
+    "Blog",
+    id,
+    { title: result.blog.title, deletedBy: "AUTHOR" }
+  );
 
   revalidatePath("/", "layout");
 

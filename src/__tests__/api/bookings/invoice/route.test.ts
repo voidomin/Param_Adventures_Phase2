@@ -69,6 +69,27 @@ describe("GET /api/bookings/[id]/invoice", () => {
     expect(response.status).toBe(403);
   });
 
+  it("allows managers or admins to access booking belonging to another user", async () => {
+    mockVerifyAccessToken.mockResolvedValue({ userId: "u1", roleName: "SUPER_ADMIN" } as any);
+    mockBookingFindUnique.mockResolvedValue({
+      id: "b1",
+      userId: "u2",
+      createdAt: new Date("2026-01-01"),
+      totalPrice: 1000,
+      baseFare: 900,
+      taxBreakdown: [],
+      bookingStatus: "CONFIRMED",
+      participantCount: 2,
+      experience: { title: "Trip", location: "Himalaya" },
+      participants: [{ name: "A", isPrimary: true }],
+      payments: [],
+    } as any);
+    mockPlatformSettingsFindMany.mockResolvedValue([] as any);
+
+    const response = await GET(createRequest({ token: "ok" }), { params: Promise.resolve({ id: "b1" }) });
+    expect(response.status).toBe(200);
+  });
+
   it("returns invoice payload with primary contact and latest payment", async () => {
     mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
     mockBookingFindUnique.mockResolvedValue({

@@ -55,6 +55,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 import Navbar from "@/components/layout/Navbar";
+import ProfilePromptBanner from "@/components/layout/ProfilePromptBanner";
 import Footer from "@/components/layout/Footer";
 import MaintenanceGuard from "@/components/layout/MaintenanceGuard";
 import GoogleAnalytics from "@/components/monitoring/GoogleAnalytics";
@@ -105,6 +106,7 @@ export default async function RootLayout({
               <MaintenanceGuard isMaintenanceMode={maintenanceMode}>
                 <div className="flex flex-col min-h-screen">
                   <Navbar />
+                  <ProfilePromptBanner />
                   <main className="flex-1 flex flex-col">{children}</main>
                   <Footer 
                     supportEmail={supportEmail} 

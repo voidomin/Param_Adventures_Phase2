@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authorizeRequest } from "@/lib/api-auth";
 import { bookingSchema } from "@/lib/validators/booking.schema";
 import { BookingService } from "@/services/booking.service";
+import { bookingLimiter } from "@/lib/rate-limiter";
 
 /**
  * POST /api/bookings
@@ -10,6 +11,16 @@ import { BookingService } from "@/services/booking.service";
  * and delegates business orchestration to BookingService.
  */
 export async function POST(request: NextRequest) {
+  // 0. Rate Limiting Protection
+  const ip = request.headers?.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimit = bookingLimiter.check(ip);
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429 }
+    );
+  }
+
   const auth = await authorizeRequest(request);
   if (!auth.authorized) return auth.response;
 
@@ -39,6 +50,7 @@ export async function POST(request: NextRequest) {
       "INSUFFICIENT_CAPACITY": { message: "Requested slots are no longer available.", status: 409 },
       "OVERBOOKED": { message: "Sorry, those seats were just booked by someone else.", status: 409 },
       "PAYMENT_GATEWAY_ERROR": { message: "Payment gateway unavailable. Please try again.", status: 502 },
+      "ALREADY_REQUESTED": { message: "You already have a pending booking request for this slot. Please complete payment in your profile bookings tab.", status: 400 },
     };
 
     const errorMessage = error instanceof Error ? error.message : "INTERNAL_ERROR";

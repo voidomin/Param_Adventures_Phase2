@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
+import { logActivity } from "@/lib/audit-logger";
 import { z } from "zod";
 
 const managerAssignSchema = z.object({
@@ -22,6 +23,13 @@ export async function PATCH(
 ) {
   const auth = await authorizeRequest(request, "ops:assign-trek-leads");
   if (!auth.authorized) return auth.response;
+
+  if (!["ADMIN", "SUPER_ADMIN"].includes(auth.roleName)) {
+    return NextResponse.json(
+      { error: "Only administrators can assign trip managers." },
+      { status: 403 },
+    );
+  }
 
   try {
     const { id: slotId } = await params;
@@ -226,6 +234,14 @@ export async function DELETE(
         trekLeadId: userId,
       },
     });
+
+    await logActivity(
+      "TREK_LEAD_UNASSIGNED",
+      auth.userId,
+      "TripAssignment",
+      slotId,
+      { trekLeadId: userId }
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {

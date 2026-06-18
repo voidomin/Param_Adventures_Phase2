@@ -1,4 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+// Override the global mock so we can test the real implementation
+vi.unmock("@/lib/rate-limiter");
+
 import { RateLimiter } from "@/lib/rate-limiter";
 
 describe("RateLimiter", () => {

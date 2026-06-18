@@ -52,7 +52,7 @@ export default async function Testimonials() {
           {reviews.map((review) => (
             <div
               key={review.id}
-              className="w-[85vw] sm:w-[320px] lg:w-[380px] shrink-0 snap-start bg-card border border-border rounded-2xl p-6 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 group flex flex-col justify-between min-h-64"
+              className="w-[85vw] sm:w-[320px] lg:w-[380px] shrink-0 snap-center sm:snap-start bg-card border border-border rounded-2xl p-6 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 group flex flex-col justify-between min-h-64"
             >
               <div>
                 {/* Stars */}

@@ -4,60 +4,141 @@ import { rateLimit } from "@/lib/rate-limit";
 import type { RateLimitResult } from "@/lib/rate-limit";
 import { findMatchingRule } from "@/lib/rate-limit-config";
 
-/**
- * Route protection middleware.
- *
- * Strategy:
- * - Public routes: accessible to everyone (landing, experiences, blogs, auth endpoints)
- * - Protected routes: require valid JWT in cookies (/admin/*, /bookings/*, /api/auth/me)
- * - API auth routes: always public (login, register, logout)
- *
- * Note: Full JWT verification (crypto) can't run in Edge middleware,
- * so we only check for token presence here. Actual verification happens
- * in the API route handlers via verifyAccessToken().
- */
-export default function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+interface RateLimitResultWrapper {
+  response: NextResponse | null;
+  result: RateLimitResult | null;
+}
 
-  // ─── 1. Rate Limiting ──────────────────────────────────
+/**
+ * CSRF Protection for state-changing requests.
+ * Returns a response block (NextResponse) if verification fails, or null if allowed.
+ */
+function verifyCsrf(request: NextRequest, pathname: string, method: string): NextResponse | null {
+  const isStateChanging = ["POST", "PUT", "PATCH", "DELETE"].includes(method);
+  if (!isStateChanging || !pathname.startsWith("/api/")) {
+    return null;
+  }
+
+  const isWebhook = pathname.startsWith("/api/bookings/webhook");
+  if (isWebhook) {
+    return null;
+  }
+
+  const origin = request.headers.get("origin");
+  const referer = request.headers.get("referer");
+  const host = request.headers.get("x-forwarded-host") || request.headers.get("host") || "";
+
+  let originHost = "";
+  if (origin) {
+    try {
+      originHost = new URL(origin).host;
+    } catch {
+      // Invalid URL
+    }
+  } else if (referer) {
+    try {
+      originHost = new URL(referer).host;
+    } catch {
+      // Invalid URL
+    }
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+  let appUrlHost = "";
+  if (appUrl) {
+    try {
+      appUrlHost = new URL(appUrl).host;
+    } catch {
+      // Invalid URL
+    }
+  }
+
+  const expectedHosts = [host];
+  if (appUrlHost) {
+    expectedHosts.push(appUrlHost);
+  }
+
+  if (!originHost || !expectedHosts.includes(originHost)) {
+    console.warn(
+      `[CSRF_ATTACK] Blocked ${method} request to ${pathname} from origin/referer: ${
+        origin || referer || "none"
+      }. Expected: ${expectedHosts.join(" or ")}`
+    );
+    return NextResponse.json(
+      { error: "CSRF verification failed. Request untrusted." },
+      { status: 403 }
+    );
+  }
+
+  return null;
+}
+
+/**
+ * Rate limiting logic wrapper.
+ * Returns both the response block (if limited) and the rateLimitResult metadata.
+ */
+function handleRateLimiting(request: NextRequest, pathname: string): RateLimitResultWrapper {
   const rule = findMatchingRule(pathname);
-  let rateLimitResult: RateLimitResult | null = null;
+  if (!rule) {
+    return { response: null, result: null };
+  }
 
   const forwarded = request.headers.get("x-forwarded-for");
   const realIp = request.headers.get("x-real-ip");
   const ip = forwarded?.split(",")[0]?.trim() || realIp || "unknown";
 
-  if (rule) {
-    const key = `${ip}:${rule.pathPrefix}`;
-    rateLimitResult = rateLimit(key, rule.limit, rule.windowMs);
+  const key = `${ip}:${rule.pathPrefix}`;
+  const rateLimitResult = rateLimit(key, rule.limit, rule.windowMs);
 
-    if (!rateLimitResult.success) {
-      const retryAfterSeconds = Math.ceil(
-        (rateLimitResult.resetAt - Date.now()) / 1000,
-      );
+  if (!rateLimitResult.success) {
+    const retryAfterSeconds = Math.ceil(
+      (rateLimitResult.resetAt - Date.now()) / 1000,
+    );
 
-      console.warn(
-        `[RATE_LIMIT] Blocked ${ip} on ${pathname} (${rule.label || rule.pathPrefix}). Retry after ${retryAfterSeconds}s`,
-      );
+    console.warn(
+      `[RATE_LIMIT] Blocked ${ip} on ${pathname} (${rule.label || rule.pathPrefix}). Retry after ${retryAfterSeconds}s`,
+    );
 
-      return NextResponse.json(
-        {
-          error: "Too many requests. Please try again later.",
-          retryAfter: retryAfterSeconds,
+    const response = NextResponse.json(
+      {
+        error: "Too many requests. Please try again later.",
+        retryAfter: retryAfterSeconds,
+      },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(retryAfterSeconds),
+          "X-RateLimit-Limit": String(rateLimitResult.limit),
+          "X-RateLimit-Remaining": "0",
         },
-        {
-          status: 429,
-          headers: {
-            "Retry-After": String(retryAfterSeconds),
-            "X-RateLimit-Limit": String(rateLimitResult.limit),
-            "X-RateLimit-Remaining": "0",
-          },
-        },
-      );
-    }
+      },
+    );
+    return { response, result: rateLimitResult };
   }
 
-  // ─── Always-public routes ──────────────────────────────
+  return { response: null, result: rateLimitResult };
+}
+
+/**
+ * Route protection middleware.
+ */
+export default function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const method = request.method;
+
+  // ─── CSRF Protection ───────────────────────────────────
+  const csrfBlock = verifyCsrf(request, pathname, method);
+  if (csrfBlock) {
+    return csrfBlock;
+  }
+
+  // ─── Rate Limiting ─────────────────────────────────────
+  const { response: rateLimitBlock, result: rateLimitResult } = handleRateLimiting(request, pathname);
+  if (rateLimitBlock) {
+    return rateLimitBlock;
+  }
+
+  // ─── Public routes ─────────────────────────────────────
   const publicPaths = [
     "/",
     "/experiences",
@@ -79,6 +160,15 @@ export default function proxy(request: NextRequest) {
     "/blog",
     "/our-story",
     "/api/admin/bootstrap",
+    "/api/bookings/webhook",
+    "/api/health",
+    "/api/leads",
+    "/api/quotes",
+    "/api/proxy-image",
+    "/privacy",
+    "/terms",
+    "/refunds",
+    "/why-param-adventures",
   ];
 
   // Check exact match or prefix match for public paths
@@ -98,7 +188,7 @@ export default function proxy(request: NextRequest) {
     return response;
   }
 
-  // ─── Static assets and Next.js internals — always pass ─
+  // ─── Static assets and Next.js internals ───────────────
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||

@@ -65,18 +65,13 @@ export default function AdminExperiencesPage() {
     title: string,
     bookingsCount: number,
   ) => {
+    let message = `Are you sure you want to permanently delete "${title}"?`;
     if (bookingsCount > 0) {
-      if (
-        !globalThis.confirm(
-          `Warning: "${title}" has ${bookingsCount} bookings. Deleting it will only archive/soft-delete it. Continue?`,
-        )
-      ) {
-        return;
-      }
-    } else if (
-      !globalThis.confirm(
-        `Are you sure you want to permanently delete "${title}"?`,
-      )
+      message = `Warning: "${title}" has ${bookingsCount} booking(s). Deleting it will archive/soft-delete it to preserve booking records. Continue?`;
+    }
+
+    if (
+      !globalThis.confirm(message)
     ) {
       return;
     }
@@ -268,11 +263,20 @@ export default function AdminExperiencesPage() {
                   <CalendarDays className="w-4 h-4" /> Slots
                 </Link>
                 <button
+                  disabled={exp._count.slots > 0}
                   onClick={() =>
                     handleDelete(exp.id, exp.title, exp._count.bookings)
                   }
-                  className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg transition-colors"
-                  title="Delete"
+                  className={`p-2 rounded-lg transition-colors ${
+                    exp._count.slots > 0
+                      ? "opacity-30 cursor-not-allowed text-foreground/45 bg-foreground/5"
+                      : "bg-red-500/10 text-red-500 hover:bg-red-500/20"
+                  }`}
+                  title={
+                    exp._count.slots > 0
+                      ? "Cannot delete experience with active slots. Please delete all slots first."
+                      : "Delete"
+                  }
                 >
                   <Trash2 className="w-5 h-5" />
                 </button>

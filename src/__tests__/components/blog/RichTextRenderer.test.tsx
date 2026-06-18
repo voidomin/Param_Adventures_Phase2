@@ -11,7 +11,11 @@ vi.mock("@tiptap/react", () => ({
   ),
 }));
 
-vi.mock("@tiptap/starter-kit", () => ({ default: { name: "starter-kit" } }));
+vi.mock("@tiptap/starter-kit", () => ({
+  default: {
+    configure: vi.fn(() => ({ name: "starter-kit" })),
+  },
+}));
 vi.mock("@tiptap/extension-image", () => ({ default: { name: "image" } }));
 vi.mock("@tiptap/extension-youtube", () => ({
   default: {

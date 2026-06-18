@@ -11,6 +11,7 @@ interface SaveButtonProps {
   size?: number;
   className?: string;
   initialSaved?: boolean; // Optional initial state if we already know it
+  variant?: "image-overlay" | "card-inline";
 }
 
 export default function SaveButton({
@@ -18,6 +19,7 @@ export default function SaveButton({
   size = 20,
   className = "",
   initialSaved = false,
+  variant = "image-overlay",
 }: Readonly<SaveButtonProps>) {
   const { user } = useAuth();
   const router = useRouter();
@@ -93,6 +95,19 @@ export default function SaveButton({
     }
   };
 
+  const buttonStyle = variant === "card-inline"
+    ? "bg-background/50 border border-border hover:bg-foreground/5 shadow-md"
+    : "bg-background/10 border border-border/40 hover:bg-foreground/10 shadow-xl ring-1 ring-border/10 text-white";
+
+  let heartStyle = "";
+  if (isSaved) {
+    heartStyle = "fill-red-500 text-red-500";
+  } else if (variant === "card-inline") {
+    heartStyle = "fill-transparent text-foreground/60 group-hover:text-red-500";
+  } else {
+    heartStyle = "fill-transparent text-white group-hover:text-red-400";
+  }
+
   return (
     <button
       onClick={toggleSave}
@@ -101,17 +116,13 @@ export default function SaveButton({
       aria-label={isSaved ? "Remove from wishlist" : "Save to wishlist"}
       className={cn(
         "flex items-center justify-center w-10 h-10 aspect-square rounded-full backdrop-blur-md transition-all active:scale-95 group",
-        "bg-background/10 border border-border/40 hover:bg-foreground/10 shadow-xl ring-1 ring-border/10",
+        buttonStyle,
         className
       )}
     >
       <Heart
         size={size}
-        className={`transition-colors duration-300 ${
-          isSaved
-            ? "fill-red-500 text-red-500"
-            : "fill-transparent text-white group-hover:text-red-400"
-        } ${isLoading ? "animate-pulse" : ""}`}
+        className={cn("transition-colors duration-300", heartStyle, isLoading && "animate-pulse")}
       />
     </button>
   );

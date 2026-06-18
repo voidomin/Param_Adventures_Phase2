@@ -11,6 +11,11 @@ vi.mock("jspdf-autotable", () => ({
 }));
 
 
+const mockUseAuth = vi.fn().mockReturnValue({ user: { id: "mock-user-id" } });
+vi.mock("@/lib/AuthContext", () => ({
+  useAuth: () => mockUseAuth(),
+}));
+
 // Mock fetch
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
@@ -25,6 +30,7 @@ describe("DownloadItineraryBtn Smoke Test", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseAuth.mockReturnValue({ user: { id: "mock-user-id" } });
     
     // @ts-ignore
     mockFetch.mockImplementation((url: string) => {
@@ -222,6 +228,71 @@ describe("DownloadItineraryBtn Smoke Test", () => {
 
     await waitFor(() => {
       expect(saveSpy).toHaveBeenCalledWith(expect.stringContaining("Empty_Trek"));
+    }, { timeout: 15000 });
+  });
+
+  it("opens the lead generation modal for logged-out users, submits lead, and downloads PDF", async () => {
+    mockUseAuth.mockReturnValue({ user: null });
+    vi.spyOn(globalThis, "alert").mockImplementation(() => {});
+
+    // Mock successful lead post
+    mockFetch.mockImplementation((url: string, init?: RequestInit) => {
+      if (url.includes("/itinerary-data")) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({
+            title: "Trek for Lead",
+            location: "Himalayas",
+            durationDays: 5,
+            company: { name: "Param", email: "test@param.com", phone: "123", website: "param.com" },
+            itinerary: [{ title: "Day 1", description: "Start" }],
+            images: [],
+          }),
+        });
+      }
+      if (url.includes("/api/leads")) {
+        expect(init?.method).toBe("POST");
+        const body = JSON.parse(init?.body as string);
+        expect(body.name).toBe("Jane Lead");
+        expect(body.email).toBe("jane@lead.com");
+        expect(body.phone).toBe("9876543210");
+        expect(body.requirements).toContain("Other (Google Search)");
+        expect(body.source).toBe("ITINERARY_DOWNLOAD: amazing-trek");
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ success: true }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ dataUrl: "data:image/png;base64,mock" }),
+      });
+    });
+
+    const saveSpy = vi.spyOn(jsPDF.prototype, "save");
+    render(<DownloadItineraryBtn {...defaultProps} />);
+
+    // Click button to open modal
+    fireEvent.click(screen.getByRole("button"));
+
+    // Modal elements should be in document
+    expect(screen.getByText(/Get Trip Itinerary/i)).toBeInTheDocument();
+
+    // Fill form
+    fireEvent.change(screen.getByLabelText(/Full Name/i), { target: { value: "Jane Lead" } });
+    fireEvent.change(screen.getByLabelText(/Email Address/i), { target: { value: "jane@lead.com" } });
+    fireEvent.change(screen.getByLabelText(/Phone Number/i), { target: { value: "9876543210" } });
+    fireEvent.change(screen.getByLabelText(/How did you hear about us/i), { target: { value: "Other" } });
+    
+    // Now the other source input should be visible
+    fireEvent.change(screen.getByLabelText(/Please specify \(Source\)/i), { target: { value: "Google Search" } });
+
+    // Submit form
+    fireEvent.click(screen.getByRole("button", { name: /Submit & Download Itinerary/i }));
+
+    // Wait for PDF to be generated
+    await waitFor(() => {
+      expect(saveSpy).toHaveBeenCalledWith(expect.stringContaining("Trek_for_Lead"));
     }, { timeout: 15000 });
   });
 });

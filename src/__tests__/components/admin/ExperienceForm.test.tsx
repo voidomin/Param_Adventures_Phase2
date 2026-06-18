@@ -57,6 +57,7 @@ const { mockExtension, mockEditor } = vi.hoisted(() => {
     toggleHeading: () => mockRun,
     toggleBlockquote: () => mockRun,
     toggleCodeBlock: () => mockRun,
+    toggleCode: () => mockRun,
     undo: () => mockRun,
     redo: () => mockRun,
     run: vi.fn(),
@@ -128,7 +129,7 @@ describe("ExperienceForm Comprehensive Smoke Test", () => {
     render(<ExperienceForm />);
     fireEvent.change(screen.getByLabelText(/Title/i), { target: { value: "Valid Trip" } });
     fireEvent.change(screen.getByLabelText(/Location/i), { target: { value: "Manali" } });
-    fireEvent.change(screen.getByLabelText(/Total Gross Price/i), { target: { value: "1000" } });
+    fireEvent.change(screen.getByLabelText(/Base Price/i), { target: { value: "1000" } });
     fireEvent.change(screen.getByLabelText(/Total Capacity/i), { target: { value: "10" } });
     fireEvent.change(screen.getByLabelText(/Duration/i), { target: { value: "5" } });
     
@@ -211,7 +212,7 @@ describe("ExperienceForm Comprehensive Smoke Test", () => {
     render(<ExperienceForm />);
     fireEvent.change(screen.getByLabelText(/Title/i), { target: { value: "Fail Trip" } });
     fireEvent.change(screen.getByLabelText(/Location/i), { target: { value: "Manali" } });
-    fireEvent.change(screen.getByLabelText(/Total Gross Price/i), { target: { value: "1000" } });
+    fireEvent.change(screen.getByLabelText(/Base Price/i), { target: { value: "1000" } });
     fireEvent.change(screen.getByLabelText(/Total Capacity/i), { target: { value: "10" } });
     fireEvent.change(screen.getByLabelText(/Duration/i), { target: { value: "5" } });
     

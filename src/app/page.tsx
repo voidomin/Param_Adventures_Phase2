@@ -16,6 +16,27 @@ import Image from "next/image";
 export const revalidate = 60;
 
 export default async function Home() {
+  const dbPlatformSettings = await withBuildSafety(
+    () => prisma.platformSetting.findMany({
+      where: {
+        key: {
+          in: ["media_provider", "cloudinary_cloud_name", "s3_bucket", "s3_region", "media_quality", "media_high_fidelity", "cdn_url"]
+        }
+      }
+    }),
+    []
+  );
+
+  const mediaSettings = {
+    provider: (dbPlatformSettings.find(s => s.key === "media_provider")?.value || "CLOUDINARY") as "CLOUDINARY" | "AWS_S3" | "S3" | "LOCAL",
+    cloudinaryCloudName: dbPlatformSettings.find(s => s.key === "cloudinary_cloud_name")?.value,
+    s3Bucket: dbPlatformSettings.find(s => s.key === "s3_bucket")?.value,
+    s3Region: dbPlatformSettings.find(s => s.key === "s3_region")?.value,
+    globalQuality: Number.parseInt(dbPlatformSettings.find(s => s.key === "media_quality")?.value || "95"),
+    highFidelity: dbPlatformSettings.find(s => s.key === "media_high_fidelity")?.value === "true",
+    cdnUrl: dbPlatformSettings.find(s => s.key === "cdn_url")?.value,
+  };
+
   // Fetch active hero slides for the homepage carousel
   const heroSlides = await withBuildSafety(
     () =>
@@ -40,7 +61,7 @@ export default async function Home() {
             },
             select: { date: true, capacity: true, remainingCapacity: true },
             orderBy: { date: "asc" },
-            take: 1,
+            take: 4,
           },
         },
         take: 10,
@@ -51,16 +72,43 @@ export default async function Home() {
 
 
   // Serialize Decimal and Date objects for Client Component compatibility
-  const featuredExperiences = featuredExperiencesRaw.map((exp) => ({
-    ...exp,
-    basePrice: Number(exp.basePrice),
-    nextDeparture: exp.slots?.[0]?.date ? (exp.slots[0].date instanceof Date ? exp.slots[0].date.toISOString() : new Date(exp.slots[0].date).toISOString()) : null,
-    nextDepartureSlot: (exp.slots?.[0] && exp.slots[0].date) ? {
-      date: exp.slots[0].date instanceof Date ? exp.slots[0].date.toISOString() : new Date(exp.slots[0].date).toISOString(),
-      capacity: exp.slots[0].capacity ?? exp.capacity,
-      remainingCapacity: exp.slots[0].remainingCapacity ?? exp.capacity,
-    } : null,
-  }));
+  const featuredExperiences = featuredExperiencesRaw.map((exp) => {
+    const validSlots = exp.slots.filter((slot) => {
+      if (!slot.date) return false;
+      const d = slot.date instanceof Date ? slot.date : new Date(slot.date);
+      return !Number.isNaN(d.getTime());
+    });
+
+    const firstSlot = validSlots[0];
+    let nextDeparture: string | null = null;
+    let nextDepartureSlot = null;
+
+    if (firstSlot?.date) {
+      const dateObj = firstSlot.date instanceof Date ? firstSlot.date : new Date(firstSlot.date);
+      const isoDate = dateObj.toISOString();
+      nextDeparture = isoDate;
+      nextDepartureSlot = {
+        date: isoDate,
+        capacity: firstSlot.capacity ?? exp.capacity,
+        remainingCapacity: firstSlot.remainingCapacity ?? exp.capacity,
+      };
+    }
+
+    return {
+      ...exp,
+      basePrice: Number(exp.basePrice),
+      nextDeparture,
+      nextDepartureSlot,
+      upcomingSlots: validSlots.map((slot) => {
+        const slotDate = slot.date instanceof Date ? slot.date : new Date(slot.date);
+        return {
+          date: slotDate.toISOString(),
+          capacity: slot.capacity ?? exp.capacity,
+          remainingCapacity: slot.remainingCapacity ?? exp.capacity,
+        };
+      }),
+    };
+  });
 
   const recentBlogs = await withBuildSafety(
     () =>
@@ -162,11 +210,11 @@ export default async function Home() {
         <div className="absolute bottom-[20%] -right-[10%] w-[60%] h-[60%] bg-orange-500/5 rounded-full blur-[120px]" />
       </div>
 
-      <Hero slides={heroSlides} />
+      <Hero slides={heroSlides} mediaSettings={mediaSettings} />
       <InfiniMarquee destinations={marqueeDestinations} />
       <CategoryBar />
 
-      <div className="pt-12 pb-24 px-4 md:px-12 lg:px-16 relative z-10">
+      <div className="pt-12 pb-4 px-4 md:px-12 lg:px-16 relative z-10">
         <ScrollReveal variant="blur" stagger>
           <h2 className="text-4xl font-heading font-black text-foreground mb-4 text-center">
             Featured Experiences
@@ -184,9 +232,9 @@ export default async function Home() {
               {featuredExperiences.map((exp: any) => (
                 <div
                   key={exp.id}
-                  className="w-[85vw] sm:w-87.5 md:w-100 shrink-0 snap-start h-full flex flex-col"
+                  className="w-[85vw] sm:w-87.5 md:w-100 shrink-0 snap-center sm:snap-start flex flex-col"
                 >
-                  <ExperienceCard experience={exp} />
+                  <ExperienceCard experience={exp} mediaSettings={mediaSettings} />
                 </div>
               ))}
             </Carousel>
@@ -201,7 +249,7 @@ export default async function Home() {
         )}
       </div>
 
-      <div className="relative py-12">
+      <div className="relative">
         <ImpactStats dynamicData={dynamicStats} />
       </div>
 
@@ -234,7 +282,7 @@ export default async function Home() {
                 {recentBlogs.map((blog) => (
                   <div
                     key={blog.id}
-                    className="w-[85vw] sm:w-87.5 md:w-100 shrink-0 snap-start h-full flex flex-col"
+                    className="w-[85vw] sm:w-87.5 md:w-100 shrink-0 snap-center sm:snap-start h-full flex flex-col"
                   >
                     <Link
                       href={`/blog/${blog.slug}`}
@@ -305,7 +353,7 @@ export default async function Home() {
 
       <Testimonials />
 
-      <div className="py-20 px-4 md:px-12 lg:px-16 relative z-10 font-heading">
+      <div className="py-12 px-4 md:px-12 lg:px-16 relative z-10 font-heading">
         <ScrollReveal direction="up">
           <CustomTripForm />
         </ScrollReveal>

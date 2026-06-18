@@ -4,7 +4,7 @@ import { useEffect, useState, type SVGProps } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import Link from "next/link";
 import Image from "next/image";
-import { Clock, MapPin, IndianRupee, Loader2, X, AlertTriangle } from "lucide-react";
+import { Clock, MapPin, IndianRupee, Loader2, X, AlertTriangle, MessageCircle } from "lucide-react";
 import SaveButton from "@/components/experiences/SaveButton";
 
 type TabStatus = "saved" | "pending" | "upcoming" | "past" | "cancelled";
@@ -43,6 +43,7 @@ interface BookingItem {
   };
   slot?: {
     date: string;
+    whatsAppUrl?: string | null;
   };
   payments: {
     id: string;
@@ -354,7 +355,7 @@ export default function BookingsPage() {
 
     const rzp = new RazorpayCtor({
       key: keyId,
-      amount: Number.parseInt(payment.amount) * 100,
+      amount: Math.round(Number.parseFloat(payment.amount) * 100),
       order_id: payment.providerOrderId,
       name: "Param Adventures",
       description: booking.experience.title,
@@ -514,14 +515,14 @@ export default function BookingsPage() {
 
             {/* Bookings Render */}
             {activeTab !== "saved" &&
-              (bookings[activeTab as keyof BookingsData].length === 0 ? (
+              (bookings[activeTab].length === 0 ? (
                 <EmptyState
                   title={`No ${activeTab} trips`}
                   msg="Explore our upcoming adventures and book your next journey!"
                 />
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {bookings[activeTab as keyof BookingsData].map((b) => (
+                  {bookings[activeTab].map((b) => (
                     <div
                       key={b.id}
                       className="bg-card border border-border rounded-2xl overflow-hidden flex flex-col"
@@ -656,6 +657,17 @@ export default function BookingsPage() {
                             // upcoming
                             return (
                               <>
+                                {b.slot?.whatsAppUrl && (
+                                  <a
+                                    href={b.slot.whatsAppUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="w-full py-2.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-500/20 dark:hover:bg-emerald-950/45 transition-colors text-sm font-bold rounded-xl flex items-center justify-center gap-2 shadow-xs"
+                                  >
+                                    <MessageCircle className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                                    Join WhatsApp Group
+                                  </a>
+                                )}
                                 <Link
                                   href={`/bookings/${b.id}/success`}
                                   className="w-full text-center py-2.5 bg-foreground/5 hover:bg-foreground/10 text-foreground font-bold rounded-xl transition"

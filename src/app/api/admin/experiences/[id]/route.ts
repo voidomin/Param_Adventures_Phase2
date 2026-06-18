@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { generateSlug } from "@/lib/slugify";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { logActivity } from "@/lib/audit-logger";
 
 // GET /api/admin/experiences/[id]
 export async function GET(
@@ -23,7 +24,7 @@ export async function GET(
       },
     });
 
-    if (!experience) {
+    if (!experience || experience.deletedAt) {
       return NextResponse.json(
         { error: "Experience not found" },
         { status: 404 },
@@ -50,8 +51,8 @@ const updateExperienceSchema = z.object({
   difficulty: z.enum(["EASY", "MODERATE", "HARD", "EXTREME"]).optional(),
   status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).optional(),
   isFeatured: z.boolean().optional(),
-  coverImage: z.url({ message: "Invalid cover image URL" }).min(1, "Cover Image is required").optional().nullable(),
-  cardImage: z.url({ message: "Invalid card image URL" }).optional().nullable(),
+  coverImage: z.union([z.url({ message: "Invalid cover image URL" }), z.literal("")]).transform(val => val === "" ? null : val).optional().nullable(),
+  cardImage: z.union([z.url({ message: "Invalid card image URL" }), z.literal("")]).transform(val => val === "" ? null : val).optional().nullable(),
   images: z.array(z.url({ message: "Invalid image URL" }).trim()).transform(arr => arr.filter(Boolean)).optional(),
   itinerary: z.any().optional(), // JSON
   categoryIds: z.array(z.string()).transform(arr => arr.filter(Boolean)).optional(),
@@ -114,7 +115,7 @@ export async function PUT(
     const { categoryIds, ...directData } = parseResult.data;
 
     const existingExp = await prisma.experience.findUnique({ where: { id } });
-    if (!existingExp) {
+    if (!existingExp || existingExp.deletedAt) {
       return NextResponse.json(
         { error: "Experience not found" },
         { status: 404 },
@@ -167,6 +168,14 @@ export async function PUT(
       });
     });
 
+    await logActivity(
+      "EXPERIENCE_UPDATED",
+      result.userId,
+      "Experience",
+      id,
+      { title: updatedExperience.title, status: updatedExperience.status }
+    );
+
     revalidatePath("/", "layout");
 
     return NextResponse.json({
@@ -195,32 +204,67 @@ export async function DELETE(
   try {
     const existingExp = await prisma.experience.findUnique({
       where: { id },
-      include: {
-        _count: { select: { bookings: true } },
-      },
     });
 
-    if (!existingExp) {
+    if (!existingExp || existingExp.deletedAt) {
       return NextResponse.json(
         { error: "Experience not found" },
         { status: 404 },
       );
     }
 
-    if (existingExp._count.bookings > 0) {
-      // Soft Delete
+    // Check if there are any slots or bookings at all
+    const totalSlotsCount = await prisma.slot.count({
+      where: { experienceId: id },
+    });
+    const totalBookingsCount = await prisma.booking.count({
+      where: { experienceId: id },
+    });
+
+    if (totalSlotsCount > 0) {
+      return NextResponse.json(
+        { error: "Cannot delete experience with active slots. Please delete the slots first." },
+        { status: 400 },
+      );
+    }
+
+    if (totalBookingsCount > 0) {
+      // Soft Delete to retain history
       await prisma.experience.update({
         where: { id },
         data: { deletedAt: new Date() },
       });
+
+      await logActivity(
+        "EXPERIENCE_DELETED",
+        result.userId,
+        "Experience",
+        id,
+        { title: existingExp.title, deleteType: "soft" }
+      );
       revalidatePath("/", "layout");
-      return NextResponse.json({ message: "Experience soft-deleted" });
-    } else {
-      // Hard Delete
-      await prisma.experience.delete({ where: { id } });
-      revalidatePath("/", "layout");
-      return NextResponse.json({ message: "Experience permanently deleted" });
+      return NextResponse.json({ message: "Experience archived/soft-deleted to preserve booking records." });
     }
+
+    // Hard Delete
+    // Update any blogs referencing this experience to avoid foreign key issues
+    await prisma.$transaction([
+      prisma.blog.updateMany({
+        where: { experienceId: id },
+        data: { experienceId: null },
+      }),
+      prisma.experience.delete({ where: { id } }),
+    ]);
+
+    await logActivity(
+      "EXPERIENCE_DELETED",
+      result.userId,
+      "Experience",
+      id,
+      { title: existingExp.title, deleteType: "hard" }
+    );
+    revalidatePath("/", "layout");
+    return NextResponse.json({ message: "Experience permanently deleted" });
   } catch (err: unknown) {
     console.error("Failed to delete experience:", err);
     return NextResponse.json(

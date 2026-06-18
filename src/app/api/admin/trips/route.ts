@@ -15,11 +15,13 @@ export async function GET(request: NextRequest) {
   if (!auth.authorized) return auth.response;
 
   try {
+    const showPast = request.url ? new URL(request.url).searchParams.get("past") === "true" : false;
+
     const upcomingSlots = await prisma.slot.findMany({
-      where: {
-        date: { gte: new Date() },
-      },
-      orderBy: { date: "asc" },
+      where: showPast
+        ? { date: { lt: new Date() } }
+        : { date: { gte: new Date() } },
+      orderBy: { date: showPast ? "desc" : "asc" },
       include: {
         experience: {
           select: {
