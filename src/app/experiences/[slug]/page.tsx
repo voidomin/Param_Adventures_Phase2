@@ -660,7 +660,7 @@ export default async function ExperienceDetailPage({
           Adventure Currently Unavailable
         </h1>
         <p className="text-foreground/60 mb-12 max-w-lg text-base leading-relaxed">
-          This trail is currently in draft or has been archived. But don't worry, there are plenty of other active paths to explore!
+          This trail is currently in draft or has been archived. But don&apos;t worry, there are plenty of other active paths to explore!
         </p>
 
         {activeExperiences.length > 0 && (

@@ -22,6 +22,7 @@ export default function Carousel({
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsMounted(true);
     checkScroll();
     

@@ -40,6 +40,23 @@ interface Participant {
   dropPoint?: string | null;
 }
 
+interface StayDetails {
+  _id: string;
+  name: string;
+  contactNumber: string;
+  location: string;
+  locationLink: string;
+  address: string;
+}
+
+interface TransportDetails {
+  _id: string;
+  driverName: string;
+  contactNumber: string;
+  vehicleNumber: string;
+  vehicleType: string;
+}
+
 interface Booking {
   id: string;
   participantCount: number;
@@ -47,11 +64,23 @@ interface Booking {
   user: { id: string; name: string; email: string; phoneNumber: string | null };
 }
 
+interface VendorContact {
+  label?: string;
+  value?: string;
+  [key: string]: unknown;
+}
+
+interface StructuredVendorContacts {
+  stays?: Partial<StayDetails>[];
+  transports?: Partial<TransportDetails>[];
+  otherContacts?: VendorContact[];
+}
+
 interface TripSlot {
   id: string;
   date: string;
   status: string;
-  vendorContacts: any;
+  vendorContacts: unknown;
   experience: {
     title: string;
     location: string;
@@ -327,20 +356,21 @@ export default function TrekLeadTripDetailPage() {
           </div>
         )}
 
-        {slot.vendorContacts && (() => {
+        {!!slot.vendorContacts && (() => {
           const raw = slot.vendorContacts;
           const isStructured = raw && typeof raw === "object" && !Array.isArray(raw);
           
-          let stays: any[] = [];
-          let transports: any[] = [];
-          let other: any[] = [];
+          let stays: Partial<StayDetails>[] = [];
+          let transports: Partial<TransportDetails>[] = [];
+          let other: VendorContact[] = [];
 
-          if (isStructured) {
-            stays = raw.stays ?? [];
-            transports = raw.transports ?? [];
-            other = raw.otherContacts ?? [];
+          if (isStructured && raw) {
+            const structured = raw as StructuredVendorContacts;
+            stays = structured.stays ?? [];
+            transports = structured.transports ?? [];
+            other = structured.otherContacts ?? [];
           } else if (Array.isArray(raw)) {
-            other = raw;
+            other = raw as VendorContact[];
           }
 
           const hasData = stays.length > 0 || transports.length > 0 || other.length > 0;
@@ -358,7 +388,7 @@ export default function TrekLeadTripDetailPage() {
                   <div className="space-y-3">
                     <h3 className="text-xs font-bold text-foreground/70 uppercase">Stays / Lodging</h3>
                     <div className="space-y-3">
-                      {stays.map((s: any) => (
+                      {stays.map((s) => (
                         <div key={`stay-${s.name}-${s.location}`} className="bg-foreground/[0.02] border border-border/50 rounded-xl p-3 space-y-1">
                           <p className="font-semibold text-foreground text-sm">{s.name}</p>
                           <p className="text-xs text-foreground/60">{s.address}</p>
@@ -386,7 +416,7 @@ export default function TrekLeadTripDetailPage() {
                   <div className="space-y-3">
                     <h3 className="text-xs font-bold text-foreground/70 uppercase">Transport & Drivers</h3>
                     <div className="space-y-3">
-                      {transports.map((t: any) => (
+                      {transports.map((t) => (
                         <div key={`transport-${t.driverName}-${t.vehicleNumber}`} className="bg-foreground/[0.02] border border-border/50 rounded-xl p-3 space-y-1">
                           <p className="font-semibold text-foreground text-sm">{t.driverName}</p>
                           <p className="text-xs text-foreground/60">{t.vehicleType} · <span className="font-mono">{t.vehicleNumber}</span></p>
@@ -408,7 +438,7 @@ export default function TrekLeadTripDetailPage() {
                   <div className="space-y-3">
                     <h3 className="text-xs font-bold text-foreground/70 uppercase">Other Contacts</h3>
                     <div className="bg-foreground/[0.02] border border-border/50 rounded-xl p-3 space-y-2">
-                      {other.map((vc: any) => (
+                      {other.map((vc) => (
                         <div key={`other-${vc.label}-${vc.value}`} className="flex justify-between text-xs py-0.5 border-b border-border/30 last:border-0">
                           <span className="text-foreground/50">{vc.label}</span>
                           <span className="font-medium text-foreground">{vc.value}</span>

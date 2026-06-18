@@ -25,6 +25,16 @@ interface LogCategory {
   iconColor: string;
 }
 
+interface AuditLogData {
+  id: string;
+  action: string;
+  targetType: string;
+  targetId: string | null;
+  actorId: string | null;
+  timestamp: string | Date;
+  metadata: unknown;
+}
+
 const LOG_CATEGORIES: LogCategory[] = [
   {
     id: "all",
@@ -128,7 +138,7 @@ export default function AuditLogsPage() {
         const XLSX = await import("xlsx");
 
         // Format raw logs into flat sheet rows
-        const rows = logs.map((log: any) => ({
+        const rows = logs.map((log: AuditLogData) => ({
           "Log ID": log.id,
           "Action": log.action.replaceAll("_", " "),
           "Target Type": log.targetType,
@@ -143,7 +153,7 @@ export default function AuditLogsPage() {
         XLSX.utils.book_append_sheet(workbook, worksheet, "Audit Trail");
 
         // Auto-fit column widths
-        const maxLen = rows.reduce((acc: any, row: any) => {
+        const maxLen = rows.reduce((acc: Record<string, number>, row: Record<string, unknown>) => {
           Object.keys(row).forEach((key) => {
             const val = row[key] instanceof Date
               ? row[key].toISOString().replace("T", " ").substring(0, 19)

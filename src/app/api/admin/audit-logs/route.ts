@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
+import { Prisma } from "@prisma/client";
 
 /**
  * GET /api/admin/audit-logs — SUPER_ADMIN only.
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
     const targetTypeRaw = searchParams.get("targetType") || undefined;
 
     // Build where clause
-    const where: Record<string, any> = {};
+    const where: Prisma.AuditLogWhereInput = {};
 
     if (action) {
       where.action = action;

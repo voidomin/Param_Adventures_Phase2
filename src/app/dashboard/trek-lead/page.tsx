@@ -24,7 +24,7 @@ interface TripSlot {
   id: string;
   date: string;
   status: string;
-  vendorContacts: any;
+  vendorContacts: unknown;
   experience: {
     title: string;
     location: string;

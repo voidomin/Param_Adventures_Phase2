@@ -628,7 +628,7 @@ export default function AdminBookingsPage() {
         return acc;
       }, {} as Record<string, number>);
 
-      rows.forEach((row: Record<string, any>) => {
+      rows.forEach((row: Record<string, unknown>) => {
         Object.keys(row).forEach((key) => {
           const valStr = row[key] instanceof Date
             ? row[key].toISOString().split("T")[0]

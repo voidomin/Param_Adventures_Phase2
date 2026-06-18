@@ -37,7 +37,7 @@ export function getMissingProfileFields(
     emergencyRelationship?: string | null;
   }
 ) {
-  const updateData: Record<string, any> = {};
+  const updateData: Prisma.UserUpdateInput = {};
 
   const isStringEmpty = (val: string | null | undefined) => !val || val.trim() === "";
 
@@ -57,10 +57,10 @@ export function getMissingProfileFields(
   ];
 
   for (const field of stringFields) {
-    const userVal = (user as any)[field];
-    const partVal = (participant as any)[field];
+    const userVal = (user as Record<string, unknown>)[field] as string | null | undefined;
+    const partVal = (participant as Record<string, unknown>)[field] as string | null | undefined;
     if (isStringEmpty(userVal) && !isStringEmpty(partVal)) {
-      updateData[field] = partVal.trim();
+      (updateData as Record<string, unknown>)[field] = partVal.trim();
     }
   }
 

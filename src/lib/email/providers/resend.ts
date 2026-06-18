@@ -28,7 +28,10 @@ export class ResendProvider implements EmailProvider {
     });
 
     try {
-      const { data, error } = await Promise.race([sendPromise, timeoutPromise]) as any;
+      const { data, error } = await Promise.race([sendPromise, timeoutPromise]) as {
+        data: { id: string } | null;
+        error: { message: string } | null;
+      };
 
       if (error) {
         throw new Error(`Resend API error: ${error.message}`);

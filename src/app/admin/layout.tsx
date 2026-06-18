@@ -38,6 +38,7 @@ export default function AdminLayout({
   useEffect(() => {
     const saved = localStorage.getItem("admin_sidebar_collapsed");
     if (saved === "true") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsSidebarCollapsed(true);
     }
   }, []);

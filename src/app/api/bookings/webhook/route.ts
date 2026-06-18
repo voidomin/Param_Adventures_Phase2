@@ -13,6 +13,7 @@ import { webhookLimiter } from "@/lib/rate-limiter";
  * SECURE: Uses HMAC-SHA256 signature verification and Rate Limiting.
  * PUBLIC: No JWT authentication (Razorpay call).
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- webhook payload structure is dynamic from Razorpay
 async function processWebhookEvent(eventType: string, eventBody: any, forensicsIp: string) {
   const { payload } = eventBody;
   switch (eventType) {
@@ -163,6 +164,7 @@ export async function POST(request: NextRequest) {
       console.warn("[Webhook] Invalid signature received from IP:", request.headers.get("x-forwarded-for"));
       
       try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         let eventBody: any = null;
         try {
           eventBody = JSON.parse(rawBody);

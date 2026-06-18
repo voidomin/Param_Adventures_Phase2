@@ -15,6 +15,7 @@ export default function ProfilePromptBanner() {
     // Only check sessionStorage on client mount
     const dismissed = sessionStorage.getItem("dismissedProfilePrompt");
     if (!dismissed) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsDismissed(false);
     }
   }, []);
@@ -62,7 +63,7 @@ export default function ProfilePromptBanner() {
             Complete Your Profile!
           </h3>
           <p className="text-xs text-foreground/60 leading-relaxed pr-4">
-            You haven't added a phone number to your profile. Please add it under Settings so we can contact you regarding your bookings or requests.
+            You haven&apos;t added a phone number to your profile. Please add it under Settings so we can contact you regarding your bookings or requests.
           </p>
           <div className="flex items-center gap-3">
             <Link

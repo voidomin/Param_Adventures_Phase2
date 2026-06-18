@@ -62,13 +62,19 @@ interface TransportDetails {
   vehicleType: string;
 }
 
+interface StructuredVendorContacts {
+  stays?: Partial<StayDetails>[];
+  transports?: Partial<TransportDetails>[];
+  otherContacts?: VendorContact[];
+}
+
 interface TripSlot {
   id: string;
   date: string;
   capacity: number;
   remainingCapacity: number;
   status: string;
-  vendorContacts: any;
+  vendorContacts: unknown;
   whatsAppUrl?: string | null;
   experience: {
     title: string;
@@ -201,6 +207,269 @@ function ConfirmedParticipantsTable({
   );
 }
 
+function parseVendorContacts(rawContacts: unknown) {
+  let parsedStays: StayDetails[] = [];
+  let parsedTransports: TransportDetails[] = [];
+  let parsedContacts: VendorContact[] = [];
+
+  if (rawContacts && typeof rawContacts === "object" && !Array.isArray(rawContacts)) {
+    const raw = rawContacts as StructuredVendorContacts;
+    parsedStays = (raw.stays ?? []).map((s: Partial<StayDetails>) => ({
+      _id: s._id || crypto.randomUUID(),
+      name: s.name ?? "",
+      contactNumber: s.contactNumber ?? "",
+      location: s.location ?? "",
+      locationLink: s.locationLink ?? "",
+      address: s.address ?? "",
+    }));
+    parsedTransports = (raw.transports ?? []).map((t: Partial<TransportDetails>) => ({
+      _id: t._id || crypto.randomUUID(),
+      driverName: t.driverName ?? "",
+      contactNumber: t.contactNumber ?? "",
+      vehicleNumber: t.vehicleNumber ?? "",
+      vehicleType: t.vehicleType ?? "",
+    }));
+    parsedContacts = (raw.otherContacts ?? []).map((c: Partial<VendorContact>) => ({
+      _id: c._id || crypto.randomUUID(),
+      label: c.label ?? "",
+      value: c.value ?? "",
+    }));
+  } else {
+    const flatContacts = rawContacts as Partial<VendorContact>[] | null | undefined;
+    parsedContacts = (flatContacts ?? []).map((c: Partial<VendorContact>) => ({
+      _id: crypto.randomUUID(),
+      label: c.label ?? "",
+      value: c.value ?? "",
+    }));
+  }
+
+  return { stays: parsedStays, transports: parsedTransports, contacts: parsedContacts };
+}
+
+function buildContactsPayload(
+  stays: StayDetails[],
+  transports: TransportDetails[],
+  contacts: VendorContact[]
+) {
+  const staysPayload = stays.map(({ name, contactNumber, location, locationLink, address }) => ({
+    name,
+    contactNumber,
+    location,
+    locationLink,
+    address,
+  }));
+  const transportsPayload = transports.map(({ driverName, contactNumber, vehicleNumber, vehicleType }) => ({
+    driverName,
+    contactNumber,
+    vehicleNumber,
+    vehicleType,
+  }));
+  const otherContactsPayload = contacts.map(({ label, value }) => ({ label, value }));
+
+  return {
+    stays: staysPayload,
+    transports: transportsPayload,
+    otherContacts: otherContactsPayload,
+  };
+}
+
+interface StaysListEditorProps {
+  stays: StayDetails[];
+  addStay: () => void;
+  removeStay: (id: string) => void;
+  updateStay: (id: string, key: keyof Omit<StayDetails, "_id">, val: string) => void;
+}
+
+function StaysListEditor({ stays, addStay, removeStay, updateStay }: Readonly<StaysListEditorProps>) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">1</span>
+          {" Lodging / Stays"}
+        </h3>
+        <button
+          type="button"
+          onClick={addStay}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-primary/10 text-primary border border-primary/20 rounded-lg hover:bg-primary/20 transition-colors cursor-pointer"
+        >
+          <Plus className="w-3.5 h-3.5" /> Add Stay
+        </button>
+      </div>
+
+      {stays.length === 0 ? (
+        <p className="text-xs text-foreground/40 italic pl-8">No lodging/stays added yet.</p>
+      ) : (
+        <div className="space-y-4 pl-8">
+          {stays.map((s) => (
+            <div key={s._id} className="relative bg-foreground/[0.01] border border-border/50 rounded-2xl p-5 pt-10 space-y-4 shadow-xs">
+              <button
+                type="button"
+                onClick={() => removeStay(s._id)}
+                className="absolute top-3 right-3 text-foreground/30 hover:text-red-500 transition-colors cursor-pointer"
+                aria-label="Remove stay"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label htmlFor={`stay-name-${s._id}`} className="text-xs font-medium text-foreground/50">Stay Name</label>
+                  <input
+                    id={`stay-name-${s._id}`}
+                    type="text"
+                    value={s.name}
+                    onChange={(e) => updateStay(s._id, "name", e.target.value)}
+                    placeholder="e.g. Hotel Mountain View"
+                    className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor={`stay-contact-${s._id}`} className="text-xs font-medium text-foreground/50">Contact Number</label>
+                  <input
+                    id={`stay-contact-${s._id}`}
+                    type="text"
+                    value={s.contactNumber}
+                    onChange={(e) => updateStay(s._id, "contactNumber", e.target.value)}
+                    placeholder="e.g. +91 98765 43210"
+                    className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor={`stay-location-${s._id}`} className="text-xs font-medium text-foreground/50">Location / City</label>
+                  <input
+                    id={`stay-location-${s._id}`}
+                    type="text"
+                    value={s.location}
+                    onChange={(e) => updateStay(s._id, "location", e.target.value)}
+                    placeholder="e.g. Manali"
+                    className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor={`stay-link-${s._id}`} className="text-xs font-medium text-foreground/50">Location Link (Google Maps)</label>
+                  <input
+                    id={`stay-link-${s._id}`}
+                    type="text"
+                    value={s.locationLink}
+                    onChange={(e) => updateStay(s._id, "locationLink", e.target.value)}
+                    placeholder="e.g. https://maps.google.com/..."
+                    className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label htmlFor={`stay-address-${s._id}`} className="text-xs font-medium text-foreground/50">Physical Address</label>
+                <textarea
+                  id={`stay-address-${s._id}`}
+                  value={s.address}
+                  onChange={(e) => updateStay(s._id, "address", e.target.value)}
+                  placeholder="e.g. Near Mall Road, Manali, HP"
+                  rows={2}
+                  className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface TransportsListEditorProps {
+  transports: TransportDetails[];
+  addTransport: () => void;
+  removeTransport: (id: string) => void;
+  updateTransport: (id: string, key: keyof Omit<TransportDetails, "_id">, val: string) => void;
+}
+
+function TransportsListEditor({ transports, addTransport, removeTransport, updateTransport }: Readonly<TransportsListEditorProps>) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">2</span>
+          {" Transport Drivers"}
+        </h3>
+        <button
+          type="button"
+          onClick={addTransport}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-primary/10 text-primary border border-primary/20 rounded-lg hover:bg-primary/20 transition-colors cursor-pointer"
+        >
+          <Plus className="w-3.5 h-3.5" /> Add Driver
+        </button>
+      </div>
+
+      {transports.length === 0 ? (
+        <p className="text-xs text-foreground/40 italic pl-8">No transport driver details added yet.</p>
+      ) : (
+        <div className="space-y-4 pl-8">
+          {transports.map((t) => (
+            <div key={t._id} className="relative bg-foreground/[0.01] border border-border/50 rounded-2xl p-5 pt-10 space-y-4 shadow-xs">
+              <button
+                type="button"
+                onClick={() => removeTransport(t._id)}
+                className="absolute top-3 right-3 text-foreground/30 hover:text-red-500 transition-colors cursor-pointer"
+                aria-label="Remove driver"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label htmlFor={`driver-name-${t._id}`} className="text-xs font-medium text-foreground/50">Driver Name</label>
+                  <input
+                    id={`driver-name-${t._id}`}
+                    type="text"
+                    value={t.driverName}
+                    onChange={(e) => updateTransport(t._id, "driverName", e.target.value)}
+                    placeholder="e.g. Ramesh Kumar"
+                    className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor={`driver-contact-${t._id}`} className="text-xs font-medium text-foreground/50">Contact Number</label>
+                  <input
+                    id={`driver-contact-${t._id}`}
+                    type="text"
+                    value={t.contactNumber}
+                    onChange={(e) => updateTransport(t._id, "contactNumber", e.target.value)}
+                    placeholder="e.g. +91 98765 12345"
+                    className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor={`driver-vehicle-${t._id}`} className="text-xs font-medium text-foreground/50">Vehicle Number</label>
+                  <input
+                    id={`driver-vehicle-${t._id}`}
+                    type="text"
+                    value={t.vehicleNumber}
+                    onChange={(e) => updateTransport(t._id, "vehicleNumber", e.target.value)}
+                    placeholder="e.g. KA-51-AB-1234"
+                    className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor={`driver-type-${t._id}`} className="text-xs font-medium text-foreground/50">Vehicle Type / Model</label>
+                  <input
+                    id={`driver-type-${t._id}`}
+                    type="text"
+                    value={t.vehicleType}
+                    onChange={(e) => updateTransport(t._id, "vehicleType", e.target.value)}
+                    placeholder="e.g. Tempo Traveler / Force"
+                    className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ManagerTripDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -251,38 +520,10 @@ export default function ManagerTripDetailPage() {
       setSlot(data.slot);
       setWhatsAppUrl(data.slot.whatsAppUrl ?? "");
       
-      const rawContacts = data.slot.vendorContacts;
-      if (rawContacts && typeof rawContacts === "object" && !Array.isArray(rawContacts)) {
-        // Structured object
-        setStays(
-          (rawContacts.stays ?? []).map((s: any) => ({
-            ...s,
-            _id: s._id || crypto.randomUUID(),
-          }))
-        );
-        setTransports(
-          (rawContacts.transports ?? []).map((t: any) => ({
-            ...t,
-            _id: t._id || crypto.randomUUID(),
-          }))
-        );
-        setContacts(
-          (rawContacts.otherContacts ?? []).map((c: any) => ({
-            ...c,
-            _id: c._id || crypto.randomUUID(),
-          }))
-        );
-      } else {
-        // Flat array fallback
-        setStays([]);
-        setTransports([]);
-        setContacts(
-          (rawContacts ?? []).map((c: { label: string; value: string }) => ({
-            ...c,
-            _id: crypto.randomUUID(),
-          }))
-        );
-      }
+      const { stays: parsedStays, transports: parsedTransports, contacts: parsedContacts } = parseVendorContacts(data.slot.vendorContacts);
+      setStays(parsedStays);
+      setTransports(parsedTransports);
+      setContacts(parsedContacts);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load trip");
     } finally {
@@ -360,26 +601,7 @@ export default function ManagerTripDetailPage() {
     setIsSavingContacts(true);
     setContactsSaved(false);
     try {
-      const staysPayload = stays.map(({ name, contactNumber, location, locationLink, address }) => ({
-        name,
-        contactNumber,
-        location,
-        locationLink,
-        address,
-      }));
-      const transportsPayload = transports.map(({ driverName, contactNumber, vehicleNumber, vehicleType }) => ({
-        driverName,
-        contactNumber,
-        vehicleNumber,
-        vehicleType,
-      }));
-      const otherContactsPayload = contacts.map(({ label, value }) => ({ label, value }));
-
-      const payload = {
-        stays: staysPayload,
-        transports: transportsPayload,
-        otherContacts: otherContactsPayload,
-      };
+      const payload = buildContactsPayload(stays, transports, contacts);
 
       const res = await fetch(`/api/manager/trips/${slotId}`, {
         method: "PATCH",
@@ -680,7 +902,7 @@ export default function ManagerTripDetailPage() {
               <h2 className="text-lg font-bold">WhatsApp Group Link</h2>
             </div>
             <p className="text-sm text-foreground/50 leading-relaxed">
-              Provide the invite link for the participants' WhatsApp group. Once saved, it will show up automatically under their bookings.
+              Provide the invite link for the participants&apos; WhatsApp group. Once saved, it will show up automatically under their bookings.
             </p>
             <div className="space-y-3">
               <input
@@ -719,175 +941,21 @@ export default function ManagerTripDetailPage() {
 
             <hr className="border-border/50" />
 
-            {/* 1. Lodging / Stays Section */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
-                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">1</span>
-                  Lodging / Stays
-                </h3>
-                <button
-                  type="button"
-                  onClick={addStay}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-primary/10 text-primary border border-primary/20 rounded-lg hover:bg-primary/20 transition-colors cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Add Stay
-                </button>
-              </div>
-
-              {stays.length === 0 ? (
-                <p className="text-xs text-foreground/40 italic pl-8">No lodging/stays added yet.</p>
-              ) : (
-                <div className="space-y-4 pl-8">
-                  {stays.map((s) => (
-                    <div key={s._id} className="relative bg-foreground/[0.02] border border-border/60 rounded-xl p-4 space-y-3">
-                      <button
-                        type="button"
-                        onClick={() => removeStay(s._id)}
-                        className="absolute top-3 right-3 text-foreground/30 hover:text-red-500 transition-colors cursor-pointer"
-                        aria-label="Remove stay"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <label className="text-xs font-medium text-foreground/50">Stay Name</label>
-                          <input
-                            type="text"
-                            value={s.name}
-                            onChange={(e) => updateStay(s._id, "name", e.target.value)}
-                            placeholder="e.g. Hotel Mountain View"
-                            className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-xs font-medium text-foreground/50">Contact Number</label>
-                          <input
-                            type="text"
-                            value={s.contactNumber}
-                            onChange={(e) => updateStay(s._id, "contactNumber", e.target.value)}
-                            placeholder="e.g. +91 98765 43210"
-                            className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-xs font-medium text-foreground/50">Location / City</label>
-                          <input
-                            type="text"
-                            value={s.location}
-                            onChange={(e) => updateStay(s._id, "location", e.target.value)}
-                            placeholder="e.g. Manali"
-                            className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-xs font-medium text-foreground/50">Location Link (Google Maps)</label>
-                          <input
-                            type="text"
-                            value={s.locationLink}
-                            onChange={(e) => updateStay(s._id, "locationLink", e.target.value)}
-                            placeholder="e.g. https://maps.google.com/..."
-                            className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-xs font-medium text-foreground/50">Physical Address</label>
-                        <textarea
-                          value={s.address}
-                          onChange={(e) => updateStay(s._id, "address", e.target.value)}
-                          placeholder="e.g. Near Mall Road, Manali, HP"
-                          rows={2}
-                          className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <StaysListEditor
+              stays={stays}
+              addStay={addStay}
+              removeStay={removeStay}
+              updateStay={updateStay}
+            />
 
             <hr className="border-border/30 pl-8" />
 
-            {/* 2. Transport Drivers Section */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
-                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">2</span>
-                  Transport Drivers
-                </h3>
-                <button
-                  type="button"
-                  onClick={addTransport}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-primary/10 text-primary border border-primary/20 rounded-lg hover:bg-primary/20 transition-colors cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5" /> Add Driver
-                </button>
-              </div>
-
-              {transports.length === 0 ? (
-                <p className="text-xs text-foreground/40 italic pl-8">No transport driver details added yet.</p>
-              ) : (
-                <div className="space-y-4 pl-8">
-                  {transports.map((t) => (
-                    <div key={t._id} className="relative bg-foreground/[0.02] border border-border/60 rounded-xl p-4 space-y-3">
-                      <button
-                        type="button"
-                        onClick={() => removeTransport(t._id)}
-                        className="absolute top-3 right-3 text-foreground/30 hover:text-red-500 transition-colors cursor-pointer"
-                        aria-label="Remove driver"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="space-y-1">
-                          <label className="text-xs font-medium text-foreground/50">Driver Name</label>
-                          <input
-                            type="text"
-                            value={t.driverName}
-                            onChange={(e) => updateTransport(t._id, "driverName", e.target.value)}
-                            placeholder="e.g. Ramesh Kumar"
-                            className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-xs font-medium text-foreground/50">Contact Number</label>
-                          <input
-                            type="text"
-                            value={t.contactNumber}
-                            onChange={(e) => updateTransport(t._id, "contactNumber", e.target.value)}
-                            placeholder="e.g. +91 98765 12345"
-                            className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-xs font-medium text-foreground/50">Vehicle Number</label>
-                          <input
-                            type="text"
-                            value={t.vehicleNumber}
-                            onChange={(e) => updateTransport(t._id, "vehicleNumber", e.target.value)}
-                            placeholder="e.g. KA-51-AB-1234"
-                            className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <label className="text-xs font-medium text-foreground/50">Vehicle Type / Model</label>
-                          <input
-                            type="text"
-                            value={t.vehicleType}
-                            onChange={(e) => updateTransport(t._id, "vehicleType", e.target.value)}
-                            placeholder="e.g. Tempo Traveler / Force"
-                            className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <TransportsListEditor
+              transports={transports}
+              addTransport={addTransport}
+              removeTransport={removeTransport}
+              updateTransport={updateTransport}
+            />
 
             <hr className="border-border/30 pl-8" />
 
@@ -896,7 +964,7 @@ export default function ManagerTripDetailPage() {
               <div className="flex items-center justify-between">
                 <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
                   <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">3</span>
-                  Other Operational Contacts
+                  {" Other Operational Contacts"}
                 </h3>
                 <button
                   type="button"

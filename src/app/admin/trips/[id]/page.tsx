@@ -73,7 +73,7 @@ interface TripSlot {
   };
   whatsAppUrl?: string | null;
   assignments: { trekLead: TrekLead }[];
-  vendorContacts?: any;
+  vendorContacts?: unknown;
 }
 
 export default function TripManifestPage() {
@@ -107,8 +107,8 @@ export default function TripManifestPage() {
       if (!res.ok) throw new Error(data.error || "Failed to complete trip.");
       
       fetchTripDetails(); // Refresh slot details/status
-    } catch (err: any) {
-      setError(err.message || "Failed to complete trip.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to complete trip.");
     } finally {
       setIsCompleting(false);
     }
@@ -193,7 +193,7 @@ export default function TripManifestPage() {
         return acc;
       }, {} as Record<string, number>);
 
-      rows.forEach((row: Record<string, any>) => {
+      rows.forEach((row: Record<string, unknown>) => {
         Object.keys(row).forEach((key) => {
           const valStr = row[key] instanceof Date
             ? row[key].toISOString().split("T")[0]
@@ -651,7 +651,7 @@ export default function TripManifestPage() {
               WhatsApp Group Link
             </h3>
             <p className="text-xs text-foreground/50 leading-relaxed">
-              Provide the invite link for the participants' WhatsApp group. Once saved, it will show up automatically under their bookings.
+              Provide the invite link for the participants&apos; WhatsApp group. Once saved, it will show up automatically under their bookings.
             </p>
             <div className="space-y-3">
               <input
@@ -676,20 +676,40 @@ export default function TripManifestPage() {
           </div>
 
           {/* Trip Operations & Vendor Details */}
-          {trip.vendorContacts && (() => {
-            const raw = trip.vendorContacts;
+          {!!trip.vendorContacts && (() => {
+            const raw = trip.vendorContacts as Record<string, unknown> | null;
             const isStructured = raw && typeof raw === "object" && !Array.isArray(raw);
             
-            let stays: any[] = [];
-            let transports: any[] = [];
-            let other: any[] = [];
+            interface StayDetail {
+              name: string;
+              address?: string;
+              location?: string;
+              contactNumber?: string;
+              locationLink?: string;
+            }
+
+            interface TransportDetail {
+              driverName: string;
+              vehicleType?: string;
+              vehicleNumber?: string;
+              contactNumber?: string;
+            }
+
+            interface OtherContact {
+              label: string;
+              value: string;
+            }
+
+            let stays: StayDetail[] = [];
+            let transports: TransportDetail[] = [];
+            let other: OtherContact[] = [];
 
             if (isStructured) {
-              stays = raw.stays ?? [];
-              transports = raw.transports ?? [];
-              other = raw.otherContacts ?? [];
+              stays = (raw.stays as StayDetail[]) ?? [];
+              transports = (raw.transports as TransportDetail[]) ?? [];
+              other = (raw.otherContacts as OtherContact[]) ?? [];
             } else if (Array.isArray(raw)) {
-              other = raw;
+              other = raw as OtherContact[];
             }
 
             const hasData = stays.length > 0 || transports.length > 0 || other.length > 0;
@@ -707,7 +727,7 @@ export default function TripManifestPage() {
                     <div className="space-y-3">
                       <h4 className="text-xs font-bold text-foreground/50 uppercase">Stays / Lodging</h4>
                       <div className="space-y-3">
-                        {stays.map((s: any) => (
+                        {stays.map((s: StayDetail) => (
                           <div key={`stay-${s.name}-${s.location}`} className="bg-foreground/[0.02] border border-border/50 rounded-xl p-3 space-y-1">
                             <p className="font-semibold text-foreground text-sm">{s.name}</p>
                             <p className="text-xs text-foreground/60">{s.address}</p>
@@ -735,7 +755,7 @@ export default function TripManifestPage() {
                     <div className="space-y-3">
                       <h4 className="text-xs font-bold text-foreground/50 uppercase">Transport & Drivers</h4>
                       <div className="space-y-3">
-                        {transports.map((t: any) => (
+                        {transports.map((t: TransportDetail) => (
                           <div key={`transport-${t.driverName}-${t.vehicleNumber}`} className="bg-foreground/[0.02] border border-border/50 rounded-xl p-3 space-y-1">
                             <p className="font-semibold text-foreground text-sm">{t.driverName}</p>
                             <p className="text-xs text-foreground/60">{t.vehicleType} · <span className="font-mono">{t.vehicleNumber}</span></p>
@@ -757,7 +777,7 @@ export default function TripManifestPage() {
                     <div className="space-y-3">
                       <h4 className="text-xs font-bold text-foreground/50 uppercase">Other Contacts</h4>
                       <div className="bg-foreground/[0.02] border border-border/50 rounded-xl p-3 space-y-2">
-                        {other.map((vc: any) => (
+                        {other.map((vc: OtherContact) => (
                           <div key={`other-${vc.label}-${vc.value}`} className="flex justify-between text-xs py-0.5 border-b border-border/30 last:border-0">
                             <span className="text-foreground/50">{vc.label}</span>
                             <span className="font-medium text-foreground">{vc.value}</span>

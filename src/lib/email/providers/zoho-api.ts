@@ -49,8 +49,9 @@ export class ZohoAPIProvider implements EmailProvider {
       }
 
       console.log(`✅ [Zoho API] HTTP Delivery successful to ${options.to}`);
-    } catch (error: any) {
-      if (error.name === "AbortError") {
+    } catch (error: unknown) {
+      const err = error as Error;
+      if (err.name === "AbortError") {
         console.error(`❌ [Zoho API] Delivery timed out after 10s to ${options.to}`);
         throw new Error(`Zoho API delivery timed out to ${options.to}`);
       }

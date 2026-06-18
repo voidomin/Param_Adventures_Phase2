@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState, useMemo } from "react";
+import { Suspense, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
 import { MonitorPlay, BookOpen, Tags, AlertCircle, Loader2 } from "lucide-react";
@@ -43,19 +43,16 @@ function CustomizationContent() {
   }, [hasPermission]);
 
   const queryTab = searchParams.get("tab");
-  const [activeTab, setActiveTab] = useState("");
+  const activeTab = useMemo(() => {
+    if (tabs.length === 0) return "";
+    const matched = tabs.find((t) => t.id === queryTab);
+    return matched ? matched.id : tabs[0].id;
+  }, [tabs, queryTab]);
 
-  // Sync active tab state with URL parameter, validating against permissions
+  // Sync active tab URL parameter if missing or invalid
   useEffect(() => {
-    if (tabs.length > 0) {
-      const matched = tabs.find((t) => t.id === queryTab);
-      if (matched) {
-        setActiveTab(matched.id);
-      } else {
-        // Default to first permitted tab
-        setActiveTab(tabs[0].id);
-        router.replace(`/admin/customization?tab=${tabs[0].id}`);
-      }
+    if (tabs.length > 0 && (!queryTab || !tabs.some((t) => t.id === queryTab))) {
+      router.replace(`/admin/customization?tab=${tabs[0].id}`);
     }
   }, [queryTab, tabs, router]);
 
@@ -84,7 +81,6 @@ function CustomizationContent() {
   const ActiveComponent = activeTabConfig?.component;
 
   const handleTabChange = (tabId: string) => {
-    setActiveTab(tabId);
     router.push(`/admin/customization?tab=${tabId}`);
   };
 

@@ -20,13 +20,26 @@ import {
   DashboardEmptyState 
 } from "@/components/dashboard/DashboardShared";
 
+interface VendorContactItem {
+  id?: string;
+  name?: string;
+  phone?: string;
+  [key: string]: unknown;
+}
+
+interface StructuredVendorContacts {
+  stays?: VendorContactItem[];
+  transports?: VendorContactItem[];
+  otherContacts?: VendorContactItem[];
+}
+
 interface TripSlot {
   id: string;
   date: string;
   capacity: number;
   remainingCapacity: number;
   status: string;
-  vendorContacts: any;
+  vendorContacts: unknown;
   experience: {
     title: string;
     location: string;
@@ -87,7 +100,7 @@ export default function ManagerTripsPage() {
           {trips.map((trip) => {
             const statusColor =
               STATUS_COLORS[trip.status] ?? STATUS_COLORS.UPCOMING;
-            const rawContacts = trip.vendorContacts as any;
+            const rawContacts = trip.vendorContacts as StructuredVendorContacts | null | undefined;
             const isStructured = rawContacts && typeof rawContacts === "object" && !Array.isArray(rawContacts);
 
             let vendorCount = 0;
