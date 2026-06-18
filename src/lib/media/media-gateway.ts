@@ -47,7 +47,8 @@ function resolveHttpSource(
   let isCdnUrl = false;
   if (cdnUrl) {
     try {
-      const cdnHost = new URL(cdnUrl).hostname.toLowerCase();
+      const normalize = (value: string) => (value.includes("://") ? value : `https://${value}`);
+      const cdnHost = new URL(normalize(cdnUrl)).hostname.toLowerCase();
       const pathHost = new URL(path).hostname.toLowerCase();
       isCdnUrl = pathHost === cdnHost;
     } catch {}
