@@ -60,7 +60,7 @@ export function getMissingProfileFields(
     const userVal = (user as Record<string, unknown>)[field] as string | null | undefined;
     const partVal = (participant as Record<string, unknown>)[field] as string | null | undefined;
     if (isStringEmpty(userVal) && !isStringEmpty(partVal)) {
-      (updateData as Record<string, unknown>)[field] = partVal.trim();
+      (updateData as Record<string, unknown>)[field] = partVal!.trim();
     }
   }
 
