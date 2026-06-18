@@ -3,6 +3,7 @@ import { authorizeRequest } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
 import { mediaFactory } from "@/lib/media/factory";
 import { z } from "zod";
+import { isCloudinaryUrl, isS3Url } from "@/lib/utils/url-safety";
 
 const mergeSchema = z.object({
   sourceId: z.string().min(1, "sourceId is required"),
@@ -31,13 +32,12 @@ async function deleteFromCloudStorage(url: string, type: "IMAGE" | "VIDEO") {
     } catch {
       return false;
     }
-    const host = urlObj.hostname;
-    if (host === "cloudinary.com" || host.endsWith(".cloudinary.com")) {
+    if (isCloudinaryUrl(url)) {
       const publicId = extractCloudinaryPublicId(url);
       if (publicId) {
         return await provider.delete(publicId, type === "VIDEO" ? "video" : "image");
       }
-    } else if (host === "amazonaws.com" || host.endsWith(".amazonaws.com") || host.includes("s3")) {
+    } else if (isS3Url(url)) {
       const key = urlObj.pathname.substring(1);
       return await provider.delete(key);
     }

@@ -1,3 +1,5 @@
+import { isResCloudinaryUrl, isAwsUrl } from "@/lib/utils/url-safety";
+
 /**
  * Media Gateway Utility
  * 
@@ -37,6 +39,43 @@ function parseS3Path(path: string): string {
   }
 }
 
+function resolveHttpSource(
+  path: string,
+  provider: MediaProvider,
+  cdnUrl?: string
+): { detectedProvider: MediaProvider; processedPath: string; shouldReturnRaw: boolean } {
+  let isCdnUrl = false;
+  if (cdnUrl) {
+    try {
+      const cdnHost = new URL(cdnUrl).hostname.toLowerCase();
+      const pathHost = new URL(path).hostname.toLowerCase();
+      isCdnUrl = pathHost === cdnHost;
+    } catch {}
+  }
+
+  if (isResCloudinaryUrl(path)) {
+    return {
+      detectedProvider: "CLOUDINARY",
+      processedPath: parseCloudinaryPath(path),
+      shouldReturnRaw: false,
+    };
+  }
+
+  if (isAwsUrl(path) || isCdnUrl) {
+    return {
+      detectedProvider: "AWS_S3",
+      processedPath: parseS3Path(path),
+      shouldReturnRaw: false,
+    };
+  }
+
+  return {
+    detectedProvider: provider,
+    processedPath: path,
+    shouldReturnRaw: true,
+  };
+}
+
 export function getMediaUrl(
   path: string, 
   provider: MediaProvider,
@@ -56,15 +95,12 @@ export function getMediaUrl(
   let detectedProvider = provider;
 
   if (path.startsWith('http')) {
-    if (path.includes("res.cloudinary.com")) {
-      detectedProvider = 'CLOUDINARY';
-      processedPath = parseCloudinaryPath(path);
-    } else if (path.includes(".amazonaws.com") || (settings.cdnUrl && path.includes(settings.cdnUrl))) {
-      detectedProvider = 'AWS_S3';
-      processedPath = parseS3Path(path);
-    } else {
+    const resolved = resolveHttpSource(path, provider, settings.cdnUrl);
+    if (resolved.shouldReturnRaw) {
       return path;
     }
+    detectedProvider = resolved.detectedProvider;
+    processedPath = resolved.processedPath;
   }
 
   const quality = options.quality ?? settings.globalQuality ?? 95;
