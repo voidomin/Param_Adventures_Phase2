@@ -3,12 +3,13 @@ import { authorizeRequest } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
 import { mediaFactory } from "@/lib/media/factory";
 import { logActivity } from "@/lib/audit-logger";
+import { isCloudinaryUrl, isS3Url } from "@/lib/utils/url-safety";
 
 async function deleteFromCloudStorage(url: string, type: "IMAGE" | "VIDEO") {
   try {
     const provider = await mediaFactory.getProvider();
     let deleted = true;
-    if (url.includes("cloudinary.com")) {
+    if (isCloudinaryUrl(url)) {
       const parts = url.split("/upload/");
       if (parts.length >= 2) {
         const pathParts = parts[1].split("/");
@@ -21,7 +22,7 @@ async function deleteFromCloudStorage(url: string, type: "IMAGE" | "VIDEO") {
         const publicId = dotIndex > -1 ? pathWithoutVersion.substring(0, dotIndex) : pathWithoutVersion;
         deleted = await provider.delete(publicId, type === "VIDEO" ? "video" : "image");
       }
-    } else if (url.includes(".amazonaws.com") || url.includes("s3")) {
+    } else if (isS3Url(url)) {
       const urlObj = new URL(url);
       const key = urlObj.pathname.substring(1);
       deleted = await provider.delete(key);

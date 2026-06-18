@@ -6,6 +6,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useAuth } from "@/lib/AuthContext";
 import { getPlainTextFromJSON } from "@/lib/utils/rich-text";
+import { isResCloudinaryUrl, isAwsUrl } from "@/lib/utils/url-safety";
 
 // ─── Constants & Brand Colors ────────────────────────────
 const COLORS = {
@@ -70,16 +71,12 @@ interface ItineraryBookingData {
 // ─── Helpers ──────────────────────────────────────────
 async function fetchImageAsBase64(url: string): Promise<string | null> {
   try {
-    let urlObj: URL;
     try {
-      urlObj = new URL(url);
+      new URL(url);
     } catch {
       return null;
     }
-    const host = urlObj.hostname;
-    const isDirectFetchable = 
-      host === "res.cloudinary.com" || host.endsWith(".res.cloudinary.com") ||
-      host === "amazonaws.com" || host.endsWith(".amazonaws.com");
+    const isDirectFetchable = isResCloudinaryUrl(url) || isAwsUrl(url);
     if (isDirectFetchable) {
       try {
         const directRes = await fetch(url, { mode: "cors" });
