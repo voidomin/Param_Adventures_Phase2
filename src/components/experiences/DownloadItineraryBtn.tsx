@@ -77,7 +77,9 @@ async function fetchImageAsBase64(url: string): Promise<string | null> {
       return null;
     }
     const host = urlObj.hostname;
-    const isDirectFetchable = host.endsWith("res.cloudinary.com") || host.endsWith("amazonaws.com");
+    const isDirectFetchable = 
+      host === "res.cloudinary.com" || host.endsWith(".res.cloudinary.com") ||
+      host === "amazonaws.com" || host.endsWith(".amazonaws.com");
     if (isDirectFetchable) {
       try {
         const directRes = await fetch(url, { mode: "cors" });

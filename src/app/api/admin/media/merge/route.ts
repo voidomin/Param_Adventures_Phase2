@@ -32,12 +32,12 @@ async function deleteFromCloudStorage(url: string, type: "IMAGE" | "VIDEO") {
       return false;
     }
     const host = urlObj.hostname;
-    if (host.endsWith("cloudinary.com")) {
+    if (host === "cloudinary.com" || host.endsWith(".cloudinary.com")) {
       const publicId = extractCloudinaryPublicId(url);
       if (publicId) {
         return await provider.delete(publicId, type === "VIDEO" ? "video" : "image");
       }
-    } else if (host.endsWith("amazonaws.com") || host.includes("s3")) {
+    } else if (host === "amazonaws.com" || host.endsWith(".amazonaws.com") || host.includes("s3")) {
       const key = urlObj.pathname.substring(1);
       return await provider.delete(key);
     }
