@@ -31,6 +31,7 @@ const createRequest = (opts: ReqOpts = {}) =>
 describe("POST /api/admin/media/register", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockFindFirst.mockResolvedValue(null);
   });
 
   it("returns 403 when unauthorized", async () => {
@@ -109,7 +110,7 @@ describe("POST /api/admin/media/register", () => {
 
     expect(response.status).toBe(200);
     expect(data.id).toBe("img-2");
-    expect(mockFindFirst).not.toHaveBeenCalled();
+    expect(mockFindFirst).toHaveBeenCalled();
     expect(mockCreate).toHaveBeenCalledWith({
       data: {
         originalUrl: "https://cdn.example.com/2.jpg",

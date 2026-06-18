@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/lib/AuthContext";
 import { useRouter, usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { SYSTEM_ADMIN_EMAILS } from "@/lib/constants/auth";
@@ -12,10 +12,7 @@ import {
   Map,
   Users,
   LogOut,
-  Tags,
   Image as ImageIcon,
-  MonitorPlay,
-  BookOpen,
   PenLine,
   ClipboardList,
   Star,
@@ -24,6 +21,7 @@ import {
   Menu,
   X as CloseIcon,
   ArrowLeft,
+  Sliders,
 } from "lucide-react";
 
 export default function AdminLayout({
@@ -35,23 +33,52 @@ export default function AdminLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("admin_sidebar_collapsed");
+    if (saved === "true") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIsSidebarCollapsed(true);
+    }
+  }, []);
+
+  const handleToggleSidebar = (collapsed: boolean) => {
+    setIsSidebarCollapsed(collapsed);
+    localStorage.setItem("admin_sidebar_collapsed", collapsed ? "true" : "false");
+  };
+
+  const isAuthorized = useMemo(() => {
+    if (!user) return false;
+    if (["TRIP_MANAGER", "TREK_LEAD", "REGISTERED_USER"].includes(user.role)) return false;
+    return (
+      hasPermission("system:config") ||
+      hasPermission("trip:manage-categories") ||
+      hasPermission("trip:create") ||
+      hasPermission("media:upload") ||
+      hasPermission("ops:view-all-trips")
+    );
+  }, [user, hasPermission]);
 
   useEffect(() => {
     if (!isLoading) {
       if (!user && pathname !== "/monitoring" && !pathname.startsWith("/login")) {
         router.push(`/login?redirect=${encodeURIComponent(pathname)}`);
-      } else if (
-        !hasPermission("system:config") &&
-        !hasPermission("trip:manage-categories") &&
-        !hasPermission("trip:create") &&
-        !hasPermission("media:upload") &&
-        !hasPermission("ops:view-all-trips")
-      ) {
+      } else if (user && ["TRIP_MANAGER", "TREK_LEAD", "REGISTERED_USER"].includes(user.role)) {
+        // Prevent managers, trek leads, and registered users from accessing any admin pages
+        let redirectPath = "/dashboard";
+        if (user.role === "TRIP_MANAGER") {
+          redirectPath = "/dashboard/manager";
+        } else if (user.role === "TREK_LEAD") {
+          redirectPath = "/dashboard/trek-lead";
+        }
+        router.push(redirectPath);
+      } else if (!isAuthorized) {
         // Basic check: if they don't have at least one admin-ish permission, kick them out
         router.push("/");
       }
     }
-  }, [user, isLoading, hasPermission, router, pathname]);
+  }, [user, isLoading, isAuthorized, router, pathname]);
 
   // Close sidebar on navigation change (mobile)
   useEffect(() => {
@@ -59,7 +86,7 @@ export default function AdminLayout({
     setIsSidebarOpen(false);
   }, [pathname]);
 
-  if (isLoading || !user) {
+  if (isLoading || !user || !isAuthorized) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
@@ -67,7 +94,15 @@ export default function AdminLayout({
     );
   }
 
-  const navItems = [
+  interface NavItem {
+    name: string;
+    href: string;
+    icon: React.ElementType;
+    permission?: string | string[];
+    role?: string;
+  }
+
+  const navItems: NavItem[] = [
     {
       name: "Dashboard",
       href: "/admin",
@@ -81,10 +116,10 @@ export default function AdminLayout({
       role: "SUPER_ADMIN",
     },
     {
-      name: "Categories",
-      href: "/admin/categories",
-      icon: Tags,
-      permission: "trip:manage-categories",
+      name: "Customization",
+      href: "/admin/customization",
+      icon: Sliders,
+      permission: ["trip:create", "trip:manage-categories"],
     },
     {
       name: "Experiences",
@@ -96,18 +131,6 @@ export default function AdminLayout({
       name: "Media Library",
       href: "/admin/media",
       icon: ImageIcon,
-      permission: "trip:create",
-    },
-    {
-      name: "Hero Slider",
-      href: "/admin/hero",
-      icon: MonitorPlay,
-      permission: "trip:create",
-    },
-    {
-      name: "Our Story",
-      href: "/admin/story",
-      icon: BookOpen,
       permission: "trip:create",
     },
     {
@@ -152,13 +175,7 @@ export default function AdminLayout({
       icon: ScrollText,
       role: "SUPER_ADMIN",
     },
-  ] satisfies {
-    name: string;
-    href: string;
-    icon: React.ElementType;
-    permission?: string | string[];
-    role?: string;
-  }[];
+  ];
 
   return (
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
@@ -201,9 +218,9 @@ export default function AdminLayout({
       <aside
         className={`w-64 bg-background border-r border-border fixed inset-y-0 left-0 z-40 flex flex-col transition-transform duration-300 ease-in-out ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        } md:translate-x-0`}
+        } ${isSidebarCollapsed ? "md:-translate-x-full" : "md:translate-x-0"}`}
       >
-        <div className="p-6 hidden md:block">
+        <div className="p-6 hidden md:flex items-center justify-between border-b border-border/40">
           <Link href="/" className="flex items-center gap-2">
             <span className="text-xl font-heading font-bold text-primary">
               PARAM
@@ -212,6 +229,14 @@ export default function AdminLayout({
               Admin
             </span>
           </Link>
+          <button
+            onClick={() => handleToggleSidebar(true)}
+            className="p-1.5 text-foreground/50 hover:text-foreground hover:bg-foreground/5 rounded-lg transition-colors"
+            title="Collapse Sidebar"
+            aria-label="Collapse Sidebar"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
         </div>
 
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto mt-4 md:mt-0">
@@ -236,7 +261,8 @@ export default function AdminLayout({
               item.href === "/admin"
                 ? pathname === "/admin"
                 : pathname === item.href ||
-                  pathname.startsWith(`${item.href}/`);
+                  (pathname.startsWith(item.href) && item.href !== "/admin");
+
             return (
               <Link
                 key={item.href}
@@ -291,8 +317,22 @@ export default function AdminLayout({
       </aside>
 
       {/* Main Content */}
-      <div className="flex-1 md:ml-64 relative pt-16 md:pt-0">
-        <div className="p-6 md:p-10 max-w-7xl mx-auto">{children}</div>
+      <div
+        className={`flex-1 relative pt-16 md:pt-0 transition-all duration-300 ${
+          isSidebarCollapsed ? "md:ml-0" : "md:ml-64"
+        }`}
+      >
+        {isSidebarCollapsed && (
+          <button
+            onClick={() => handleToggleSidebar(false)}
+            className="hidden md:flex fixed top-4 left-4 z-50 p-2 bg-background border border-border text-foreground/70 hover:bg-foreground/5 rounded-xl transition-all shadow-md items-center justify-center animate-in fade-in zoom-in duration-200"
+            title="Expand Sidebar"
+            aria-label="Expand Sidebar"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        )}
+        <div className="p-6 md:p-10 max-w-[1600px] w-full mx-auto">{children}</div>
       </div>
     </div>
   );

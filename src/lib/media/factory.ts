@@ -30,6 +30,7 @@ class MediaFactory {
 
     switch (providerType) {
       case "AWS_S3":
+      case "S3":
         if (!config.s3_access_key) throw new Error("S3 Access Key is missing in Platform Settings.");
         return new S3Provider({
           bucket: config.s3_bucket,

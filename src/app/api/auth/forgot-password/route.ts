@@ -3,12 +3,23 @@ import { prisma } from "@/lib/db";
 import crypto from "node:crypto";
 import { z } from "zod";
 import { sendResetPasswordEmail } from "@/lib/email";
+import { authLimiter } from "@/lib/rate-limiter";
 
 const forgotPasswordSchema = z.object({
   email: z.email("Invalid email address"),
 });
 
 export async function POST(request: NextRequest) {
+  // 0. Rate Limiting Protection
+  const ip = request.headers?.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimit = authLimiter.check(ip);
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429 }
+    );
+  }
+
   try {
     const body = await request.json();
 

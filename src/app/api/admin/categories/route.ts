@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
+import { logActivity } from "@/lib/audit-logger";
 
 /**
  * GET /api/admin/categories — List all categories (admin)
@@ -90,6 +91,14 @@ export async function POST(request: NextRequest) {
         icon: icon || null,
       },
     });
+
+    await logActivity(
+      "CATEGORY_CREATED",
+      auth.userId,
+      "Category",
+      category.id,
+      { name: category.name, slug: category.slug }
+    );
 
     revalidatePath("/", "layout");
 

@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Quote,
+  Trash2,
 } from "lucide-react";
 import { TableSkeleton } from "@/components/admin/TableSkeleton";
 
@@ -157,6 +158,34 @@ export default function AdminReviewsPage() {
     }
   };
 
+  const handleDelete = async (reviewId: string, reviewerName: string) => {
+    const confirmDelete = globalThis.confirm(
+      `Are you sure you want to permanently delete the review by "${reviewerName}"? This action cannot be undone.`
+    );
+    if (!confirmDelete) return;
+
+    const key = `${reviewId}-delete`;
+    setUpdating((prev) => ({ ...prev, [key]: true }));
+    setError("");
+
+    try {
+      const res = await fetch(`/api/admin/reviews/${reviewId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to delete review");
+      }
+
+      // Remove the review from state
+      setReviews((prev) => prev.filter((r) => r.id !== reviewId));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to delete review");
+    } finally {
+      setUpdating((prev) => ({ ...prev, [key]: false }));
+    }
+  };
+
   // Client-side search filter
   const filtered = search
     ? reviews.filter(
@@ -173,7 +202,7 @@ export default function AdminReviewsPage() {
   let mainContent;
 
   if (isLoading) {
-    mainContent = <TableSkeleton columns={6} rows={10} />;
+    mainContent = <TableSkeleton columns={7} rows={10} />;
   } else if (filtered.length === 0) {
     mainContent = (
       <div className="py-16 text-center text-foreground/40">
@@ -204,6 +233,9 @@ export default function AdminReviewsPage() {
               </th>
               <th className="px-5 py-3 font-semibold text-foreground/60 text-xs uppercase tracking-wider text-center">
                 Experience Page
+              </th>
+              <th className="px-5 py-3 font-semibold text-foreground/60 text-xs uppercase tracking-wider text-center w-24">
+                Actions
               </th>
             </tr>
           </thead>
@@ -311,6 +343,22 @@ export default function AdminReviewsPage() {
                         icon={Mountain}
                         color="purple"
                       />
+                    )}
+                  </td>
+
+                  {/* Actions (Delete) */}
+                  <td className="px-5 py-4 text-center">
+                    {updating[`${review.id}-delete`] ? (
+                      <Loader2 className="w-4 h-4 animate-spin text-red-500 mx-auto" />
+                    ) : (
+                      <button
+                        onClick={() => handleDelete(review.id, review.user.name)}
+                        className="p-2 text-foreground/45 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all cursor-pointer inline-flex items-center justify-center"
+                        title="Delete Review"
+                        aria-label="Delete Review"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     )}
                   </td>
                 </tr>

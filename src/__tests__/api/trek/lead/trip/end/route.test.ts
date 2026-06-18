@@ -125,6 +125,21 @@ describe("POST /api/trek-lead/trips/[id]/trek-end", () => {
     });
   });
 
+  it("ends trek and logs activity for admin (bypassing assignment)", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "admin-1", roleName: "ADMIN" } as any);
+    mockSlotFindUnique.mockResolvedValue({ status: "TREK_STARTED" } as any);
+
+    const response = await POST(createRequest({ trekLeadNote: "admin finished" }), {
+      params: Promise.resolve({ id: "slot-1" }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(mockAssignmentFindUnique).not.toHaveBeenCalled();
+    expect(mockLogActivity).toHaveBeenCalledWith("TREK_ENDED", "admin-1", "Slot", "slot-1", {
+      trekLeadNote: "admin finished",
+    });
+  });
+
   it("returns 500 on unexpected error", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "t1" } as any);
     mockAssignmentFindUnique.mockRejectedValue(new Error("db down"));

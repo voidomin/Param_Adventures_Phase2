@@ -14,6 +14,7 @@ import {
   X,
   Check,
   Loader2,
+  Plus,
 } from "lucide-react";
 
 interface TrekLead {
@@ -39,6 +40,7 @@ interface TripSlot {
   capacity: number;
   remainingCapacity: number;
   status: string;
+  experienceId: string;
   manager: { id: string; name: string; email: string } | null;
   experience: { title: string; location: string };
   assignments: TripAssignment[];
@@ -67,15 +69,28 @@ export default function AdminTripsPage() {
   const [managers, setManagers] = useState<Manager[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Tabs state
+  const [activeTab, setActiveTab] = useState<"upcoming" | "past">("upcoming");
+
   // Assign Manager modal state
   const [assigningSlotId, setAssigningSlotId] = useState<string | null>(null);
   const [selectedManagerId, setSelectedManagerId] = useState("");
   const [isAssigning, setIsAssigning] = useState(false);
   const [assignError, setAssignError] = useState("");
 
+  // Create Trip modal state
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [experiences, setExperiences] = useState<{ id: string; title: string }[]>([]);
+  const [selectedExperienceId, setSelectedExperienceId] = useState("");
+  const [createDate, setCreateDate] = useState("");
+  const [createCapacity, setCreateCapacity] = useState(10);
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
+
   const fetchTrips = useCallback(async () => {
+    setIsLoading(true);
     try {
-      const res = await fetch("/api/admin/trips");
+      const res = await fetch(`/api/admin/trips?past=${activeTab === "past"}`);
       if (!res.ok) throw new Error("Failed to fetch trips");
       const data = await res.json();
       setTrips(data.trips || []);
@@ -84,7 +99,56 @@ export default function AdminTripsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [activeTab]);
+
+  const fetchExperiences = async () => {
+    try {
+      const res = await fetch("/api/admin/experiences");
+      if (res.ok) {
+        const data = await res.json();
+        setExperiences(data.experiences || []);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const openCreateModal = () => {
+    setIsCreateModalOpen(true);
+    setCreateError("");
+    fetchExperiences();
+  };
+
+  const handleCreateTrip = async (e: React.SyntheticEvent) => {
+    e.preventDefault();
+    if (!selectedExperienceId || !createDate || createCapacity <= 0) return;
+    setIsCreating(true);
+    setCreateError("");
+
+    try {
+      const res = await fetch(`/api/admin/experiences/${selectedExperienceId}/slots`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          date: new Date(createDate).toISOString(),
+          capacity: Number(createCapacity),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create trip");
+
+      setIsCreateModalOpen(false);
+      setSelectedExperienceId("");
+      setCreateDate("");
+      setCreateCapacity(10);
+      await fetchTrips();
+    } catch (err: unknown) {
+      setCreateError(err instanceof Error ? err.message : "An error occurred");
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
 
   useEffect(() => {
     fetchTrips();
@@ -126,15 +190,48 @@ export default function AdminTripsPage() {
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-heading font-bold text-foreground">
-            Upcoming Trips
+            Manage Trips
           </h1>
           <p className="text-foreground/60 mt-1">
-            Assign managers, Trek Leads, and view trip status.
+            Assign managers, Trek Leads, view status, and manage departure slots.
           </p>
         </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={openCreateModal}
+            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity shadow-lg shadow-primary/25 text-sm cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            Create Trip
+          </button>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex border-b border-border mb-6">
+        <button
+          onClick={() => setActiveTab("upcoming")}
+          className={`px-5 py-3 font-semibold text-sm border-b-2 transition-colors cursor-pointer ${
+            activeTab === "upcoming"
+              ? "border-primary text-primary"
+              : "border-transparent text-foreground/50 hover:text-foreground"
+          }`}
+        >
+          Upcoming Trips
+        </button>
+        <button
+          onClick={() => setActiveTab("past")}
+          className={`px-5 py-3 font-semibold text-sm border-b-2 transition-colors cursor-pointer ${
+            activeTab === "past"
+              ? "border-primary text-primary"
+              : "border-transparent text-foreground/50 hover:text-foreground"
+          }`}
+        >
+          Past Trips
+        </button>
       </div>
 
       {isLoading && (
@@ -147,9 +244,13 @@ export default function AdminTripsPage() {
         <div className="bg-card border border-border rounded-2xl p-16 text-center text-foreground/50">
           <CalendarDays className="w-12 h-12 mx-auto mb-4 opacity-50" />
           <h3 className="text-lg font-bold text-foreground mb-1">
-            No Upcoming Trips
+            {activeTab === "upcoming" ? "No Upcoming Trips" : "No Past Trips"}
           </h3>
-          <p>There are no slots scheduled in the future.</p>
+          <p>
+            {activeTab === "upcoming"
+              ? "There are no slots scheduled in the future."
+              : "There are no completed or past slots recorded."}
+          </p>
         </div>
       )}
 
@@ -266,10 +367,10 @@ export default function AdminTripsPage() {
                 </div>
 
                 {/* Manage button */}
-                <div className="flex justify-end">
+                <div className="flex justify-end pt-2">
                   <Link
                     href={`/admin/trips/${trip.id}`}
-                    className="flex items-center gap-2 px-5 py-2.5 bg-background border border-border rounded-xl font-semibold hover:bg-foreground/5 transition-colors text-foreground text-sm"
+                    className="flex items-center justify-center gap-2 px-5 py-2.5 bg-background border border-border rounded-xl font-semibold hover:bg-foreground/5 transition-colors text-foreground text-sm"
                   >
                     <ClipboardList className="w-4 h-4" />
                     Manage Manifest & Trek Leads
@@ -346,10 +447,118 @@ export default function AdminTripsPage() {
                   ) : (
                     <Check className="w-4 h-4" />
                   )}
-                  {isAssigning ? "Assigning..." : "Assign Manager"}
+                  {isCreating ? "Creating..." : "Assign Manager"}
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Trip Modal */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-border rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in-50 duration-200">
+            <div className="p-6 border-b border-white/10 flex justify-between items-center">
+              <h2 className="text-lg font-bold text-white">
+                Create New Trip Slot
+              </h2>
+              <button
+                onClick={() => setIsCreateModalOpen(false)}
+                className="text-slate-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateTrip} className="p-6 space-y-5">
+              {createError && (
+                <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+                  {createError}
+                </div>
+              )}
+
+              <div>
+                <label
+                  htmlFor="experience-select"
+                  className="block text-sm font-medium text-slate-200 mb-2"
+                >
+                  Select Experience / Trek
+                </label>
+                <select
+                  id="experience-select"
+                  required
+                  value={selectedExperienceId}
+                  onChange={(e) => setSelectedExperienceId(e.target.value)}
+                  className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                >
+                  <option value="">— Choose an experience —</option>
+                  {experiences.map((exp) => (
+                    <option key={exp.id} value={exp.id}>
+                      {exp.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="trip-date"
+                  className="block text-sm font-medium text-slate-200 mb-2"
+                >
+                  Trip Date
+                </label>
+                <input
+                  id="trip-date"
+                  type="date"
+                  required
+                  value={createDate}
+                  onChange={(e) => setCreateDate(e.target.value)}
+                  className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="trip-capacity"
+                  className="block text-sm font-medium text-slate-200 mb-2"
+                >
+                  Seat Capacity
+                </label>
+                <input
+                  id="trip-capacity"
+                  type="number"
+                  required
+                  min={1}
+                  max={500}
+                  value={createCapacity}
+                  onChange={(e) => setCreateCapacity(Number(e.target.value))}
+                  className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  className="px-5 py-2.5 rounded-xl font-medium text-slate-300 hover:bg-white/10 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!selectedExperienceId || !createDate || isCreating}
+                  className="px-5 py-2.5 rounded-xl font-bold bg-primary text-primary-foreground hover:scale-105 transition-transform disabled:opacity-50 disabled:hover:scale-100 shadow-lg shadow-primary/25 flex items-center gap-2"
+                >
+                  {isCreating ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4" />
+                  )}
+                  {isCreating ? "Creating..." : "Create Trip"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -19,6 +19,7 @@ vi.mock("@/lib/db", () => ({
     booking: {
       updateMany: vi.fn(),
       findMany: vi.fn(),
+      count: vi.fn(),
     },
     $transaction: vi.fn(),
   },
@@ -36,6 +37,7 @@ const mockSendTripCompletedEmail = vi.mocked(sendTripCompletedEmail);
 const mockSlotFindUnique = vi.mocked(prisma.slot.findUnique);
 const mockUserFindUnique = vi.mocked(prisma.user.findUnique);
 const mockBookingFindMany = vi.mocked(prisma.booking.findMany);
+const mockBookingCount = vi.mocked(prisma.booking.count);
 const mockTransaction = vi.mocked(prisma.$transaction);
 
 const createRequest = (body?: unknown) =>
@@ -48,6 +50,7 @@ describe("POST /api/manager/trips/[id]/complete", () => {
     vi.clearAllMocks();
     mockTransaction.mockResolvedValue([] as any);
     mockSendTripCompletedEmail.mockResolvedValue(undefined as any);
+    mockBookingCount.mockResolvedValue(1);
   });
 
   it("returns auth response when unauthorized", async () => {
@@ -157,6 +160,66 @@ describe("POST /api/manager/trips/[id]/complete", () => {
     });
 
     expect(response.status).toBe(200);
+  });
+
+  it("allows admin completion when trip is not TREK_ENDED and end date has passed (bypassing status constraint)", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
+    mockSlotFindUnique.mockResolvedValue({
+      managerId: "m1",
+      status: "UPCOMING",
+      date: new Date(Date.now() - 86400000 * 2), // 2 days ago
+      experience: { durationDays: 1 },
+    } as any);
+    mockUserFindUnique.mockResolvedValue({ role: { name: "ADMIN" } } as any);
+    mockBookingFindMany.mockResolvedValue([] as any);
+
+    const response = await POST(createRequest({ managerNote: null }), {
+      params: Promise.resolve({ id: "slot-1" }),
+    });
+
+    expect(response.status).toBe(200);
+  });
+
+  it("blocks admin completion when trip is not TREK_ENDED, end date has not finished, and there are confirmed bookings", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
+    mockSlotFindUnique.mockResolvedValue({
+      managerId: "m1",
+      status: "UPCOMING",
+      date: new Date(Date.now() + 86400000 * 2), // starts in 2 days
+      experience: { durationDays: 1 },
+    } as any);
+    mockUserFindUnique.mockResolvedValue({ role: { name: "ADMIN" } } as any);
+    mockBookingFindMany.mockResolvedValue([] as any);
+    mockBookingCount.mockResolvedValue(1);
+
+    const response = await POST(createRequest({ managerNote: null }), {
+      params: Promise.resolve({ id: "slot-1" }),
+    });
+
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error).toContain("Cannot force complete trip before the end date");
+  });
+
+  it("allows admin completion when trip is not TREK_ENDED, end date has not finished, and there are zero confirmed bookings", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
+    mockSlotFindUnique.mockResolvedValue({
+      managerId: "m1",
+      status: "UPCOMING",
+      date: new Date(Date.now() + 86400000 * 2), // starts in 2 days
+      experience: { durationDays: 1 },
+    } as any);
+    mockUserFindUnique.mockResolvedValue({ role: { name: "ADMIN" } } as any);
+    mockBookingFindMany.mockResolvedValue([] as any);
+    mockBookingCount.mockResolvedValue(0);
+
+    const response = await POST(createRequest({ managerNote: null }), {
+      params: Promise.resolve({ id: "slot-1" }),
+    });
+
+    expect(response.status).toBe(200);
+    const data = await response.json();
+    expect(data).toEqual({ success: true, status: "COMPLETED" });
   });
 
   it("allows super admin completion when not assigned", async () => {

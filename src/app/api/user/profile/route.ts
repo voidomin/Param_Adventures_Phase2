@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { verifyAccessToken } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { z } from "zod";
+import { calculateAge } from "@/lib/utils";
 
 const profileSchema = z.object({
   name: z.string().min(1, "Full Name is required").max(100),
@@ -25,7 +26,7 @@ const profileSchema = z.object({
     .optional()
     .nullable(),
   gender: z.string().min(1, "Gender is required").max(20),
-  age: z.number().int().min(1).max(120).optional().nullable(),
+  dateOfBirth: z.string().min(1, "Date of Birth is required"),
   bloodGroup: z.string().optional().nullable(),
   emergencyContactName: z.string().optional().nullable(),
   emergencyContactNumber: z.string().optional().nullable(),
@@ -61,7 +62,7 @@ export async function PATCH(request: Request) {
       phoneNumber,
       avatarUrl,
       gender,
-      age,
+      dateOfBirth,
       bloodGroup,
       emergencyContactName,
       emergencyContactNumber,
@@ -82,7 +83,8 @@ export async function PATCH(request: Request) {
         phoneNumber: phoneNumber.trim(),
         avatarUrl: avatarUrl || null,
         gender,
-        age: age ? Number(age) : null,
+        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+        age: dateOfBirth ? calculateAge(dateOfBirth) : null,
         bloodGroup: bloodGroup || null,
         emergencyContactName: emergencyContactName || null,
         emergencyContactNumber: emergencyContactNumber || null,
@@ -96,6 +98,7 @@ export async function PATCH(request: Request) {
         avatarUrl: true,
         gender: true,
         age: true,
+        dateOfBirth: true,
         bloodGroup: true,
         emergencyContactName: true,
         emergencyContactNumber: true,

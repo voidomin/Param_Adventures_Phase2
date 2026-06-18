@@ -82,3 +82,5 @@ export class RateLimiter {
 export const webhookLimiter = new RateLimiter({ limit: 10, windowMs: 60 * 1000 }); // 10 per minute
 export const snapshotLimiter = new RateLimiter({ limit: 5, windowMs: 15 * 60 * 1000 }); // 5 per 15 mins
 export const authLimiter = new RateLimiter({ limit: 20, windowMs: 60 * 1000 }); // 20 per minute
+export const bookingLimiter = new RateLimiter({ limit: 10, windowMs: 60 * 1000 }); // 10 per minute
+export const formLimiter = new RateLimiter({ limit: 5, windowMs: 60 * 1000 }); // 5 per minute

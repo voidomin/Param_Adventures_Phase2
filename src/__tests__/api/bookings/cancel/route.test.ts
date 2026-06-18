@@ -215,6 +215,40 @@ describe("POST /api/bookings/[id]/cancel", () => {
     expect(updateSlot).not.toHaveBeenCalled();
   });
 
+  it("cancels booking without slot update when bookingStatus is REQUESTED", async () => {
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: true,
+      userId: "u1",
+    } as any);
+    mockFindUnique.mockResolvedValue({
+      id: "b1",
+      userId: "u1",
+      slotId: "s1",
+      participantCount: 2,
+      bookingStatus: "REQUESTED",
+      paymentStatus: "PENDING",
+      user: { name: "", email: "u@example.com" },
+      experience: { title: "Trip" },
+      slot: { date: new Date("2026-06-01") },
+    } as any);
+
+    const updateBooking = vi.fn().mockResolvedValue({});
+    const updateSlot = vi.fn().mockResolvedValue({});
+    mockTransaction.mockImplementation(async (cb: any) =>
+      cb({
+        booking: { update: updateBooking },
+        slot: { update: updateSlot },
+      }),
+    );
+
+    const response = await POST(createRequest({ preference: "COUPON" }), {
+      params: Promise.resolve({ id: "b1" }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(updateSlot).not.toHaveBeenCalled();
+  });
+
   it("returns 500 on unexpected error", async () => {
     mockAuthorizeRequest.mockResolvedValue({
       authorized: true,

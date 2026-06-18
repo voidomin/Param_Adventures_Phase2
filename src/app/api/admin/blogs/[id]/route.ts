@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
+import { logActivity } from "@/lib/audit-logger";
 
 /**
  * DELETE /api/admin/blogs/[id]
@@ -21,6 +22,14 @@ export async function DELETE(
       where: { id },
       data: { deletedAt: new Date(), status: "DRAFT" }, // Assuming the intent was to add status: "DRAFT" to the update
     });
+
+    await logActivity(
+      "BLOG_DELETED",
+      auth.userId,
+      "Blog",
+      id,
+      { title: blog.title, deletedBy: "ADMIN" }
+    );
 
     revalidatePath("/", "layout");
 

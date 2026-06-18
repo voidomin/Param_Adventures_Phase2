@@ -13,11 +13,13 @@ export async function withBuildSafety<T>(fetcher: () => Promise<T>, fallback: T)
 
     const isConnError = 
       errorMsg.includes('ECONNREFUSED') || 
+      errorMsg.includes('ETIMEDOUT') ||
       errorMsg.includes('Can\'t reach database') ||
       errorMsg.includes('Connection terminated') ||
-      errorMsg.includes('timeout') ||
+      errorMsg.toLowerCase().includes('timeout') ||
       errorMsg.includes('unexpectedly') ||
       errorCode === 'ECONNREFUSED' ||
+      errorCode === 'ETIMEDOUT' ||
       errorCode === 'P1001' ||
       errorCode === 'P2024' || // Connection pool timeout
       errorCode === 'P1017' || // Server has closed the connection

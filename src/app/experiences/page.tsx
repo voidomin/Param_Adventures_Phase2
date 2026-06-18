@@ -39,7 +39,7 @@ export default async function ExperiencesPage({
     () => prisma.platformSetting.findMany({
       where: {
         key: {
-          in: ["media_provider", "cloudinary_cloud_name", "s3_bucket", "s3_region", "media_quality", "media_high_fidelity"]
+          in: ["media_provider", "cloudinary_cloud_name", "s3_bucket", "s3_region", "media_quality", "media_high_fidelity", "cdn_url"]
         }
       }
     }),
@@ -47,12 +47,13 @@ export default async function ExperiencesPage({
   );
 
   const mediaSettings: MediaSettings = {
-    provider: (dbPlatformSettings.find(s => s.key === "media_provider")?.value || "CLOUDINARY") as "CLOUDINARY" | "AWS_S3",
+    provider: (dbPlatformSettings.find(s => s.key === "media_provider")?.value || "CLOUDINARY") as "CLOUDINARY" | "AWS_S3" | "S3" | "LOCAL",
     cloudinaryCloudName: dbPlatformSettings.find(s => s.key === "cloudinary_cloud_name")?.value,
     s3Bucket: dbPlatformSettings.find(s => s.key === "s3_bucket")?.value,
     s3Region: dbPlatformSettings.find(s => s.key === "s3_region")?.value,
     globalQuality: Number.parseInt(dbPlatformSettings.find(s => s.key === "media_quality")?.value || "100"),
-    highFidelity: dbPlatformSettings.find(s => s.key === "media_high_fidelity")?.value === "true"
+    highFidelity: dbPlatformSettings.find(s => s.key === "media_high_fidelity")?.value === "true",
+    cdnUrl: dbPlatformSettings.find(s => s.key === "cdn_url")?.value,
   };
 
   const experiences = await withBuildSafety(
@@ -71,7 +72,7 @@ export default async function ExperiencesPage({
             },
             select: { date: true, capacity: true, remainingCapacity: true },
             orderBy: { date: "asc" },
-            take: 1,
+            take: 4,
           },
         },
       }),
@@ -94,59 +95,79 @@ export default async function ExperiencesPage({
   }));
 
   // Serialize Prisma objects to plain JS objects for Client Component
-  const serializedExperiences = experiences.map((exp) => ({
-    id: exp.id,
-    title: exp.title,
-    slug: exp.slug,
-    description: typeof exp.description === "object"
-      ? getPlainTextFromJSON(exp.description as unknown as RichTextNode)
-      : String(exp.description || ""),
-    durationDays: exp.durationDays,
-    location: exp.location,
-    basePrice: Number(exp.basePrice),
-    capacity: exp.capacity,
-    difficulty: exp.difficulty,
-    status: exp.status,
-    coverImage: exp.coverImage,
-    cardImage: exp.cardImage,
-    images: exp.images,
-    createdAt: exp.createdAt.toISOString(),
-    updatedAt: exp.updatedAt.toISOString(),
-    startDate: exp.startDate?.toISOString() || null,
-    endDate: exp.endDate?.toISOString() || null,
-    nextDepartureSlot: (exp.slots[0] && exp.slots[0].date) ? {
-      date: exp.slots[0].date instanceof Date ? exp.slots[0].date.toISOString() : new Date(exp.slots[0].date).toISOString(),
-      capacity: exp.slots[0].capacity ?? exp.capacity,
-      remainingCapacity: exp.slots[0].remainingCapacity ?? exp.capacity,
-    } : null,
-    nextDeparture: exp.slots[0]?.date ? (exp.slots[0].date instanceof Date ? exp.slots[0].date.toISOString() : new Date(exp.slots[0].date).toISOString()) : null,
-    slotsCount: exp.slots.length,
-    categories: exp.categories.map((c) => ({
-      category: {
-        id: c.category.id,
-        name: c.category.name,
-        slug: c.category.slug,
-      },
-    })),
-  }));
+  const serializedExperiences = experiences.map((exp) => {
+    const validSlots = exp.slots.filter((slot) => {
+      if (!slot.date) return false;
+      const d = slot.date instanceof Date ? slot.date : new Date(slot.date);
+      return !Number.isNaN(d.getTime());
+    });
+
+    const firstSlot = validSlots[0];
+    let nextDeparture: string | null = null;
+    let nextDepartureSlot = null;
+
+    if (firstSlot?.date) {
+      const dateObj = firstSlot.date instanceof Date ? firstSlot.date : new Date(firstSlot.date);
+      const isoDate = dateObj.toISOString();
+      nextDeparture = isoDate;
+      nextDepartureSlot = {
+        date: isoDate,
+        capacity: firstSlot.capacity ?? exp.capacity,
+        remainingCapacity: firstSlot.remainingCapacity ?? exp.capacity,
+      };
+    }
+
+    return {
+      id: exp.id,
+      title: exp.title,
+      slug: exp.slug,
+      description: typeof exp.description === "object"
+        ? getPlainTextFromJSON(exp.description as unknown as RichTextNode)
+        : String(exp.description || ""),
+      durationDays: exp.durationDays,
+      location: exp.location,
+      basePrice: Number(exp.basePrice),
+      capacity: exp.capacity,
+      difficulty: exp.difficulty,
+      status: exp.status,
+      coverImage: exp.coverImage,
+      cardImage: exp.cardImage,
+      images: exp.images,
+      createdAt: exp.createdAt.toISOString(),
+      updatedAt: exp.updatedAt.toISOString(),
+      startDate: exp.startDate?.toISOString() || null,
+      endDate: exp.endDate?.toISOString() || null,
+      nextDepartureSlot,
+      nextDeparture,
+      upcomingSlots: validSlots.map((slot) => {
+        const slotDate = slot.date instanceof Date ? slot.date : new Date(slot.date);
+        return {
+          date: slotDate.toISOString(),
+          capacity: slot.capacity ?? exp.capacity,
+          remainingCapacity: slot.remainingCapacity ?? exp.capacity,
+        };
+      }),
+      slotsCount: exp.slots.length,
+      vibeTags: exp.vibeTags,
+      highlights: exp.highlights,
+      categories: exp.categories.map((c) => ({
+        category: {
+          id: c.category.id,
+          name: c.category.name,
+          slug: c.category.slug,
+        },
+      })),
+    };
+  });
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-20">
+    <div className="min-h-screen bg-background text-foreground pb-6">
       <ExperiencesClient
         initialExperiences={serializedExperiences}
         categories={serializedCategories}
         initialFilter={initialFilter}
         mediaSettings={mediaSettings}
       />
-
-      {/* Footer Placeholder */}
-      <footer className="bg-black py-16 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <p className="text-white/40 text-sm">
-            © 2026 Param Adventure. All rights reserved.
-          </p>
-        </div>
-      </footer>
     </div>
   );
 }

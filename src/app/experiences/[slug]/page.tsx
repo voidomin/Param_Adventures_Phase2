@@ -1,8 +1,8 @@
 import { prisma } from "@/lib/db";
 import { withBuildSafety } from "@/lib/db-utils";
 import { getMediaUrl } from "@/lib/media/media-gateway";
+import Link from "next/link";
 
-import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { 
   Mountain, 
@@ -14,7 +14,6 @@ import {
   Backpack, 
   Info, 
   Shield, 
-  IndianRupee, 
   Wifi, 
   Activity, 
   CarFront, 
@@ -23,11 +22,12 @@ import {
   ChevronDown, 
   CalendarDays,
   Footprints,
-  Utensils
+  Utensils,
+  ArrowLeft
 } from "lucide-react";
 import type { MediaSettings } from "@/types/media";
 import { getPlainTextFromJSON } from "@/lib/utils/rich-text";
-import BookNowButton from "@/components/booking/BookNowButton";
+import BookingSidebarCard from "@/components/booking/BookingSidebarCard";
 import ExperienceReviews from "@/components/experiences/ExperienceReviews";
 import SaveButton from "@/components/experiences/SaveButton";
 import SimilarTrips from "@/components/experiences/SimilarTrips";
@@ -37,7 +37,6 @@ import MobileBookingBar from "@/components/booking/MobileBookingBar";
 import ExperienceStickyNav from "@/components/experiences/ExperienceStickyNav";
 import DifficultyMeter, { type DifficultyLevel } from "@/components/experiences/DifficultyMeter";
 import RichTextRenderer from "@/components/blog/RichTextRenderer";
-import DownloadItineraryBtn from "@/components/experiences/DownloadItineraryBtn";
 import ShareButton from "@/components/ui/ShareButton";
 import type { RichTextNode } from "@/lib/utils/rich-text";
 
@@ -60,12 +59,16 @@ export async function generateMetadata({
           cardImage: true,
           images: true,
           location: true,
+          status: true,
+          deletedAt: true,
         },
       }),
     null,
   );
 
-  if (!experience) return { title: "Experience Not Found" };
+  if (!experience || experience.status === "DRAFT" || experience.status === "ARCHIVED" || !!experience.deletedAt) {
+    return { title: "Experience Not Found" };
+  }
 
   const ogImage =
     experience.coverImage ||
@@ -122,7 +125,7 @@ interface ItineraryDay {
   id?: string;
   _id?: string;
   title: string;
-  description: string;
+  description: string | object;
   meals?: string[] | string;
   accommodation?: string;
 }
@@ -249,11 +252,11 @@ function ExperienceJsonLd({
 // Helper components to reduce page complexity
 function HeroTags({ experience }: Readonly<{ experience: ExperienceWithInclusions }>) {
   return (
-    <div className="flex gap-2 mb-8 bg-foreground/2 p-4 pb-20 md:pb-4 rounded-2xl border border-border/50 overflow-x-auto md:overflow-visible md:flex-wrap no-scrollbar snap-x relative z-30">
+    <div className="flex flex-wrap gap-2 mb-8 bg-foreground/2 p-4 rounded-2xl border border-border/50 relative z-30">
       {experience.categories.map((c: CategoryWithRelation) => (
         <span
           key={c.category.id}
-          className="bg-primary text-primary-foreground px-4 py-1.5 rounded-full text-sm font-bold shadow-sm snap-start whitespace-nowrap"
+          className="bg-primary text-primary-foreground px-4 py-1.5 rounded-full text-sm font-bold shadow-sm whitespace-nowrap"
         >
           {c.category.name}
         </span>
@@ -261,22 +264,22 @@ function HeroTags({ experience }: Readonly<{ experience: ExperienceWithInclusion
       {experience.vibeTags?.map((tag: string) => (
         <span
           key={tag}
-          className="bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-bold border border-primary/20 shadow-sm flex items-center gap-1.5 snap-start whitespace-nowrap"
+          className="bg-primary/10 text-primary px-4 py-1.5 rounded-full text-sm font-bold border border-primary/20 shadow-sm flex items-center gap-1.5 whitespace-nowrap"
         >
           {tag}
         </span>
       ))}
-      <div className="snap-start whitespace-nowrap relative">
+      <div className="whitespace-nowrap relative">
         <DifficultyMeter difficulty={experience.difficulty} />
       </div>
       {!!experience.maxGroupSize && (
-        <span className="bg-background text-foreground px-4 py-1.5 rounded-full text-sm font-bold border border-border shadow-sm flex items-center gap-1.5 snap-start whitespace-nowrap">
+        <span className="bg-background text-foreground px-4 py-1.5 rounded-full text-sm font-bold border border-border shadow-sm flex items-center gap-1.5 whitespace-nowrap">
           <Users className="w-4 h-4 text-primary" /> Max Group:{" "}
           {experience.maxGroupSize}
         </span>
       )}
       {!!(experience.minAge || experience.ageRange) && (
-        <span className="bg-background text-foreground px-4 py-1.5 rounded-full text-sm font-bold border border-border shadow-sm flex items-center gap-1.5 snap-start whitespace-nowrap">
+        <span className="bg-background text-foreground px-4 py-1.5 rounded-full text-sm font-bold border border-border shadow-sm flex items-center gap-1.5 whitespace-nowrap">
           <Baby className="w-4 h-4 text-primary" /> Age:{" "}
           {experience.minAge || experience.ageRange}+
         </span>
@@ -297,170 +300,128 @@ function EssentialLogistics({ experience }: Readonly<{ experience: ExperienceWit
   )
     return null;
 
-  return (
-    <section className="grid grid-cols-2 lg:grid-cols-4 gap-4 items-start">
-      {experience.networkConnectivity && (
-        <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors">
-          <Wifi className="w-5 h-5 text-primary" />
-          <div>
-            <p className="text-xs text-foreground/60 font-medium">
-              Network/Wifi
-            </p>
-            <p className="font-bold text-sm leading-tight">
-              {experience.networkConnectivity}
-            </p>
-          </div>
-        </div>
-      )}
-      {experience.fitnessRequirement && (
-        <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors">
-          <Activity className="w-5 h-5 text-primary" />
-          <div>
-            <p className="text-xs text-foreground/60 font-medium">Fitness</p>
-            <p className="font-bold text-sm leading-tight">
-              {experience.fitnessRequirement}
-            </p>
-          </div>
-        </div>
-      )}
-      {experience.ageRange && (
-        <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors">
-          <Users className="w-5 h-5 text-primary" />
-          <div>
-            <p className="text-xs text-foreground/60 font-medium">Age Range</p>
-            <p className="font-bold text-sm leading-tight">
-              {experience.ageRange}
-            </p>
-          </div>
-        </div>
-      )}
-      {(experience.meetingTime || experience.meetingPoint || (experience.pickupPoints && experience.pickupPoints.length > 0)) && (
-        <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors col-span-2">
-          <div className="flex items-center gap-3">
-            <CarFront className="w-5 h-5 text-primary shrink-0" />
-            <div>
-              <p className="text-xs text-foreground/60 font-medium">
-                Starting Point
-              </p>
-              <p className="font-bold text-sm leading-tight mt-0.5">
-                {experience.meetingPoint || "Multiple options available"} {experience.meetingTime && `\u2022 ${experience.meetingTime}`}
-              </p>
-            </div>
-          </div>
-
-          {experience.pickupPoints && experience.pickupPoints.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-border/50">
-              <details className="group [&_summary::-webkit-details-marker]:hidden">
-                <summary className="flex items-center justify-between cursor-pointer text-xs font-bold uppercase tracking-wider text-primary hover:text-primary/80 transition-colors list-none select-none">
-                  <span>Available Pickup Locations ({experience.pickupPoints.length})</span>
-                  <ChevronDown className="w-4 h-4 text-primary transition-transform duration-200 group-open:rotate-180" />
-                </summary>
-                <div className="mt-2.5 flex flex-col gap-2 text-xs font-semibold text-foreground/80 max-h-52 overflow-y-auto custom-scrollbar pt-1">
-                  {experience.pickupPoints.map((point) => (
-                    <div key={point} className="flex items-center gap-2 bg-foreground/[0.03] border border-border/40 px-3 py-2 rounded-xl hover:bg-primary/5 hover:border-primary/20 transition-all">
-                      <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                      <span>{point}</span>
-                    </div>
-                  ))}
-                </div>
-              </details>
-            </div>
-          )}
-        </div>
-      )}
-      {(experience.dropoffTime || (experience.dropPoints && experience.dropPoints.length > 0)) && (
-        <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors col-span-2">
-          <div className="flex items-center gap-3">
-            <MapPin className="w-5 h-5 text-primary shrink-0" />
-            <div>
-              <p className="text-xs text-foreground/60 font-medium">
-                Drop-off Details
-              </p>
-              <p className="font-bold text-sm leading-tight mt-0.5">
-                {experience.meetingPoint || "Multiple options available"} {experience.dropoffTime && `\u2022 ${experience.dropoffTime}`}
-              </p>
-            </div>
-          </div>
-
-          {experience.dropPoints && experience.dropPoints.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-border/50">
-              <details className="group [&_summary::-webkit-details-marker]:hidden">
-                <summary className="flex items-center justify-between cursor-pointer text-xs font-bold uppercase tracking-wider text-primary hover:text-primary/80 transition-colors list-none select-none">
-                  <span>Available Drop-off Locations ({experience.dropPoints.length})</span>
-                  <ChevronDown className="w-4 h-4 text-primary transition-transform duration-200 group-open:rotate-180" />
-                </summary>
-                <div className="mt-2.5 flex flex-col gap-2 text-xs font-semibold text-foreground/80 max-h-52 overflow-y-auto custom-scrollbar pt-1">
-                  {experience.dropPoints.map((point) => (
-                    <div key={point} className="flex items-center gap-2 bg-foreground/[0.03] border border-border/40 px-3 py-2 rounded-xl hover:bg-primary/5 hover:border-primary/20 transition-all">
-                      <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                      <span>{point}</span>
-                    </div>
-                  ))}
-                </div>
-              </details>
-            </div>
-          )}
-        </div>
-      )}
-    </section>
-  );
-}
-
-interface Slot {
-  id: string;
-  date: Date;
-  status: string;
-  remainingCapacity: number;
-}
-
-function DepartureDates({ slots }: Readonly<{ slots: Slot[] }>) {
-  if (!Array.isArray(slots) || slots.length === 0) return null;
-
-  const nextDeparture = slots[0].date;
-  const otherDates = slots.slice(1);
+  const hasStats = !!(experience.networkConnectivity || experience.fitnessRequirement || experience.ageRange);
+  const hasLocations = !!(experience.meetingTime || experience.meetingPoint || (experience.pickupPoints && experience.pickupPoints.length > 0) || experience.dropoffTime || (experience.dropPoints && experience.dropPoints.length > 0));
 
   return (
-    <div className="mb-8 space-y-4">
-      <div className="flex flex-col gap-1.5 p-4 rounded-2xl bg-primary/5 border border-primary/20">
-        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Next Departure</span>
-        <div className="flex items-center gap-2 text-foreground font-bold">
-          <CalendarDays className="w-5 h-5 text-primary" />
-          <span className="text-lg">
-            {new Date(nextDeparture).toLocaleDateString("en-IN", {
-              day: "numeric",
-              month: "short",
-              year: "numeric",
-            })}
-          </span>
-        </div>
-      </div>
-
-      {otherDates.length > 0 && (
-        <details className="group border border-border rounded-xl bg-foreground/[0.02] overflow-hidden [&_summary::-webkit-details-marker]:hidden">
-          <summary className="flex items-center justify-between p-3 cursor-pointer text-xs font-bold uppercase tracking-wider text-foreground/50 hover:bg-foreground/5 transition-colors list-none">
-            Upcoming Batches ({otherDates.length})
-            <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" />
-          </summary>
-          <div className="p-3 pt-0 space-y-2 max-h-40 overflow-y-auto no-scrollbar">
-            {otherDates.map((slot) => (
-              <div key={slot.id} className="flex items-center justify-between py-2 border-t border-border/50 first:border-t-0">
-                <span className="text-sm font-medium">
-                  {new Date(slot.date).toLocaleDateString("en-IN", {
-                    day: "numeric",
-                    month: "short",
-                  })}
-                </span>
-                <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-bold">
-                  {slot.remainingCapacity > 0 ? "Seats Available" : "Full"}
-                </span>
+    <div className="space-y-4">
+      {hasStats && (
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 items-start">
+          {experience.networkConnectivity && (
+            <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors">
+              <Wifi className="w-5 h-5 text-primary" />
+              <div>
+                <p className="text-xs text-foreground/60 font-medium">
+                  Network/Wifi
+                </p>
+                <p className="font-bold text-sm leading-tight">
+                  {experience.networkConnectivity}
+                </p>
               </div>
-            ))}
-          </div>
-        </details>
+            </div>
+          )}
+          {experience.fitnessRequirement && (
+            <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors">
+              <Activity className="w-5 h-5 text-primary" />
+              <div>
+                <p className="text-xs text-foreground/60 font-medium">Fitness</p>
+                <p className="font-bold text-sm leading-tight">
+                  {experience.fitnessRequirement}
+                </p>
+              </div>
+            </div>
+          )}
+          {experience.ageRange && (
+            <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors">
+              <Users className="w-5 h-5 text-primary" />
+              <div>
+                <p className="text-xs text-foreground/60 font-medium">Age Range</p>
+                <p className="font-bold text-sm leading-tight">
+                  {experience.ageRange}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {hasLocations && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+          {(experience.meetingTime || experience.meetingPoint || (experience.pickupPoints && experience.pickupPoints.length > 0)) && (
+            <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors">
+              <div className="flex items-center gap-3">
+                <CarFront className="w-5 h-5 text-primary shrink-0" />
+                <div>
+                  <p className="text-xs text-foreground/60 font-medium">
+                    Starting Point
+                  </p>
+                  <p className="font-bold text-sm leading-tight mt-0.5">
+                    {experience.meetingPoint || "Multiple options available"} {experience.meetingTime && `\u2022 ${experience.meetingTime}`}
+                  </p>
+                </div>
+              </div>
+
+              {experience.pickupPoints && experience.pickupPoints.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-border/50">
+                  <details className="group [&_summary::-webkit-details-marker]:hidden">
+                    <summary className="flex items-center justify-between cursor-pointer text-xs font-bold uppercase tracking-wider text-primary hover:text-primary/80 transition-colors list-none select-none">
+                      <span>Available Pickup Locations ({experience.pickupPoints.length})</span>
+                      <ChevronDown className="w-4 h-4 text-primary transition-transform duration-200 group-open:rotate-180" />
+                    </summary>
+                    <div className="mt-2.5 flex flex-col gap-2 text-xs font-semibold text-foreground/80 max-h-52 overflow-y-auto custom-scrollbar pt-1">
+                      {experience.pickupPoints.map((point) => (
+                        <div key={point} className="flex items-center gap-2 bg-foreground/[0.03] border border-border/40 px-3 py-2 rounded-xl hover:bg-primary/5 hover:border-primary/20 transition-all">
+                          <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                          <span>{point}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                </div>
+              )}
+            </div>
+          )}
+
+          {(experience.dropoffTime || (experience.dropPoints && experience.dropPoints.length > 0)) && (
+            <div className="bg-card border border-border p-5 rounded-2xl flex flex-col gap-2 hover:border-primary/50 transition-colors">
+              <div className="flex items-center gap-3">
+                <MapPin className="w-5 h-5 text-primary shrink-0" />
+                <div>
+                  <p className="text-xs text-foreground/60 font-medium">
+                    Drop-off Details
+                  </p>
+                  <p className="font-bold text-sm leading-tight mt-0.5">
+                    {experience.meetingPoint || "Multiple options available"} {experience.dropoffTime && `\u2022 ${experience.dropoffTime}`}
+                  </p>
+                </div>
+              </div>
+
+              {experience.dropPoints && experience.dropPoints.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-border/50">
+                  <details className="group [&_summary::-webkit-details-marker]:hidden">
+                    <summary className="flex items-center justify-between cursor-pointer text-xs font-bold uppercase tracking-wider text-primary hover:text-primary/80 transition-colors list-none select-none">
+                      <span>Available Drop-off Locations ({experience.dropPoints.length})</span>
+                      <ChevronDown className="w-4 h-4 text-primary transition-transform duration-200 group-open:rotate-180" />
+                    </summary>
+                    <div className="mt-2.5 flex flex-col gap-2 text-xs font-semibold text-foreground/80 max-h-52 overflow-y-auto custom-scrollbar pt-1">
+                      {experience.dropPoints.map((point) => (
+                        <div key={point} className="flex items-center gap-2 bg-foreground/[0.03] border border-border/40 px-3 py-2 rounded-xl hover:bg-primary/5 hover:border-primary/20 transition-all">
+                          <div className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                          <span>{point}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
 }
+
 
 function ItinerarySection({ itinerary }: Readonly<{ itinerary: ItineraryDay[] }>) {
   if (!Array.isArray(itinerary) || itinerary.length === 0) return null;
@@ -497,9 +458,13 @@ function ItinerarySection({ itinerary }: Readonly<{ itinerary: ItineraryDay[] }>
                 <ChevronDown className="w-5 h-5 text-primary transition-transform duration-300 group-open:-rotate-180 shrink-0" />
               </summary>
               <div className="px-6 pb-6 pt-0">
-                <p className="text-foreground/70 leading-relaxed whitespace-pre-line border-t border-border/10 pt-4">
-                  {dayItem.description}
-                </p>
+                <div className="text-foreground/70 leading-relaxed border-t border-border/10 pt-4 prose prose-sm max-w-none">
+                  {typeof dayItem.description === "string" ? (
+                    <p className="whitespace-pre-line">{dayItem.description}</p>
+                  ) : (
+                    <RichTextRenderer content={dayItem.description} />
+                  )}
+                </div>
                 {(dayItem.meals || dayItem.accommodation) && (
                   <div className="mt-4 pt-4 border-t border-border/10 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                     {dayItem.meals &&
@@ -597,6 +562,26 @@ function InclusionsExclusions({
   );
 }
 
+function getExperienceDescription(exp: ExperienceWithInclusions): string {
+  const description =
+    exp.description && typeof exp.description === "object"
+      ? getPlainTextFromJSON(exp.description)
+      : String(exp.description || "");
+
+  return (
+    description ||
+    `Explore ${exp.title} in ${exp.location || "India"} with Param Adventures.`
+  );
+}
+
+function getPrimaryMedia(exp: ExperienceWithInclusions): string {
+  return (
+    exp.coverImage ||
+    exp.images[0] ||
+    "https://picsum.photos/seed/placeholder/1920/1080"
+  );
+}
+
 export default async function ExperienceDetailPage({
   params,
 }: Readonly<{
@@ -608,7 +593,7 @@ export default async function ExperienceDetailPage({
     () => prisma.platformSetting.findMany({
       where: {
         key: {
-          in: ["media_provider", "cloudinary_cloud_name", "s3_bucket", "s3_region", "media_quality", "media_high_fidelity"]
+          in: ["media_provider", "cloudinary_cloud_name", "s3_bucket", "s3_region", "media_quality", "media_high_fidelity", "cdn_url"]
         }
       }
     }),
@@ -616,12 +601,13 @@ export default async function ExperienceDetailPage({
   );
 
   const mediaSettings: MediaSettings = {
-    provider: (dbPlatformSettings.find(s => s.key === "media_provider")?.value || "CLOUDINARY") as "CLOUDINARY" | "AWS_S3",
+    provider: (dbPlatformSettings.find(s => s.key === "media_provider")?.value || "CLOUDINARY") as "CLOUDINARY" | "AWS_S3" | "S3" | "LOCAL",
     cloudinaryCloudName: dbPlatformSettings.find(s => s.key === "cloudinary_cloud_name")?.value,
     s3Bucket: dbPlatformSettings.find(s => s.key === "s3_bucket")?.value,
     s3Region: dbPlatformSettings.find(s => s.key === "s3_region")?.value,
     globalQuality: Number.parseInt(dbPlatformSettings.find(s => s.key === "media_quality")?.value || "100"),
-    highFidelity: dbPlatformSettings.find(s => s.key === "media_high_fidelity")?.value === "true"
+    highFidelity: dbPlatformSettings.find(s => s.key === "media_high_fidelity")?.value === "true",
+    cdnUrl: dbPlatformSettings.find(s => s.key === "cdn_url")?.value,
   };
 
   const experience = await withBuildSafety(
@@ -642,26 +628,116 @@ export default async function ExperienceDetailPage({
     null,
   );
 
-  if (!experience) {
-    notFound();
+  if (!experience || experience.status === "DRAFT" || experience.status === "ARCHIVED" || !!experience.deletedAt) {
+    const activeExperiences = await withBuildSafety(
+      () =>
+        prisma.experience.findMany({
+          where: {
+            status: "PUBLISHED",
+            deletedAt: null,
+          },
+          take: 3,
+          orderBy: { isFeatured: "desc" },
+          select: {
+            id: true,
+            title: true,
+            slug: true,
+            location: true,
+            basePrice: true,
+            cardImage: true,
+            durationDays: true,
+          },
+        }),
+      [],
+    );
+
+    return (
+      <div className="flex min-h-[80vh] flex-col items-center justify-center px-4 pt-24 pb-20 text-center max-w-7xl mx-auto">
+        <div className="rounded-full bg-primary/10 p-4 mb-6">
+          <Mountain className="h-12 w-12 text-primary" />
+        </div>
+        <h1 className="text-3xl md:text-5xl font-heading font-black text-foreground mb-4">
+          Adventure Currently Unavailable
+        </h1>
+        <p className="text-foreground/60 mb-12 max-w-lg text-base leading-relaxed">
+          This trail is currently in draft or has been archived. But don&apos;t worry, there are plenty of other active paths to explore!
+        </p>
+
+        {activeExperiences.length > 0 && (
+          <div className="w-full max-w-4xl mt-6">
+            <h2 className="text-xl font-bold text-foreground mb-6 uppercase tracking-wider">
+              Recommended Trails
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {activeExperiences.map((item) => (
+                <Link
+                  key={item.id}
+                  href={`/experiences/${item.slug}`}
+                  className="group flex flex-col bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/50 transition-all text-left shadow-xs hover:shadow-md"
+                >
+                  <div className="relative aspect-[16/10] bg-muted w-full overflow-hidden">
+                    {item.cardImage ? (
+                      <Image
+                        src={item.cardImage}
+                        alt={item.title}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                        sizes="(max-width: 768px) 100vw, 30vw"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-foreground/20">
+                        <Mountain className="w-8 h-8" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-4 flex flex-col justify-between flex-1">
+                    <div>
+                      <h3 className="font-bold text-foreground text-sm line-clamp-2 group-hover:text-primary transition-colors">
+                        {item.title}
+                      </h3>
+                      <div className="flex items-center gap-1.5 text-foreground/50 text-xs mt-1.5 font-medium">
+                        <MapPin className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{item.location || "India"}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-border/50 pt-3 mt-4 text-xs font-semibold">
+                      <span className="text-foreground/50">
+                        {item.durationDays} {item.durationDays === 1 ? "Day" : "Days"}
+                      </span>
+                      <span className="text-foreground font-bold text-sm">
+                        ₹{Number(item.basePrice).toLocaleString("en-IN")}
+                      </span>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-12 flex gap-4">
+          <Link
+            href="/experiences"
+            className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 font-bold text-primary-foreground hover:opacity-90 transition-all shadow-lg shadow-primary/25"
+          >
+            Browse All Trails
+          </Link>
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 rounded-xl bg-foreground/5 border border-border px-6 py-3 font-bold text-foreground hover:bg-foreground/10 transition-all"
+          >
+            <ArrowLeft className="h-4 w-4" /> Back to Base Camp
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   // Cast after null check for type safety
   const exp = experience as unknown as ExperienceWithInclusions;
 
-  const description =
-    exp.description && typeof exp.description === "object"
-      ? getPlainTextFromJSON(exp.description as unknown as RichTextNode)
-      : String(exp.description || "");
-
-  const finalDescription =
-    description ||
-    `Explore ${exp.title} in ${exp.location || "India"} with Param Adventures.`;
-
-  const primaryMedia =
-    exp.coverImage ||
-    exp.images[0] ||
-    "https://picsum.photos/seed/placeholder/1920/1080";
+  const finalDescription = getExperienceDescription(exp);
+  const primaryMedia = getPrimaryMedia(exp);
   
   const isVideo = /\.(mp4|webm)$/i.exec(primaryMedia);
 
@@ -678,80 +754,116 @@ export default async function ExperienceDetailPage({
   );
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-20">
+    <div className="min-h-screen bg-background text-foreground pb-20 pt-16">
       <ExperienceJsonLd
         experience={exp}
         url={`${process.env.NEXT_PUBLIC_APP_URL || ""}/experiences/${slug}`}
         description={finalDescription}
       />
       {/* Hero Section */}
-      <section className="relative h-[65vh] md:h-[75vh] lg:h-[80vh] w-full mt-0">
+      <section className="relative aspect-[16/9] md:aspect-auto md:h-[75vh] lg:h-[80vh] w-full mt-0 overflow-hidden">
         <div className="absolute inset-0 z-0 bg-black">
           {isVideo ? (
-            <video
-              src={heroMediaUrl}
-              className="w-full h-full object-cover"
-              muted
-              loop
-              autoPlay
-              playsInline
-            />
+            <div className="relative w-full h-full">
+              <video
+                src={heroMediaUrl}
+                className="absolute inset-0 w-full h-full object-cover blur-2xl opacity-40 scale-105 md:hidden"
+                muted
+                loop
+                autoPlay
+                playsInline
+              />
+              <video
+                src={heroMediaUrl}
+                className="absolute inset-0 w-full h-full object-contain md:object-cover"
+                muted
+                loop
+                autoPlay
+                playsInline
+              />
+            </div>
           ) : (
             <div className="relative w-full h-full">
+              {/* Blurred background copy to prevent solid black bars on non-16:9 images - hidden on PC */}
+              <Image
+                src={heroMediaUrl}
+                alt=""
+                fill
+                priority
+                sizes="100vw"
+                className="object-cover blur-2xl opacity-40 scale-105 md:hidden"
+              />
+              {/* Main crisp contained image (no cropping on mobile, fills container on PC) */}
               <Image
                 src={heroMediaUrl}
                 alt={exp.title}
                 fill
                 priority
                 sizes="100vw"
-                className="object-cover"
+                className="object-contain md:object-cover"
               />
             </div>
           )}
 
-          <div className="absolute inset-0 bg-black/40 z-10" />
-          <div className="absolute inset-x-0 bottom-0 h-2/3 bg-linear-to-t from-black/90 via-black/40 to-transparent z-10" />
+          <div className="absolute inset-0 bg-black/20 md:bg-black/40 z-10" />
+          <div className="absolute inset-x-0 bottom-0 h-2/3 bg-linear-to-t from-black/90 via-black/40 to-transparent z-10 hidden md:block" />
 
         </div>
 
         {/* Action Buttons - Standardized positioning */}
-        <div className="absolute top-24 right-6 md:top-28 md:right-8 z-40 flex items-center gap-3">
+        <div className="absolute top-4 right-4 md:top-6 md:right-8 z-40 flex items-center gap-3">
           <SaveButton
             experienceId={exp.id}
-            className="scale-110"
+            className="scale-100 md:scale-110"
           />
           <ShareButton
             title={exp.title}
-            className="scale-110"
+            className="scale-100 md:scale-110"
             variant="outline"
           />
         </div>
 
         <div className="relative z-20 h-full max-w-7xl mx-auto px-4 flex flex-col">
-          {/* Safe zone for fixed navbar */}
-          <div className="h-24 md:h-32 lg:h-40 shrink-0" />
+          {/* Spacing from the top */}
+          <div className="h-4 md:h-8 lg:h-12 shrink-0" />
 
-          <div className="flex-1 flex flex-col justify-end pb-12">
+          <div className="hidden md:flex flex-1 flex-col justify-end pb-12">
             <h1 className="text-4xl md:text-5xl lg:text-7xl font-heading font-black text-white leading-tight drop-shadow-2xl max-w-4xl">
-            {exp.title}
-          </h1>
-          <div className="flex flex-wrap items-center gap-6 mt-6 text-white font-medium text-lg drop-shadow-md">
-            <div className="flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-primary" /> {exp.location}
+              {exp.title}
+            </h1>
+            <div className="flex flex-wrap items-center gap-6 mt-6 text-white font-medium text-lg drop-shadow-md">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-primary" /> {exp.location}
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock className="w-5 h-5 text-primary" />{" "}
+                {exp.durationDays} Days /{" "}
+                {exp.durationDays > 1 ? exp.durationDays - 1 : 0}{" "}
+                Nights
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Clock className="w-5 h-5 text-primary" />{" "}
-              {exp.durationDays} Days /{" "}
-              {exp.durationDays > 1 ? exp.durationDays - 1 : 0}{" "}
-              Nights
-            </div>
-          </div>
           </div>
         </div>
       </section>
 
+      {/* Mobile Title & Meta Section (Visible only on mobile) */}
+      <div className="md:hidden px-4 pt-6 pb-2 space-y-4">
+        <h1 className="text-3xl font-heading font-black text-foreground leading-tight">
+          {exp.title}
+        </h1>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-foreground/75 font-semibold text-sm">
+          <div className="flex items-center gap-1.5">
+            <MapPin className="w-4 h-4 text-primary" /> {exp.location}
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Clock className="w-4 h-4 text-primary" />{" "}
+            {exp.durationDays} Days / {exp.durationDays > 1 ? exp.durationDays - 1 : 0} Nights
+          </div>
+        </div>
+      </div>
+
       {/* Main Content Layout */}
-      <div className="max-w-7xl mx-auto px-4 mt-12 grid grid-cols-1 lg:grid-cols-3 gap-12">
+      <div className="max-w-7xl mx-auto px-4 mt-6 md:mt-12 grid grid-cols-1 lg:grid-cols-3 gap-12">
         {/* Left Column - Details */}
         <div className="lg:col-span-2 space-y-16 min-w-0">
           <ExperienceStickyNav
@@ -807,7 +919,7 @@ export default async function ExperienceDetailPage({
               </div>
             )}
             <div className="text-lg text-foreground/80 leading-relaxed">
-              <RichTextRenderer content={exp.description as unknown as RichTextNode} />
+              <RichTextRenderer content={exp.description} />
             </div>
           </section>
 
@@ -818,7 +930,7 @@ export default async function ExperienceDetailPage({
                 <Clock className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-sm text-foreground/60 font-medium whitespace-nowrap">
+                <p className="text-sm text-foreground/60 font-medium">
                   Duration
                 </p>
                 <p className="font-bold">{exp.durationDays} Days</p>
@@ -830,7 +942,7 @@ export default async function ExperienceDetailPage({
                 <Mountain className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-sm text-foreground/60 font-medium whitespace-nowrap">
+                <p className="text-sm text-foreground/60 font-medium">
                   Max Altitude
                 </p>
                 <p className="font-bold">{exp.maxAltitude || "N/A"}</p>
@@ -842,7 +954,7 @@ export default async function ExperienceDetailPage({
                 <Footprints className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-sm text-foreground/60 font-medium whitespace-nowrap">
+                <p className="text-sm text-foreground/60 font-medium">
                   Total Distance (Both Ways)
                 </p>
                 <p className="font-bold">{exp.trekDistance || "N/A"}</p>
@@ -854,7 +966,7 @@ export default async function ExperienceDetailPage({
                 <CalendarDays className="w-6 h-6" />
               </div>
               <div>
-                <p className="text-sm text-foreground/60 font-medium whitespace-nowrap">
+                <p className="text-sm text-foreground/60 font-medium">
                   Best Season
                 </p>
                 <p className="font-bold">
@@ -864,13 +976,13 @@ export default async function ExperienceDetailPage({
             </div>
           </section>
 
-          <EssentialLogistics experience={exp as unknown as ExperienceWithInclusions} />
+          <EssentialLogistics experience={exp} />
 
-          <ItinerarySection itinerary={exp.itinerary as unknown as ItineraryDay[]} />
+          <ItinerarySection itinerary={exp.itinerary} />
 
           <InclusionsExclusions
-            inclusions={exp.inclusions as unknown as string[]}
-            exclusions={exp.exclusions as unknown as string[]}
+            inclusions={exp.inclusions}
+            exclusions={exp.exclusions}
           />
 
           {/* Things to Carry */}
@@ -918,7 +1030,7 @@ export default async function ExperienceDetailPage({
                 Frequently Asked Questions
               </h2>
               <div className="space-y-4">
-                {(exp.faqs as unknown as FAQ[]).map((faq, _ix) => (
+                {exp.faqs.map((faq, _ix) => (
                   <details
                     key={`${_ix}-${faq.question}`}
                     className="group bg-card border border-border rounded-2xl overflow-hidden [&_summary::-webkit-details-marker]:hidden"
@@ -1021,45 +1133,23 @@ export default async function ExperienceDetailPage({
         </div>
 
         {/* Right Column - Sticky Sidebar */}
-        <div className="lg:col-span-1">
-          <div className="sticky top-24 bg-card border border-border rounded-3xl p-8 shadow-2xl shadow-black/5">
-            <h3 className="text-2xl font-bold mb-2 font-heading">
-              Reserve Your Spot
-            </h3>
-            <p className="text-foreground/60 mb-6">
-              Join the waitlist for the next departure date.
-            </p>
+        <div className="lg:col-span-1 lg:sticky lg:top-28 lg:h-fit flex flex-col gap-6 z-20">
+          <BookingSidebarCard
+            experienceId={exp.id}
+            experienceTitle={exp.title}
+            experienceSlug={exp.slug}
+            basePrice={Number(exp.basePrice)}
+            maxCapacity={exp.capacity}
+            pickupPoints={exp.pickupPoints || []}
+            dropPoints={exp.dropPoints || []}
+            slots={experience.slots}
+          />
 
-            <div className="flex items-end gap-2 mb-8 pb-8 border-b border-border">
-              <span className="text-4xl font-black flex items-center">
-                <IndianRupee className="w-8 h-8" />
-                {Number(exp.basePrice).toLocaleString("en-IN")}
-              </span>
-              <span className="text-foreground/50 font-medium mb-1">
-                / person
-              </span>
-            </div>
-
-            <DepartureDates slots={experience.slots as unknown as Slot[]} />
-
-            <BookNowButton
-              experienceId={exp.id}
-              experienceTitle={exp.title}
-              experienceSlug={exp.slug}
-              basePrice={Number(exp.basePrice)}
-              maxCapacity={exp.capacity}
-              pickupPoints={exp.pickupPoints || []}
-              dropPoints={exp.dropPoints || []}
-            />
-
-            <SimilarTrips
-              currentExperienceId={exp.id}
-              categoryIds={exp.categories.map((c: CategoryWithRelation) => c.category.id)}
-              mediaSettings={mediaSettings}
-            />
-
-            <DownloadItineraryBtn slug={exp.slug} />
-          </div>
+          <SimilarTrips
+            currentExperienceId={exp.id}
+            categoryIds={exp.categories.map((c: CategoryWithRelation) => c.category.id)}
+            mediaSettings={mediaSettings}
+          />
         </div>
       </div>
 

@@ -132,6 +132,22 @@ describe("POST /api/trek-lead/trips/[id]/attendance", () => {
     expect(mockParticipantUpdate).toHaveBeenCalledTimes(2);
   });
 
+  it("saves attendance for admin (bypassing assignment and date lock)", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "admin-1", roleName: "ADMIN" } as any);
+    mockSlotFindUnique.mockResolvedValue({ date: new Date(), status: "TREK_STARTED" } as any);
+    mockIsSlotDayToday.mockReturnValue(false); // normally triggers 403
+
+    const response = await POST(
+      createRequest({ attendees: [{ participantId: "p1", attended: true }] }),
+      { params: Promise.resolve({ id: "slot-1" }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockAssignmentFindUnique).not.toHaveBeenCalled();
+    expect(mockTripLogUpsert).toHaveBeenCalledTimes(1);
+    expect(mockParticipantUpdate).toHaveBeenCalledTimes(1);
+  });
+
   it("returns 500 on unexpected error", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "t1" } as any);
     mockAssignmentFindUnique.mockRejectedValue(new Error("db down"));

@@ -82,7 +82,7 @@ export async function POST(
         },
       });
 
-      if (booking.slotId) {
+      if (booking.slotId && booking.bookingStatus === "CONFIRMED") {
         await tx.slot.update({
           where: { id: booking.slotId },
           data: {

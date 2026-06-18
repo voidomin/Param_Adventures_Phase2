@@ -74,8 +74,8 @@ describe("app/admin/page", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Overview")).toBeInTheDocument();
+      expect(screen.getByTestId("dashboard-charts")).toBeInTheDocument();
     });
-    expect(screen.getByTestId("dashboard-charts")).toBeInTheDocument();
     expect(mockFetch).toHaveBeenCalledWith("/api/admin/dashboard");
   });
 

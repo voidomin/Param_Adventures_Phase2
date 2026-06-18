@@ -22,7 +22,10 @@ import {
   PenLine,
 } from "lucide-react";
 import Image from "next/image";
-import ImageCropper from "@/components/admin/ImageCropper";
+import dynamic from "next/dynamic";
+const ImageCropper = dynamic(() => import("@/components/admin/ImageCropper"), {
+  ssr: false,
+});
 import { ASPECT_RATIOS } from "@/lib/constants/aspect-ratios";
 
 interface DashboardData {
@@ -374,7 +377,7 @@ export default function DashboardPage() {
   const { user, upcomingBookings, pastBookings, stats } = data;
 
   // Profile completeness check
-  const isIncompleteProfile = !user.name || !user.phoneNumber || !user.gender;
+  const isIncompleteProfile = !user.name || !user.phoneNumber || user.phoneNumber.includes("0000000000") || !user.gender;
 
   const currentAvatarUrl = avatarUrl ?? user.avatarUrl;
   const initials = user.name

@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Loader2, FileDown } from "lucide-react";
+import { Download, Loader2, FileDown, X } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { useAuth } from "@/lib/AuthContext";
+import { getPlainTextFromJSON } from "@/lib/utils/rich-text";
 
 // ─── Constants & Brand Colors ────────────────────────────
 const COLORS = {
@@ -38,7 +40,7 @@ interface ItineraryBookingData {
   description?: string;
   itinerary?: {
     title?: string;
-    description?: string;
+    description?: string | object;
     meals?: string | string[];
     accommodation?: string;
   }[];
@@ -68,6 +70,33 @@ interface ItineraryBookingData {
 // ─── Helpers ──────────────────────────────────────────
 async function fetchImageAsBase64(url: string): Promise<string | null> {
   try {
+    let urlObj: URL;
+    try {
+      urlObj = new URL(url);
+    } catch {
+      return null;
+    }
+    const host = urlObj.hostname;
+    const isDirectFetchable = 
+      host === "res.cloudinary.com" || host.endsWith(".res.cloudinary.com") ||
+      host === "amazonaws.com" || host.endsWith(".amazonaws.com");
+    if (isDirectFetchable) {
+      try {
+        const directRes = await fetch(url, { mode: "cors" });
+        if (directRes.ok) {
+          const blob = await directRes.blob();
+          return await new Promise<string | null>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string || null);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(blob);
+          });
+        }
+      } catch (err) {
+        console.warn("Direct image fetch failed, falling back to proxy:", err);
+      }
+    }
+
     const res = await fetch(
       `/api/proxy-image?url=${encodeURIComponent(url)}`
     );
@@ -157,7 +186,7 @@ function addPageHeader(doc: jsPDF, data: ItineraryBookingData) {
   doc.setTextColor(...COLORS.white);
   doc.text("BOOK ONLINE", tabX + tabW / 2, tabY + 3.8, { align: "center" });
   
-  const bookingUrl = typeof window !== 'undefined' ? `${window.location.origin}/experiences/${data.slug}` : `https://www.paramadventures.in/experiences/${data.slug}`;
+  const bookingUrl = globalThis.window === undefined ? `https://www.paramadventures.in/experiences/${data.slug}` : `${globalThis.window.location.origin}/experiences/${data.slug}`;
   doc.link(tabX, tabY, tabW, tabH, { url: bookingUrl });
 }
 
@@ -257,7 +286,7 @@ function drawCoverPage(doc: jsPDF, data: ItineraryBookingData, logoBase64: strin
   // Decorative thin separator
   doc.setDrawColor(...COLORS.orange);
   doc.setLineWidth(0.3);
-  doc.line(14, pageHeight * 0.70, pageWidth - 14, pageHeight * 0.70);
+  doc.line(14, pageHeight * 0.7, pageWidth - 14, pageHeight * 0.7);
 
   // Title
   doc.setFontSize(26);
@@ -420,7 +449,7 @@ function drawStatsOverview(doc: jsPDF, data: ItineraryBookingData, y: number): n
   doc.line(linkX, startY + 10, linkX + textWidth, startY + 10);
   
   // Add active link hotspot
-  const bookingUrl = typeof window !== 'undefined' ? `${window.location.origin}/experiences/${data.slug}` : `https://www.paramadventures.in/experiences/${data.slug}`;
+  const bookingUrl = globalThis.window === undefined ? `https://www.paramadventures.in/experiences/${data.slug}` : `${globalThis.window.location.origin}/experiences/${data.slug}`;
   doc.link(linkX, startY, textWidth, bannerH, { url: bookingUrl });
   
   return startY + bannerH + 10;
@@ -491,7 +520,8 @@ function drawItinerary(doc: jsPDF, data: ItineraryBookingData, y: number): numbe
 
   data.itinerary.forEach((day, index) => {
     const dayNum = index + 1;
-    const descLen = day.description?.length ?? 0;
+    const plainDesc = getPlainTextFromJSON(day.description);
+    const descLen = plainDesc.length;
     const neededHeight = 40 + (descLen / 4);
     y = checkPageBreak(doc, y, neededHeight);
 
@@ -515,11 +545,11 @@ function drawItinerary(doc: jsPDF, data: ItineraryBookingData, y: number): numbe
     doc.setTextColor(...COLORS.navy);
     doc.text(cleanTextForPdf(day.title || `Day ${dayNum}`), 32, y + 8);
 
-    if (day.description) {
+    if (plainDesc) {
       doc.setFontSize(9);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(...COLORS.darkText);
-      const dayDescLines = doc.splitTextToSize(cleanTextForPdf(day.description), pageWidth - 48);
+      const dayDescLines = doc.splitTextToSize(cleanTextForPdf(plainDesc), pageWidth - 48);
       doc.text(dayDescLines, 32, y + 15);
       y += 15 + dayDescLines.length * 4.8;
     } else {
@@ -671,12 +701,7 @@ function drawInclusionsExclusionsPacking(doc: jsPDF, data: ItineraryBookingData,
   return y;
 }
 
-function drawEssentialInfoAndContact(doc: jsPDF, data: ItineraryBookingData) {
-  const pageWidth = doc.internal.pageSize.getWidth();
-  doc.addPage();
-  const startY = 20;
-  let y = startY;
-
+function drawRouteLogistics(doc: jsPDF, data: ItineraryBookingData, y: number, pageWidth: number): number {
   if (data.meetingPoint) {
     y = drawSectionHeader(doc, "STARTING POINT", y);
     doc.setFontSize(9).setFont("helvetica", "normal").setTextColor(...COLORS.darkText);
@@ -717,6 +742,10 @@ function drawEssentialInfoAndContact(doc: jsPDF, data: ItineraryBookingData) {
     y += 8;
   }
 
+  return y;
+}
+
+function drawEssentialInfoTable(doc: jsPDF, data: ItineraryBookingData, y: number): number {
   const logistics = [
     { label: "Starting Time", value: cleanTextForPdf(data.meetingTime) },
     { label: "Drop-off Time", value: cleanTextForPdf(data.dropoffTime) },
@@ -737,108 +766,123 @@ function drawEssentialInfoAndContact(doc: jsPDF, data: ItineraryBookingData) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     y = (doc as any).lastAutoTable?.finalY ?? y;
   }
+  return y;
+}
 
-  if (data.cancellationPolicy) {
-    let policyTemplate = "custom";
-    let policyText = "";
-    try {
-      const parsed = JSON.parse(data.cancellationPolicy);
-      if (parsed && typeof parsed === "object" && "template" in parsed) {
-        policyTemplate = parsed.template || "custom";
-        policyText = parsed.text || "";
-      } else {
-        policyText = data.cancellationPolicy;
-      }
-    } catch {
-      policyText = data.cancellationPolicy;
-    }
-
-    const isTemplate =
-      policyTemplate === "one_two_days" ||
-      policyTemplate === "multi_days" ||
-      policyTemplate === "international";
-
-    if (isTemplate) {
-      y = checkPageBreak(doc, y, 40);
-      y = drawSectionHeader(doc, "CANCELLATION POLICY", y);
-
-      const templates = {
-        one_two_days: {
-          title: "One- & Two-Days Treks or Trips Policy",
-          headers: ["Policy", "21 days Prior", "20-16 days", "15-6 days", "5-0 days"],
-          rows: [
-            ["Batch Shifting", "Yes", "Yes", "No", "No"],
-            ["Cancellation Charge", "Free Cancellation", "25% of Trip", "50% of Trip", "100% of Trip"],
-            ["Booking Amount", "Refunded original mode", "Adjusted in Refund", "Adjusted in Refund", "No Refund"],
-            ["Remaining Amount", "Full Refund (5% fee)", "Refund minus 25%", "Refund minus 50%", "No Refund"]
-          ]
-        },
-        multi_days: {
-          title: "Multiple Days Treks or Trips Policy",
-          headers: ["Policy", "46 days Prior", "45-31 days", "30-21 days", "20-0 days"],
-          rows: [
-            ["Batch Shifting", "Yes", "No", "No", "No"],
-            ["Cancellation Charge", "Free Cancellation", "50% of Trip", "75% of Trip", "100% of Trip"],
-            ["Booking Amount", "Refunded original mode", "Adjusted in Refund", "Adjusted in Refund", "No Refund"],
-            ["Remaining Amount", "Full Refund (5% fee)", "Refund minus 50%", "Refund minus 75%", "No Refund"]
-          ]
-        },
-        international: {
-          title: "International Treks & Trips Policy",
-          headers: ["Policy", "61 days Prior", "60-46 days", "45-31 days", "30-0 days"],
-          rows: [
-            ["Batch Shifting", "Yes", "No", "No", "No"],
-            ["Cancellation Charge", "Free Cancellation", "50% of Trip", "75% of Trip", "100% of Trip"],
-            ["Booking Amount", "Refunded original mode", "Adjusted in Refund", "Adjusted in Refund", "No Refund"],
-            ["Remaining Amount", "Full Refund (10% fee)", "Refund minus 50%", "Refund minus 75%", "No Refund"]
-          ]
-        }
-      };
-
-      const t = templates[policyTemplate as keyof typeof templates];
-      
-      doc.setFontSize(9).setFont("helvetica", "bold").setTextColor(...COLORS.navy);
-      doc.text(t.title, 14, y + 4);
-      y += 6;
-
-      autoTable(doc, {
-        startY: y,
-        head: [t.headers],
-        body: t.rows,
-        theme: "striped",
-        styles: { fontSize: 8, cellPadding: 3 },
-        headStyles: { fillColor: COLORS.teal, textColor: [255, 255, 255], fontStyle: "bold" },
-        columnStyles: { 0: { fontStyle: "bold", cellWidth: 35 } },
-      });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      y = (doc as any).lastAutoTable?.finalY ?? y;
-      y += 8;
-
-      if (policyText) {
-        y = checkPageBreak(doc, y, 20);
-        doc.setFontSize(8).setFont("helvetica", "normal").setTextColor(...COLORS.mutedText);
-        const policyLines = doc.splitTextToSize(cleanTextForPdf(policyText), pageWidth - 28);
-        for (const line of policyLines) {
-          y = checkPageBreak(doc, y, 5);
-          doc.text(line, 14, y + 3);
-          y += 4;
-        }
-        y += 8;
-      }
-    } else if (policyText) {
-      y = checkPageBreak(doc, y, 30);
-      y = drawSectionHeader(doc, "CANCELLATION POLICY", y);
-      doc.setFontSize(8).setFont("helvetica", "normal").setTextColor(...COLORS.mutedText);
-      const policyLines = doc.splitTextToSize(cleanTextForPdf(policyText), pageWidth - 28);
-      for (const line of policyLines) {
-        y = checkPageBreak(doc, y, 5);
-        doc.text(line, 14, y + 3);
-        y += 4;
-      }
-      y += 8;
-    }
+function parseCancellationPolicy(cancellationPolicy: string | null | undefined): {
+  policyTemplate: string;
+  policyText: string;
+} {
+  if (!cancellationPolicy) {
+    return { policyTemplate: "custom", policyText: "" };
   }
+  try {
+    const parsed = JSON.parse(cancellationPolicy);
+    if (parsed && typeof parsed === "object" && "template" in parsed) {
+      return {
+        policyTemplate: String(parsed.template || "custom"),
+        policyText: String(parsed.text || ""),
+      };
+    }
+  } catch {
+    // ignore
+  }
+  return { policyTemplate: "custom", policyText: cancellationPolicy };
+}
 
+function drawPolicyLines(doc: jsPDF, text: string, y: number, pageWidth: number): number {
+  doc.setFontSize(8).setFont("helvetica", "normal").setTextColor(...COLORS.mutedText);
+  const policyLines = doc.splitTextToSize(cleanTextForPdf(text), pageWidth - 28);
+  let currentY = y;
+  for (const line of policyLines) {
+    currentY = checkPageBreak(doc, currentY, 5);
+    doc.text(line, 14, currentY + 3);
+    currentY += 4;
+  }
+  return currentY;
+}
+
+function drawPDFCancellationPolicy(doc: jsPDF, data: ItineraryBookingData, y: number, pageWidth: number): number {
+  if (!data.cancellationPolicy) return y;
+
+  const { policyTemplate, policyText } = parseCancellationPolicy(data.cancellationPolicy);
+
+  const isTemplate =
+    policyTemplate === "one_two_days" ||
+    policyTemplate === "multi_days" ||
+    policyTemplate === "international";
+
+  if (isTemplate) {
+    y = checkPageBreak(doc, y, 40);
+    y = drawSectionHeader(doc, "CANCELLATION POLICY", y);
+
+    const templates = {
+      one_two_days: {
+        title: "One- & Two-Days Treks or Trips Policy",
+        headers: ["Policy", "21 days Prior", "20-16 days", "15-6 days", "5-0 days"],
+        rows: [
+          ["Batch Shifting", "Yes", "Yes", "No", "No"],
+          ["Cancellation Charge", "Free Cancellation", "25% of Trip", "50% of Trip", "100% of Trip"],
+          ["Booking Amount", "Refunded original mode", "Adjusted in Refund", "Adjusted in Refund", "No Refund"],
+          ["Remaining Amount", "Full Refund (5% fee)", "Refund minus 25%", "Refund minus 50%", "No Refund"]
+        ]
+      },
+      multi_days: {
+        title: "Multiple Days Treks or Trips Policy",
+        headers: ["Policy", "46 days Prior", "45-31 days", "30-21 days", "20-0 days"],
+        rows: [
+          ["Batch Shifting", "Yes", "No", "No", "No"],
+          ["Cancellation Charge", "Free Cancellation", "50% of Trip", "75% of Trip", "100% of Trip"],
+          ["Booking Amount", "Refunded original mode", "Adjusted in Refund", "Adjusted in Refund", "No Refund"],
+          ["Remaining Amount", "Full Refund (5% fee)", "Refund minus 50%", "Refund minus 75%", "No Refund"]
+        ]
+      },
+      international: {
+        title: "International Treks & Trips Policy",
+        headers: ["Policy", "61 days Prior", "60-46 days", "45-31 days", "30-0 days"],
+        rows: [
+          ["Batch Shifting", "Yes", "No", "No", "No"],
+          ["Cancellation Charge", "Free Cancellation", "50% of Trip", "75% of Trip", "100% of Trip"],
+          ["Booking Amount", "Refunded original mode", "Adjusted in Refund", "Adjusted in Refund", "No Refund"],
+          ["Remaining Amount", "Full Refund (10% fee)", "Refund minus 50%", "Refund minus 75%", "No Refund"]
+        ]
+      }
+    };
+
+    const t = templates[policyTemplate];
+    
+    doc.setFontSize(9).setFont("helvetica", "bold").setTextColor(...COLORS.navy);
+    doc.text(t.title, 14, y + 4);
+    y += 6;
+
+    autoTable(doc, {
+      startY: y,
+      head: [t.headers],
+      body: t.rows,
+      theme: "striped",
+      styles: { fontSize: 8, cellPadding: 3 },
+      headStyles: { fillColor: COLORS.teal, textColor: [255, 255, 255], fontStyle: "bold" },
+      columnStyles: { 0: { fontStyle: "bold", cellWidth: 35 } },
+    });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    y = (doc as any).lastAutoTable?.finalY ?? y;
+    y += 8;
+
+    if (policyText) {
+      y = checkPageBreak(doc, y, 20);
+      y = drawPolicyLines(doc, policyText, y, pageWidth);
+      y += 8;
+    }
+  } else if (policyText) {
+    y = checkPageBreak(doc, y, 30);
+    y = drawSectionHeader(doc, "CANCELLATION POLICY", y);
+    y = drawPolicyLines(doc, policyText, y, pageWidth);
+    y += 8;
+  }
+  return y;
+}
+
+function drawContactFooterBox(doc: jsPDF, data: ItineraryBookingData, y: number, pageWidth: number): void {
   y = checkPageBreak(doc, y, 60);
   doc.setFillColor(...COLORS.teal).roundedRect(14, y, pageWidth - 28, 50, 4, 4, "F");
   doc.setFontSize(14).setFont("helvetica", "bold").setTextColor(...COLORS.white);
@@ -869,14 +913,26 @@ function drawEssentialInfoAndContact(doc: jsPDF, data: ItineraryBookingData) {
   const waPhone = companyPhone.replace(/\D/g, "");
   const whatsappUrl = `https://wa.me/${waPhone || "919876543210"}`;
 
-  drawSocialButton(doc, "FACEBOOK", "https://www.facebook.com/profile.php?id=61576234846405", startX, btnY, [24, 119, 242], "fb");
-  drawSocialButton(doc, "INSTAGRAM", "https://www.instagram.com/param.adventures?igsh=MXUzc25yYTN5NXRmZw%3D%3D&utm_source=qr", startX + 38, btnY, [225, 48, 108], "insta");
-  drawSocialButton(doc, "YOUTUBE", "https://www.youtube.com/@ParamAdventures", startX + 76, btnY, [255, 0, 0], "yt");
+  drawSocialButton(doc, "FACEBOOK", "https://www.facebook.com/profile.php?id=61590660992017&sk=directory_contact_info", startX, btnY, [24, 119, 242], "fb");
+  drawSocialButton(doc, "INSTAGRAM", "https://www.instagram.com/param.adventures/", startX + 38, btnY, [225, 48, 108], "insta");
+  drawSocialButton(doc, "YOUTUBE", "https://www.youtube.com/", startX + 76, btnY, [255, 0, 0], "yt");
   drawSocialButton(doc, "WHATSAPP", whatsappUrl, startX + 114, btnY, [37, 211, 102], "wa");
 
   y += 58;
   doc.setFontSize(7).setTextColor(...COLORS.mutedText);
   doc.text(`© ${new Date().getFullYear()} ${cleanTextForPdf(data.company?.name ?? "")}. All rights reserved.`, pageWidth / 2, y + 4, { align: "center", maxWidth: pageWidth - 28 });
+}
+
+function drawEssentialInfoAndContact(doc: jsPDF, data: ItineraryBookingData) {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  doc.addPage();
+  const startY = 20;
+  let y = startY;
+
+  y = drawRouteLogistics(doc, data, y, pageWidth);
+  y = drawEssentialInfoTable(doc, data, y);
+  y = drawPDFCancellationPolicy(doc, data, y, pageWidth);
+  drawContactFooterBox(doc, data, y, pageWidth);
 }
 
 function drawWhyParamAdventures(doc: jsPDF) {
@@ -988,7 +1044,16 @@ export default function DownloadItineraryBtn({
   slug,
   variant = "sidebar",
 }: DownloadItineraryBtnProps) {
+  const { user } = useAuth();
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showLeadModal, setShowLeadModal] = useState(false);
+  const [leadName, setLeadName] = useState("");
+  const [leadEmail, setLeadEmail] = useState("");
+  const [leadPhone, setLeadPhone] = useState("");
+  const [referralSource, setReferralSource] = useState("");
+  const [otherSource, setOtherSource] = useState("");
+  const [isSubmittingLead, setIsSubmittingLead] = useState(false);
+  const [leadError, setLeadError] = useState("");
 
   async function generatePDF() {
     setIsGenerating(true);
@@ -1032,6 +1097,64 @@ export default function DownloadItineraryBtn({
     }
   }
 
+  const handleButtonClick = () => {
+    if (user) {
+      generatePDF();
+    } else {
+      setShowLeadModal(true);
+    }
+  };
+
+  async function handleLeadSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setIsSubmittingLead(true);
+    setLeadError("");
+
+    if (leadPhone.trim().length < 10) {
+      setLeadError("Phone number must be at least 10 digits");
+      setIsSubmittingLead(false);
+      return;
+    }
+
+    try {
+      const finalSource = referralSource === "Other" ? `Other (${otherSource.trim()})` : referralSource;
+      const requirementsStr = `Referral Source: ${finalSource}`;
+
+      const res = await fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: leadName.trim(),
+          email: leadEmail.trim(),
+          phone: leadPhone.trim(),
+          requirements: requirementsStr,
+          source: `ITINERARY_DOWNLOAD: ${slug}`,
+        }),
+      });
+
+      const resData = await res.json();
+      if (!res.ok) {
+        throw new Error(resData.error || "Failed to submit request.");
+      }
+
+      // Close modal and reset fields
+      setShowLeadModal(false);
+      setLeadName("");
+      setLeadEmail("");
+      setLeadPhone("");
+      setReferralSource("");
+      setOtherSource("");
+
+      // Download the PDF
+      await generatePDF();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "An unexpected error occurred.";
+      setLeadError(message);
+    } finally {
+      setIsSubmittingLead(false);
+    }
+  }
+
   const isLoadingVariant = isGenerating ? (
     <>
       <Loader2 className="w-5 h-5 animate-spin" />
@@ -1039,28 +1162,166 @@ export default function DownloadItineraryBtn({
     </>
   ) : null;
 
+  const renderModal = () => {
+    if (!showLeadModal) return null;
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+        <div className="bg-card border border-border w-full max-w-md rounded-2xl shadow-2xl overflow-hidden relative animate-in zoom-in-95 duration-200">
+          {/* Header */}
+          <div className="p-6 border-b border-border flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-foreground">Get Trip Itinerary</h3>
+              <p className="text-foreground/50 text-xs mt-0.5">Please share a few details to download the PDF</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowLeadModal(false)}
+              className="p-1.5 rounded-lg hover:bg-foreground/5 text-foreground/45 hover:text-foreground transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* Form */}
+          <form onSubmit={handleLeadSubmit} className="p-6 space-y-4">
+            {leadError && (
+              <div className="bg-red-500/10 text-red-500 p-3 rounded-xl text-xs font-medium">
+                {leadError}
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <label htmlFor="lead-name" className="text-xs font-bold text-foreground/60">
+                Full Name
+              </label>
+              <input
+                id="lead-name"
+                type="text"
+                required
+                value={leadName}
+                onChange={(e) => setLeadName(e.target.value)}
+                placeholder="e.g. John Doe"
+                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="lead-email" className="text-xs font-bold text-foreground/60">
+                Email Address
+              </label>
+              <input
+                id="lead-email"
+                type="email"
+                required
+                value={leadEmail}
+                onChange={(e) => setLeadEmail(e.target.value)}
+                placeholder="e.g. john@example.com"
+                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="lead-phone" className="text-xs font-bold text-foreground/60">
+                Phone Number
+              </label>
+              <input
+                id="lead-phone"
+                type="tel"
+                required
+                value={leadPhone}
+                onChange={(e) => setLeadPhone(e.target.value)}
+                placeholder="e.g. 9876543210"
+                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="lead-referral" className="text-xs font-bold text-foreground/60">
+                How did you hear about us?
+              </label>
+              <select
+                id="lead-referral"
+                required
+                value={referralSource}
+                onChange={(e) => setReferralSource(e.target.value)}
+                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all appearance-none"
+              >
+                <option value="" disabled>Select an option</option>
+                <option value="Instagram">Instagram</option>
+                <option value="Facebook">Facebook</option>
+                <option value="Friends">Friends / Word of mouth</option>
+                <option value="YouTube">YouTube</option>
+                <option value="Search Engine">Search Engine (Google, etc.)</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            {referralSource === "Other" && (
+              <div className="space-y-1.5 animate-in slide-in-from-top-1 duration-200">
+                <label htmlFor="lead-other" className="text-xs font-bold text-foreground/60">
+                  Please specify (Source)
+                </label>
+                <input
+                  id="lead-other"
+                  type="text"
+                  required
+                  value={otherSource}
+                  onChange={(e) => setOtherSource(e.target.value)}
+                  placeholder="e.g. Google Search, Billboard"
+                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                />
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={isSubmittingLead}
+              className="w-full py-3 mt-2 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {isSubmittingLead ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Submitting...</span>
+                </>
+              ) : (
+                <span>Submit & Download Itinerary</span>
+              )}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  };
+
   if (variant === "success") {
     return (
-      <button type="button" onClick={generatePDF} disabled={isGenerating} className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-500 to-teal-600 text-white hover:from-teal-600 hover:to-teal-700 transition-all rounded-xl font-semibold shadow-lg hover:shadow-xl disabled:opacity-50">
-        {isLoadingVariant || <><FileDown className="w-5 h-5" />Download Trip Itinerary (PDF)</>}
-      </button>
+      <>
+        <button type="button" onClick={handleButtonClick} disabled={isGenerating} className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-500 to-teal-600 text-white hover:from-teal-600 hover:to-teal-700 transition-all rounded-xl font-semibold shadow-lg hover:shadow-xl disabled:opacity-50">
+          {isLoadingVariant || <><FileDown className="w-5 h-5" />Download Trip Itinerary (PDF)</>}
+        </button>
+        {renderModal()}
+      </>
     );
   }
 
   if (variant === "inline") {
     return (
-      <button type="button" onClick={generatePDF} disabled={isGenerating} className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 font-medium transition-colors disabled:opacity-50">
-        {isLoadingVariant || <><Download className="w-4 h-4" />Download Itinerary</>}
-      </button>
+      <>
+        <button type="button" onClick={handleButtonClick} disabled={isGenerating} className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 font-medium transition-colors disabled:opacity-50">
+          {isLoadingVariant || <><Download className="w-4 h-4" />Download Itinerary</>}
+        </button>
+        {renderModal()}
+      </>
     );
   }
 
   return (
     <div className="mt-6 pt-6 border-t border-border">
-      <button type="button" onClick={generatePDF} disabled={isGenerating} className="w-full flex items-center justify-center gap-2.5 px-5 py-3 bg-gradient-to-r from-primary/90 to-primary text-primary-foreground hover:from-primary hover:to-primary/90 transition-all rounded-xl font-semibold shadow-md hover:shadow-lg disabled:opacity-60">
-        {isLoadingVariant || <><FileDown className="w-5 h-5" /><span>Download Itinerary</span></>}
+      <button type="button" onClick={handleButtonClick} disabled={isGenerating} className="w-full flex items-center justify-center gap-2.5 px-5 py-3 border border-border bg-card hover:bg-accent/10 text-foreground hover:text-primary transition-all rounded-xl font-semibold shadow-sm disabled:opacity-60">
+        {isLoadingVariant || <><FileDown className="w-5 h-5 text-primary" /><span>Download Itinerary</span></>}
       </button>
       <p className="text-xs text-foreground/40 text-center mt-2">Get the complete trip details as a PDF</p>
+      {renderModal()}
     </div>
   );
 }

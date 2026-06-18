@@ -25,7 +25,7 @@ export default function RichTextRenderer({
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure(),
       Image,
       Youtube.configure({
         inline: false,

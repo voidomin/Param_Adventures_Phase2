@@ -111,7 +111,7 @@ describe("POST /api/auth/register", () => {
 
     expect(response.status).toBe(201);
     expect(data.user.id).toBe("u1");
-    expect(data.accessToken).toBe("access-1");
+    expect(data.accessToken).toBeUndefined();
     expect(mockUserCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({

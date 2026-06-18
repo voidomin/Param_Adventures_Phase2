@@ -107,7 +107,11 @@ export async function GET(request: NextRequest) {
       select: {
         id: true,
         title: true,
-        _count: { select: { bookings: true } },
+        _count: {
+          select: {
+            bookings: { where: { bookingStatus: "CONFIRMED" } },
+          },
+        },
       },
       orderBy: { bookings: { _count: "desc" } },
       take: 5,

@@ -12,6 +12,7 @@ export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const { user, isLoading, logout } = useAuth();
   const pathname = usePathname();
+  const isProfileIncomplete = !!user && (!user.phoneNumber || user.phoneNumber.includes("0000000000"));
 
   // Hide Navbar on specific routes
   if (
@@ -88,7 +89,7 @@ export default function Navbar() {
                   ) : null}
                   <Link
                     href="/dashboard"
-                    className="flex items-center gap-2 px-3 py-1.5 bg-foreground/5 hover:bg-primary/10 rounded-full transition-colors"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-foreground/5 hover:bg-primary/10 rounded-full transition-colors relative"
                   >
                     <span className="w-6 h-6 rounded-full bg-primary flex items-center justify-center text-xs font-black text-primary-foreground">
                       {user.name.slice(0, 1).toUpperCase()}
@@ -96,6 +97,9 @@ export default function Navbar() {
                     <span className="text-sm font-medium text-foreground/80">
                       {user.name.split(" ")[0]}
                     </span>
+                    {isProfileIncomplete && (
+                      <span className="absolute -top-1 -right-0.5 w-2.5 h-2.5 bg-amber-500 border-2 border-background rounded-full animate-pulse" />
+                    )}
                   </Link>
                   <button
                     onClick={handleLogout}
@@ -124,13 +128,18 @@ export default function Navbar() {
               <ThemeToggle />
               <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="text-foreground relative z-[60]"
+                className="text-foreground relative z-[60] p-1"
                 suppressHydrationWarning
               >
                 {isOpen ? (
                   <X className="w-6 h-6" />
                 ) : (
-                  <Menu className="w-6 h-6" />
+                  <div className="relative">
+                    <Menu className="w-6 h-6" />
+                    {isProfileIncomplete && (
+                      <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-amber-500 border-2 border-background rounded-full animate-pulse" />
+                    )}
+                  </div>
                 )}
               </button>
             </div>
@@ -190,10 +199,13 @@ export default function Navbar() {
                   <Link
                     href="/dashboard"
                     onClick={() => setIsOpen(false)}
-                    className="w-full py-4 text-lg font-bold text-center block"
+                    className="w-full py-4 text-lg font-bold text-center block relative"
                     style={{ color: "#ff9933" }}
                   >
                     My Dashboard
+                    {isProfileIncomplete && (
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-amber-500 rounded-full" />
+                    )}
                   </Link>
                 )}
                 <button

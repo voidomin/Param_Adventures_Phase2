@@ -49,13 +49,19 @@ describe("GET /api/admin/bookings", () => {
 
     expect(response.status).toBe(200);
     expect(data.bookings).toHaveLength(1);
+    // The where clause should have the status, experienceId, deletedAt, and
+    // the active-booking OR condition (slot null OR slot matches active criteria)
     expect(mockFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: {
+        where: expect.objectContaining({
           bookingStatus: "CONFIRMED",
           experienceId: "exp-1",
           deletedAt: null,
-        },
+          OR: expect.arrayContaining([
+            { slotId: null },
+            expect.objectContaining({ slot: expect.anything() }),
+          ]),
+        }),
         orderBy: { createdAt: "desc" },
       }),
     );
@@ -69,9 +75,44 @@ describe("GET /api/admin/bookings", () => {
     const response = await GET(new NextRequest("http://localhost/api/admin/bookings"));
 
     expect(response.status).toBe(200);
+    // Without filters, whereClause still has deletedAt and the active-booking OR clause
     expect(mockFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { deletedAt: null },
+        where: expect.objectContaining({
+          deletedAt: null,
+          OR: expect.arrayContaining([
+            { slotId: null },
+            expect.objectContaining({ slot: expect.anything() }),
+          ]),
+        }),
+      }),
+    );
+  });
+
+  it("returns archived bookings when archived=true", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockFindMany.mockResolvedValue([{ id: "b2" }] as any);
+    mockCount.mockResolvedValue(1);
+
+    const response = await GET(
+      new NextRequest("http://localhost/api/admin/bookings?archived=true"),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.bookings).toHaveLength(1);
+    // When archived=true, the whereClause should have a slot condition (not an OR with slotId null)
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          deletedAt: null,
+          slot: expect.objectContaining({
+            OR: expect.arrayContaining([
+              expect.objectContaining({ completedAt: expect.anything() }),
+              expect.objectContaining({ trekEndedAt: expect.anything() }),
+            ]),
+          }),
+        }),
       }),
     );
   });

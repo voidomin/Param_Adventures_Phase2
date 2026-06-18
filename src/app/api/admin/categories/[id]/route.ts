@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
+import { logActivity } from "@/lib/audit-logger";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -86,6 +87,14 @@ export async function PUT(request: NextRequest, context: RouteContext) {
       data,
     });
 
+    await logActivity(
+      "CATEGORY_UPDATED",
+      auth.userId,
+      "Category",
+      id,
+      { name: category.name, slug: category.slug }
+    );
+
     revalidatePath("/", "layout");
 
     return NextResponse.json({ category });
@@ -130,6 +139,14 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
     }
 
     await prisma.category.delete({ where: { id } });
+
+    await logActivity(
+      "CATEGORY_DELETED",
+      auth.userId,
+      "Category",
+      id,
+      { name: existing.name }
+    );
 
     revalidatePath("/", "layout");
 

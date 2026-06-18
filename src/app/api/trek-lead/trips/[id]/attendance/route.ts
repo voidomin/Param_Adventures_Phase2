@@ -47,16 +47,20 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     }
     const { attendees } = parseResult.data;
 
-    // Must be assigned to this slot
-    const assignment = await prisma.tripAssignment.findUnique({
-      where: { slotId_trekLeadId: { slotId, trekLeadId: userId } },
-    });
+    const isAdmin = auth.roleName === "ADMIN" || auth.roleName === "SUPER_ADMIN";
 
-    if (!assignment) {
-      return NextResponse.json(
-        { error: "You are not assigned to this trip." },
-        { status: 403 },
-      );
+    if (!isAdmin) {
+      // Must be assigned to this slot
+      const assignment = await prisma.tripAssignment.findUnique({
+        where: { slotId_trekLeadId: { slotId, trekLeadId: userId } },
+      });
+
+      if (!assignment) {
+        return NextResponse.json(
+          { error: "You are not assigned to this trip." },
+          { status: 403 },
+        );
+      }
     }
 
     const slot = await prisma.slot.findUnique({
@@ -77,7 +81,7 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     }
 
     // 🔒 IST D-Day lock
-    if (!isSlotDayToday(slot.date)) {
+    if (!isAdmin && !isSlotDayToday(slot.date)) {
       return NextResponse.json(
         {
           error: "Attendance can only be marked on the day of the trip (IST).",

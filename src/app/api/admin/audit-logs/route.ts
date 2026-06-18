@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
+import { Prisma } from "@prisma/client";
 
 /**
  * GET /api/admin/audit-logs — SUPER_ADMIN only.
@@ -24,24 +25,21 @@ export async function GET(request: NextRequest) {
 
   try {
     const { searchParams } = request.nextUrl;
-    const page = Math.max(
-      1,
-      Number.parseInt(searchParams.get("page") || "1", 10),
-    );
-    const limit = Math.min(
-      100,
-      Math.max(1, Number.parseInt(searchParams.get("limit") || "25", 10)),
-    );
+    const download = searchParams.get("download") === "true";
     const action = searchParams.get("action") || undefined;
     const search = searchParams.get("search") || undefined;
-
-    const skip = (page - 1) * limit;
+    const targetTypeRaw = searchParams.get("targetType") || undefined;
 
     // Build where clause
-    const where: Record<string, unknown> = {};
+    const where: Prisma.AuditLogWhereInput = {};
 
     if (action) {
       where.action = action;
+    }
+
+    if (targetTypeRaw) {
+      const targetTypes = targetTypeRaw.split(",");
+      where.targetType = { in: targetTypes };
     }
 
     if (search) {
@@ -51,6 +49,24 @@ export async function GET(request: NextRequest) {
         { action: { contains: search, mode: "insensitive" } },
       ];
     }
+
+    if (download) {
+      const logs = await prisma.auditLog.findMany({
+        where,
+        orderBy: { timestamp: "desc" },
+      });
+      return NextResponse.json({ logs });
+    }
+
+    const page = Math.max(
+      1,
+      Number.parseInt(searchParams.get("page") || "1", 10),
+    );
+    const limit = Math.min(
+      100,
+      Math.max(1, Number.parseInt(searchParams.get("limit") || "25", 10)),
+    );
+    const skip = (page - 1) * limit;
 
     const [logs, total] = await Promise.all([
       prisma.auditLog.findMany({

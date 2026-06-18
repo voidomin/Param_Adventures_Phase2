@@ -22,8 +22,33 @@ const validPayload = {
   slotId: "slot-1",
   participantCount: 2,
   participants: [
-    { name: "A", isPrimary: true, age: 28 },
-    { name: "B", age: 32 },
+    {
+      name: "A",
+      isPrimary: true,
+      dateOfBirth: "1998-03-26",
+      email: "a@example.com",
+      phoneNumber: "+919999999999",
+      gender: "MALE",
+      bloodGroup: "O+",
+      emergencyContactName: "Emergency Name A",
+      emergencyContactNumber: "+918888888888",
+      emergencyRelationship: "Friend",
+      pickupPoint: "Point A",
+      dropPoint: "Point B",
+    },
+    {
+      name: "B",
+      dateOfBirth: "1994-06-09",
+      email: "b@example.com",
+      phoneNumber: "+918888888888",
+      gender: "FEMALE",
+      bloodGroup: "A+",
+      emergencyContactName: "Emergency Name B",
+      emergencyContactNumber: "+917777777777",
+      emergencyRelationship: "Parent",
+      pickupPoint: "Point A",
+      dropPoint: "Point B",
+    },
   ],
 };
 
@@ -102,6 +127,16 @@ describe("POST /api/bookings", () => {
 
     const response = await POST(createRequest(validPayload));
     expect(response.status).toBe(502);
+  });
+
+  it("returns 400 on ALREADY_REQUESTED", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
+    mockProcessBooking.mockRejectedValueOnce(new Error("ALREADY_REQUESTED"));
+
+    const response = await POST(createRequest(validPayload));
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error).toContain("pending booking request");
   });
 
   it("returns 500 for unexpected fatal errors", async () => {

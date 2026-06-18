@@ -6,7 +6,7 @@ Sentry.init({
   // Set tracesSampleRate to 1.0 to capture 100%
   // of transactions for performance monitoring.
   // We recommend adjusting this value in production
-  tracesSampleRate: 1,
+  tracesSampleRate: 0.05,
 
   // Setting this option to true will print useful information to the console while you're setting up Sentry.
   debug: false,

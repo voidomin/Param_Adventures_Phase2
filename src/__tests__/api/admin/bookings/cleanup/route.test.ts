@@ -101,7 +101,7 @@ describe("POST /api/admin/bookings/cleanup", () => {
     expect(response.status).toBe(200);
     expect(data.count).toBe(2);
     expect(txBookingUpdate).toHaveBeenCalledTimes(2);
-    expect(txSlotUpdate).toHaveBeenCalledTimes(1);
+    expect(txSlotUpdate).not.toHaveBeenCalled();
     expect(mockLogActivity).toHaveBeenCalledWith(
       "BOOKING_CLEANUP",
       "a1",

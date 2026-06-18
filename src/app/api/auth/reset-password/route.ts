@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
 import { z } from "zod";
+import { authLimiter } from "@/lib/rate-limiter";
 
 const resetPasswordSchema = z.object({
   token: z.string().min(1, "Token is required"),
@@ -9,6 +10,16 @@ const resetPasswordSchema = z.object({
 });
 
 export async function POST(request: NextRequest) {
+  // 0. Rate Limiting Protection
+  const ip = request.headers?.get("x-forwarded-for") || "127.0.0.1";
+  const rateLimit = authLimiter.check(ip);
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429 }
+    );
+  }
+
   try {
     const body = await request.json();
 

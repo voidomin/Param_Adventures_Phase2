@@ -122,4 +122,65 @@ describe("/api/manager/trips/[id]", () => {
     );
     expect(data.slot.id).toBe("slot-1");
   });
+
+  it("PATCH returns 400 for invalid structured stays/transports payload", async () => {
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: true,
+      userId: "manager-1",
+    } as unknown as Awaited<ReturnType<typeof authorizeRequest>>);
+
+    const request = {
+      json: vi.fn().mockResolvedValue({
+        vendorContacts: {
+          stays: [{ name: "", contactNumber: "123", location: "Manali", locationLink: "http://maps", address: "123 Street" }],
+          transports: [],
+          otherContacts: []
+        }
+      }),
+    } as unknown as NextRequest;
+
+    const response = await PATCH(request, routeContext);
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(String(data.error)).toContain("Stay name is required");
+  });
+
+  it("PATCH updates structured vendor contacts for owner", async () => {
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: true,
+      userId: "manager-1",
+    } as unknown as Awaited<ReturnType<typeof authorizeRequest>>);
+
+    mockSlotFindUnique.mockResolvedValueOnce({ managerId: "manager-1" } as never);
+    mockUserFindUnique.mockResolvedValue({ role: { name: "TREK_MANAGER" } } as never);
+    
+    const structuredPayload = {
+      stays: [{ name: "Hotel Mountain", contactNumber: "12345", location: "Manali", locationLink: "http://maps", address: "123 Street" }],
+      transports: [{ driverName: "Driver A", contactNumber: "67890", vehicleNumber: "KA01", vehicleType: "SUV" }],
+      otherContacts: [{ label: "Guide", value: "Bill" }]
+    };
+    
+    mockSlotUpdate.mockResolvedValue({ id: "slot-1", vendorContacts: structuredPayload } as never);
+
+    const request = {
+      json: vi.fn().mockResolvedValue({
+        vendorContacts: structuredPayload,
+      }),
+    } as unknown as NextRequest;
+
+    const response = await PATCH(request, routeContext);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(mockSlotUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "slot-1" },
+        data: {
+          vendorContacts: structuredPayload
+        }
+      }),
+    );
+    expect(data.slot.vendorContacts).toEqual(structuredPayload);
+  });
 });

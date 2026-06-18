@@ -13,6 +13,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
+import { getMediaUrl } from "@/lib/media/media-gateway";
+import type { MediaSettings } from "@/types/media";
 
 interface HeroSlide {
   id: string;
@@ -54,7 +56,8 @@ const FALLBACK_SLIDES: HeroSlide[] = [
 
 export default function Hero({
   slides = [],
-}: Readonly<{ slides?: HeroSlide[] }>) {
+  mediaSettings,
+}: Readonly<{ slides?: HeroSlide[]; mediaSettings?: MediaSettings }>) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const activeSlides = slides.length > 0 ? slides : FALLBACK_SLIDES;
   const currentSlide = activeSlides[currentIndex];
@@ -81,6 +84,19 @@ export default function Hero({
   const goToNext = () => {
     setCurrentIndex((prev) => (prev + 1) % activeSlides.length);
   };
+
+  const primaryMediaUrl = getMediaUrl(
+    currentSlide.videoUrl,
+    mediaSettings?.provider || "CLOUDINARY",
+    {
+      cloudinaryCloudName: mediaSettings?.cloudinaryCloudName,
+      s3Bucket: mediaSettings?.s3Bucket,
+      s3Region: mediaSettings?.s3Region,
+      globalQuality: mediaSettings?.globalQuality || 95,
+      highFidelity: mediaSettings?.highFidelity ?? true,
+      cdnUrl: mediaSettings?.cdnUrl,
+    }
+  );
 
   const isVideo = /\.(mp4|webm)$/i.test(currentSlide.videoUrl);
 
@@ -125,12 +141,12 @@ export default function Hero({
                 muted
                 playsInline
                 className="w-full h-full object-cover"
-                src={currentSlide.videoUrl}
+                src={primaryMediaUrl}
                 onEnded={goToNext}
               />
             ) : (
               <Image
-                src={currentSlide.videoUrl}
+                src={primaryMediaUrl}
                 alt={currentSlide.title}
                 fill
                 priority

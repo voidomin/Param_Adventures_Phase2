@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Fragment } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -21,7 +21,10 @@ import {
   Play,
   FlagOff,
   CheckCircle,
+  ChevronDown,
 } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import BookingDetailsCollapse, { BookingParticipant } from "@/components/admin/BookingDetailsCollapse";
 
 interface TrekLead {
   id: string;
@@ -32,7 +35,7 @@ interface TrekLead {
 interface Booking {
   id: string;
   participantCount: number;
-  participants: { id: string; name: string }[];
+  participants: BookingParticipant[];
   user: { id: string; name: string; email: string; phoneNumber: string | null };
 }
 
@@ -42,13 +45,37 @@ interface VendorContact {
   value: string;
 }
 
+interface StayDetails {
+  _id: string;
+  name: string;
+  contactNumber: string;
+  location: string;
+  locationLink: string;
+  address: string;
+}
+
+interface TransportDetails {
+  _id: string;
+  driverName: string;
+  contactNumber: string;
+  vehicleNumber: string;
+  vehicleType: string;
+}
+
+interface StructuredVendorContacts {
+  stays?: Partial<StayDetails>[];
+  transports?: Partial<TransportDetails>[];
+  otherContacts?: VendorContact[];
+}
+
 interface TripSlot {
   id: string;
   date: string;
   capacity: number;
   remainingCapacity: number;
   status: string;
-  vendorContacts: VendorContact[] | null;
+  vendorContacts: unknown;
+  whatsAppUrl?: string | null;
   experience: {
     title: string;
     location: string;
@@ -73,6 +100,376 @@ function formatDate(dateStr: string) {
   });
 }
 
+function ConfirmedParticipantsTable({
+  bookings,
+  totalParticipants,
+}: Readonly<{
+  bookings: readonly Booking[];
+  totalParticipants: number;
+}>) {
+  const [expandedBookingId, setExpandedBookingId] = useState<string | null>(null);
+
+  if (bookings.length === 0) {
+    return (
+      <div className="bg-card border border-border rounded-2xl p-6">
+        <h2 className="text-lg font-bold text-foreground mb-4">Confirmed Participants</h2>
+        <p className="text-foreground/50 text-sm">No confirmed bookings yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-card border border-border rounded-2xl p-6">
+      <h2 className="text-lg font-bold text-foreground mb-4">
+        Confirmed Participants ({bookings.length} booking
+        {bookings.length === 1 ? "" : "s"} · {totalParticipants} people)
+      </h2>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-foreground/40 border-b border-border">
+              <th className="pb-3 pr-4 font-semibold">#</th>
+              <th className="pb-3 pr-4 font-semibold">Name</th>
+              <th className="pb-3 pr-4 font-semibold">Email</th>
+              <th className="pb-3 pr-4 font-semibold flex items-center gap-1.5">
+                <Phone className="w-3.5 h-3.5" /> Phone
+              </th>
+              <th className="pb-3 font-semibold text-right">Participants</th>
+              <th className="pb-3 font-semibold text-right w-10"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {bookings.map((booking, idx) => {
+              const isExpanded = expandedBookingId === booking.id;
+              return (
+                <Fragment key={booking.id}>
+                  <tr className="border-b border-border/50 last:border-0 hover:bg-foreground/[0.01] transition-colors">
+                    <td className="py-3 pr-4 text-foreground/40">{idx + 1}</td>
+                    <td className="py-3 pr-4 font-medium text-foreground">
+                      {booking.user.name}
+                    </td>
+                    <td className="py-3 pr-4 text-foreground/60">
+                      {booking.user.email}
+                    </td>
+                    <td className="py-3 pr-4 text-foreground/60">
+                      {booking.user.phoneNumber ?? "—"}
+                    </td>
+                    <td className="py-3 text-right">
+                      <div className="font-semibold text-foreground mb-1">
+                        {booking.participantCount}
+                      </div>
+                      {booking.participants && booking.participants.length > 0 && (
+                        <div className="text-xs text-foreground/50 space-y-0.5 mt-1 border-t border-border/50 pt-1 inline-block">
+                          {booking.participants.map((p) => (
+                            <div key={p.id}>{p.name}</div>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-3 text-right pl-4">
+                      <button
+                        type="button"
+                        onClick={() => setExpandedBookingId(isExpanded ? null : booking.id)}
+                        className="p-1.5 text-foreground/40 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors inline-flex items-center justify-center cursor-pointer"
+                        title={isExpanded ? "Hide Details" : "View Booking & Guest Details"}
+                        aria-expanded={isExpanded}
+                      >
+                        <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""}`} />
+                      </button>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td colSpan={6} className="p-0 bg-foreground/[0.01]">
+                      <AnimatePresence initial={false}>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.25, ease: "easeInOut" }}
+                            className="overflow-hidden border-b border-border/50"
+                          >
+                            <div className="p-6">
+                              <BookingDetailsCollapse booking={booking} />
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </td>
+                  </tr>
+                </Fragment>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function parseVendorContacts(rawContacts: unknown) {
+  let parsedStays: StayDetails[] = [];
+  let parsedTransports: TransportDetails[] = [];
+  let parsedContacts: VendorContact[] = [];
+
+  if (rawContacts && typeof rawContacts === "object" && !Array.isArray(rawContacts)) {
+    const raw = rawContacts as StructuredVendorContacts;
+    parsedStays = (raw.stays ?? []).map((s: Partial<StayDetails>) => ({
+      _id: s._id || crypto.randomUUID(),
+      name: s.name ?? "",
+      contactNumber: s.contactNumber ?? "",
+      location: s.location ?? "",
+      locationLink: s.locationLink ?? "",
+      address: s.address ?? "",
+    }));
+    parsedTransports = (raw.transports ?? []).map((t: Partial<TransportDetails>) => ({
+      _id: t._id || crypto.randomUUID(),
+      driverName: t.driverName ?? "",
+      contactNumber: t.contactNumber ?? "",
+      vehicleNumber: t.vehicleNumber ?? "",
+      vehicleType: t.vehicleType ?? "",
+    }));
+    parsedContacts = (raw.otherContacts ?? []).map((c: Partial<VendorContact>) => ({
+      _id: c._id || crypto.randomUUID(),
+      label: c.label ?? "",
+      value: c.value ?? "",
+    }));
+  } else {
+    const flatContacts = rawContacts as Partial<VendorContact>[] | null | undefined;
+    parsedContacts = (flatContacts ?? []).map((c: Partial<VendorContact>) => ({
+      _id: crypto.randomUUID(),
+      label: c.label ?? "",
+      value: c.value ?? "",
+    }));
+  }
+
+  return { stays: parsedStays, transports: parsedTransports, contacts: parsedContacts };
+}
+
+function buildContactsPayload(
+  stays: StayDetails[],
+  transports: TransportDetails[],
+  contacts: VendorContact[]
+) {
+  const staysPayload = stays.map(({ name, contactNumber, location, locationLink, address }) => ({
+    name,
+    contactNumber,
+    location,
+    locationLink,
+    address,
+  }));
+  const transportsPayload = transports.map(({ driverName, contactNumber, vehicleNumber, vehicleType }) => ({
+    driverName,
+    contactNumber,
+    vehicleNumber,
+    vehicleType,
+  }));
+  const otherContactsPayload = contacts.map(({ label, value }) => ({ label, value }));
+
+  return {
+    stays: staysPayload,
+    transports: transportsPayload,
+    otherContacts: otherContactsPayload,
+  };
+}
+
+interface StaysListEditorProps {
+  stays: StayDetails[];
+  addStay: () => void;
+  removeStay: (id: string) => void;
+  updateStay: (id: string, key: keyof Omit<StayDetails, "_id">, val: string) => void;
+}
+
+function StaysListEditor({ stays, addStay, removeStay, updateStay }: Readonly<StaysListEditorProps>) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">1</span>
+          {" Lodging / Stays"}
+        </h3>
+        <button
+          type="button"
+          onClick={addStay}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-primary/10 text-primary border border-primary/20 rounded-lg hover:bg-primary/20 transition-colors cursor-pointer"
+        >
+          <Plus className="w-3.5 h-3.5" /> Add Stay
+        </button>
+      </div>
+
+      {stays.length === 0 ? (
+        <p className="text-xs text-foreground/40 italic pl-8">No lodging/stays added yet.</p>
+      ) : (
+        <div className="space-y-4 pl-8">
+          {stays.map((s) => (
+            <div key={s._id} className="relative bg-foreground/[0.01] border border-border/50 rounded-2xl p-5 pt-10 space-y-4 shadow-xs">
+              <button
+                type="button"
+                onClick={() => removeStay(s._id)}
+                className="absolute top-3 right-3 text-foreground/30 hover:text-red-500 transition-colors cursor-pointer"
+                aria-label="Remove stay"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label htmlFor={`stay-name-${s._id}`} className="text-xs font-medium text-foreground/50">Stay Name</label>
+                  <input
+                    id={`stay-name-${s._id}`}
+                    type="text"
+                    value={s.name}
+                    onChange={(e) => updateStay(s._id, "name", e.target.value)}
+                    placeholder="e.g. Hotel Mountain View"
+                    className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor={`stay-contact-${s._id}`} className="text-xs font-medium text-foreground/50">Contact Number</label>
+                  <input
+                    id={`stay-contact-${s._id}`}
+                    type="text"
+                    value={s.contactNumber}
+                    onChange={(e) => updateStay(s._id, "contactNumber", e.target.value)}
+                    placeholder="e.g. +91 98765 43210"
+                    className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor={`stay-location-${s._id}`} className="text-xs font-medium text-foreground/50">Location / City</label>
+                  <input
+                    id={`stay-location-${s._id}`}
+                    type="text"
+                    value={s.location}
+                    onChange={(e) => updateStay(s._id, "location", e.target.value)}
+                    placeholder="e.g. Manali"
+                    className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor={`stay-link-${s._id}`} className="text-xs font-medium text-foreground/50">Location Link (Google Maps)</label>
+                  <input
+                    id={`stay-link-${s._id}`}
+                    type="text"
+                    value={s.locationLink}
+                    onChange={(e) => updateStay(s._id, "locationLink", e.target.value)}
+                    placeholder="e.g. https://maps.google.com/..."
+                    className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <label htmlFor={`stay-address-${s._id}`} className="text-xs font-medium text-foreground/50">Physical Address</label>
+                <textarea
+                  id={`stay-address-${s._id}`}
+                  value={s.address}
+                  onChange={(e) => updateStay(s._id, "address", e.target.value)}
+                  placeholder="e.g. Near Mall Road, Manali, HP"
+                  rows={2}
+                  className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 resize-none"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface TransportsListEditorProps {
+  transports: TransportDetails[];
+  addTransport: () => void;
+  removeTransport: (id: string) => void;
+  updateTransport: (id: string, key: keyof Omit<TransportDetails, "_id">, val: string) => void;
+}
+
+function TransportsListEditor({ transports, addTransport, removeTransport, updateTransport }: Readonly<TransportsListEditorProps>) {
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">2</span>
+          {" Transport Drivers"}
+        </h3>
+        <button
+          type="button"
+          onClick={addTransport}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-primary/10 text-primary border border-primary/20 rounded-lg hover:bg-primary/20 transition-colors cursor-pointer"
+        >
+          <Plus className="w-3.5 h-3.5" /> Add Driver
+        </button>
+      </div>
+
+      {transports.length === 0 ? (
+        <p className="text-xs text-foreground/40 italic pl-8">No transport driver details added yet.</p>
+      ) : (
+        <div className="space-y-4 pl-8">
+          {transports.map((t) => (
+            <div key={t._id} className="relative bg-foreground/[0.01] border border-border/50 rounded-2xl p-5 pt-10 space-y-4 shadow-xs">
+              <button
+                type="button"
+                onClick={() => removeTransport(t._id)}
+                className="absolute top-3 right-3 text-foreground/30 hover:text-red-500 transition-colors cursor-pointer"
+                aria-label="Remove driver"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label htmlFor={`driver-name-${t._id}`} className="text-xs font-medium text-foreground/50">Driver Name</label>
+                  <input
+                    id={`driver-name-${t._id}`}
+                    type="text"
+                    value={t.driverName}
+                    onChange={(e) => updateTransport(t._id, "driverName", e.target.value)}
+                    placeholder="e.g. Ramesh Kumar"
+                    className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor={`driver-contact-${t._id}`} className="text-xs font-medium text-foreground/50">Contact Number</label>
+                  <input
+                    id={`driver-contact-${t._id}`}
+                    type="text"
+                    value={t.contactNumber}
+                    onChange={(e) => updateTransport(t._id, "contactNumber", e.target.value)}
+                    placeholder="e.g. +91 98765 12345"
+                    className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor={`driver-vehicle-${t._id}`} className="text-xs font-medium text-foreground/50">Vehicle Number</label>
+                  <input
+                    id={`driver-vehicle-${t._id}`}
+                    type="text"
+                    value={t.vehicleNumber}
+                    onChange={(e) => updateTransport(t._id, "vehicleNumber", e.target.value)}
+                    placeholder="e.g. KA-51-AB-1234"
+                    className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label htmlFor={`driver-type-${t._id}`} className="text-xs font-medium text-foreground/50">Vehicle Type / Model</label>
+                  <input
+                    id={`driver-type-${t._id}`}
+                    type="text"
+                    value={t.vehicleType}
+                    onChange={(e) => updateTransport(t._id, "vehicleType", e.target.value)}
+                    placeholder="e.g. Tempo Traveler / Force"
+                    className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ManagerTripDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -81,11 +478,20 @@ export default function ManagerTripDetailPage() {
   const [slot, setSlot] = useState<TripSlot | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  // State managed internally inside table component
 
   // Vendor contacts editing state
   const [contacts, setContacts] = useState<VendorContact[]>([]);
+  const [stays, setStays] = useState<StayDetails[]>([]);
+  const [transports, setTransports] = useState<TransportDetails[]>([]);
   const [isSavingContacts, setIsSavingContacts] = useState(false);
   const [contactsSaved, setContactsSaved] = useState(false);
+
+  // WhatsApp Group Link editing state
+  const [whatsAppUrl, setWhatsAppUrl] = useState("");
+  const [isSavingWhatsAppUrl, setIsSavingWhatsAppUrl] = useState(false);
+  const [whatsAppUrlSaved, setWhatsAppUrlSaved] = useState(false);
+  const [whatsAppUrlError, setWhatsAppUrlError] = useState("");
 
   // Trek Lead assignment
   const [availableLeads, setAvailableLeads] = useState<TrekLead[]>([]);
@@ -112,14 +518,12 @@ export default function ManagerTripDetailPage() {
       }
       const data = await res.json();
       setSlot(data.slot);
-      setContacts(
-        (data.slot.vendorContacts ?? []).map(
-          (c: { label: string; value: string }) => ({
-            ...c,
-            _id: crypto.randomUUID(),
-          }),
-        ),
-      );
+      setWhatsAppUrl(data.slot.whatsAppUrl ?? "");
+      
+      const { stays: parsedStays, transports: parsedTransports, contacts: parsedContacts } = parseVendorContacts(data.slot.vendorContacts);
+      setStays(parsedStays);
+      setTransports(parsedTransports);
+      setContacts(parsedContacts);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to load trip");
     } finally {
@@ -134,6 +538,49 @@ export default function ManagerTripDetailPage() {
       .then((d) => setAvailableLeads(d.trekLeads ?? []))
       .catch(console.error);
   }, [fetchSlot]);
+
+  // ─── Stays ─────────────────────────────────────────────────
+  const addStay = () =>
+    setStays((prev) => [
+      ...prev,
+      {
+        _id: crypto.randomUUID(),
+        name: "",
+        contactNumber: "",
+        location: "",
+        locationLink: "",
+        address: "",
+      },
+    ]);
+
+  const removeStay = (id: string) =>
+    setStays((prev) => prev.filter((s) => s._id !== id));
+
+  const updateStay = (id: string, key: keyof Omit<StayDetails, "_id">, val: string) =>
+    setStays((prev) =>
+      prev.map((s) => (s._id === id ? { ...s, [key]: val } : s)),
+    );
+
+  // ─── Transports ────────────────────────────────────────────
+  const addTransport = () =>
+    setTransports((prev) => [
+      ...prev,
+      {
+        _id: crypto.randomUUID(),
+        driverName: "",
+        contactNumber: "",
+        vehicleNumber: "",
+        vehicleType: "",
+      },
+    ]);
+
+  const removeTransport = (id: string) =>
+    setTransports((prev) => prev.filter((t) => t._id !== id));
+
+  const updateTransport = (id: string, key: keyof Omit<TransportDetails, "_id">, val: string) =>
+    setTransports((prev) =>
+      prev.map((t) => (t._id === id ? { ...t, [key]: val } : t)),
+    );
 
   // ─── Vendor Contacts ───────────────────────────────────────
   const addContact = () =>
@@ -154,8 +601,8 @@ export default function ManagerTripDetailPage() {
     setIsSavingContacts(true);
     setContactsSaved(false);
     try {
-      // Strip client-only _id before sending to API
-      const payload = contacts.map(({ label, value }) => ({ label, value }));
+      const payload = buildContactsPayload(stays, transports, contacts);
+
       const res = await fetch(`/api/manager/trips/${slotId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -169,6 +616,42 @@ export default function ManagerTripDetailPage() {
     } finally {
       setIsSavingContacts(false);
     }
+  };
+
+  const saveWhatsAppUrl = async () => {
+    setIsSavingWhatsAppUrl(true);
+    setWhatsAppUrlSaved(false);
+    setWhatsAppUrlError("");
+
+    if (whatsAppUrl && !whatsAppUrl.startsWith("http://") && !whatsAppUrl.startsWith("https://")) {
+      setWhatsAppUrlError("URL must start with http:// or https://");
+      setIsSavingWhatsAppUrl(false);
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/manager/trips/${slotId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ whatsAppUrl }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to save");
+      setWhatsAppUrlSaved(true);
+      setTimeout(() => setWhatsAppUrlSaved(false), 3000);
+    } catch (e: unknown) {
+      setWhatsAppUrlError(
+        e instanceof Error ? e.message : "Failed to save WhatsApp group link"
+      );
+    } finally {
+      setIsSavingWhatsAppUrl(false);
+    }
+  };
+
+  const getWhatsAppIcon = () => {
+    if (isSavingWhatsAppUrl) return <Loader2 className="w-4 h-4 animate-spin" />;
+    if (whatsAppUrlSaved) return <Check className="w-4 h-4" />;
+    return <Save className="w-4 h-4" />;
   };
 
   // ─── Trek Lead Assignment ──────────────────────────────────
@@ -356,192 +839,198 @@ export default function ManagerTripDetailPage() {
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        {/* ── Trek Lead Assignment ── */}
-        <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-foreground">Trek Leads</h2>
-            <button
-              onClick={() => {
-                setShowLeadModal(true);
-                setLeadAssignError("");
-                setSelectedLeadId("");
-              }}
-              disabled={unassignedLeads.length === 0}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold bg-primary/10 text-primary border border-primary/20 rounded-lg hover:bg-primary/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <UserPlus className="w-4 h-4" /> Assign Lead
-            </button>
+        <div className="space-y-6">
+          {/* ── Trek Lead Assignment ── */}
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-foreground">Trek Leads</h2>
+              <button
+                onClick={() => {
+                  setShowLeadModal(true);
+                  setLeadAssignError("");
+                  setSelectedLeadId("");
+                }}
+                disabled={unassignedLeads.length === 0}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold bg-primary/10 text-primary border border-primary/20 rounded-lg hover:bg-primary/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <UserPlus className="w-4 h-4" /> Assign Lead
+              </button>
+            </div>
+
+            {slot.assignments.length === 0 ? (
+              <div className="flex items-center gap-2 text-sm text-orange-400 bg-orange-500/10 border border-orange-500/20 rounded-xl p-4">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                No Trek Lead assigned yet. Assign at least one before starting.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {slot.assignments.map((a) => (
+                  <div
+                    key={a.trekLead.id}
+                    className="flex items-center justify-between px-4 py-3 bg-foreground/5 border border-border rounded-xl"
+                  >
+                    <div className="flex items-center gap-2">
+                      <UserCheck className="w-4 h-4 text-green-500" />
+                      <div>
+                        <p className="text-sm font-medium text-foreground">
+                          {a.trekLead.name}
+                        </p>
+                        <p className="text-xs text-foreground/50">
+                          {a.trekLead.email}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleRemoveLead(a.trekLead.id)}
+                      className="text-foreground/30 hover:text-red-500 transition-colors"
+                      title="Remove"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {slot.assignments.length === 0 ? (
-            <div className="flex items-center gap-2 text-sm text-orange-400 bg-orange-500/10 border border-orange-500/20 rounded-xl p-4">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              No Trek Lead assigned yet. Assign at least one before starting.
+          {/* ── WhatsApp Group Link ── */}
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+            <div className="flex items-center gap-2 text-foreground">
+              <svg className="w-5 h-5 text-green-500 fill-current shrink-0" viewBox="0 0 24 24">
+                <path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.246 8.477 3.514 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.717-1.458L0 24zm6.26-4.821c1.644.976 3.255 1.489 4.887 1.49 5.541.002 10.051-4.505 10.054-10.046.002-2.684-1.038-5.207-2.93-7.099-1.892-1.892-4.409-2.934-7.098-2.935-5.552 0-10.06 4.507-10.064 10.049-.002 1.776.47 3.51 1.365 5.048l-1.01 3.688 3.796-1.195zm11.38-4.526c-.305-.153-1.805-.89-2.083-.99-.278-.102-.48-.153-.68.152-.2.304-.775.98-.95 1.18-.175.203-.35.229-.655.076-1.879-.942-3.153-2.046-4.148-3.754-.262-.451.262-.418.75-1.393.076-.153.038-.288-.019-.402-.057-.113-.48-1.157-.658-1.585-.173-.415-.347-.359-.48-.365-.123-.005-.264-.006-.405-.006s-.37.053-.564.264c-.194.21-.74.723-.74 1.761s.755 2.039.86 2.179c.107.14 1.488 2.274 3.602 3.185.503.216.896.346 1.203.443.506.161.966.138 1.33.084.405-.06 1.805-.738 2.062-1.45.258-.713.258-1.322.18-1.45-.078-.127-.283-.203-.588-.356z" />
+              </svg>
+              <h2 className="text-lg font-bold">WhatsApp Group Link</h2>
             </div>
-          ) : (
-            <div className="space-y-2">
-              {slot.assignments.map((a) => (
-                <div
-                  key={a.trekLead.id}
-                  className="flex items-center justify-between px-4 py-3 bg-foreground/5 border border-border rounded-xl"
-                >
-                  <div className="flex items-center gap-2">
-                    <UserCheck className="w-4 h-4 text-green-500" />
-                    <div>
-                      <p className="text-sm font-medium text-foreground">
-                        {a.trekLead.name}
-                      </p>
-                      <p className="text-xs text-foreground/50">
-                        {a.trekLead.email}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleRemoveLead(a.trekLead.id)}
-                    className="text-foreground/30 hover:text-red-500 transition-colors"
-                    title="Remove"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
+            <p className="text-sm text-foreground/50 leading-relaxed">
+              Provide the invite link for the participants&apos; WhatsApp group. Once saved, it will show up automatically under their bookings.
+            </p>
+            <div className="space-y-3">
+              <input
+                type="url"
+                value={whatsAppUrl}
+                onChange={(e) => setWhatsAppUrl(e.target.value)}
+                placeholder="https://chat.whatsapp.com/..."
+                className="w-full px-4 py-2.5 text-sm bg-background border border-border rounded-xl text-foreground placeholder-foreground/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+              {whatsAppUrlError && (
+                <p className="text-xs text-red-400">{whatsAppUrlError}</p>
+              )}
+              <button
+                onClick={saveWhatsAppUrl}
+                disabled={isSavingWhatsAppUrl}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-primary text-primary-foreground rounded-xl hover:scale-105 transition-transform disabled:opacity-50 shadow-lg shadow-primary/20"
+              >
+                {getWhatsAppIcon()}
+                {whatsAppUrlSaved ? "Saved!" : "Save Link"}
+              </button>
             </div>
-          )}
+          </div>
         </div>
 
-        {/* ── Vendor Contacts ── */}
-        <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-foreground">
-              Vendor Contacts
-            </h2>
+        <div className="space-y-6">
+          {/* ── Trip Operations & Vendor Details ── */}
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
+            <div>
+              <h2 className="text-xl font-bold text-foreground">
+                Trip Operations & Vendor Details
+              </h2>
+              <p className="text-sm text-foreground/50 mt-1">
+                Manage lodging/stays, transport drivers, and other operational contacts for this trip.
+              </p>
+            </div>
+
+            <hr className="border-border/50" />
+
+            <StaysListEditor
+              stays={stays}
+              addStay={addStay}
+              removeStay={removeStay}
+              updateStay={updateStay}
+            />
+
+            <hr className="border-border/30 pl-8" />
+
+            <TransportsListEditor
+              transports={transports}
+              addTransport={addTransport}
+              removeTransport={removeTransport}
+              updateTransport={updateTransport}
+            />
+
+            <hr className="border-border/30 pl-8" />
+
+            {/* 3. Other Contacts Section */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold text-foreground flex items-center gap-2">
+                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/10 text-primary text-xs font-bold">3</span>
+                  {" Other Operational Contacts"}
+                </h3>
+                <button
+                  type="button"
+                  onClick={addContact}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-primary/10 text-primary border border-primary/20 rounded-lg hover:bg-primary/20 transition-colors cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add Contact
+                </button>
+              </div>
+
+              {contacts.length === 0 ? (
+                <p className="text-xs text-foreground/40 italic pl-8">No other operational contacts added yet.</p>
+              ) : (
+                <div className="space-y-2 pl-8">
+                  {contacts.map((c) => (
+                    <div key={c._id} className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        value={c.label}
+                        aria-label="Contact label"
+                        onChange={(e) => updateContact(c._id, "label", e.target.value)}
+                        placeholder="Label (e.g. Cook)"
+                        className="w-1/3 px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground placeholder-foreground/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                      <input
+                        type="text"
+                        value={c.value}
+                        aria-label="Contact value"
+                        onChange={(e) => updateContact(c._id, "value", e.target.value)}
+                        placeholder="Value (e.g. +91 99999...)"
+                        className="flex-1 px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground placeholder-foreground/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => removeContact(c._id)}
+                        className="text-foreground/30 hover:text-red-500 transition-colors cursor-pointer"
+                        aria-label="Remove contact"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <hr className="border-border/50" />
+
             <button
-              onClick={addContact}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold bg-primary/10 text-primary border border-primary/20 rounded-lg hover:bg-primary/20 transition-colors"
+              onClick={saveContacts}
+              disabled={isSavingContacts}
+              className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold bg-primary text-primary-foreground rounded-xl hover:scale-105 transition-transform disabled:opacity-50 shadow-lg shadow-primary/20 cursor-pointer"
             >
-              <Plus className="w-4 h-4" /> Add
+              {(() => {
+                if (isSavingContacts) return <Loader2 className="w-4 h-4 animate-spin" />;
+                if (contactsSaved) return <Check className="w-4 h-4" />;
+                return <Save className="w-4 h-4" />;
+              })()}
+              {contactsSaved ? "Saved Details!" : "Save Operations Details"}
             </button>
           </div>
-
-          {contacts.length === 0 ? (
-            <p className="text-sm text-foreground/40 italic">
-              No vendor contacts yet. Add driver numbers, hotel names, etc.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {contacts.map((c) => (
-                <div key={c._id} className="flex gap-2 items-center">
-                  <input
-                    type="text"
-                    value={c.label}
-                    aria-label="Contact label"
-                    onChange={(e) =>
-                      updateContact(c._id, "label", e.target.value)
-                    }
-                    placeholder="Label (e.g. Driver)"
-                    className="w-1/3 px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground placeholder-foreground/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
-                  />
-                  <input
-                    type="text"
-                    value={c.value}
-                    aria-label="Contact value"
-                    onChange={(e) =>
-                      updateContact(c._id, "value", e.target.value)
-                    }
-                    placeholder="Value (e.g. +91 98765...)"
-                    className="flex-1 px-3 py-2 text-sm bg-background border border-border rounded-lg text-foreground placeholder-foreground/30 focus:outline-none focus:ring-2 focus:ring-primary/40"
-                  />
-                  <button
-                    onClick={() => removeContact(c._id)}
-                    className="text-foreground/30 hover:text-red-500 transition-colors"
-                    aria-label="Remove contact"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <button
-            onClick={saveContacts}
-            disabled={isSavingContacts}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-primary text-primary-foreground rounded-xl hover:scale-105 transition-transform disabled:opacity-50 shadow-lg shadow-primary/20"
-          >
-            {(() => {
-              if (isSavingContacts)
-                return <Loader2 className="w-4 h-4 animate-spin" />;
-              if (contactsSaved) return <Check className="w-4 h-4" />;
-              return <Save className="w-4 h-4" />;
-            })()}
-            {contactsSaved ? "Saved!" : "Save Contacts"}
-          </button>
         </div>
       </div>
 
       {/* ── Confirmed Participants ── */}
-      <div className="bg-card border border-border rounded-2xl p-6">
-        <h2 className="text-lg font-bold text-foreground mb-4">
-          Confirmed Participants ({slot.bookings.length} booking
-          {slot.bookings.length === 1 ? "" : "s"} · {totalParticipants} people)
-        </h2>
-
-        {slot.bookings.length === 0 ? (
-          <p className="text-foreground/50 text-sm">
-            No confirmed bookings yet.
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-foreground/40 border-b border-border">
-                  <th className="pb-3 pr-4 font-semibold">#</th>
-                  <th className="pb-3 pr-4 font-semibold">Name</th>
-                  <th className="pb-3 pr-4 font-semibold">Email</th>
-                  <th className="pb-3 pr-4 font-semibold flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5" /> Phone
-                  </th>
-                  <th className="pb-3 font-semibold text-right">
-                    Participants
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {slot.bookings.map((booking, idx) => (
-                  <tr
-                    key={booking.id}
-                    className="border-b border-border/50 last:border-0"
-                  >
-                    <td className="py-3 pr-4 text-foreground/40">{idx + 1}</td>
-                    <td className="py-3 pr-4 font-medium text-foreground">
-                      {booking.user.name}
-                    </td>
-                    <td className="py-3 pr-4 text-foreground/60">
-                      {booking.user.email}
-                    </td>
-                    <td className="py-3 pr-4 text-foreground/60">
-                      {booking.user.phoneNumber ?? "—"}
-                    </td>
-                    <td className="py-3 text-right">
-                      <div className="font-semibold text-foreground mb-1">
-                        {booking.participantCount}
-                      </div>
-                      {booking.participants &&
-                        booking.participants.length > 0 && (
-                          <div className="text-xs text-foreground/50 space-y-0.5 mt-1 border-t border-border/50 pt-1 inline-block">
-                            {booking.participants.map((p) => (
-                              <div key={p.id}>{p.name}</div>
-                            ))}
-                          </div>
-                        )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <ConfirmedParticipantsTable bookings={slot.bookings} totalParticipants={totalParticipants} />
 
       {/* ── Completion Approval: only when TREK_ENDED ── */}
       {slot.status === "TREK_ENDED" && (

@@ -2,6 +2,7 @@ import { NextResponse, NextRequest } from "next/server";
 import { revalidatePath } from "next/cache";
 import { authorizeRequest } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
+import { logActivity } from "@/lib/audit-logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -85,6 +86,14 @@ export async function POST(request: NextRequest) {
         order,
       },
     });
+
+    await logActivity(
+      "HERO_SLIDE_CREATED",
+      auth.userId,
+      "HeroSlide",
+      slide.id,
+      { title: slide.title, order: slide.order }
+    );
 
     revalidatePath("/", "layout");
 

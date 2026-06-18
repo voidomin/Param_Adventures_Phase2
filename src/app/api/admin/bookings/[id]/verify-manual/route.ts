@@ -116,6 +116,20 @@ export async function POST(
           },
         },
       }),
+      // Cancel any other older pending/requested bookings for this user on the same slot
+      prisma.booking.updateMany({
+        where: {
+          userId: booking.userId,
+          slotId: booking.slotId!,
+          id: { not: bookingId },
+          bookingStatus: "REQUESTED",
+          paymentStatus: "PENDING",
+        },
+        data: {
+          bookingStatus: "CANCELLED",
+          paymentStatus: "FAILED",
+        },
+      }),
     ]);
 
     // 4. Audit Logging

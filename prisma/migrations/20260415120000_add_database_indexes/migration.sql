@@ -1,5 +1,5 @@
 -- AlterTable
-ALTER TABLE "AuditLog" DROP CONSTRAINT "AuditLog_actorId_fkey";
+ALTER TABLE "AuditLog" DROP CONSTRAINT IF EXISTS "AuditLog_actorId_fkey";
 
 -- AlterTable
 ALTER TABLE "Booking" ADD COLUMN     "cancellationReason" TEXT,

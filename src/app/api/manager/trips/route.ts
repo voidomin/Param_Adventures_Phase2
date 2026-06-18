@@ -7,7 +7,7 @@ import { authorizeRequest } from "@/lib/api-auth";
  * Returns all upcoming slots assigned to the currently logged-in Trip Manager.
  */
 export async function GET(request: NextRequest) {
-  const auth = await authorizeRequest(request, "trip:manage");
+  const auth = await authorizeRequest(request, "ops:view-all-trips");
   if (!auth.authorized) return auth.response;
 
   try {

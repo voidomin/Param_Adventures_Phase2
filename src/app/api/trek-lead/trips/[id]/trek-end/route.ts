@@ -42,16 +42,20 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     }
     const trekLeadNote = parseResult.data.trekLeadNote?.trim() || "No notes provided";
 
-    // Must be assigned to this slot
-    const assignment = await prisma.tripAssignment.findUnique({
-      where: { slotId_trekLeadId: { slotId, trekLeadId: userId } },
-    });
+    const isAdmin = auth.roleName === "ADMIN" || auth.roleName === "SUPER_ADMIN";
 
-    if (!assignment) {
-      return NextResponse.json(
-        { error: "You are not assigned to this trip." },
-        { status: 403 },
-      );
+    if (!isAdmin) {
+      // Must be assigned to this slot
+      const assignment = await prisma.tripAssignment.findUnique({
+        where: { slotId_trekLeadId: { slotId, trekLeadId: userId } },
+      });
+
+      if (!assignment) {
+        return NextResponse.json(
+          { error: "You are not assigned to this trip." },
+          { status: 403 },
+        );
+      }
     }
 
     const slot = await prisma.slot.findUnique({

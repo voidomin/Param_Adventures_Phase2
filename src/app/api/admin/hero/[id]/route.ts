@@ -2,6 +2,7 @@ import { NextResponse, NextRequest } from "next/server";
 import { revalidatePath } from "next/cache";
 import { authorizeRequest } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
+import { logActivity } from "@/lib/audit-logger";
 
 export async function GET(
   request: NextRequest,
@@ -98,6 +99,14 @@ export async function PUT(
       },
     });
 
+    await logActivity(
+      "HERO_SLIDE_UPDATED",
+      auth.userId,
+      "HeroSlide",
+      id,
+      { title: updatedSlide.title, isActive: updatedSlide.isActive }
+    );
+
     revalidatePath("/", "layout");
 
     return NextResponse.json(updatedSlide);
@@ -125,9 +134,24 @@ export async function DELETE(
 
     const { id } = await params;
 
+    const existing = await prisma.heroSlide.findUnique({
+      where: { id },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "Slide not found" }, { status: 404 });
+    }
+
     await prisma.heroSlide.delete({
       where: { id },
     });
+
+    await logActivity(
+      "HERO_SLIDE_DELETED",
+      auth.userId,
+      "HeroSlide",
+      id,
+      { title: existing.title }
+    );
 
     revalidatePath("/", "layout");
 

@@ -1,6 +1,7 @@
 import { NextResponse, NextRequest } from "next/server";
 import { authorizeRequest } from "@/lib/api-auth";
 import { SettingsService } from "@/services/settings.service";
+import { logActivity } from "@/lib/audit-logger";
 
 /**
  * GET /api/admin/settings - Fetch merged and masked settings
@@ -63,6 +64,15 @@ export async function DELETE(request: NextRequest) {
     }
 
     await SettingsService.deleteSetting(key);
+
+    await logActivity(
+      "SETTING_DELETED",
+      auth.userId,
+      "SiteSetting",
+      key,
+      { key }
+    );
+
     return NextResponse.json({ success: true });
 
   } catch (error: unknown) {

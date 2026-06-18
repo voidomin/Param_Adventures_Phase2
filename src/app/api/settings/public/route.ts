@@ -37,6 +37,7 @@ export async function GET() {
       support_email: getVal("support_email", "info@paramadventures.in"),
       support_phone: getVal("support_phone", "+91 98765 43210"),
       maintenance_mode: (await prisma.platformSetting.findUnique({ where: { key: "maintenance_mode" } }))?.value === "true",
+      taxConfig: (await prisma.platformSetting.findUnique({ where: { key: "taxConfig" } }))?.value ?? null,
       branding: {} as Record<string, string>
     };
 

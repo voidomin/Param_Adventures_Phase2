@@ -39,10 +39,10 @@ export async function GET(request: NextRequest, { params }: RouteContext) {
 
     const experience = await prisma.experience.findUnique({
       where: { slug },
-      select: { id: true },
+      select: { id: true, status: true, deletedAt: true },
     });
 
-    if (!experience) {
+    if (!experience || experience.status === "DRAFT" || experience.status === "ARCHIVED" || !!experience.deletedAt) {
       return NextResponse.json(
         { error: "Experience not found." },
         { status: 404 },

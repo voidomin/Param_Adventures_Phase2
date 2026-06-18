@@ -19,9 +19,14 @@ const mockUser = {
   id: "user-1",
   name: "John Doe",
   email: "john@example.com",
-  phoneNumber: "919999999999",
+  phoneNumber: "+919999999999",
   gender: "MALE",
   age: 30,
+  dateOfBirth: "1996-06-09",
+  bloodGroup: "O+",
+  emergencyContactName: "Emergency Contact",
+  emergencyContactNumber: "+918888888888",
+  emergencyRelationship: "Friend",
 };
 
 const mockUseAuth = vi.fn();
@@ -77,8 +82,13 @@ describe("BookingModal Smoke Test", () => {
     vi.clearAllMocks();
     mockUseAuth.mockReturnValue({ user: mockUser });
     
-    // Mock successful slot fetch
     mockFetch.mockImplementation((url: string) => {
+      if (url === "/api/settings/public") {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ taxConfig: JSON.stringify([]) }),
+        });
+      }
       if (url.includes("/slots")) {
         return Promise.resolve({
           ok: true,
@@ -120,11 +130,8 @@ describe("BookingModal Smoke Test", () => {
   it("progresses through booking steps", async () => {
     render(<BookingModal {...defaultProps} />);
 
-    // Wait for slots to load
-    const dateBtn = await screen.findByText(/Select an upcoming date/i);
-    fireEvent.click(dateBtn);
-
-    const slotOption = await screen.findByText(/5 spots remaining/i);
+    // Wait for slots to load and select
+    const slotOption = await screen.findByText(/5 left/i);
     fireEvent.click(slotOption);
 
     const continueBtn = screen.getByRole("button", { name: /Continue to Details/i });
@@ -137,6 +144,15 @@ describe("BookingModal Smoke Test", () => {
     
     const phoneInput = screen.getByLabelText(/Phone Number \*/i);
     fireEvent.change(phoneInput, { target: { value: "1111111111" } });
+
+    const dobInput = screen.getByLabelText(/Date of Birth \*/i);
+    fireEvent.change(dobInput, { target: { value: "1996-06-09" } });
+
+    const pickupSelect = screen.getByLabelText(/Pickup Location \*/i);
+    fireEvent.change(pickupSelect, { target: { value: "Point A" } });
+
+    const dropSelect = screen.getByLabelText(/Drop-off Location \*/i);
+    fireEvent.change(dropSelect, { target: { value: "Point B" } });
 
     const summaryBtn = screen.getByRole("button", { name: /Review Booking/i });
     fireEvent.click(summaryBtn);
@@ -156,6 +172,7 @@ describe("BookingModal Smoke Test", () => {
 
   it("handles payment verification failure", async () => {
     mockFetch.mockImplementation((url: string) => {
+      if (url === "/api/settings/public") return Promise.resolve({ ok: true, json: () => Promise.resolve({ taxConfig: JSON.stringify([]) }) });
       if (url.includes("/slots")) return Promise.resolve({ ok: true, json: () => Promise.resolve({ slots: [{ id: "s1", date: new Date().toISOString(), capacity: 10, remainingCapacity: 5 }] }) });
       if (url === "/api/bookings") return Promise.resolve({ ok: true, json: () => Promise.resolve({ bookingId: "b1", orderId: "o1", amount: 100, currency: "INR", keyId: "k" }) });
       if (url === "/api/bookings/verify") return Promise.resolve({ ok: false, json: () => Promise.resolve({ error: "Verification failed" }) });
@@ -163,12 +180,16 @@ describe("BookingModal Smoke Test", () => {
     });
 
     render(<BookingModal {...defaultProps} />);
-    fireEvent.click(await screen.findByText(/Select an upcoming date/i));
-    fireEvent.click(await screen.findByText(/5 spots remaining/i));
+    fireEvent.click(await screen.findByText(/5 left/i));
     fireEvent.click(screen.getByRole("button", { name: /Continue to Details/i }));
     
     await waitFor(() => screen.getByLabelText(/Phone Number \*/i));
     fireEvent.change(screen.getByLabelText(/Phone Number \*/i), { target: { value: "1111111111" } });
+    fireEvent.change(screen.getByLabelText(/Date of Birth \*/i), { target: { value: "1996-06-09" } });
+    
+    fireEvent.change(screen.getByLabelText(/Pickup Location \*/i), { target: { value: "Point A" } });
+    fireEvent.change(screen.getByLabelText(/Drop-off Location \*/i), { target: { value: "Point B" } });
+
     fireEvent.click(screen.getByRole("button", { name: /Review Booking/i }));
     
     await waitFor(() => screen.getByText(/Pay ₹/i));
@@ -179,6 +200,12 @@ describe("BookingModal Smoke Test", () => {
 
   it("shows 'No available dates' when slots are empty", async () => {
     mockFetch.mockImplementation((url: string) => {
+      if (url === "/api/settings/public") {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ taxConfig: JSON.stringify([]) }),
+        });
+      }
       if (url.includes("/slots")) {
         return Promise.resolve({
           ok: true,
@@ -219,6 +246,12 @@ describe("BookingModal Smoke Test", () => {
 
   it("shows error when booking creation fails", async () => {
     mockFetch.mockImplementation((url: string, opts?: any) => {
+      if (url === "/api/settings/public") {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ taxConfig: JSON.stringify([]) }),
+        });
+      }
       if (url.includes("/slots")) {
         return Promise.resolve({
           ok: true,
@@ -239,14 +272,16 @@ describe("BookingModal Smoke Test", () => {
     render(<BookingModal {...defaultProps} />);
 
     // Step 1: Select slot
-    fireEvent.click(await screen.findByText(/Select an upcoming date/i));
-    fireEvent.click(await screen.findByText(/5 spots remaining/i));
+    fireEvent.click(await screen.findByText(/5 left/i));
     fireEvent.click(screen.getByRole("button", { name: /Continue to Details/i }));
 
     // Step 2: Fill required fields (Name + Phone)
     await waitFor(() => screen.getByLabelText(/Full Name \*/i));
     fireEvent.change(screen.getByLabelText(/Full Name \*/i), { target: { value: "Test User" } });
     fireEvent.change(screen.getByLabelText(/Phone Number \*/i), { target: { value: "1111111111" } });
+    fireEvent.change(screen.getByLabelText(/Date of Birth \*/i), { target: { value: "1996-06-09" } });
+    fireEvent.change(screen.getByLabelText(/Pickup Location \*/i), { target: { value: "Point A" } });
+    fireEvent.change(screen.getByLabelText(/Drop-off Location \*/i), { target: { value: "Point B" } });
     fireEvent.click(screen.getByRole("button", { name: /Review Booking/i }));
 
     // Step 3: Pay
@@ -261,8 +296,7 @@ describe("BookingModal Smoke Test", () => {
     render(<BookingModal {...defaultProps} />);
 
     // Select slot
-    fireEvent.click(await screen.findByText(/Select an upcoming date/i));
-    fireEvent.click(await screen.findByText(/5 spots remaining/i));
+    fireEvent.click(await screen.findByText(/5 left/i));
 
     // Default is 1 participant: ₹5,000 (appears in breakdown and total)
     const priceElements = screen.getAllByText(/₹5,000/);

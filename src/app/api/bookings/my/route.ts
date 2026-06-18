@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
         slot: {
           select: {
             date: true,
+            whatsAppUrl: true,
           },
         },
         payments: {

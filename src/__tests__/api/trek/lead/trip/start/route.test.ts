@@ -117,6 +117,21 @@ describe("POST /api/trek-lead/trips/[id]/trek-start", () => {
     expect(mockLogActivity).toHaveBeenCalledWith("TREK_STARTED", "t1", "Slot", "slot-1");
   });
 
+  it("starts trek and logs activity for admin (bypassing assignment and date lock)", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "admin-1", roleName: "ADMIN" } as any);
+    mockSlotFindUnique.mockResolvedValue({ id: "slot-1", date: new Date(), status: "ACTIVE" } as any);
+    mockIsSlotDayToday.mockReturnValue(false); // normally triggers 403
+    mockSlotUpdate.mockResolvedValue({ status: "TREK_STARTED", trekStartedAt: new Date() } as any);
+
+    const response = await POST({} as NextRequest, {
+      params: Promise.resolve({ id: "slot-1" }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(mockAssignmentFindUnique).not.toHaveBeenCalled();
+    expect(mockLogActivity).toHaveBeenCalledWith("TREK_STARTED", "admin-1", "Slot", "slot-1");
+  });
+
   it("returns 500 on unexpected error", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "t1" } as any);
     mockAssignmentFindUnique.mockRejectedValue(new Error("db down"));
