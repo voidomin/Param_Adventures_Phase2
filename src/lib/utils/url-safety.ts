@@ -70,7 +70,8 @@ export function isS3Url(url: string): boolean {
     if (len < 2) return false;
 
     const isAws = parts[len - 2] === "amazonaws" && parts[len - 1] === "com";
-    return isAws || parts.includes("s3");
+    const hasS3Label = parts.includes("s3");
+    return isAws && hasS3Label;
   } catch {
     return false;
   }
