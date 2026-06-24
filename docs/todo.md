@@ -50,16 +50,15 @@ Everything that needs to be done after all feature implementations are complete,
 
 ---
 
-## 🚀 AWS Hosting & Deployment
+## 🚀 Hosting & Deployment (Render)
 
-- [ ] **Choose AWS Service** — EC2 Free Tier / Lightsail / Amplify
-- [ ] **Server Setup** — Install Node.js, Nginx, PM2 on the server
-- [ ] **Database** — Set up PostgreSQL (Supabase/Neon free tier or self-hosted on EC2)
-- [ ] **Nginx Reverse Proxy** — Configure Nginx to proxy requests to Next.js (port 3000)
-- [ ] **PM2 Process Manager** — Set up PM2 to keep the app running and auto-restart on crash
-- [ ] **Build & Deploy** — `npm run build` + `npm start` in production mode
-- [ ] **Environment Variables** — Set all production env vars on the server
-- [ ] **Auto-Deploy (Optional)** — Set up GitHub Actions for CI/CD
+- [x] **Choose Hosting Provider** — Selected Render as the web service host
+- [x] **Server Setup** — Configured node runtime, build, and start parameters via render.yaml
+- [ ] **Database** — Set up PostgreSQL (Supabase/Neon free tier or managed Postgres)
+- [x] **Process & Reverse Proxy Management** — Managed automatically by Render
+- [x] **Build & Deploy** — `npm run build` + static pre-rendering optimized
+- [ ] **Environment Variables** — Set all production env vars on Render dashboard
+- [x] **Auto-Deploy** — Configured auto-deploy on branch pushes via GitHub integration
 
 ---
 
@@ -85,10 +84,10 @@ Everything that needs to be done after all feature implementations are complete,
 
 ## 📊 Monitoring & Analytics (Post-Launch)
 
-- [ ] **Error Tracking** — Set up Sentry or similar for production error monitoring
-- [ ] **Analytics** — Add Google Analytics or Plausible for traffic tracking
-- [ ] **Uptime Monitoring** — Set up UptimeRobot or AWS CloudWatch for downtime alerts
-- [ ] **Log Management** — Configure structured logging for production debugging
+- [x] **Error Tracking** — Integrated Sentry SDK for production error tracking with admin kill switch
+- [x] **Analytics** — Added Google Analytics, Meta Pixel, and Microsoft Clarity dynamically via database settings
+- [ ] **Uptime Monitoring** — Set up UptimeRobot or equivalent for downtime alerts
+- [x] **Log Management** — Configured custom audit logger and logging coverage
 
 ---
 
