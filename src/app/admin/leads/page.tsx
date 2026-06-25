@@ -8,6 +8,7 @@ import {
   FileText,
   CalendarDays,
   MessageSquare,
+  Compass,
 } from "lucide-react";
 import LeadActions from "./LeadActions";
 
@@ -20,7 +21,32 @@ type LeadRow = {
   createdAt: Date;
   adminNotes: string | null;
   status: string;
+  source: string;
 };
+
+function formatLeadSource(source: string) {
+  if (!source) return "Unknown";
+  if (source === "HOMEPAGE") return "Homepage Form";
+  if (source.startsWith("ITINERARY_DOWNLOAD:")) {
+    const slug = source.replace("ITINERARY_DOWNLOAD:", "").trim();
+    const formattedSlug = slug
+      .split("-")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+    return `Itinerary: ${formattedSlug}`;
+  }
+  return source;
+}
+
+function getOriginStyles(source: string) {
+  if (source === "HOMEPAGE") {
+    return "bg-blue-500/10 text-blue-500 border-blue-500/25";
+  }
+  if (source.startsWith("ITINERARY_DOWNLOAD:")) {
+    return "bg-teal-500/10 text-teal-500 border-teal-500/25";
+  }
+  return "bg-foreground/5 text-foreground/75 border-border";
+}
 
 function getStatusStyles(status: string) {
   switch (status) {
@@ -119,6 +145,7 @@ export default async function AdminLeadsPage({
             <thead>
               <tr className="bg-foreground/2 border-b border-border text-sm text-foreground/60">
                 <th className="p-6 font-semibold">Contact Info</th>
+                <th className="p-6 font-semibold">Origin</th>
                 <th className="p-6 font-semibold">Requirements</th>
                 <th className="p-6 font-semibold">Admin Notes</th>
                 <th className="p-6 font-semibold">Status</th>
@@ -129,7 +156,7 @@ export default async function AdminLeadsPage({
               {leads.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="p-10 text-center text-foreground/50"
                   >
                     No active leads found. Check the archive or wait for new
@@ -164,6 +191,14 @@ export default async function AdminLeadsPage({
                         >
                           {lead.phone}
                         </a>
+                      </div>
+                    </td>
+                    <td className="p-6">
+                      <div className="inline-flex items-center gap-1.5">
+                        <Compass className={`w-3.5 h-3.5 shrink-0 ${lead.source === "HOMEPAGE" ? "text-blue-500" : "text-teal-500"}`} />
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-tighter border ${getOriginStyles(lead.source)}`}>
+                          {formatLeadSource(lead.source)}
+                        </span>
                       </div>
                     </td>
                     <td className="p-6 max-w-sm">
