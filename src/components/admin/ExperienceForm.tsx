@@ -39,6 +39,19 @@ export interface FAQ {
   answer: string;
 }
 
+export interface ExtraAmenityOption {
+  id: string;
+  name: string;
+  price: number;
+}
+
+export interface ExtraAmenityGroup {
+  id: string;
+  name: string;
+  type: "SINGLE" | "MULTI";
+  options: ExtraAmenityOption[];
+}
+
 export interface ExperienceFormData {
   id?: string;
   title: string;
@@ -75,6 +88,9 @@ export interface ExperienceFormData {
   dropoffTime?: string;
   pickupPoints?: string[];
   dropPoints?: string[];
+  allowAdvancePayment?: boolean;
+  advancePaymentAmount?: number | null;
+  extraAmenities?: ExtraAmenityGroup[];
 }
 
 const MEAL_OPTIONS = ["Breakfast", "Lunch", "Dinner", "Snacks"];
@@ -279,6 +295,101 @@ export default function ExperienceForm({
     initialData?.dropoffTime || "",
   );
 
+  const [allowAdvancePayment, setAllowAdvancePayment] = useState<boolean>(
+    initialData?.allowAdvancePayment || false
+  );
+  const [advancePaymentAmount, setAdvancePaymentAmount] = useState<number | string>(
+    initialData?.advancePaymentAmount || ""
+  );
+
+  const getInitialAmenities = () => {
+    if (!initialData?.extraAmenities) return [];
+    if (typeof initialData.extraAmenities === "string") {
+      try {
+        return JSON.parse(initialData.extraAmenities);
+      } catch {
+        return [];
+      }
+    }
+    if (Array.isArray(initialData.extraAmenities)) {
+      return initialData.extraAmenities;
+    }
+    return [];
+  };
+
+  const [extraAmenities, setExtraAmenities] = useState<ExtraAmenityGroup[]>(getInitialAmenities());
+
+  const addAmenityGroup = () => {
+    setExtraAmenities((prev) => [
+      ...prev,
+      {
+        id: crypto.randomUUID(),
+        name: "",
+        type: "SINGLE",
+        options: [{ id: crypto.randomUUID(), name: "", price: 0 }],
+      },
+    ]);
+  };
+
+  const removeAmenityGroup = (groupId: string) => {
+    setExtraAmenities((prev) => prev.filter((g) => g.id !== groupId));
+  };
+
+  const updateAmenityGroup = (groupId: string, field: "name" | "type", value: string) => {
+    setExtraAmenities((prev) =>
+      prev.map((g) => (g.id === groupId ? { ...g, [field]: value } : g))
+    );
+  };
+
+  const addAmenityOption = (groupId: string) => {
+    setExtraAmenities((prev) =>
+      prev.map((g) => {
+        if (g.id === groupId) {
+          return {
+            ...g,
+            options: [...g.options, { id: crypto.randomUUID(), name: "", price: 0 }],
+          };
+        }
+        return g;
+      })
+    );
+  };
+
+  const removeAmenityOption = (groupId: string, optionId: string) => {
+    setExtraAmenities((prev) =>
+      prev.map((g) => {
+        if (g.id === groupId) {
+          return {
+            ...g,
+            options: g.options.filter((o) => o.id !== optionId),
+          };
+        }
+        return g;
+      })
+    );
+  };
+
+  const updateAmenityOption = (
+    groupId: string,
+    optionId: string,
+    field: "name" | "price",
+    value: string | number
+  ) => {
+    setExtraAmenities((prev) =>
+      prev.map((g) => {
+        if (g.id === groupId) {
+          return {
+            ...g,
+            options: g.options.map((o) =>
+              o.id === optionId ? { ...o, [field]: value } : o
+            ),
+          };
+        }
+        return g;
+      })
+    );
+  };
+
   useEffect(() => {
     // Fetch available categories
     const fetchCats = async () => {
@@ -480,6 +591,9 @@ export default function ExperienceForm({
       .filter(
         (text): text is string => typeof text === "string" && text.trim() !== "",
       ),
+    allowAdvancePayment,
+    advancePaymentAmount: allowAdvancePayment && advancePaymentAmount !== "" ? Number(advancePaymentAmount) : null,
+    extraAmenities,
   });
 
   const handleServerErrors = (data: { error?: string; details?: Record<string, string | string[]> }) => {
@@ -588,6 +702,25 @@ export default function ExperienceForm({
     if (data.images) setImages(data.images);
     if (data.categories)
       setSelectedCategories(data.categories.map((c) => c.categoryId));
+    if (data.allowAdvancePayment !== undefined) {
+      setAllowAdvancePayment(data.allowAdvancePayment);
+    }
+    if (data.advancePaymentAmount !== undefined) {
+      setAdvancePaymentAmount(data.advancePaymentAmount ?? "");
+    }
+    if (data.extraAmenities !== undefined) {
+      if (typeof data.extraAmenities === "string") {
+        try {
+          setExtraAmenities(JSON.parse(data.extraAmenities));
+        } catch {
+          setExtraAmenities([]);
+        }
+      } else if (Array.isArray(data.extraAmenities)) {
+        setExtraAmenities(data.extraAmenities);
+      } else {
+        setExtraAmenities([]);
+      }
+    }
   };
 
   const applyListData = (data: Partial<ExperienceFormData>) => {
@@ -677,6 +810,9 @@ export default function ExperienceForm({
     meetingTime,
     dropoffTime,
     vibeTags: vibeTags.map((i) => i.text),
+    allowAdvancePayment,
+    advancePaymentAmount,
+    extraAmenities,
   });
 
   const getExportFilename = () =>
@@ -860,6 +996,9 @@ export default function ExperienceForm({
         { Key: "dropoffTime", Value: dropoffTime },
         { Key: "meetingPoint", Value: meetingPoint },
         { Key: "cancellationPolicy", Value: JSON.stringify({ template: cancelPolicyType, text: cancelPolicyText }) },
+        { Key: "allowAdvancePayment", Value: allowAdvancePayment },
+        { Key: "advancePaymentAmount", Value: advancePaymentAmount },
+        { Key: "extraAmenities", Value: JSON.stringify(extraAmenities) },
       ];
 
       const itineraryData = itinerary.map((d, i) => ({
@@ -1682,6 +1821,119 @@ export default function ExperienceForm({
               </div>
             </div>
           </div>
+
+          {/* Extra Amenities Builder */}
+          <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
+            <div className="border-b border-border pb-2 flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-bold text-foreground">Extra Amenities & Stay Customization</h2>
+                <p className="text-sm text-foreground/60">
+                  Define optional stay sharing, transport, or gear add-ons per participant
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={addAmenityGroup}
+                className="bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add Group
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {extraAmenities.map((group) => (
+                <div key={group.id} className="bg-background border border-border rounded-xl p-4 space-y-4">
+                  <div className="flex gap-4 items-start justify-between">
+                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs font-bold text-foreground/60 mb-1">
+                          Group Name (e.g. Accommodation Sharing)
+                        </label>
+                        <input
+                          type="text"
+                          value={group.name}
+                          onChange={(e) => updateAmenityGroup(group.id, "name", e.target.value)}
+                          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50 font-semibold text-foreground"
+                          placeholder="e.g. Stay Sharing"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-foreground/60 mb-1">
+                          Selection Mode
+                        </label>
+                        <select
+                          value={group.type}
+                          onChange={(e) => updateAmenityGroup(group.id, "type", e.target.value)}
+                          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50 text-foreground"
+                        >
+                          <option value="SINGLE">Single-select (Radio buttons, e.g. sharing choices)</option>
+                          <option value="MULTI">Multi-select (Checkboxes, e.g. gear rentals)</option>
+                        </select>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeAmenityGroup(group.id)}
+                      className="p-2 text-foreground/40 hover:text-red-500 transition-colors mt-5"
+                      title="Remove Group"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Options List */}
+                  <div className="pl-4 border-l-2 border-primary/20 space-y-3">
+                    <span className="block text-xs font-bold text-foreground/50">Options & Prices</span>
+                    {group.options.map((option) => (
+                      <div key={option.id} className="flex gap-3 items-center">
+                        <input
+                          type="text"
+                          value={option.name}
+                          onChange={(e) => updateAmenityOption(group.id, option.id, "name", e.target.value)}
+                          className="flex-1 bg-background border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-primary/50 text-foreground"
+                          placeholder="e.g. Triple Sharing"
+                          required
+                        />
+                        <div className="w-32 relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-foreground/50">₹</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={option.price}
+                            onChange={(e) => updateAmenityOption(group.id, option.id, "price", Number(e.target.value))}
+                            className="w-full bg-background border border-border rounded-lg pl-6 pr-3 py-1.5 text-sm focus:outline-none focus:border-primary/50 text-foreground font-semibold"
+                            placeholder="0"
+                            required
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeAmenityOption(group.id, option.id)}
+                          className="text-foreground/40 hover:text-red-500 transition-colors p-1.5"
+                          title="Remove Option"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => addAmenityOption(group.id)}
+                      className="text-xs font-bold text-primary flex items-center gap-1 hover:text-primary/80 transition-colors"
+                    >
+                      <Plus className="w-3 h-3" /> Add Option
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {extraAmenities.length === 0 && (
+                <div className="text-center py-6 border-2 border-dashed border-border rounded-xl text-foreground/40 text-sm">
+                  No extra amenities defined yet. Click &apos;Add Group&apos; to set some up.
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Sidebar Settings (Right Column) */}
@@ -2040,6 +2292,54 @@ export default function ExperienceForm({
                         )
                       ).toFixed(2)}
                     </span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Advance Booking Settings */}
+            <div className="border-t border-border pt-4 mt-2 space-y-4">
+              <label
+                htmlFor="allowAdvancePayment"
+                className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-border hover:bg-foreground/5 transition-colors"
+                aria-labelledby="advance-pay-label"
+              >
+                <input
+                  id="allowAdvancePayment"
+                  type="checkbox"
+                  checked={allowAdvancePayment}
+                  onChange={(e) => setAllowAdvancePayment(e.target.checked)}
+                  className="w-5 h-5 rounded border-border text-primary focus:ring-primary focus:ring-offset-background bg-background"
+                />
+                <div id="advance-pay-label">
+                  <span className="block text-sm font-medium text-foreground">
+                    Allow Advance Payment
+                  </span>
+                  <span className="block text-xs text-foreground/60">
+                    Allow users to book by paying a partial amount
+                  </span>
+                </div>
+              </label>
+
+              {allowAdvancePayment && (
+                <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                  <label
+                    htmlFor="advancePaymentAmount"
+                    className="block text-xs font-bold text-foreground/80 mb-1"
+                  >
+                    Advance Amount (₹, per seat)
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-foreground/50">₹</span>
+                    <input
+                      id="advancePaymentAmount"
+                      type="number"
+                      min="0"
+                      value={advancePaymentAmount}
+                      onChange={(e) => setAdvancePaymentAmount(e.target.value)}
+                      className="w-full bg-background border border-border rounded-xl pl-8 pr-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50 font-semibold"
+                      placeholder="e.g. 2000"
+                    />
                   </div>
                 </div>
               )}

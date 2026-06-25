@@ -142,6 +142,9 @@ export const BookingRepo = {
         taxBreakdown: pricing.taxBreakdown,
         bookingStatus: "REQUESTED",
         paymentStatus: "PENDING",
+        paymentType: data.paymentType || "FULL",
+        paidAmount: 0,
+        remainingBalance: pricing.totalPrice,
         participants: {
           create: data.participants.map((p: ParticipantInput) => ({
             isPrimary: p.isPrimary || false,
@@ -157,6 +160,7 @@ export const BookingRepo = {
             emergencyRelationship: p.emergencyRelationship || null,
             pickupPoint: p.pickupPoint || null,
             dropPoint: p.dropPoint || null,
+            selectedAmenities: (p.selectedAmenities as Prisma.InputJsonValue) || [],
           })),
         },
       },

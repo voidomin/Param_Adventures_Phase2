@@ -47,6 +47,7 @@ describe("BookingRepo.createBooking", () => {
       experienceId: "exp-1",
       slotId: "slot-1",
       participantCount: 1,
+      paymentType: "FULL" as const,
       participants: [
         {
           name: "Jane Doe",
@@ -114,6 +115,7 @@ describe("BookingRepo.createBooking", () => {
       experienceId: "exp-1",
       slotId: "slot-1",
       participantCount: 1,
+      paymentType: "FULL" as const,
       participants: [
         {
           name: "Jane Doe",

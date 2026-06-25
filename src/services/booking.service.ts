@@ -48,16 +48,19 @@ export const BookingService = {
         throw new Error("INSUFFICIENT_CAPACITY");
       }
 
+      const isAdvance = data.paymentType === "ADVANCE" && experience.allowAdvancePayment && experience.advancePaymentAmount;
+      const paymentAmount = isAdvance
+        ? Number(experience.advancePaymentAmount) * data.participantCount
+        : pricing.totalPrice;
+
       // Create Booking record
       const booking = await BookingRepo.createBooking(tx, userId, data, pricing);
 
       // EXTERNAL READINESS: Create the pending Payment record ATOMICALLY with the booking
-      // This ensures if the booking exists, a trace of the intended payment always exists.
-      // We don't have the orderId yet, but we'll update it once Razorpay responds.
       const payment = await BookingRepo.createPayment(tx, {
         bookingId: booking.id,
         orderId: "PENDING_AUTH",
-        totalPrice: pricing.totalPrice,
+        totalPrice: paymentAmount,
       });
 
       return { booking, payment };
@@ -70,7 +73,7 @@ export const BookingService = {
     // 3. External Integration: Razorpay
     try {
       const razorpay = await getRazorpay();
-      const amountPaise = Math.round(pricing.totalPrice * 100);
+      const amountPaise = Math.round(Number(result.payment.amount) * 100);
 
       const keyIdSetting = await BookingRepo.getRazorpayKeyId(prisma);
       const keyId = keyIdSetting?.value || process.env.RAZORPAY_KEY_ID;
@@ -134,21 +137,39 @@ export const BookingService = {
       const updatedBooking = await prisma.$transaction(async (tx) => {
         const booking = await tx.booking.findUnique({
           where: { id: bookingId },
-          select: { id: true, userId: true, bookingStatus: true, participantCount: true, slotId: true },
+          select: { id: true, userId: true, bookingStatus: true, participantCount: true, slotId: true, totalPrice: true, paidAmount: true },
         });
 
         if (!booking) {
           throw new Error("BOOKING_NOT_FOUND");
         }
 
-        // If booking is already confirmed, return it (idempotency)
-        if (booking.bookingStatus === "CONFIRMED") {
+        const paymentRecord = await tx.payment.findFirst({
+          where: { providerOrderId: razorpayOrderId },
+        });
+
+        if (!paymentRecord) {
+          throw new Error("PAYMENT_NOT_FOUND");
+        }
+
+        // If this specific payment is already PAID, return the booking (idempotency)
+        if (paymentRecord.status === "PAID") {
           return booking;
         }
 
+        const paymentAmount = Number(paymentRecord.amount);
+        const newPaidAmount = Number(booking.paidAmount) + paymentAmount;
+        const remainingBalance = Number(booking.totalPrice) - newPaidAmount;
+        const newPaymentStatus = remainingBalance > 0.01 ? "PARTIALLY_PAID" : "PAID";
+
         const updated = await tx.booking.update({
           where: { id: bookingId },
-          data: { bookingStatus: "CONFIRMED", paymentStatus: "PAID" },
+          data: { 
+            bookingStatus: "CONFIRMED", 
+            paymentStatus: newPaymentStatus,
+            paidAmount: newPaidAmount,
+            remainingBalance: Math.max(0, remainingBalance),
+          },
         });
 
         await tx.payment.updateMany({
@@ -160,7 +181,7 @@ export const BookingService = {
           },
         });
 
-        if (booking.slotId) {
+        if (booking.slotId && booking.bookingStatus !== "CONFIRMED") {
           // Decrement slot remainingCapacity by participantCount
           await tx.slot.update({
             where: { id: booking.slotId },
@@ -241,12 +262,48 @@ export const BookingService = {
   async calculatePricing(data: BookingInput) {
     const experience = await prisma.experience.findUnique({
       where: { id: data.experienceId },
-      select: { basePrice: true }
+      select: { basePrice: true, extraAmenities: true }
     });
 
     if (!experience) throw new Error("EXPERIENCE_NOT_FOUND");
 
-    const baseFare = Number(experience.basePrice) * data.participantCount;
+    interface ExtraAmenityOption {
+      id: string;
+      name: string;
+      price: number;
+    }
+
+    interface ExtraAmenityGroup {
+      id: string;
+      name: string;
+      type: "SINGLE" | "MULTI";
+      options: ExtraAmenityOption[];
+    }
+
+    const extraAmenitiesConfig = (experience.extraAmenities
+      ? (typeof experience.extraAmenities === "string"
+        ? JSON.parse(experience.extraAmenities)
+        : experience.extraAmenities)
+      : []) as unknown as ExtraAmenityGroup[];
+
+    let baseFare = 0;
+    for (const p of data.participants) {
+      let participantFare = Number(experience.basePrice);
+      if (p.selectedAmenities && Array.isArray(p.selectedAmenities)) {
+        for (const selected of p.selectedAmenities) {
+          const group = extraAmenitiesConfig.find((g) => g.id === selected.groupId);
+          const option = group?.options?.find((o) => o.id === selected.optionId);
+          if (option) {
+            participantFare += Number(option.price) || 0;
+            selected.price = Number(option.price) || 0;
+          } else {
+            selected.price = 0;
+          }
+        }
+      }
+      baseFare += participantFare;
+    }
+
     let totalPrice = baseFare;
     let taxBreakdown: { name: string; percentage: number; amount: number }[] = [];
 

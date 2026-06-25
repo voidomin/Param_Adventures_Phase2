@@ -35,6 +35,45 @@ interface BookingModalProps {
   onClose: () => void;
 }
 
+interface SelectedAmenity {
+  groupId: string;
+  groupName: string;
+  optionId: string;
+  optionName: string;
+  price: number;
+}
+
+interface ExtraAmenityOption {
+  id: string;
+  name: string;
+  price: number;
+}
+
+interface ExtraAmenityGroup {
+  id: string;
+  name: string;
+  type: "SINGLE" | "MULTI";
+  options: ExtraAmenityOption[];
+}
+
+interface UpdateAmenityParams {
+  index: number;
+  groupId: string;
+  groupName: string;
+  optionId: string;
+  optionName: string;
+  price: number;
+  type: "SINGLE" | "MULTI";
+  selected: boolean;
+}
+
+interface ExperienceDetail {
+  id: string;
+  extraAmenities?: ExtraAmenityGroup[] | string | null;
+  allowAdvancePayment?: boolean;
+  advancePaymentAmount?: number | null;
+}
+
 interface ParticipantDetails {
   id: string;
   isPrimary: boolean;
@@ -49,6 +88,7 @@ interface ParticipantDetails {
   emergencyRelationship: string;
   pickupPoint: string;
   dropPoint: string;
+  selectedAmenities?: SelectedAmenity[];
 }
 
 type Step =
@@ -259,6 +299,8 @@ interface ParticipantCardProps {
   pickupPoints: string[];
   dropPoints: string[];
   copyEmergencyFromPrimary: (index: number) => void;
+  extraAmenitiesConfig: ExtraAmenityGroup[];
+  updatePartAmenities: (params: UpdateAmenityParams) => void;
 }
 
 interface ParticipantCardHeaderProps {
@@ -849,6 +891,79 @@ function EmergencyFields({
   );
 }
 
+interface AmenitiesFieldsProps {
+  p: ParticipantDetails;
+  index: number;
+  extraAmenitiesConfig: ExtraAmenityGroup[];
+  updatePartAmenities: (params: UpdateAmenityParams) => void;
+}
+
+function AmenitiesFields({
+  p,
+  index,
+  extraAmenitiesConfig,
+  updatePartAmenities,
+}: Readonly<AmenitiesFieldsProps>) {
+  if (!extraAmenitiesConfig || extraAmenitiesConfig.length === 0) return null;
+
+  return (
+    <div className="md:col-span-2 space-y-4 mt-2 pt-4 border-t border-border/50 text-left">
+      <h5 className="text-xs font-black text-foreground/45 uppercase tracking-widest">
+        Custom Options & Amenities
+      </h5>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {extraAmenitiesConfig.map((group) => {
+          return (
+            <div key={group.id} className="space-y-2 bg-foreground/[0.02] p-4 rounded-xl border border-border/40">
+              <span className="block text-xs font-bold text-foreground/75 uppercase tracking-wider">
+                {group.name} {group.type === "SINGLE" ? "(Choose One)" : "(Select Multiple)"}
+              </span>
+              <div className="space-y-2 mt-1">
+                {group.options.map((option: ExtraAmenityOption) => {
+                  const isSelected = p.selectedAmenities?.some((a) => a.optionId === option.id) || false;
+                  return (
+                    <label
+                      key={option.id}
+                      className="flex items-center justify-between p-2 rounded-lg border border-border/40 bg-card hover:bg-foreground/[0.04] cursor-pointer transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <input
+                          type={group.type === "SINGLE" ? "radio" : "checkbox"}
+                          name={`amenity-${index}-${group.id}`}
+                          checked={isSelected}
+                          onChange={(e) => {
+                            updatePartAmenities({
+                              index,
+                              groupId: group.id,
+                              groupName: group.name,
+                              optionId: option.id,
+                              optionName: option.name,
+                              price: Number(option.price),
+                              type: group.type,
+                              selected: e.target.checked,
+                            });
+                          }}
+                          className={`w-4 h-4 text-primary focus:ring-primary focus:ring-offset-background bg-background ${
+                            group.type === "SINGLE" ? "rounded-full" : "rounded"
+                          }`}
+                        />
+                        <span className="text-xs font-semibold text-foreground/80">{option.name}</span>
+                      </div>
+                      <span className="text-xs font-bold text-primary">
+                        {option.price > 0 ? `+ ₹${option.price}` : "Free"}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function ParticipantCard({
   p,
   index,
@@ -862,6 +977,8 @@ function ParticipantCard({
   pickupPoints,
   dropPoints,
   copyEmergencyFromPrimary,
+  extraAmenitiesConfig,
+  updatePartAmenities,
 }: Readonly<ParticipantCardProps>) {
   return (
     <details
@@ -897,6 +1014,12 @@ function ParticipantCard({
             updatePart={updatePart}
             pickupPoints={pickupPoints}
             dropPoints={dropPoints}
+          />
+          <AmenitiesFields
+            p={p}
+            index={index}
+            extraAmenitiesConfig={extraAmenitiesConfig}
+            updatePartAmenities={updatePartAmenities}
           />
           <EmergencyFields
             p={p}
@@ -994,6 +1117,75 @@ export default function BookingModal({
   const [openDetails, setOpenDetails] = useState<Record<number, boolean>>({
     0: true,
   });
+
+  const [experienceDetail, setExperienceDetail] = useState<ExperienceDetail | null>(null);
+  const [paymentType, setPaymentType] = useState<"FULL" | "ADVANCE">("FULL");
+
+  const extraAmenitiesConfig = useMemo(() => {
+    if (!experienceDetail?.extraAmenities) return [];
+    if (typeof experienceDetail.extraAmenities === "string") {
+      try {
+        return JSON.parse(experienceDetail.extraAmenities);
+      } catch {
+        return [];
+      }
+    }
+    return experienceDetail.extraAmenities;
+  }, [experienceDetail]);
+
+  const updatePartAmenities = useCallback(({
+    index,
+    groupId,
+    groupName,
+    optionId,
+    optionName,
+    price,
+    type,
+    selected,
+  }: UpdateAmenityParams) => {
+    setPartInfo((prev) => {
+      const updated = [...prev];
+      const p = updated[index];
+      const currentAmenities = p.selectedAmenities || [];
+      
+      let nextAmenities: SelectedAmenity[] = [];
+      
+      if (type === "SINGLE") {
+        const filtered = currentAmenities.filter((a) => a.groupId !== groupId);
+        if (selected) {
+          filtered.push({ groupId, groupName, optionId, optionName, price });
+        }
+        nextAmenities = filtered;
+      } else if (selected) {
+        if (currentAmenities.some((a) => a.optionId === optionId)) {
+          nextAmenities = currentAmenities;
+        } else {
+          nextAmenities = [...currentAmenities, { groupId, groupName, optionId, optionName, price }];
+        }
+      } else {
+        nextAmenities = currentAmenities.filter((a) => a.optionId !== optionId);
+      }
+      
+      updated[index] = { ...p, selectedAmenities: nextAmenities };
+      return updated;
+    });
+  }, []);
+
+  const fetchExperience = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/experiences/${experienceSlug}`);
+      const data = await res.json();
+      if (res.ok) {
+        setExperienceDetail(data);
+      }
+    } catch (err) {
+      console.error("Failed to load experience details:", err);
+    }
+  }, [experienceSlug]);
+
+  useEffect(() => {
+    fetchExperience();
+  }, [fetchExperience]);
 
   const createParticipant = useCallback(
     (isPrimary: boolean): ParticipantDetails => {
@@ -1175,11 +1367,25 @@ export default function BookingModal({
     setStep("summary");
   };
 
-  const baseFare = basePrice * participants;
-  const taxAmount = taxes.reduce(
-    (acc, tax) => acc + (baseFare * tax.percentage) / 100,
-    0,
-  );
+  const baseFare = useMemo(() => {
+    let fare = basePrice * participants;
+    partInfo.forEach((p) => {
+      if (p.selectedAmenities && Array.isArray(p.selectedAmenities)) {
+        p.selectedAmenities.forEach((a) => {
+          fare += a.price;
+        });
+      }
+    });
+    return fare;
+  }, [basePrice, participants, partInfo]);
+
+  const taxAmount = useMemo(() => {
+    return taxes.reduce(
+      (acc, tax) => acc + (baseFare * tax.percentage) / 100,
+      0,
+    );
+  }, [baseFare, taxes]);
+
   const totalPrice = baseFare + taxAmount;
 
   async function handleProceedToPay() {
@@ -1205,7 +1411,11 @@ export default function BookingModal({
           experienceId,
           slotId: selectedSlot.id,
           participantCount: participants,
-          participants: partInfo,
+          participants: partInfo.map((p) => ({
+            ...p,
+            selectedAmenities: p.selectedAmenities || [],
+          })),
+          paymentType,
         }),
       });
       const bookData = await bookRes.json();
@@ -1511,6 +1721,8 @@ export default function BookingModal({
                 pickupPoints={pickupPoints}
                 dropPoints={dropPoints}
                 copyEmergencyFromPrimary={copyEmergencyFromPrimary}
+                extraAmenitiesConfig={extraAmenitiesConfig}
+                updatePartAmenities={updatePartAmenities}
               />
             ))}
 
@@ -1604,6 +1816,49 @@ export default function BookingModal({
               Secure payment powered by Razorpay • 100% Safe
             </div>
 
+            {experienceDetail?.allowAdvancePayment && experienceDetail?.advancePaymentAmount && (
+              <div className="bg-primary/5 rounded-2xl p-5 border border-primary/20 space-y-4 my-2 text-left">
+                <span className="block text-xs font-black uppercase tracking-wider text-primary">
+                  Payment Mode Selection
+                </span>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentType("FULL")}
+                    className={`p-3 rounded-xl border text-center transition-all ${
+                      paymentType === "FULL"
+                        ? "border-primary bg-primary/10 font-bold text-foreground"
+                        : "border-border bg-card hover:bg-foreground/5 text-foreground/80"
+                    }`}
+                  >
+                    <span className="block text-[10px] font-semibold opacity-70">Pay Full Amount</span>
+                    <span className="block text-sm font-black mt-1">₹{totalPrice.toLocaleString("en-IN")}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentType("ADVANCE")}
+                    className={`p-3 rounded-xl border text-center transition-all ${
+                      paymentType === "ADVANCE"
+                        ? "border-primary bg-primary/10 font-bold text-foreground"
+                        : "border-border bg-card hover:bg-foreground/5 text-foreground/80"
+                    }`}
+                  >
+                    <span className="block text-[10px] font-semibold opacity-70">Pay Advance Booking</span>
+                    <span className="block text-sm font-black mt-1">₹{(Number(experienceDetail?.advancePaymentAmount ?? 0) * participants).toLocaleString("en-IN")}</span>
+                  </button>
+                </div>
+                <div className="text-[11px] text-foreground/60 leading-relaxed text-left">
+                  {paymentType === "ADVANCE" ? (
+                    <p>
+                      You pay <strong className="text-primary font-bold">₹{(Number(experienceDetail?.advancePaymentAmount ?? 0) * participants).toLocaleString("en-IN")}</strong> now. The remaining balance of <strong className="text-foreground font-bold">₹{(totalPrice - Number(experienceDetail?.advancePaymentAmount ?? 0) * participants).toLocaleString("en-IN")}</strong> can be paid closer to the trek date.
+                    </p>
+                  ) : (
+                    <p>You pay the full booking amount of <strong className="text-foreground font-bold">₹{totalPrice.toLocaleString("en-IN")}</strong> now.</p>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-3">
               <button
                 onClick={() => setStep("participants")}
@@ -1615,7 +1870,10 @@ export default function BookingModal({
                 onClick={handleProceedToPay}
                 className="flex-1 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 transition-colors"
               >
-                Pay ₹{totalPrice.toLocaleString("en-IN")}
+                Pay {paymentType === "ADVANCE"
+                  ? `₹${(Number(experienceDetail?.advancePaymentAmount ?? 0) * participants).toLocaleString("en-IN")}`
+                  : `₹${totalPrice.toLocaleString("en-IN")}`
+                }
               </button>
             </div>
           </div>

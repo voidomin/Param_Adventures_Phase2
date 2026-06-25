@@ -11,6 +11,14 @@ import {
   Tag
 } from "lucide-react";
 
+export interface SelectedAmenity {
+  groupId: string;
+  groupName: string;
+  optionId: string;
+  optionName: string;
+  price: number;
+}
+
 export interface BookingParticipant {
   id: string;
   isPrimary: boolean;
@@ -26,12 +34,17 @@ export interface BookingParticipant {
   pickupPoint: string | null;
   dropPoint: string | null;
   attended?: boolean;
+  selectedAmenities?: SelectedAmenity[];
 }
 
 export interface BookingDetails {
   id: string;
   participantCount: number;
   totalPrice?: number | string | object;
+  paidAmount?: number | string;
+  remainingBalance?: number | string;
+  paymentType?: string;
+  paymentStatus?: string;
   bookingStatus?: string;
   createdAt?: string;
   user: {
@@ -72,19 +85,53 @@ export default function BookingDetailsCollapse({ booking }: BookingDetailsCollap
               <Phone className="w-3.5 h-3.5 shrink-0 text-foreground/30" /> {booking.user.phoneNumber ?? "—"}
             </p>
           </div>
-          <div className="flex gap-4">
-            {booking.bookingStatus && (
+          <div>
+            <p className="text-xs text-foreground/50 font-medium">Booking Status</p>
+            <span className="inline-block px-2.5 py-0.5 text-xs font-bold bg-green-500/10 text-green-500 border border-green-500/20 rounded-full mt-1">
+              {booking.bookingStatus || "—"}
+            </span>
+          </div>
+          <div className="flex gap-6 flex-wrap md:col-span-2 border-t border-border/40 pt-3 mt-2">
+            {booking.totalPrice !== undefined && (
               <div>
-                <p className="text-xs text-foreground/50 font-medium">Booking Status</p>
-                <span className="inline-block px-2.5 py-0.5 text-xs font-bold bg-green-500/10 text-green-500 border border-green-500/20 rounded-full mt-1">
-                  {booking.bookingStatus}
+                <p className="text-xs text-foreground/50 font-medium">Total Package Cost</p>
+                <p className="font-bold text-foreground mt-0.5">₹{Number(booking.totalPrice).toLocaleString("en-IN")}</p>
+              </div>
+            )}
+            {booking.paidAmount !== undefined && (
+              <div>
+                <p className="text-xs text-foreground/50 font-medium">Paid Amount</p>
+                <p className="font-bold text-green-500 mt-0.5">₹{Number(booking.paidAmount).toLocaleString("en-IN")}</p>
+              </div>
+            )}
+            {booking.remainingBalance !== undefined && (
+              <div>
+                <p className="text-xs text-foreground/50 font-medium">Remaining Balance</p>
+                <p className={`font-bold mt-0.5 ${Number(booking.remainingBalance) > 0.01 ? "text-red-400" : "text-foreground/40"}`}>
+                  ₹{Number(booking.remainingBalance).toLocaleString("en-IN")}
+                </p>
+              </div>
+            )}
+            {booking.paymentType && (
+              <div>
+                <p className="text-xs text-foreground/50 font-medium">Payment Mode</p>
+                <span className="inline-block px-2 py-0.5 text-[10px] font-bold bg-muted text-foreground/75 border border-border rounded mt-1">
+                  {booking.paymentType === "ADVANCE" ? "Advance Payment" : "Full Payment"}
                 </span>
               </div>
             )}
-            {booking.totalPrice && (
+            {booking.paymentStatus && (
               <div>
-                <p className="text-xs text-foreground/50 font-medium">Total Price Paid</p>
-                <p className="font-bold text-foreground mt-0.5">₹{Number(booking.totalPrice).toLocaleString("en-IN")}</p>
+                <p className="text-xs text-foreground/50 font-medium">Payment Status</p>
+                <span className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded border mt-1 ${
+                  booking.paymentStatus === "PAID"
+                    ? "bg-green-500/10 text-green-500 border-green-500/20"
+                    : booking.paymentStatus === "PARTIALLY_PAID"
+                    ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
+                    : "bg-foreground/5 text-foreground/40 border-border"
+                }`}>
+                  {booking.paymentStatus === "PARTIALLY_PAID" ? "Partially Paid" : booking.paymentStatus}
+                </span>
               </div>
             )}
           </div>
@@ -164,6 +211,20 @@ export default function BookingDetailsCollapse({ booking }: BookingDetailsCollap
                       }`}>
                         {p.attended ? "Yes" : "No"}
                       </span>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-foreground/50 uppercase font-bold tracking-wider">Selected Stays / Add-ons</p>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {p.selectedAmenities && Array.isArray(p.selectedAmenities) && p.selectedAmenities.length > 0 ? (
+                          p.selectedAmenities.map((amenity, aIdx: number) => (
+                            <span key={aIdx} className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded border border-primary/20 whitespace-nowrap">
+                              {amenity.optionName} (₹{amenity.price})
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-xs text-foreground/40 italic">None</span>
+                        )}
+                      </div>
                     </div>
                   </div>
 

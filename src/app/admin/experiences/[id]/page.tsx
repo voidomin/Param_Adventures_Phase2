@@ -25,11 +25,14 @@ export default async function EditExperiencePage({
     notFound();
   }
 
-  // Formatting for the form
   const initialData: ExperienceFormData = {
     ...experience,
     description: (experience.description as unknown as ExperienceFormData["description"]) || "",
     basePrice: Number(experience.basePrice), // Convert Decimal to number
+    advancePaymentAmount: experience.advancePaymentAmount ? Number(experience.advancePaymentAmount) : null,
+    extraAmenities: Array.isArray(experience.extraAmenities)
+      ? (experience.extraAmenities as unknown as ExperienceFormData["extraAmenities"])
+      : [],
     itinerary: Array.isArray(experience.itinerary)
       ? (experience.itinerary as unknown as ItineraryDay[])
       : [],

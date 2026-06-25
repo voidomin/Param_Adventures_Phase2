@@ -28,6 +28,8 @@ interface BookingItem {
   paymentStatus: string;
   participantCount: number;
   totalPrice: string;
+  paidAmount: string;
+  remainingBalance: string;
   cancelledAt?: string | null;
   refundPreference?: string | null;
   refundNote?: string | null;
@@ -395,6 +397,80 @@ export default function BookingsPage() {
     rzp.open();
   };
 
+  const handlePayBalance = async (booking: BookingItem) => {
+    setProcessingId(booking.id);
+    const scriptLoaded = await loadRazorpayScript();
+    if (!scriptLoaded) {
+      alert("Failed to load payment gateway.");
+      setProcessingId(null);
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/bookings/${booking.id}/pay-balance`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to initiate balance payment.");
+
+      const { orderId, amount, currency, keyId } = data;
+
+      const RazorpayCtor = globalThis.window.Razorpay;
+      if (!RazorpayCtor) {
+        alert("Payment gateway is unavailable.");
+        setProcessingId(null);
+        return;
+      }
+
+      const rzp = new RazorpayCtor({
+        key: keyId || razorpayKeyId || "",
+        amount,
+        currency,
+        order_id: orderId,
+        name: "Param Adventures",
+        description: `Balance - ${booking.experience.title}`,
+        theme: { color: "#D4AF37" },
+        handler: async (response: {
+          razorpay_order_id: string;
+          razorpay_payment_id: string;
+          razorpay_signature: string;
+        }) => {
+          try {
+            const verifyRes = await fetch("/api/bookings/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                bookingId: booking.id,
+              }),
+            });
+            const verifyData = await verifyRes.json();
+            if (!verifyRes.ok) throw new Error(verifyData.error);
+
+            alert("Balance Paid Successfully!");
+            globalThis.location.reload();
+          } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Unknown error";
+            alert("Payment verification failed: " + message);
+          } finally {
+            setProcessingId(null);
+          }
+        },
+        modal: {
+          ondismiss: () => setProcessingId(null),
+        },
+      });
+      rzp.open();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      alert("Error initiating payment: " + message);
+      setProcessingId(null);
+    }
+  };
+
   const tabs = [
     { id: "saved", label: "Wishlist", count: saved.length },
     { id: "upcoming", label: "Upcoming", count: bookings.upcoming.length },
@@ -565,9 +641,35 @@ export default function BookingsPage() {
                             ₹{Number(b.totalPrice).toLocaleString()}
                           </span>
                         </div>
-                        <p className="text-sm mb-4">
+                        <p className="text-sm mb-2">
                           Participants: <strong>{b.participantCount}</strong>
                         </p>
+                        <div className="text-xs space-y-1 mb-4 border-t border-border/30 pt-3">
+                          <div className="flex justify-between">
+                            <span className="text-foreground/60">Status:</span>
+                            <span className={`font-bold ${
+                              b.paymentStatus === "PAID"
+                                ? "text-green-500"
+                                : b.paymentStatus === "PARTIALLY_PAID"
+                                ? "text-amber-500"
+                                : "text-foreground/50"
+                            }`}>
+                              {b.paymentStatus === "PARTIALLY_PAID" ? "Partially Paid" : b.paymentStatus}
+                            </span>
+                          </div>
+                          {b.paymentStatus === "PARTIALLY_PAID" && (
+                            <>
+                              <div className="flex justify-between">
+                                <span className="text-foreground/60">Paid:</span>
+                                <span className="font-semibold text-green-500">₹{Number(b.paidAmount).toLocaleString("en-IN")}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-foreground/60">Remaining:</span>
+                                <span className="font-bold text-red-400">₹{Number(b.remainingBalance).toLocaleString("en-IN")}</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
 
                         {/* Cancelled tab: show richer info */}
                         {activeTab === "cancelled" && (
@@ -667,6 +769,19 @@ export default function BookingsPage() {
                                     <MessageCircle className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                                     Join WhatsApp Group
                                   </a>
+                                )}
+                                {b.paymentStatus === "PARTIALLY_PAID" && (
+                                  <button
+                                    disabled={processingId === b.id}
+                                    onClick={() => handlePayBalance(b)}
+                                    className="w-full py-2.5 bg-primary text-primary-foreground font-bold rounded-xl flex items-center justify-center disabled:opacity-50"
+                                  >
+                                    {processingId === b.id ? (
+                                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                    ) : (
+                                      `Pay Remaining Balance (₹${Number(b.remainingBalance).toLocaleString("en-IN")})`
+                                    )}
+                                  </button>
                                 )}
                                 <Link
                                   href={`/bookings/${b.id}/success`}

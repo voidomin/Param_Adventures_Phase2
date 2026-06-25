@@ -13,6 +13,13 @@ export const participantSchema = z.object({
   emergencyRelationship: z.string().min(1, "Emergency relationship is required"),
   pickupPoint: z.string().optional().or(z.literal("")),
   dropPoint: z.string().optional().or(z.literal("")),
+  selectedAmenities: z.array(z.object({
+    groupId: z.string(),
+    groupName: z.string(),
+    optionId: z.string(),
+    optionName: z.string(),
+    price: z.number(),
+  })).optional(),
 });
 
 export const bookingSchema = z.object({
@@ -20,6 +27,7 @@ export const bookingSchema = z.object({
   slotId: z.string().min(1, "slotId is required"),
   participantCount: z.number().int().min(1),
   participants: z.array(participantSchema).min(1),
+  paymentType: z.enum(["FULL", "ADVANCE"]).optional().default("FULL"),
 }).refine(data => data.participants.length === data.participantCount, {
   message: "Participant details must match the participant count.",
   path: ["participants"]

@@ -12,6 +12,14 @@ import { withBuildSafety } from "@/lib/db-utils";
 
 type Props = { params: Promise<{ id: string }> };
 
+interface SelectedAmenity {
+  groupId: string;
+  groupName: string;
+  optionId: string;
+  optionName: string;
+  price: number;
+}
+
 export default async function BookingSuccessPage({
   params,
 }: Readonly<Props>) {
@@ -84,7 +92,10 @@ export default async function BookingSuccessPage({
   // In Phase 2, we might not have a detailed breakdown stored in Booking.
   // We'll calculate a mock breakdown based on totalPrice for display purposes, 
   // or just show total if we don't have taxes/fees separated in DB.
-  const totalPaid = Number(booking.totalPrice) || 0;
+  const totalPrice = Number(booking.totalPrice) || 0;
+  const paidAmount = Number(booking.paidAmount) || 0;
+  const remainingBalance = Number(booking.remainingBalance) || 0;
+
   const bookingMeta = booking as typeof booking & {
     baseFare?: unknown;
     taxBreakdown?: unknown;
@@ -92,7 +103,7 @@ export default async function BookingSuccessPage({
   const baseFare =
     typeof bookingMeta.baseFare === "number"
       ? bookingMeta.baseFare
-      : totalPaid;
+      : totalPrice;
 
   const taxItems = Array.isArray(bookingMeta.taxBreakdown)
     ? (bookingMeta.taxBreakdown as {
@@ -216,6 +227,7 @@ export default async function BookingSuccessPage({
                         <th className="px-6 py-4">Email Address</th>
                         <th className="px-6 py-4">Phone Number</th>
                         <th className="px-6 py-4">Personal Details</th>
+                        <th className="px-6 py-4">Amenities</th>
                         <th className="px-6 py-4 whitespace-nowrap">Pickup & Drop</th>
                       </tr>
                     </thead>
@@ -249,6 +261,19 @@ export default async function BookingSuccessPage({
                               <span className="opacity-40">•</span>
                               <span className="font-medium">Blood: {p.bloodGroup || "—"}</span>
                             </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            {p.selectedAmenities && Array.isArray(p.selectedAmenities) && p.selectedAmenities.length > 0 ? (
+                              <div className="flex flex-wrap gap-1.5">
+                                 {(p.selectedAmenities as unknown as SelectedAmenity[]).map((amenity, aIdx: number) => (
+                                   <span key={aIdx} className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-bold border border-primary/20 whitespace-nowrap">
+                                     {amenity.optionName} (₹{amenity.price})
+                                   </span>
+                                 ))}
+                              </div>
+                            ) : (
+                              <span className="text-xs text-foreground/40 italic">None</span>
+                            )}
                           </td>
                           <td className="px-6 py-4">
                              <div className="flex items-center gap-2 text-foreground/80">
@@ -292,6 +317,20 @@ export default async function BookingSuccessPage({
                             {p.age ? `Age: ${p.age}` : "Age: —"} • {p.gender || "—"} • Blood: {p.bloodGroup || "—"}
                           </div>
                         </div>
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest block">Amenities Selected</span>
+                          <div className="flex flex-wrap gap-1.5 mt-1">
+                            {p.selectedAmenities && Array.isArray(p.selectedAmenities) && p.selectedAmenities.length > 0 ? (
+                              (p.selectedAmenities as unknown as SelectedAmenity[]).map((amenity, aIdx: number) => (
+                                <span key={aIdx} className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-bold border border-primary/20">
+                                  {amenity.optionName} (₹{amenity.price})
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-xs text-foreground/40 italic">None selected</span>
+                            )}
+                          </div>
+                        </div>
                         <div className="md:col-span-2 pt-2">
                            <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest block mb-2">Logistics</span>
                            <div className="flex items-center gap-2 bg-muted/40 p-3 rounded-xl border border-border/50">
@@ -310,12 +349,23 @@ export default async function BookingSuccessPage({
             <div className="bg-card border border-border shadow-sm rounded-2xl overflow-hidden flex flex-col sm:flex-row">
               <div className="bg-muted/40 p-6 sm:w-1/2 flex flex-col justify-center border-b sm:border-b-0 sm:border-r border-border/50">
                 <h3 className="text-lg font-bold text-foreground mb-4">Payment Confirmation</h3>
-                <div className="text-sm font-bold text-foreground/50 uppercase tracking-wider mb-1">Total Paid</div>
-                <div className="text-4xl font-black text-foreground">₹{totalPaid.toLocaleString("en-IN")}</div>
+                <div className="text-sm font-bold text-foreground/50 uppercase tracking-wider mb-1">
+                  {booking.paymentStatus === "PARTIALLY_PAID" ? "Amount Paid (Advance)" : "Total Paid"}
+                </div>
+                <div className="text-4xl font-black text-foreground">₹{paidAmount.toLocaleString("en-IN")}</div>
+                {booking.paymentStatus === "PARTIALLY_PAID" && (
+                  <div className="mt-2 text-xs text-red-400 font-semibold">
+                    Remaining Balance: ₹{remainingBalance.toLocaleString("en-IN")}
+                  </div>
+                )}
               </div>
               <div className="p-6 sm:w-1/2 space-y-3 text-sm">
                 <div className="flex justify-between items-center py-1">
-                  <span className="text-foreground/60">Base Fare</span>
+                  <span className="text-foreground/60">Total Cost</span>
+                  <span className="font-semibold text-foreground">₹{totalPrice.toLocaleString("en-IN")}</span>
+                </div>
+                <div className="flex justify-between items-center py-1">
+                  <span className="text-foreground/60">Base Fare (Incl. Add-ons)</span>
                   <span className="font-semibold text-foreground">₹{baseFare.toLocaleString("en-IN")}</span>
                 </div>
                 {taxItems.map((tax, idx) => (
@@ -327,21 +377,27 @@ export default async function BookingSuccessPage({
                 {taxItems.length === 0 && (
                    <div className="flex justify-between items-center py-1">
                     <span className="text-foreground/60">Taxes & Fees</span>
-                    <span className="font-semibold text-foreground">₹{(totalPaid - baseFare).toLocaleString("en-IN")}</span>
+                    <span className="font-semibold text-foreground">₹{(totalPrice - baseFare).toLocaleString("en-IN")}</span>
                   </div>
                 )}
                 <div className="border-t border-border/50 my-1"></div>
                 <div className="flex justify-between items-center py-1">
-                  <span className="text-foreground/60">Method</span>
+                  <span className="text-foreground/60">Payment Mode</span>
                   <span className="font-bold text-foreground flex items-center gap-1.5 bg-muted/50 px-2.5 py-1 rounded-md">
                     <CreditCard className="w-3.5 h-3.5 text-primary" />
-                    {payment?.provider || "Online"}
+                    {booking.paymentType === "ADVANCE" ? "Advance Payment" : "Full Payment"}
                   </span>
                 </div>
                 <div className="flex justify-between items-center py-1">
                   <span className="text-foreground/60">Status</span>
-                  <span className="font-bold text-green-500 bg-green-500/10 px-2.5 py-1 rounded-md uppercase text-xs tracking-wider">
-                    {payment?.status || booking.paymentStatus}
+                  <span className={`font-bold px-2.5 py-1 rounded-md uppercase text-xs tracking-wider ${
+                    booking.paymentStatus === "PAID"
+                      ? "text-green-500 bg-green-500/10"
+                      : booking.paymentStatus === "PARTIALLY_PAID"
+                      ? "text-amber-500 bg-amber-500/10"
+                      : "text-foreground/50 bg-muted"
+                  }`}>
+                    {booking.paymentStatus === "PARTIALLY_PAID" ? "Partially Paid" : booking.paymentStatus}
                   </span>
                 </div>
               </div>
