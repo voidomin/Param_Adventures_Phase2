@@ -29,8 +29,8 @@ export async function GET(
           select: { name: true, isPrimary: true, email: true, phoneNumber: true, pickupPoint: true }
         },
         payments: {
-          orderBy: { createdAt: "desc" },
-          take: 1
+          where: { status: "PAID" },
+          orderBy: { createdAt: "asc" }
         }
       }
     });
@@ -42,7 +42,7 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Fetch live company details right now for the header (Even though tax rates are frozen, the header usually matches current business address unless historically versioned too, but for now we pull current).
+    // Fetch live company details right now for the header
     const settings = await prisma.platformSetting.findMany({
       where: { key: { in: ['companyName', 'companyAddress', 'gstNumber', 'panNumber', 'stateCode'] } }
     });
@@ -56,15 +56,26 @@ export async function GET(
       booking: {
          id: booking.id,
          date: booking.createdAt,
-         totalPrice: booking.totalPrice,
-         baseFare: booking.baseFare,
+         totalPrice: Number(booking.totalPrice),
+         baseFare: Number(booking.baseFare),
          taxBreakdown: booking.taxBreakdown,
          status: booking.bookingStatus,
          participantCount: booking.participantCount,
+         paymentType: booking.paymentType,
+         paidAmount: Number(booking.paidAmount),
+         remainingBalance: Number(booking.remainingBalance),
+         paymentStatus: booking.paymentStatus,
       },
       experience: booking.experience,
       primaryContact: booking.participants.find(p => p.isPrimary) || booking.participants[0],
-      payment: booking.payments[0] || null,
+      payments: booking.payments.map((p) => ({
+        id: p.id,
+        amount: Number(p.amount),
+        status: p.status,
+        providerPaymentId: p.providerPaymentId,
+        createdAt: p.createdAt,
+      })),
+      payment: booking.payments[booking.payments.length - 1] || null,
       company: companyInfo
     });
 

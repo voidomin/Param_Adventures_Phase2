@@ -14,6 +14,10 @@ import {
   Download,
   Upload,
   AlertCircle,
+  Calendar,
+  MapPin,
+  ShieldAlert,
+  CreditCard,
 } from "lucide-react";
 import Link from "next/link";
 import MediaUploader from "./MediaUploader";
@@ -318,6 +322,16 @@ export default function ExperienceForm({
   };
 
   const [extraAmenities, setExtraAmenities] = useState<ExtraAmenityGroup[]>(getInitialAmenities());
+  const [activeTab, setActiveTab] = useState<"basic" | "itinerary" | "media" | "logistics" | "extras" | "booking">("basic");
+
+  const tabs = [
+    { id: "basic", label: "Basic Info", icon: Info },
+    { id: "itinerary", label: "Itinerary & Details", icon: Calendar },
+    { id: "media", label: "Media & Assets", icon: ImageIcon },
+    { id: "logistics", label: "Logistics", icon: MapPin },
+    { id: "extras", label: "Rules & Extras", icon: ShieldAlert },
+    { id: "booking", label: "Booking & Amenities", icon: CreditCard },
+  ] as const;
 
   const addAmenityGroup = () => {
     setExtraAmenities((prev) => [
@@ -617,9 +631,52 @@ export default function ExperienceForm({
     // Auto-scroll to first error from server
     const firstErrorField = Object.keys(serverFieldErrors)[0];
     if (firstErrorField) {
-      document
-        .getElementById(firstErrorField)
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      const errorTabMap: Record<string, "basic" | "itinerary" | "media" | "logistics" | "extras" | "booking"> = {
+        title: "basic",
+        description: "basic",
+        location: "basic",
+        durationDays: "basic",
+        difficulty: "basic",
+        status: "basic",
+        categories: "basic",
+        minAge: "basic",
+        maxGroupSize: "basic",
+        highlights: "basic",
+        vibeTags: "basic",
+        itinerary: "itinerary",
+        maxAltitude: "itinerary",
+        trekDistance: "itinerary",
+        bestTimeToVisit: "itinerary",
+        networkConnectivity: "itinerary",
+        fitnessRequirement: "itinerary",
+        ageRange: "itinerary",
+        coverImage: "media",
+        cardImage: "media",
+        images: "media",
+        pickupPoints: "logistics",
+        dropPoints: "logistics",
+        meetingPoint: "logistics",
+        meetingTime: "logistics",
+        dropoffTime: "logistics",
+        inclusions: "extras",
+        exclusions: "extras",
+        thingsToCarry: "extras",
+        faqs: "extras",
+        cancellationPolicy: "extras",
+        basePrice: "booking",
+        capacity: "booking",
+        allowAdvancePayment: "booking",
+        advancePaymentAmount: "booking",
+        extraAmenities: "booking",
+      };
+      if (errorTabMap[firstErrorField]) {
+        setActiveTab(errorTabMap[firstErrorField]);
+      }
+      setTimeout(() => {
+        document
+          .getElementById(firstErrorField)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 50);
     }
   };
 
@@ -637,9 +694,52 @@ export default function ExperienceForm({
       setIsSubmitting(false);
 
       const firstErrorField = Object.keys(newFieldErrors)[0];
-      document
-        .getElementById(firstErrorField)
-        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      const errorTabMap: Record<string, "basic" | "itinerary" | "media" | "logistics" | "extras" | "booking"> = {
+        title: "basic",
+        description: "basic",
+        location: "basic",
+        durationDays: "basic",
+        difficulty: "basic",
+        status: "basic",
+        categories: "basic",
+        minAge: "basic",
+        maxGroupSize: "basic",
+        highlights: "basic",
+        vibeTags: "basic",
+        itinerary: "itinerary",
+        maxAltitude: "itinerary",
+        trekDistance: "itinerary",
+        bestTimeToVisit: "itinerary",
+        networkConnectivity: "itinerary",
+        fitnessRequirement: "itinerary",
+        ageRange: "itinerary",
+        coverImage: "media",
+        cardImage: "media",
+        images: "media",
+        pickupPoints: "logistics",
+        dropPoints: "logistics",
+        meetingPoint: "logistics",
+        meetingTime: "logistics",
+        dropoffTime: "logistics",
+        inclusions: "extras",
+        exclusions: "extras",
+        thingsToCarry: "extras",
+        faqs: "extras",
+        cancellationPolicy: "extras",
+        basePrice: "booking",
+        capacity: "booking",
+        allowAdvancePayment: "booking",
+        advancePaymentAmount: "booking",
+        extraAmenities: "booking",
+      };
+      if (firstErrorField && errorTabMap[firstErrorField]) {
+        setActiveTab(errorTabMap[firstErrorField]);
+      }
+      setTimeout(() => {
+        document
+          .getElementById(firstErrorField)
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 50);
       return;
     }
 
@@ -1096,7 +1196,7 @@ export default function ExperienceForm({
     <form
       onSubmit={handleSubmit}
       aria-label="Experience Form"
-      className="max-w-4xl pb-24"
+      className="max-w-7xl mx-auto pb-24 w-full"
     >
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
@@ -1215,558 +1315,202 @@ export default function ExperienceForm({
       </div>
 
       {error && (
-        <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 font-medium">
+        <div className="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 font-semibold text-sm">
           {error}
         </div>
       )}
 
+      {/* Horizontal Premium Tabs Bar */}
+      <div className="mb-8 border border-border/80 bg-card/50 backdrop-blur-sm rounded-2xl p-2 flex flex-wrap gap-1 shadow-md">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold transition-all duration-200 cursor-pointer ${
+                isActive
+                  ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 scale-105"
+                  : "text-foreground/60 hover:text-foreground hover:bg-foreground/5 hover:scale-102"
+              }`}
+            >
+              <Icon className={`w-4 h-4 transition-transform duration-200 ${isActive ? "scale-110" : ""}`} />
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Grid Layout for Sections */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* Main Content (Left Column) */}
-        <div className="md:col-span-2 space-y-6">
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-            <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
-              Basic Info
-            </h2>
-            <div>
-              <label
-                htmlFor="title"
-                className={`block text-sm font-medium mb-1 transition-colors ${fieldErrors.title ? "text-red-500" : "text-foreground/80"}`}
-              >
-                Title <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="title"
-                type="text"
-                value={title}
-                onChange={(e) => {
-                  setTitle(e.target.value);
-                  if (fieldErrors.title) setFieldErrors(p => ({ ...p, title: "" }));
-                }}
-                className={`w-full bg-background border rounded-xl px-4 py-2.5 text-foreground focus:outline-none transition-all ${
-                  fieldErrors.title 
-                    ? "border-red-500 bg-red-500/5 focus:ring-2 focus:ring-red-500/20" 
-                    : "border-border focus:border-primary/50"
-                }`}
-                placeholder="e.g. Everest Base Camp Trek"
-              />
-              {fieldErrors.title && (
-                <p className="mt-1.5 text-xs font-bold text-red-500 flex items-center gap-1 animate-in fade-in slide-in-from-top-1">
-                  <AlertCircle className="w-3 h-3" /> {fieldErrors.title}
-                </p>
-              )}
-            </div>
-            <div>
-              <label
-                htmlFor="desc"
-                className="block text-sm font-medium text-foreground/80 mb-1"
-              >
-                Description
-              </label>
-              <TiptapEditor
-                content={description}
-                onChange={setDescription}
-                placeholder="Describe the experience..."
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+        <div className={`${["media", "extras", "logistics"].includes(activeTab) ? "md:col-span-3" : "md:col-span-2"} space-y-6`}>
+          
+          {/* TAB 1: BASIC INFO */}
+          {activeTab === "basic" && (
+            <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+              <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
+                Basic Info
+              </h2>
               <div>
                 <label
-                  htmlFor="loc"
-                  className="block text-sm font-medium text-foreground/80 mb-1"
+                  htmlFor="title"
+                  className={`block text-sm font-medium mb-1 transition-colors ${fieldErrors.title ? "text-red-500" : "text-foreground/80"}`}
                 >
-                  Location <span className="text-red-500">*</span>
+                  Title <span className="text-red-500">*</span>
                 </label>
                 <input
-                  id="loc"
+                  id="title"
                   type="text"
-                  value={location}
-                  onChange={(e) => setLocation(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
-                  placeholder="e.g. Nepal"
+                  value={title}
+                  onChange={(e) => {
+                    setTitle(e.target.value);
+                    if (fieldErrors.title) setFieldErrors(p => ({ ...p, title: "" }));
+                  }}
+                  className={`w-full bg-background border rounded-xl px-4 py-2.5 text-foreground focus:outline-none transition-all ${
+                    fieldErrors.title 
+                      ? "border-red-500 bg-red-500/5 focus:ring-2 focus:ring-red-500/20" 
+                      : "border-border focus:border-primary/50"
+                  }`}
+                  placeholder="e.g. Everest Base Camp Trek"
                 />
+                {fieldErrors.title && (
+                  <p className="mt-1.5 text-xs font-bold text-red-500 flex items-center gap-1 animate-in fade-in slide-in-from-top-1">
+                    <AlertCircle className="w-3 h-3" /> {fieldErrors.title}
+                  </p>
+                )}
               </div>
               <div>
                 <label
-                  htmlFor="dur"
+                  htmlFor="desc"
                   className="block text-sm font-medium text-foreground/80 mb-1"
                 >
-                  Duration (Days) <span className="text-red-500">*</span>
+                  Description
                 </label>
-                <input
-                  id="dur"
-                  type="number"
-                  min="1"
-                  required
-                  value={durationDays}
-                  onChange={(e) => setDurationDays(Number(e.target.value))}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
+                <TiptapEditor
+                  content={description}
+                  onChange={setDescription}
+                  placeholder="Describe the experience..."
                 />
               </div>
-            </div>
-          </div>
-
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-            <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
-              Itinerary Builder
-            </h2>
-            {itinerary.map((day, ix) => (
-              <div
-                key={day._id || `itinerary-${ix}`}
-                className="bg-background border border-border rounded-xl p-4 flex gap-4"
-              >
-                <div className="text-foreground/50 pt-2 cursor-grab">
-                  <GripVertical className="w-5 h-5" />
-                </div>
-                <div className="flex-1 space-y-3">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label
+                    htmlFor="loc"
+                    className="block text-sm font-medium text-foreground/80 mb-1"
+                  >
+                    Location <span className="text-red-500">*</span>
+                  </label>
                   <input
+                    id="loc"
                     type="text"
-                    value={day.title}
-                    onChange={(e) =>
-                      handleItineraryChange(ix, "title", e.target.value)
-                    }
-                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:border-primary/50 font-bold"
-                    placeholder={`Day ${ix + 1} Title (e.g. Arrival in Kathmandu)`}
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
+                    placeholder="e.g. Nepal"
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="dur"
+                    className="block text-sm font-medium text-foreground/80 mb-1"
+                  >
+                    Duration (Days) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="dur"
+                    type="number"
+                    min="1"
                     required
+                    value={durationDays}
+                    onChange={(e) => setDurationDays(Number(e.target.value))}
+                    className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
                   />
-                  <TiptapEditor
-                    content={day.description}
-                    onChange={(val) =>
-                      handleItineraryChange(ix, "description", val)
-                    }
-                    placeholder="Day description..."
-                  />
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-border/50">
-                    <div>
-                      <span className="block text-xs font-semibold text-foreground/60 mb-2">
-                        Meals Included
-                      </span>
-                      <MealButtons
-                        meals={Array.isArray(day.meals) ? day.meals : []}
-                        onToggle={(meal) => {
-                          const currentMeals = Array.isArray(day.meals)
-                            ? day.meals
-                            : [];
-                          const nextMeals = currentMeals.includes(meal)
-                            ? currentMeals.filter((m) => m !== meal)
-                            : [...currentMeals, meal];
-                          handleItineraryChange(ix, "meals", nextMeals);
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <label
-                        htmlFor={`accommodation-${ix}`}
-                        className="block text-xs font-semibold text-foreground/60 mb-2"
-                      >
-                        Accommodation (Optional)
-                      </label>
-                      <input
-                        id={`accommodation-${ix}`}
-                        type="text"
-                        value={day.accommodation || ""}
-                        onChange={(e) =>
-                          handleItineraryChange(
-                            ix,
-                            "accommodation",
-                            e.target.value,
-                          )
-                        }
-                        className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:border-primary/50"
-                        placeholder="e.g. Alpine Tent"
-                      />
-                    </div>
-                  </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => removeItineraryDay(ix)}
-                  className="text-foreground/50 hover:text-red-500 transition-colors p-2 h-fit"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
               </div>
-            ))}
-            <button
-              type="button"
-              onClick={addItineraryDay}
-              className="w-full py-3 border-2 border-dashed border-border rounded-xl text-foreground/60 hover:text-foreground hover:border-foreground/30 transition-colors flex items-center justify-center gap-2 font-medium"
-            >
-              <Plus className="w-4 h-4" /> Add Day
-            </button>
-          </div>
-
-          <div className={`bg-card border rounded-2xl p-6 space-y-4 transition-all ${fieldErrors.coverImage ? "border-red-500 bg-red-500/5 ring-1 ring-red-500/20" : "border-border"}`}>
-            <h2 className={`text-xl font-bold border-b pb-2 flex items-center justify-between ${fieldErrors.coverImage ? "text-red-500 border-red-500/20" : "text-foreground border-border"}`}>
-              Trip Cover Image <span className="text-red-500">*</span>
-              {fieldErrors.coverImage && (
-                 <span className="text-xs font-black uppercase tracking-tighter bg-red-500 text-white px-2 py-0.5 rounded">Required</span>
-              )}
-            </h2>
-            <p className="text-sm text-foreground/60 pb-2">
-              The main hero banner at the top of the trip page.
-            </p>
-            <MediaUploader
-              id="cover-image-upload"
-              shouldCrop={true}
-              aspectRatio={ASPECT_RATIOS.EXPERIENCE_COVER}
-              onUploadSuccess={(urls) => {
-                if (urls && urls.length > 0) setCoverImage(urls[0]);
-              }}
-            />
-            {coverImage && (
-              <div className="flex gap-2 items-center bg-background border border-border rounded-lg px-3 py-2 mt-2">
-                <ImageIcon className="w-4 h-4 text-primary" />
-                <input
-                  type="url"
-                  value={coverImage}
-                  onChange={(e) => setCoverImage(e.target.value)}
-                  className="w-full bg-transparent text-sm text-foreground focus:outline-none"
-                  placeholder="https://example.com/cover.jpg"
-                />
-                <button
-                  type="button"
-                  onClick={() => setCoverImage("")}
-                  className="p-1 text-foreground/50 hover:text-red-500 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-            <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
-              Trip Card Image
-            </h2>
-            <p className="text-sm text-foreground/60 pb-2">
-              The square/portrait thumbnail shown on the homepage and catalog.
-            </p>
-            <MediaUploader
-              id="card-image-upload"
-              shouldCrop={true}
-              aspectRatio={ASPECT_RATIOS.EXPERIENCE_CARD}
-              onUploadSuccess={(urls) => {
-                if (urls && urls.length > 0) setCardImage(urls[0]);
-              }}
-            />
-            {cardImage && (
-              <div className="flex gap-2 items-center bg-background border border-border rounded-lg px-3 py-2 mt-2">
-                <ImageIcon className="w-4 h-4 text-primary" />
-                <input
-                  type="url"
-                  value={cardImage}
-                  onChange={(e) => setCardImage(e.target.value)}
-                  className="w-full bg-transparent text-sm text-foreground focus:outline-none"
-                  placeholder="https://example.com/card.jpg"
-                />
-                <button
-                  type="button"
-                  onClick={() => setCardImage("")}
-                  className="p-1 text-foreground/50 hover:text-red-500 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-            <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
-              Gallery Images
-            </h2>
-            <p className="text-sm text-foreground/60 pb-2">
-              Additional photos to display in the trip&apos;s gallery section.
-            </p>
-
-            <MediaUploader
-              id="gallery-images-upload"
-              shouldCrop={true}
-              aspectRatio={ASPECT_RATIOS.GALLERY_IMAGE}
-              onUploadSuccess={(urls) => {
-                if (urls && urls.length > 0) {
-                  setImages((prev) => [...prev, ...urls]);
-                }
-              }}
-            />
-
-            {images.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-border space-y-2">
-                <h3 className="text-sm font-medium text-foreground mb-3">
-                  Attached Media
-                </h3>
-                {images.map((url, ix) => (
-                  <div key={`${url}-${ix}`} className="flex gap-2">
-                    <div className="flex-1 flex gap-2 items-center bg-background border border-border rounded-lg px-3 py-2">
-                      <ImageIcon className="w-4 h-4 text-foreground/50" />
-                      <input
-                        type="url"
-                        value={url}
-                        onChange={(e) => updateImageUrl(ix, e.target.value)}
-                        className="w-full bg-transparent text-sm text-foreground focus:outline-none"
-                        placeholder="https://example.com/image.jpg"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeImageUrl(ix)}
-                      className="p-2 text-foreground/50 hover:text-red-500 transition-colors rounded-lg bg-background border border-border"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
-                <button
-                  type="button"
-                  onClick={addImageUrl}
-                  className="font-medium text-sm text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
-                >
-                  <Plus className="w-4 h-4" /> Add another image
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Detailed Information Sections */}
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
-            <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
-              Detailed Information
-            </h2>
-
-            {/* Inclusions */}
-            <div className="space-y-3">
-              <span className="block text-sm font-bold text-foreground/80">
-                Inclusions
-              </span>
-              {inclusions.map((item) => (
-                <div key={item.id} className="flex gap-2">
-                  <input
-                    type="text"
-                    value={item.text}
-                    onChange={(e) =>
-                      handleStringArrayChange(
-                        setInclusions,
-                        item.id,
-                        e.target.value,
-                      )
-                    }
-                    className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
-                    placeholder="e.g. All meals during the trek"
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      removeStringArrayItem(setInclusions, item.id)
-                    }
-                    className="p-2 text-foreground/50 hover:text-red-500 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => addStringArrayItem(setInclusions)}
-                className="text-xs font-medium text-primary flex items-center gap-1 hover:text-primary/80"
-              >
-                <Plus className="w-3 h-3" /> Add Inclusion
-              </button>
             </div>
+          )}
 
-            {/* Exclusions */}
-            <div className="space-y-3 border-t border-border pt-4">
-              <span className="block text-sm font-bold text-foreground/80">
-                Exclusions
-              </span>
-              {exclusions.map((item) => (
-                <div key={item.id} className="flex gap-2">
-                  <input
-                    type="text"
-                    value={item.text}
-                    onChange={(e) =>
-                      handleStringArrayChange(
-                        setExclusions,
-                        item.id,
-                        e.target.value,
-                      )
-                    }
-                    className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
-                    placeholder="e.g. Flights to basecamp"
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      removeStringArrayItem(setExclusions, item.id)
-                    }
-                    className="p-2 text-foreground/50 hover:text-red-500 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => addStringArrayItem(setExclusions)}
-                className="text-xs font-medium text-primary flex items-center gap-1 hover:text-primary/80"
-              >
-                <Plus className="w-3 h-3" /> Add Exclusion
-              </button>
-            </div>
-
-            {/* Things to Carry */}
-            <div className="space-y-3 border-t border-border pt-4">
-              <span className="block text-sm font-bold text-foreground/80">
-                Things to Carry
-              </span>
-              {thingsToCarry.map((item) => (
-                <div key={item.id} className="flex gap-2">
-                  <input
-                    type="text"
-                    value={item.text}
-                    onChange={(e) =>
-                      handleStringArrayChange(
-                        setThingsToCarry,
-                        item.id,
-                        e.target.value,
-                      )
-                    }
-                    className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
-                    placeholder="e.g. Trekking shoes"
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      removeStringArrayItem(setThingsToCarry, item.id)
-                    }
-                    className="p-2 text-foreground/50 hover:text-red-500 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => addStringArrayItem(setThingsToCarry)}
-                className="text-xs font-medium text-primary flex items-center gap-1 hover:text-primary/80"
-              >
-                <Plus className="w-3 h-3" /> Add Item
-              </button>
-            </div>
-
-            {/* Pickup Points */}
-            <div className="space-y-3 border-t border-border pt-4">
-              <span className="block text-sm font-bold text-foreground/80">
-                Pickup Locations
-              </span>
-              {pickupPoints.map((item) => (
-                <div key={item.id} className="flex gap-2">
-                  <input
-                    type="text"
-                    value={item.text}
-                    onChange={(e) =>
-                      handleStringArrayChange(
-                        setPickupPoints,
-                        item.id,
-                        e.target.value,
-                      )
-                    }
-                    className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
-                    placeholder="e.g. Bangalore"
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      removeStringArrayItem(setPickupPoints, item.id)
-                    }
-                    className="p-2 text-foreground/50 hover:text-red-500 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => addStringArrayItem(setPickupPoints)}
-                className="text-xs font-medium text-primary flex items-center gap-1 hover:text-primary/80"
-              >
-                <Plus className="w-3 h-3" /> Add Location
-              </button>
-            </div>
-
-            {/* Drop Points */}
-            <div className="space-y-3 border-t border-border pt-4">
-              <span className="block text-sm font-bold text-foreground/80">
-                Drop-off Locations
-              </span>
-              {dropPoints.map((item) => (
-                <div key={item.id} className="flex gap-2">
-                  <input
-                    type="text"
-                    value={item.text}
-                    onChange={(e) =>
-                      handleStringArrayChange(
-                        setDropPoints,
-                        item.id,
-                        e.target.value,
-                      )
-                    }
-                    className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
-                    placeholder="e.g. Bangalore"
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      removeStringArrayItem(setDropPoints, item.id)
-                    }
-                    className="p-2 text-foreground/50 hover:text-red-500 transition-colors"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => addStringArrayItem(setDropPoints)}
-                className="text-xs font-medium text-primary flex items-center gap-1 hover:text-primary/80"
-              >
-                <Plus className="w-3 h-3" /> Add Location
-              </button>
-            </div>
-
-            {/* FAQs */}
-            <div className="space-y-3 border-t border-border pt-4">
-              <span className="block text-sm font-bold text-foreground/80">
-                Frequently Asked Questions (FAQs)
-              </span>
-              {faqs.map((faq) => (
+          {/* TAB 2: ITINERARY & DETAILS */}
+          {activeTab === "itinerary" && (
+            <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+              <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
+                Itinerary Builder
+              </h2>
+              {itinerary.map((day, ix) => (
                 <div
-                  key={faq.id}
-                  className="flex gap-4 items-start bg-background border border-border rounded-xl p-3"
+                  key={day._id || `itinerary-${ix}`}
+                  className="bg-background border border-border rounded-xl p-4 flex gap-4"
                 >
-                  <div className="flex-1 space-y-2">
+                  <div className="text-foreground/50 pt-2 cursor-grab">
+                    <GripVertical className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1 space-y-3">
                     <input
                       type="text"
-                      value={faq.question}
+                      value={day.title}
                       onChange={(e) =>
-                        handleFaqChange(faq.id, "question", e.target.value)
+                        handleItineraryChange(ix, "title", e.target.value)
                       }
-                      className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50 font-medium"
-                      placeholder="Question"
+                      className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:border-primary/50 font-bold"
+                      placeholder={`Day ${ix + 1} Title (e.g. Arrival in Kathmandu)`}
+                      required
                     />
-                    <textarea
-                      value={faq.answer}
-                      rows={2}
-                      onChange={(e) =>
-                        handleFaqChange(faq.id, "answer", e.target.value)
+                    <TiptapEditor
+                      content={day.description}
+                      onChange={(val) =>
+                        handleItineraryChange(ix, "description", val)
                       }
-                      className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
-                      placeholder="Answer..."
+                      placeholder="Day description..."
                     />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-border/50">
+                      <div>
+                        <span className="block text-xs font-semibold text-foreground/60 mb-2">
+                          Meals Included
+                        </span>
+                        <MealButtons
+                          meals={Array.isArray(day.meals) ? day.meals : []}
+                          onToggle={(meal) => {
+                            const currentMeals = Array.isArray(day.meals)
+                              ? day.meals
+                              : [];
+                            const nextMeals = currentMeals.includes(meal)
+                              ? currentMeals.filter((m) => m !== meal)
+                              : [...currentMeals, meal];
+                            handleItineraryChange(ix, "meals", nextMeals);
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <label
+                          htmlFor={`accommodation-${ix}`}
+                          className="block text-xs font-semibold text-foreground/60 mb-2"
+                        >
+                          Accommodation (Optional)
+                        </label>
+                        <input
+                          id={`accommodation-${ix}`}
+                          type="text"
+                          value={day.accommodation || ""}
+                          onChange={(e) =>
+                            handleItineraryChange(
+                              ix,
+                              "accommodation",
+                              e.target.value,
+                            )
+                          }
+                          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                          placeholder="e.g. Alpine Tent"
+                        />
+                      </div>
+                    </div>
                   </div>
                   <button
                     type="button"
-                    onClick={() => removeFaq(faq.id)}
-                    className="p-2 text-foreground/50 hover:text-red-500 transition-colors h-full"
+                    onClick={() => removeItineraryDay(ix)}
+                    className="text-foreground/50 hover:text-red-500 transition-colors p-2 h-fit"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -1774,704 +1518,1178 @@ export default function ExperienceForm({
               ))}
               <button
                 type="button"
-                onClick={addFaq}
-                className="w-full py-2 border-2 border-dashed border-border rounded-lg text-foreground/60 hover:text-foreground hover:border-foreground/30 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+                onClick={addItineraryDay}
+                className="w-full py-3 border-2 border-dashed border-border rounded-xl text-foreground/60 hover:text-foreground hover:border-foreground/30 transition-colors flex items-center justify-center gap-2 font-medium"
               >
-                <Plus className="w-4 h-4" /> Add FAQ
+                <Plus className="w-4 h-4" /> Add Day
               </button>
             </div>
+          )}
 
-            {/* Cancellation Policy */}
-            <div className="pt-4 border-t border-border space-y-4">
-              <div>
-                <label
-                  htmlFor="cancelPolicyType"
-                  className="block text-sm font-bold text-foreground/80 mb-1"
-                >
-                  Cancellation Policy Template
-                </label>
-                <select
-                  id="cancelPolicyType"
-                  value={cancelPolicyType}
-                  onChange={(e) => setCancelPolicyType(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
-                >
-                  <option value="custom">Custom (No template table)</option>
-                  <option value="one_two_days">One- & Two-Days Treks/Trips Policy Table</option>
-                  <option value="multi_days">Multiple Days Treks/Trips Policy Table</option>
-                  <option value="international">International Treks/Trips Policy Table</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label
-                  htmlFor="cancelPolicy"
-                  className="block text-xs font-bold text-foreground/60 mb-1"
-                >
-                  Cancellation Policy Notes/Custom Text
-                </label>
-                <textarea
-                  id="cancelPolicy"
-                  rows={4}
-                  value={cancelPolicyText}
-                  onChange={(e) => setCancelPolicyText(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
-                  placeholder="e.g. 100% refund if cancelled 30 days prior..."
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Extra Amenities Builder */}
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
-            <div className="border-b border-border pb-2 flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-bold text-foreground">Extra Amenities & Stay Customization</h2>
-                <p className="text-sm text-foreground/60">
-                  Define optional stay sharing, transport, or gear add-ons per participant
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={addAmenityGroup}
-                className="bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
-              >
-                <Plus className="w-3.5 h-3.5" /> Add Group
-              </button>
-            </div>
-
+          {/* TAB 3: MEDIA & ASSETS */}
+          {activeTab === "media" && (
             <div className="space-y-6">
-              {extraAmenities.map((group) => (
-                <div key={group.id} className="bg-background border border-border rounded-xl p-4 space-y-4">
-                  <div className="flex gap-4 items-start justify-between">
-                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold text-foreground/60 mb-1">
-                          Group Name (e.g. Accommodation Sharing)
-                        </label>
-                        <input
-                          type="text"
-                          value={group.name}
-                          onChange={(e) => updateAmenityGroup(group.id, "name", e.target.value)}
-                          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50 font-semibold text-foreground"
-                          placeholder="e.g. Stay Sharing"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-foreground/60 mb-1">
-                          Selection Mode
-                        </label>
-                        <select
-                          value={group.type}
-                          onChange={(e) => updateAmenityGroup(group.id, "type", e.target.value)}
-                          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50 text-foreground"
-                        >
-                          <option value="SINGLE">Single-select (Radio buttons, e.g. sharing choices)</option>
-                          <option value="MULTI">Multi-select (Checkboxes, e.g. gear rentals)</option>
-                        </select>
-                      </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className={`bg-card border rounded-2xl p-6 space-y-4 transition-all ${fieldErrors.coverImage ? "border-red-500 bg-red-500/5 ring-1 ring-red-500/20" : "border-border"}`}>
+                  <h2 className={`text-xl font-bold border-b pb-2 flex items-center justify-between ${fieldErrors.coverImage ? "text-red-500 border-red-500/20" : "text-foreground border-border"}`}>
+                    Trip Cover Image <span className="text-red-500">*</span>
+                    {fieldErrors.coverImage && (
+                       <span className="text-xs font-black uppercase tracking-tighter bg-red-500 text-white px-2 py-0.5 rounded">Required</span>
+                    )}
+                  </h2>
+                  <p className="text-sm text-foreground/60 pb-2">
+                    The main hero banner at the top of the trip page.
+                  </p>
+                  <MediaUploader
+                    id="cover-image-upload"
+                    shouldCrop={true}
+                    aspectRatio={ASPECT_RATIOS.EXPERIENCE_COVER}
+                    onUploadSuccess={(urls) => {
+                      if (urls && urls.length > 0) setCoverImage(urls[0]);
+                    }}
+                  />
+                  {coverImage && (
+                    <div className="flex gap-2 items-center bg-background border border-border rounded-lg px-3 py-2 mt-2">
+                      <ImageIcon className="w-4 h-4 text-primary" />
+                      <input
+                        type="url"
+                        value={coverImage}
+                        onChange={(e) => setCoverImage(e.target.value)}
+                        className="w-full bg-transparent text-sm text-foreground focus:outline-none"
+                        placeholder="https://example.com/cover.jpg"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setCoverImage("")}
+                        className="p-1 text-foreground/50 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => removeAmenityGroup(group.id)}
-                      className="p-2 text-foreground/40 hover:text-red-500 transition-colors mt-5"
-                      title="Remove Group"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
+                  )}
+                </div>
 
-                  {/* Options List */}
-                  <div className="pl-4 border-l-2 border-primary/20 space-y-3">
-                    <span className="block text-xs font-bold text-foreground/50">Options & Prices</span>
-                    {group.options.map((option) => (
-                      <div key={option.id} className="flex gap-3 items-center">
-                        <input
-                          type="text"
-                          value={option.name}
-                          onChange={(e) => updateAmenityOption(group.id, option.id, "name", e.target.value)}
-                          className="flex-1 bg-background border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-primary/50 text-foreground"
-                          placeholder="e.g. Triple Sharing"
-                          required
-                        />
-                        <div className="w-32 relative">
-                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-foreground/50">₹</span>
+                <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+                  <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
+                    Trip Card Image
+                  </h2>
+                  <p className="text-sm text-foreground/60 pb-2">
+                    The square/portrait thumbnail shown on the homepage and catalog.
+                  </p>
+                  <MediaUploader
+                    id="card-image-upload"
+                    shouldCrop={true}
+                    aspectRatio={ASPECT_RATIOS.EXPERIENCE_CARD}
+                    onUploadSuccess={(urls) => {
+                      if (urls && urls.length > 0) setCardImage(urls[0]);
+                    }}
+                  />
+                  {cardImage && (
+                    <div className="flex gap-2 items-center bg-background border border-border rounded-lg px-3 py-2 mt-2">
+                      <ImageIcon className="w-4 h-4 text-primary" />
+                      <input
+                        type="url"
+                        value={cardImage}
+                        onChange={(e) => setCardImage(e.target.value)}
+                        className="w-full bg-transparent text-sm text-foreground focus:outline-none"
+                        placeholder="https://example.com/card.jpg"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setCardImage("")}
+                        className="p-1 text-foreground/50 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+                <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
+                  Gallery Images
+                </h2>
+                <p className="text-sm text-foreground/60 pb-2">
+                  Additional photos to display in the trip&apos;s gallery section.
+                </p>
+                <MediaUploader
+                  id="gallery-images-upload"
+                  shouldCrop={true}
+                  aspectRatio={ASPECT_RATIOS.GALLERY_IMAGE}
+                  onUploadSuccess={(urls) => {
+                    if (urls && urls.length > 0) {
+                      setImages((prev) => [...prev, ...urls]);
+                    }
+                  }}
+                />
+                {images.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-border space-y-2">
+                    <h3 className="text-sm font-medium text-foreground mb-3">
+                      Attached Media
+                    </h3>
+                    {images.map((url, ix) => (
+                      <div key={`${url}-${ix}`} className="flex gap-2">
+                        <div className="flex-1 flex gap-2 items-center bg-background border border-border rounded-lg px-3 py-2">
+                          <ImageIcon className="w-4 h-4 text-foreground/50" />
                           <input
-                            type="number"
-                            min="0"
-                            value={option.price}
-                            onChange={(e) => updateAmenityOption(group.id, option.id, "price", Number(e.target.value))}
-                            className="w-full bg-background border border-border rounded-lg pl-6 pr-3 py-1.5 text-sm focus:outline-none focus:border-primary/50 text-foreground font-semibold"
-                            placeholder="0"
-                            required
+                            type="url"
+                            value={url}
+                            onChange={(e) => updateImageUrl(ix, e.target.value)}
+                            className="w-full bg-transparent text-sm text-foreground focus:outline-none"
+                            placeholder="https://example.com/image.jpg"
                           />
                         </div>
                         <button
                           type="button"
-                          onClick={() => removeAmenityOption(group.id, option.id)}
-                          className="text-foreground/40 hover:text-red-500 transition-colors p-1.5"
-                          title="Remove Option"
+                          onClick={() => removeImageUrl(ix)}
+                          className="p-2 text-foreground/50 hover:text-red-500 transition-colors rounded-lg bg-background border border-border"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
                     ))}
                     <button
                       type="button"
-                      onClick={() => addAmenityOption(group.id)}
-                      className="text-xs font-bold text-primary flex items-center gap-1 hover:text-primary/80 transition-colors"
+                      onClick={addImageUrl}
+                      className="font-medium text-sm text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
                     >
-                      <Plus className="w-3 h-3" /> Add Option
+                      <Plus className="w-4 h-4" /> Add another image
                     </button>
                   </div>
-                </div>
-              ))}
-              {extraAmenities.length === 0 && (
-                <div className="text-center py-6 border-2 border-dashed border-border rounded-xl text-foreground/40 text-sm">
-                  No extra amenities defined yet. Click &apos;Add Group&apos; to set some up.
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
-        </div>
+          )}
 
-        {/* Sidebar Settings (Right Column) */}
-        <div className="space-y-6">
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-            <div className="border-b border-border pb-2">
-              <h2 className="text-xl font-bold text-foreground">
-                Trip Highlights
-              </h2>
-              <p className="text-sm text-foreground/60">
-                Punchy selling points shown at the top of the page
-              </p>
-            </div>
-            <div className="space-y-3">
-              {highlights.map((item) => (
-                <div key={item.id} className="relative group">
-                  <input
-                    type="text"
-                    value={item.text}
-                    onChange={(e) =>
-                      handleStringArrayChange(
-                        setHighlights,
-                        item.id,
-                        e.target.value,
-                      )
-                    }
-                    className="w-full bg-background border border-border rounded-xl pl-4 pr-10 py-2 text-foreground text-sm focus:outline-none focus:border-primary/50 transition-colors"
-                    placeholder="e.g. Stargazing at 14,000ft"
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      removeStringArrayItem(setHighlights, item.id)
-                    }
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center text-foreground/20 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
-                    title="Remove Highlight"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => addStringArrayItem(setHighlights)}
-                className="w-full py-2.5 border-2 border-dashed border-border rounded-xl text-foreground/60 hover:text-foreground hover:border-foreground/30 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
-              >
-                <Plus className="w-4 h-4" /> Add Highlight
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-            <div className="border-b border-border pb-2">
-              <h2 className="text-xl font-bold text-foreground">
-                Vibe Tags / Suitable For
-              </h2>
-              <p className="text-sm text-foreground/60">
-                Badges near the title (e.g. Solo-Safe, Family Friendly)
-              </p>
-            </div>
-            <div className="space-y-3">
-              {vibeTags.map((item) => (
-                <div key={item.id} className="relative group">
-                  <input
-                    type="text"
-                    value={item.text}
-                    onChange={(e) =>
-                      handleStringArrayChange(
-                        setVibeTags,
-                        item.id,
-                        e.target.value,
-                      )
-                    }
-                    className="w-full bg-background border border-border rounded-xl pl-4 pr-10 py-2 text-foreground text-sm focus:outline-none focus:border-primary/50 transition-colors"
-                    placeholder="e.g. Solo-Female Friendly"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removeStringArrayItem(setVibeTags, item.id)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center text-foreground/20 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
-                    title="Remove Vibe Tag"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => addStringArrayItem(setVibeTags)}
-                className="w-full py-2.5 border-2 border-dashed border-border rounded-xl text-foreground/60 hover:text-foreground hover:border-foreground/30 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
-              >
-                <Plus className="w-4 h-4" /> Add Vibe Tag
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-            <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
-              Group Size & Age Limits
-            </h2>
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <label
-                  htmlFor="minAge"
-                  className="block text-sm font-medium text-foreground/80 mb-1"
-                >
-                  Min Age
-                </label>
-                <input
-                  id="minAge"
-                  type="number"
-                  min="0"
-                  value={minAge}
-                  onChange={(e) => setMinAge(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
-                  placeholder="e.g. 12"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="maxGroupSize"
-                  className="block text-sm font-medium text-foreground/80 mb-1"
-                >
-                  Max Group Size (Per Booking)
-                </label>
-                <input
-                  id="maxGroupSize"
-                  type="number"
-                  min="1"
-                  value={maxGroupSize}
-                  onChange={(e) => setMaxGroupSize(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
-                  placeholder="e.g. 15"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-            <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
-              Trek Specifications & Logistics
-            </h2>
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <label
-                  htmlFor="meetingPoint"
-                  className="block text-sm font-medium text-foreground/80 mb-1"
-                >
-                  Starting Point
-                </label>
-                <input
-                  id="meetingPoint"
-                  type="text"
-                  value={meetingPoint}
-                  onChange={(e) => setMeetingPoint(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
-                  placeholder="e.g. Bangalore or Dehradun"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="meetingTime"
-                  className="block text-sm font-medium text-foreground/80 mb-1"
-                >
-                  Starting Time
-                </label>
-                <input
-                  id="meetingTime"
-                  type="text"
-                  value={meetingTime}
-                  onChange={(e) => setMeetingTime(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
-                  placeholder="e.g. 6:00 AM"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="maxAltitude"
-                  className="block text-sm font-medium text-foreground/80 mb-1"
-                >
-                  Max Altitude
-                </label>
-                <input
-                  id="maxAltitude"
-                  type="text"
-                  value={maxAltitude}
-                  onChange={(e) => setMaxAltitude(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
-                  placeholder="e.g. 14,000 ft"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="trekDistance"
-                  className="block text-sm font-medium text-foreground/80 mb-1"
-                >
-                  Total Distance (Both Ways)
-                </label>
-                <input
-                  id="trekDistance"
-                  type="text"
-                  value={trekDistance}
-                  onChange={(e) => setTrekDistance(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
-                  placeholder="e.g. 45 km"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="dropoffTime"
-                  className="block text-sm font-medium text-foreground/80 mb-1"
-                >
-                  Drop-off Time
-                </label>
-                <input
-                  id="dropoffTime"
-                  type="text"
-                  value={dropoffTime}
-                  onChange={(e) => setDropoffTime(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
-                  placeholder="e.g. 8:00 PM (Day 6)"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="bestTimeToVisit"
-                  className="block text-sm font-medium text-foreground/80 mb-1"
-                >
-                  Best Season
-                </label>
-                <input
-                  id="bestTimeToVisit"
-                  type="text"
-                  value={bestTimeToVisit}
-                  onChange={(e) => setBestTimeToVisit(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
-                  placeholder="e.g. Sep - Nov"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="networkConnectivity"
-                  className="block text-sm font-medium text-foreground/80 mb-1"
-                >
-                  Network Connectivity
-                </label>
-                <input
-                  id="networkConnectivity"
-                  type="text"
-                  value={networkConnectivity}
-                  onChange={(e) => setNetworkConnectivity(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
-                  placeholder="e.g. Jio/Airtel till basecamp"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="fitnessRequirement"
-                  className="block text-sm font-medium text-foreground/80 mb-1"
-                >
-                  Fitness Requirement
-                </label>
-                <input
-                  id="fitnessRequirement"
-                  type="text"
-                  value={fitnessRequirement}
-                  onChange={(e) => setFitnessRequirement(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
-                  placeholder="e.g. Jog 5km in 35m"
-                />
-              </div>
-              <div>
-                <label
-                  htmlFor="ageRange"
-                  className="block text-sm font-medium text-foreground/80 mb-1"
-                >
-                  Age Range
-                </label>
-                <input
-                  id="ageRange"
-                  type="text"
-                  value={ageRange}
-                  onChange={(e) => setAgeRange(e.target.value)}
-                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
-                  placeholder="e.g. 12-60 Years"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-            <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
-              Pricing & Logistics
-            </h2>
-            <div>
-              <label
-                htmlFor="price"
-                className={`block text-sm font-medium mb-1 transition-colors ${fieldErrors.basePrice ? "text-red-500" : "text-foreground/80"}`}
-              >
-                Base Price (₹) <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="price"
-                type="number"
-                min="0"
-                value={basePrice}
-                onChange={(e) => {
-                  setBasePrice(Number(e.target.value));
-                  if (fieldErrors.basePrice) setFieldErrors(p => ({ ...p, basePrice: "" }));
-                }}
-                className={`w-full bg-background border rounded-xl px-4 py-2.5 text-foreground focus:outline-none transition-all text-xl font-semibold mb-2 ${
-                  fieldErrors.basePrice 
-                    ? "border-red-500 bg-red-500/5 focus:ring-1 focus:ring-red-500/20" 
-                    : "border-border focus:border-primary/50"
-                }`}
-              />
-              {fieldErrors.basePrice && (
-                <p className="mb-2 text-xs font-bold text-red-500 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" /> {fieldErrors.basePrice}
-                </p>
-              )}
-              {basePrice > 0 && (
-                <div className="bg-primary/5 rounded-lg p-3 text-xs text-foreground/80 border border-primary/20 space-y-1">
-                  <div className="flex items-center gap-1.5 font-bold text-primary mb-1">
-                    <Info className="w-3.5 h-3.5" />
-                    <span>Live Price Breakdown (per seat)</span>
-                  </div>
-                  <div className="flex justify-between text-foreground/80">
-                    <span>Base Price:</span>
-                    <span>₹{basePrice.toFixed(2)}</span>
-                  </div>
-                  {taxes.map((tax) => {
-                    const amount = (basePrice * tax.percentage) / 100;
-                    return (
-                      <div
-                        key={tax.id}
-                        className="flex justify-between text-foreground/60"
-                      >
-                        <span>
-                          {tax.name} ({tax.percentage}%):
-                        </span>
-                        <span>+ ₹{amount.toFixed(2)}</span>
-                      </div>
-                    );
-                  })}
-                  <div className="flex justify-between font-bold pt-1 border-t border-primary/10 mt-1 text-green-500">
-                    <span>Total Price (Customer Pays):</span>
-                    <span>
-                      ₹
-                      {(
-                        basePrice +
-                        taxes.reduce(
-                          (acc, tax) =>
-                            acc + (basePrice * tax.percentage) / 100,
-                          0,
-                        )
-                      ).toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Advance Booking Settings */}
-            <div className="border-t border-border pt-4 mt-2 space-y-4">
-              <label
-                htmlFor="allowAdvancePayment"
-                className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-border hover:bg-foreground/5 transition-colors"
-                aria-labelledby="advance-pay-label"
-              >
-                <input
-                  id="allowAdvancePayment"
-                  type="checkbox"
-                  checked={allowAdvancePayment}
-                  onChange={(e) => setAllowAdvancePayment(e.target.checked)}
-                  className="w-5 h-5 rounded border-border text-primary focus:ring-primary focus:ring-offset-background bg-background"
-                />
-                <div id="advance-pay-label">
-                  <span className="block text-sm font-medium text-foreground">
-                    Allow Advance Payment
-                  </span>
-                  <span className="block text-xs text-foreground/60">
-                    Allow users to book by paying a partial amount
-                  </span>
-                </div>
-              </label>
-
-              {allowAdvancePayment && (
-                <div className="animate-in fade-in slide-in-from-top-2 duration-200">
-                  <label
-                    htmlFor="advancePaymentAmount"
-                    className="block text-xs font-bold text-foreground/80 mb-1"
-                  >
-                    Advance Amount (₹, per seat)
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-foreground/50">₹</span>
+          {/* TAB 4: LOGISTICS & LOCATIONS */}
+          {activeTab === "logistics" && (
+            <div className="space-y-6">
+              {/* Timing & Core Settings */}
+              <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+                <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
+                  Timing & Logistics
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div>
+                    <label
+                      htmlFor="meetingPoint"
+                      className="block text-sm font-medium text-foreground/80 mb-1"
+                    >
+                      Starting Point
+                    </label>
                     <input
-                      id="advancePaymentAmount"
-                      type="number"
-                      min="0"
-                      value={advancePaymentAmount}
-                      onChange={(e) => setAdvancePaymentAmount(e.target.value)}
-                      className="w-full bg-background border border-border rounded-xl pl-8 pr-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50 font-semibold"
-                      placeholder="e.g. 2000"
+                      id="meetingPoint"
+                      type="text"
+                      value={meetingPoint}
+                      onChange={(e) => setMeetingPoint(e.target.value)}
+                      className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                      placeholder="e.g. Bangalore"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="meetingTime"
+                      className="block text-sm font-medium text-foreground/80 mb-1"
+                    >
+                      Starting Time
+                    </label>
+                    <input
+                      id="meetingTime"
+                      type="text"
+                      value={meetingTime}
+                      onChange={(e) => setMeetingTime(e.target.value)}
+                      className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                      placeholder="e.g. 6:00 AM"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="dropoffTime"
+                      className="block text-sm font-medium text-foreground/80 mb-1"
+                    >
+                      Drop-off Time
+                    </label>
+                    <input
+                      id="dropoffTime"
+                      type="text"
+                      value={dropoffTime}
+                      onChange={(e) => setDropoffTime(e.target.value)}
+                      className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                      placeholder="e.g. 8:00 PM"
                     />
                   </div>
                 </div>
-              )}
-            </div>
-            <div>
-              <label
-                htmlFor="cap"
-                className={`block text-sm font-medium mb-1 transition-colors ${fieldErrors.capacity ? "text-red-500" : "text-foreground/80"}`}
-              >
-                Total Capacity <span className="text-red-500">*</span>
-              </label>
-              <input
-                id="cap"
-                type="number"
-                min="1"
-                value={capacity}
-                onChange={(e) => {
-                  setCapacity(Number(e.target.value));
-                  if (fieldErrors.capacity) setFieldErrors(p => ({ ...p, capacity: "" }));
-                }}
-                className={`w-full bg-background border rounded-xl px-4 py-2.5 text-foreground focus:outline-none transition-all ${
-                  fieldErrors.capacity 
-                    ? "border-red-500 bg-red-500/5 focus:ring-1 focus:ring-red-500/20" 
-                    : "border-border focus:border-primary/50"
-                }`}
-              />
-              {fieldErrors.capacity && (
-                <p className="mt-1.5 text-xs font-bold text-red-500 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" /> {fieldErrors.capacity}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-            <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
-              Publishing
-            </h2>
-
-            <div>
-              <label
-                htmlFor="status"
-                className="block text-sm font-medium text-foreground/80 mb-1"
-              >
-                Status
-              </label>
-              <select
-                id="status"
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
-              >
-                <option value="DRAFT">Draft — Hidden</option>
-                <option value="PUBLISHED">Published — Public</option>
-                <option value="ARCHIVED">
-                  Archived — Hidden, not accepting bookings
-                </option>
-              </select>
-            </div>
-
-            <div>
-              <label
-                htmlFor="difficulty"
-                className="block text-sm font-medium text-foreground/80 mb-1"
-              >
-                Difficulty
-              </label>
-              <select
-                id="difficulty"
-                value={difficulty}
-                onChange={(e) => setDifficulty(e.target.value)}
-                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
-              >
-                <option value="EASY">Easy</option>
-                <option value="MODERATE">Moderate</option>
-                <option value="HARD">Hard</option>
-                <option value="EXTREME">Extreme</option>
-              </select>
-            </div>
-
-            <label
-              htmlFor="featured"
-              className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-border hover:bg-foreground/5 transition-colors"
-              aria-labelledby="featured-label"
-            >
-              <input
-                id="featured"
-                type="checkbox"
-                checked={isFeatured}
-                onChange={(e) => setIsFeatured(e.target.checked)}
-                className="w-5 h-5 rounded border-border text-primary focus:ring-primary focus:ring-offset-background bg-background"
-              />
-              <div id="featured-label">
-                <span className="block text-sm font-medium text-foreground">
-                  Featured Trip
-                </span>
-                <span className="block text-xs text-foreground/60">
-                  Show strictly on the homepage banner
-                </span>
               </div>
-            </label>
-          </div>
 
-          <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
-            <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
-              Categories
-            </h2>
-            <div className="space-y-2 max-h-64 overflow-y-auto no-scrollbar">
-              {categories.map((cat) => (
-                <label
-                  key={cat.id}
-                  className="flex items-center gap-3 cursor-pointer group"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedCategories.includes(cat.id)}
-                    onChange={() => toggleCategory(cat.id)}
-                    className="w-4 h-4 rounded border-border text-primary focus:ring-primary focus:ring-offset-background bg-background"
-                  />
-                  <span className="text-sm text-foreground/80 group-hover:text-foreground transition-colors">
-                    {cat.name}
-                  </span>
-                </label>
-              ))}
-              {categories.length === 0 && (
-                <span className="text-sm text-foreground/50">
-                  No categories found.
-                </span>
-              )}
+              {/* Pickup & Drop Points side-by-side */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Pickup Points */}
+                <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
+                  <h3 className="text-lg font-bold text-foreground border-b border-border pb-2">
+                    Pickup Locations
+                  </h3>
+                  <div className="space-y-3">
+                    {pickupPoints.map((item) => (
+                      <div key={item.id} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={item.text}
+                          onChange={(e) =>
+                            handleStringArrayChange(
+                              setPickupPoints,
+                              item.id,
+                              e.target.value,
+                            )
+                          }
+                          className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
+                          placeholder="e.g. Bangalore"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            removeStringArrayItem(setPickupPoints, item.id)
+                          }
+                          className="p-2 text-foreground/50 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => addStringArrayItem(setPickupPoints)}
+                      className="text-xs font-medium text-primary flex items-center gap-1 hover:text-primary/80"
+                    >
+                      <Plus className="w-3 h-3" /> Add Location
+                    </button>
+                  </div>
+                </div>
+
+                {/* Drop Points */}
+                <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
+                  <h3 className="text-lg font-bold text-foreground border-b border-border pb-2">
+                    Drop-off Locations
+                  </h3>
+                  <div className="space-y-3">
+                    {dropPoints.map((item) => (
+                      <div key={item.id} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={item.text}
+                          onChange={(e) =>
+                            handleStringArrayChange(
+                              setDropPoints,
+                              item.id,
+                              e.target.value,
+                            )
+                          }
+                          className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
+                          placeholder="e.g. Bangalore"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            removeStringArrayItem(setDropPoints, item.id)
+                          }
+                          className="p-2 text-foreground/50 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => addStringArrayItem(setDropPoints)}
+                      className="text-xs font-medium text-primary flex items-center gap-1 hover:text-primary/80"
+                    >
+                      <Plus className="w-3 h-3" /> Add Location
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* TAB 5: RULES & EXTRAS */}
+          {activeTab === "extras" && (
+            <div className="space-y-6">
+              {/* Row 1: Inclusions & Exclusions */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Inclusions */}
+                <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
+                  <h3 className="text-lg font-bold text-foreground border-b border-border pb-2">
+                    Inclusions
+                  </h3>
+                  <div className="space-y-3">
+                    {inclusions.map((item) => (
+                      <div key={item.id} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={item.text}
+                          onChange={(e) =>
+                            handleStringArrayChange(
+                              setInclusions,
+                              item.id,
+                              e.target.value,
+                            )
+                          }
+                          className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
+                          placeholder="e.g. All meals during the trek"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            removeStringArrayItem(setInclusions, item.id)
+                          }
+                          className="p-2 text-foreground/50 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => addStringArrayItem(setInclusions)}
+                      className="text-xs font-medium text-primary flex items-center gap-1 hover:text-primary/80"
+                    >
+                      <Plus className="w-3 h-3" /> Add Inclusion
+                    </button>
+                  </div>
+                </div>
+
+                {/* Exclusions */}
+                <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
+                  <h3 className="text-lg font-bold text-foreground border-b border-border pb-2">
+                    Exclusions
+                  </h3>
+                  <div className="space-y-3">
+                    {exclusions.map((item) => (
+                      <div key={item.id} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={item.text}
+                          onChange={(e) =>
+                            handleStringArrayChange(
+                              setExclusions,
+                              item.id,
+                              e.target.value,
+                            )
+                          }
+                          className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
+                          placeholder="e.g. Flights to basecamp"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            removeStringArrayItem(setExclusions, item.id)
+                          }
+                          className="p-2 text-foreground/50 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => addStringArrayItem(setExclusions)}
+                      className="text-xs font-medium text-primary flex items-center gap-1 hover:text-primary/80"
+                    >
+                      <Plus className="w-3 h-3" /> Add Exclusion
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 2: Things to Carry & Cancellation Policy */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Things to Carry */}
+                <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
+                  <h3 className="text-lg font-bold text-foreground border-b border-border pb-2">
+                    Things to Carry
+                  </h3>
+                  <div className="space-y-3">
+                    {thingsToCarry.map((item) => (
+                      <div key={item.id} className="flex gap-2">
+                        <input
+                          type="text"
+                          value={item.text}
+                          onChange={(e) =>
+                            handleStringArrayChange(
+                              setThingsToCarry,
+                              item.id,
+                              e.target.value,
+                            )
+                          }
+                          className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
+                          placeholder="e.g. Trekking shoes"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            removeStringArrayItem(setThingsToCarry, item.id)
+                          }
+                          className="p-2 text-foreground/50 hover:text-red-500 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => addStringArrayItem(setThingsToCarry)}
+                      className="text-xs font-medium text-primary flex items-center gap-1 hover:text-primary/80"
+                    >
+                      <Plus className="w-3 h-3" /> Add Item
+                    </button>
+                  </div>
+                </div>
+
+                {/* Cancellation Policy */}
+                <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+                  <h3 className="text-lg font-bold text-foreground border-b border-border pb-2">
+                    Cancellation Policy
+                  </h3>
+                  <div>
+                    <label
+                      htmlFor="cancelPolicyType"
+                      className="block text-sm font-bold text-foreground/80 mb-1"
+                    >
+                      Cancellation Policy Template
+                    </label>
+                    <select
+                      id="cancelPolicyType"
+                      value={cancelPolicyType}
+                      onChange={(e) => setCancelPolicyType(e.target.value)}
+                      className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                    >
+                      <option value="custom">Custom (No template table)</option>
+                      <option value="one_two_days">One- & Two-Days Treks/Trips Policy Table</option>
+                      <option value="multi_days">Multiple Days Treks/Trips Policy Table</option>
+                      <option value="international">International Treks/Trips Policy Table</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label
+                      htmlFor="cancelPolicy"
+                      className="block text-xs font-bold text-foreground/60 mb-1"
+                    >
+                      Cancellation Policy Notes/Custom Text
+                    </label>
+                    <textarea
+                      id="cancelPolicy"
+                      rows={4}
+                      value={cancelPolicyText}
+                      onChange={(e) => setCancelPolicyText(e.target.value)}
+                      className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                      placeholder="e.g. 100% refund if cancelled 30 days prior..."
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Row 3: FAQs */}
+              <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
+                <h3 className="text-lg font-bold text-foreground border-b border-border pb-2">
+                  Frequently Asked Questions (FAQs)
+                </h3>
+                <div className="space-y-3">
+                  {faqs.map((faq) => (
+                    <div
+                      key={faq.id}
+                      className="flex gap-4 items-start bg-background border border-border rounded-xl p-3"
+                    >
+                      <div className="flex-1 space-y-2">
+                        <input
+                          type="text"
+                          value={faq.question}
+                          onChange={(e) =>
+                            handleFaqChange(faq.id, "question", e.target.value)
+                          }
+                          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50 font-medium"
+                          placeholder="Question"
+                        />
+                        <textarea
+                          value={faq.answer}
+                          rows={2}
+                          onChange={(e) =>
+                            handleFaqChange(faq.id, "answer", e.target.value)
+                          }
+                          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50"
+                          placeholder="Answer..."
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeFaq(faq.id)}
+                        className="p-2 text-foreground/50 hover:text-red-500 transition-colors h-full"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={addFaq}
+                    className="w-full py-2 border-2 border-dashed border-border rounded-lg text-foreground/60 hover:text-foreground hover:border-foreground/30 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+                  >
+                    <Plus className="w-4 h-4" /> Add FAQ
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 6: BOOKING & AMENITIES */}
+          {activeTab === "booking" && (
+            <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
+              <div className="border-b border-border pb-2 flex justify-between items-center">
+                <div>
+                  <h2 className="text-xl font-bold text-foreground">Extra Amenities & Stay Customization</h2>
+                  <p className="text-sm text-foreground/60">
+                    Define optional stay sharing, transport, or gear add-ons per participant
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={addAmenityGroup}
+                  className="bg-primary/10 text-primary hover:bg-primary/20 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add Group
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                {extraAmenities.map((group) => (
+                  <div key={group.id} className="bg-background border border-border rounded-xl p-4 space-y-4">
+                    <div className="flex gap-4 items-start justify-between">
+                      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-bold text-foreground/60 mb-1">
+                            Group Name (e.g. Accommodation Sharing)
+                          </label>
+                          <input
+                            type="text"
+                            value={group.name}
+                            onChange={(e) => updateAmenityGroup(group.id, "name", e.target.value)}
+                            className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50 font-semibold text-foreground"
+                            placeholder="e.g. Stay Sharing"
+                            required
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-foreground/60 mb-1">
+                            Selection Mode
+                          </label>
+                          <select
+                            value={group.type}
+                            onChange={(e) => updateAmenityGroup(group.id, "type", e.target.value)}
+                            className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50 text-foreground"
+                          >
+                            <option value="SINGLE">Single-select (Radio buttons, e.g. sharing choices)</option>
+                            <option value="MULTI">Multi-select (Checkboxes, e.g. gear rentals)</option>
+                          </select>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeAmenityGroup(group.id)}
+                        className="p-2 text-foreground/40 hover:text-red-500 transition-colors mt-5"
+                        title="Remove Group"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Options List */}
+                    <div className="pl-4 border-l-2 border-primary/20 space-y-3">
+                      <span className="block text-xs font-bold text-foreground/50">Options & Prices</span>
+                      {group.options.map((option) => (
+                        <div key={option.id} className="flex gap-3 items-center">
+                          <input
+                            type="text"
+                            value={option.name}
+                            onChange={(e) => updateAmenityOption(group.id, option.id, "name", e.target.value)}
+                            className="flex-1 bg-background border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-primary/50 text-foreground"
+                            placeholder="e.g. Triple Sharing"
+                            required
+                          />
+                          <div className="w-32 relative">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-foreground/50">₹</span>
+                            <input
+                              type="number"
+                              min="0"
+                              value={option.price}
+                              onChange={(e) => updateAmenityOption(group.id, option.id, "price", Number(e.target.value))}
+                              className="w-full bg-background border border-border rounded-lg pl-6 pr-3 py-1.5 text-sm focus:outline-none focus:border-primary/50 text-foreground font-semibold"
+                              placeholder="0"
+                              required
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeAmenityOption(group.id, option.id)}
+                            className="text-foreground/40 hover:text-red-500 transition-colors p-1.5"
+                            title="Remove Option"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => addAmenityOption(group.id)}
+                        className="text-xs font-bold text-primary flex items-center gap-1 hover:text-primary/80 transition-colors"
+                      >
+                        <Plus className="w-3 h-3" /> Add Option
+                      </button>
+                    </div>
+                  </div>
+                ))}
+                {extraAmenities.length === 0 && (
+                  <div className="text-center py-6 border-2 border-dashed border-border rounded-xl text-foreground/40 text-sm">
+                    No extra amenities defined yet. Click &apos;Add Group&apos; to set some up.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* Sidebar Settings (Right Column, hidden for full-width tabs) */}
+        {!["media", "extras", "logistics"].includes(activeTab) && (
+          <div className="space-y-6">
+            
+            {/* TAB 1: BASIC INFO SIDEBAR */}
+            {activeTab === "basic" && (
+              <>
+                <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+                  <div className="border-b border-border pb-2">
+                    <h2 className="text-xl font-bold text-foreground">
+                      Trip Highlights
+                    </h2>
+                    <p className="text-sm text-foreground/60">
+                      Punchy selling points shown at the top of the page
+                    </p>
+                  </div>
+                  <div className="space-y-3">
+                    {highlights.map((item) => (
+                      <div key={item.id} className="relative group">
+                        <input
+                          type="text"
+                          value={item.text}
+                          onChange={(e) =>
+                            handleStringArrayChange(
+                              setHighlights,
+                              item.id,
+                              e.target.value,
+                            )
+                          }
+                          className="w-full bg-background border border-border rounded-xl pl-4 pr-10 py-2 text-foreground text-sm focus:outline-none focus:border-primary/50 transition-colors"
+                          placeholder="e.g. Stargazing at 14,000ft"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            removeStringArrayItem(setHighlights, item.id)
+                          }
+                          className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center text-foreground/20 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                          title="Remove Highlight"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => addStringArrayItem(setHighlights)}
+                      className="w-full py-2.5 border-2 border-dashed border-border rounded-xl text-foreground/60 hover:text-foreground hover:border-foreground/30 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+                    >
+                      <Plus className="w-4 h-4" /> Add Highlight
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+                  <div className="border-b border-border pb-2">
+                    <h2 className="text-xl font-bold text-foreground">
+                      Vibe Tags
+                    </h2>
+                    <p className="text-sm text-foreground/60">
+                      Badges near the title (e.g. Solo-Safe)
+                    </p>
+                  </div>
+                  <div className="space-y-3">
+                    {vibeTags.map((item) => (
+                      <div key={item.id} className="relative group">
+                        <input
+                          type="text"
+                          value={item.text}
+                          onChange={(e) =>
+                            handleStringArrayChange(
+                              setVibeTags,
+                              item.id,
+                              e.target.value,
+                            )
+                          }
+                          className="w-full bg-background border border-border rounded-xl pl-4 pr-10 py-2 text-foreground text-sm focus:outline-none focus:border-primary/50 transition-colors"
+                          placeholder="e.g. Solo-Female Friendly"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeStringArrayItem(setVibeTags, item.id)}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 flex items-center justify-center text-foreground/20 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all"
+                          title="Remove Vibe Tag"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => addStringArrayItem(setVibeTags)}
+                      className="w-full py-2.5 border-2 border-dashed border-border rounded-xl text-foreground/60 hover:text-foreground hover:border-foreground/30 transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+                    >
+                      <Plus className="w-4 h-4" /> Add Vibe Tag
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+                  <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
+                    Group & Age Limits
+                  </h2>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label
+                        htmlFor="minAge"
+                        className="block text-sm font-medium text-foreground/80 mb-1"
+                      >
+                        Min Age
+                      </label>
+                      <input
+                        id="minAge"
+                        type="number"
+                        min="0"
+                        value={minAge}
+                        onChange={(e) => setMinAge(e.target.value)}
+                        className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
+                        placeholder="e.g. 12"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="maxGroupSize"
+                        className="block text-sm font-medium text-foreground/80 mb-1"
+                      >
+                        Max Group Size (Per Booking)
+                      </label>
+                      <input
+                        id="maxGroupSize"
+                        type="number"
+                        min="1"
+                        value={maxGroupSize}
+                        onChange={(e) => setMaxGroupSize(e.target.value)}
+                        className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
+                        placeholder="e.g. 15"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+                  <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
+                    Publishing
+                  </h2>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label
+                        htmlFor="status"
+                        className="block text-sm font-medium text-foreground/80 mb-1"
+                      >
+                        Status
+                      </label>
+                      <select
+                        id="status"
+                        value={status}
+                        onChange={(e) => setStatus(e.target.value)}
+                        className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50 text-sm"
+                      >
+                        <option value="DRAFT">Draft — Hidden</option>
+                        <option value="PUBLISHED">Published — Public</option>
+                        <option value="ARCHIVED">
+                          Archived — Hidden
+                        </option>
+                      </select>
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="difficulty"
+                        className="block text-sm font-medium text-foreground/80 mb-1"
+                      >
+                        Difficulty
+                      </label>
+                      <select
+                        id="difficulty"
+                        value={difficulty}
+                        onChange={(e) => setDifficulty(e.target.value)}
+                        className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50 text-sm"
+                      >
+                        <option value="EASY">Easy</option>
+                        <option value="MODERATE">Moderate</option>
+                        <option value="HARD">Hard</option>
+                        <option value="EXTREME">Extreme</option>
+                      </select>
+                    </div>
+                  </div>
+                  <label
+                    htmlFor="featured"
+                    className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-border hover:bg-foreground/5 transition-colors"
+                    aria-labelledby="featured-label"
+                  >
+                    <input
+                      id="featured"
+                      type="checkbox"
+                      checked={isFeatured}
+                      onChange={(e) => setIsFeatured(e.target.checked)}
+                      className="w-5 h-5 rounded border-border text-primary focus:ring-primary focus:ring-offset-background bg-background"
+                    />
+                    <div id="featured-label">
+                      <span className="block text-sm font-medium text-foreground">
+                        Featured Trip
+                      </span>
+                      <span className="block text-xs text-foreground/60">
+                        Show on homepage banner
+                      </span>
+                    </div>
+                  </label>
+                </div>
+
+                <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+                  <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
+                    Categories
+                  </h2>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 max-h-64 overflow-y-auto no-scrollbar pt-1">
+                    {categories.map((cat) => (
+                      <label
+                        key={cat.id}
+                        className="flex items-center gap-2 cursor-pointer group whitespace-nowrap"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedCategories.includes(cat.id)}
+                          onChange={() => toggleCategory(cat.id)}
+                          className="w-4 h-4 rounded border-border text-primary focus:ring-primary focus:ring-offset-background bg-background"
+                        />
+                        <span className="text-sm text-foreground/80 group-hover:text-foreground transition-colors truncate">
+                          {cat.name}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* TAB 2: ITINERARY SIDEBAR */}
+            {activeTab === "itinerary" && (
+              <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+                <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
+                  Trek Specs
+                </h2>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label
+                      htmlFor="maxAltitude"
+                      className="block text-sm font-medium text-foreground/80 mb-1"
+                    >
+                      Max Altitude
+                    </label>
+                    <input
+                      id="maxAltitude"
+                      type="text"
+                      value={maxAltitude}
+                      onChange={(e) => setMaxAltitude(e.target.value)}
+                      className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                      placeholder="e.g. 14,000 ft"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="trekDistance"
+                      className="block text-sm font-medium text-foreground/80 mb-1"
+                    >
+                      Total Distance
+                    </label>
+                    <input
+                      id="trekDistance"
+                      type="text"
+                      value={trekDistance}
+                      onChange={(e) => setTrekDistance(e.target.value)}
+                      className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                      placeholder="e.g. 45 km"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="bestTimeToVisit"
+                      className="block text-sm font-medium text-foreground/80 mb-1"
+                    >
+                      Best Season
+                    </label>
+                    <input
+                      id="bestTimeToVisit"
+                      type="text"
+                      value={bestTimeToVisit}
+                      onChange={(e) => setBestTimeToVisit(e.target.value)}
+                      className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                      placeholder="e.g. Sep - Nov"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="networkConnectivity"
+                      className="block text-sm font-medium text-foreground/80 mb-1"
+                    >
+                      Connectivity
+                    </label>
+                    <input
+                      id="networkConnectivity"
+                      type="text"
+                      value={networkConnectivity}
+                      onChange={(e) => setNetworkConnectivity(e.target.value)}
+                      className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                      placeholder="e.g. Jio/Airtel"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="fitnessRequirement"
+                      className="block text-sm font-medium text-foreground/80 mb-1"
+                    >
+                      Fitness Level
+                    </label>
+                    <input
+                      id="fitnessRequirement"
+                      type="text"
+                      value={fitnessRequirement}
+                      onChange={(e) => setFitnessRequirement(e.target.value)}
+                      className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                      placeholder="e.g. Run 5km in 30m"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="ageRange"
+                      className="block text-sm font-medium text-foreground/80 mb-1"
+                    >
+                      Age Range
+                    </label>
+                    <input
+                      id="ageRange"
+                      type="text"
+                      value={ageRange}
+                      onChange={(e) => setAgeRange(e.target.value)}
+                      className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                      placeholder="e.g. 12-65 Years"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+
+
+            {/* TAB 6: BOOKING SIDEBAR */}
+            {activeTab === "booking" && (
+              <div className="bg-card border border-border rounded-2xl p-6 space-y-4">
+                <h2 className="text-xl font-bold text-foreground border-b border-border pb-2">
+                  Pricing & Settings
+                </h2>
+                <div>
+                  <label
+                    htmlFor="price"
+                    className={`block text-sm font-medium mb-1 transition-colors ${fieldErrors.basePrice ? "text-red-500" : "text-foreground/80"}`}
+                  >
+                    Base Price (₹) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="price"
+                    type="number"
+                    min="0"
+                    value={basePrice}
+                    onChange={(e) => {
+                      setBasePrice(Number(e.target.value));
+                      if (fieldErrors.basePrice) setFieldErrors(p => ({ ...p, basePrice: "" }));
+                    }}
+                    className={`w-full bg-background border rounded-xl px-4 py-2.5 text-foreground focus:outline-none transition-all text-xl font-semibold mb-2 ${
+                      fieldErrors.basePrice 
+                        ? "border-red-500 bg-red-500/5 focus:ring-1 focus:ring-red-500/20" 
+                        : "border-border focus:border-primary/50"
+                    }`}
+                  />
+                  {fieldErrors.basePrice && (
+                    <p className="mb-2 text-xs font-bold text-red-500 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> {fieldErrors.basePrice}
+                    </p>
+                  )}
+                  {basePrice > 0 && (
+                    <div className="bg-primary/5 rounded-lg p-3 text-xs text-foreground/80 border border-primary/20 space-y-1">
+                      <div className="flex items-center gap-1.5 font-bold text-primary mb-1">
+                        <Info className="w-3.5 h-3.5" />
+                        <span>Live Price Breakdown (Per Seat)</span>
+                      </div>
+                      <div className="flex justify-between text-foreground/80">
+                        <span>Base Price:</span>
+                        <span>₹{basePrice.toFixed(2)}</span>
+                      </div>
+                      {taxes.map((tax) => {
+                        const amount = (basePrice * tax.percentage) / 100;
+                        return (
+                          <div
+                            key={tax.id}
+                            className="flex justify-between text-foreground/60"
+                          >
+                            <span>
+                              {tax.name} ({tax.percentage}%):
+                            </span>
+                            <span>+ ₹{amount.toFixed(2)}</span>
+                          </div>
+                        );
+                      })}
+                      <div className="flex justify-between font-bold pt-1 border-t border-primary/10 mt-1 text-foreground">
+                        <span>Total Price (with Taxes):</span>
+                        <span>
+                          ₹
+                          {(
+                            basePrice +
+                            taxes.reduce(
+                              (acc, tax) =>
+                                acc + (basePrice * tax.percentage) / 100,
+                              0,
+                            )
+                          ).toFixed(2)}
+                        </span>
+                      </div>
+
+                      {allowAdvancePayment && Number(advancePaymentAmount) > 0 && (
+                        <>
+                          <div className="flex justify-between text-foreground/80 font-bold pt-1.5 border-t border-dashed border-primary/10">
+                            <span>Advance Payment:</span>
+                            <span className="text-primary">
+                              - ₹{Number(advancePaymentAmount).toFixed(2)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between font-bold pt-1 text-green-500 border-t border-primary/10 mt-1">
+                            <span>Remaining Balance:</span>
+                            <span>
+                              ₹
+                              {(
+                                Math.max(
+                                  0,
+                                  basePrice +
+                                    taxes.reduce(
+                                      (acc, tax) =>
+                                        acc + (basePrice * tax.percentage) / 100,
+                                      0,
+                                    ) -
+                                    Number(advancePaymentAmount)
+                                )
+                              ).toFixed(2)}
+                            </span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {allowAdvancePayment && Number(advancePaymentAmount) > 0 && Number(advancePaymentAmount) > (basePrice + taxes.reduce((acc, tax) => acc + (basePrice * tax.percentage) / 100, 0)) && (
+                    <div className="mt-2 p-2.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-semibold flex items-center gap-1.5">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>Advance amount cannot exceed the Total Price.</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="border-t border-border pt-4 mt-2 space-y-4">
+                  <label
+                    htmlFor="allowAdvancePayment"
+                    className="flex items-center gap-3 cursor-pointer p-3 rounded-xl border border-border hover:bg-foreground/5 transition-colors"
+                    aria-labelledby="advance-pay-label"
+                  >
+                    <input
+                      id="allowAdvancePayment"
+                      type="checkbox"
+                      checked={allowAdvancePayment}
+                      onChange={(e) => setAllowAdvancePayment(e.target.checked)}
+                      className="w-5 h-5 rounded border-border text-primary focus:ring-primary focus:ring-offset-background bg-background"
+                    />
+                    <div id="advance-pay-label">
+                      <span className="block text-sm font-medium text-foreground">
+                        Allow Advance Payment
+                      </span>
+                      <span className="block text-xs text-foreground/60">
+                        Pay partial booking amount
+                      </span>
+                    </div>
+                  </label>
+
+                  {allowAdvancePayment && (
+                    <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                      <label
+                        htmlFor="advancePaymentAmount"
+                        className="block text-xs font-bold text-foreground/80 mb-1"
+                      >
+                        Advance Amount (₹, per seat)
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-foreground/50">₹</span>
+                        <input
+                          id="advancePaymentAmount"
+                          type="number"
+                          min="0"
+                          value={advancePaymentAmount}
+                          onChange={(e) => setAdvancePaymentAmount(e.target.value)}
+                          className="w-full bg-background border border-border rounded-xl pl-8 pr-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50 font-semibold"
+                          placeholder="e.g. 2000"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="cap"
+                    className={`block text-sm font-medium mb-1 transition-colors ${fieldErrors.capacity ? "text-red-500" : "text-foreground/80"}`}
+                  >
+                    Total Capacity <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="cap"
+                    type="number"
+                    min="1"
+                    value={capacity}
+                    onChange={(e) => {
+                      setCapacity(Number(e.target.value));
+                      if (fieldErrors.capacity) setFieldErrors(p => ({ ...p, capacity: "" }));
+                    }}
+                    className={`w-full bg-background border rounded-xl px-4 py-2.5 text-foreground focus:outline-none transition-all ${
+                      fieldErrors.capacity 
+                        ? "border-red-500 bg-red-500/5 focus:ring-1 focus:ring-red-500/20" 
+                        : "border-border focus:border-primary/50"
+                    }`}
+                  />
+                  {fieldErrors.capacity && (
+                    <p className="mt-1.5 text-xs font-bold text-red-500 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> {fieldErrors.capacity}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </form>
   );

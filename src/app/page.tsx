@@ -97,6 +97,7 @@ export default async function Home() {
     return {
       ...exp,
       basePrice: Number(exp.basePrice),
+      advancePaymentAmount: exp.advancePaymentAmount ? Number(exp.advancePaymentAmount) : null,
       nextDeparture,
       nextDepartureSlot,
       upcomingSlots: validSlots.map((slot) => {

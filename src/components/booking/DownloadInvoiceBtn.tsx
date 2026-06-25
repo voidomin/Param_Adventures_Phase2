@@ -14,6 +14,10 @@ interface InvoiceData {
     baseFare: number;
     totalPrice: number;
     taxBreakdown: { name: string; percentage: number; amount: number }[];
+    paymentType?: string;
+    paidAmount?: number;
+    remainingBalance?: number;
+    paymentStatus?: string;
   };
   company: {
     companyName: string;
@@ -33,7 +37,14 @@ interface InvoiceData {
   };
   payment: {
     providerPaymentId?: string;
-  };
+  } | null;
+  payments?: {
+    id: string;
+    amount: number;
+    status: string;
+    providerPaymentId?: string;
+    createdAt: string;
+  }[];
 }
 
 interface JsPDFWithAutoTable extends jsPDF {
@@ -112,7 +123,7 @@ export default function DownloadInvoiceBtn({ bookingId }: Readonly<{ bookingId: 
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
       
-      const { booking, company, experience, primaryContact, payment } = data;
+      const { booking, company, experience, primaryContact, payment, payments } = data;
 
       // 3. Header Formatting
       // Logo in the top-left
@@ -237,7 +248,64 @@ export default function DownloadInvoiceBtn({ bookingId }: Readonly<{ bookingId: 
       const summaryCardX = pageWidth - 14 - summaryCardW;
       const summaryCardY = finalY + 8;
 
-      // Draw Summary Card Background
+      // Left Card: Payment Transaction History & Balance Breakdown
+      const paymentCardX = 14;
+      const paymentCardW = summaryCardX - 14 - 6; // 91mm wide
+      const paymentCardH = summaryCardH;
+      const paymentCardY = summaryCardY;
+
+      doc.setFillColor(248, 250, 252); // Slate-50
+      doc.roundedRect(paymentCardX, paymentCardY, paymentCardW, paymentCardH, 2, 2, "F");
+
+      doc.setFontSize(8.5);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(15, 118, 110); // Teal-700
+      doc.text("PAYMENT HISTORY", paymentCardX + 4, paymentCardY + 6);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(7.5);
+      doc.setTextColor(75, 85, 99); // Slate-600
+
+      let payY = paymentCardY + 12;
+      const paidAmt = Number(booking.paidAmount ?? booking.totalPrice);
+      const remBal = Number(booking.remainingBalance ?? 0);
+      const paidPayments = payments ? payments.filter((p) => p.status === "PAID") : [];
+
+      if (paidPayments.length > 0) {
+        paidPayments.forEach((p, idx) => {
+          const isAdvance = idx === 0 && booking.paymentType === "ADVANCE";
+          const label = isAdvance ? "Advance Payment" : `Payment #${idx + 1}`;
+          const dateStr = new Date(p.createdAt).toLocaleDateString("en-IN");
+          const refStr = p.providerPaymentId ? `Ref: ${p.providerPaymentId}` : "Ref: N/A";
+          doc.text(`${label}: Rs ${p.amount.toFixed(2)} on ${dateStr} (${refStr})`, paymentCardX + 4, payY);
+          payY += 5;
+        });
+      } else {
+        const refStr = payment?.providerPaymentId ? `Ref: ${payment.providerPaymentId}` : "Ref: N/A";
+        const dateStr = new Date(booking.date).toLocaleDateString("en-IN");
+        doc.text(`Payment: Rs ${paidAmt.toFixed(2)} on ${dateStr} (${refStr})`, paymentCardX + 4, payY);
+        payY += 5;
+      }
+
+      // Draw horizontal separator inside the payment card before footer line
+      doc.setDrawColor(226, 232, 240); // Slate-200
+      doc.setLineWidth(0.3);
+      doc.line(paymentCardX + 4, paymentCardY + 24, paymentCardX + paymentCardW - 4, paymentCardY + 24);
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8.5);
+
+      if (remBal <= 0.01) {
+        doc.setTextColor(34, 197, 94); // Green-500
+        doc.text(`Total Paid: Rs ${paidAmt.toFixed(2)}`, paymentCardX + 4, paymentCardY + 30);
+        doc.text("FULLY PAID", paymentCardX + paymentCardW - 25, paymentCardY + 30);
+      } else {
+        doc.setTextColor(217, 119, 6); // Amber-600
+        doc.text(`Paid: Rs ${paidAmt.toFixed(2)}`, paymentCardX + 4, paymentCardY + 30);
+        doc.text(`Balance Due: Rs ${remBal.toFixed(2)}`, paymentCardX + paymentCardW - 45, paymentCardY + 30);
+      }
+
+      // Right Card: Summary / Invoice Totals
       doc.setFillColor(248, 250, 252); // Slate-50
       doc.roundedRect(summaryCardX, summaryCardY, summaryCardW, summaryCardH, 2, 2, "F");
 
@@ -275,10 +343,7 @@ export default function DownloadInvoiceBtn({ bookingId }: Readonly<{ bookingId: 
 
       const footerTextY = summaryCardY + summaryCardH + 10;
       doc.text("Tax is payable on reverse charge basis: NO", 14, footerTextY);
-      
-      if (payment?.providerPaymentId) {
-        doc.text(`Payment Reference ID: ${payment.providerPaymentId}`, 14, footerTextY + 5);
-      }
+      doc.text("Payment transactions processed securely via Razorpay.", 14, footerTextY + 5);
 
       // Signatory block
       doc.setFont("helvetica", "bold");

@@ -129,14 +129,18 @@ describe("ExperienceForm Comprehensive Smoke Test", () => {
     render(<ExperienceForm />);
     fireEvent.change(screen.getByLabelText(/Title/i), { target: { value: "Valid Trip" } });
     fireEvent.change(screen.getByLabelText(/Location/i), { target: { value: "Manali" } });
+    fireEvent.change(screen.getByLabelText(/Duration/i), { target: { value: "5" } });
+
+    // Switch to Booking & Amenities tab to fill Base Price and Total Capacity
+    fireEvent.click(screen.getByRole("button", { name: /Booking & Amenities/i }));
     fireEvent.change(screen.getByLabelText(/Base Price/i), { target: { value: "1000" } });
     fireEvent.change(screen.getByLabelText(/Total Capacity/i), { target: { value: "10" } });
-    fireEvent.change(screen.getByLabelText(/Duration/i), { target: { value: "5" } });
-    
-    // Trigger the mocked upload via test-id
+
+    // Switch to Media & Assets tab to upload cover image
+    fireEvent.click(screen.getByRole("button", { name: /Media & Assets/i }));
     const coverInput = screen.getByTestId("cover-image-upload").querySelector('input[type="file"]');
     if (coverInput) fireEvent.change(coverInput, { target: { files: [] } });
-    
+
     fireEvent.submit(screen.getByRole("form", { name: /Experience Form/i }));
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining("/api/admin/experiences"), expect.objectContaining({ method: "POST" }));
@@ -212,11 +216,15 @@ describe("ExperienceForm Comprehensive Smoke Test", () => {
     render(<ExperienceForm />);
     fireEvent.change(screen.getByLabelText(/Title/i), { target: { value: "Fail Trip" } });
     fireEvent.change(screen.getByLabelText(/Location/i), { target: { value: "Manali" } });
+    fireEvent.change(screen.getByLabelText(/Duration/i), { target: { value: "5" } });
+
+    // Switch to Booking & Amenities tab to fill Base Price and Total Capacity
+    fireEvent.click(screen.getByRole("button", { name: /Booking & Amenities/i }));
     fireEvent.change(screen.getByLabelText(/Base Price/i), { target: { value: "1000" } });
     fireEvent.change(screen.getByLabelText(/Total Capacity/i), { target: { value: "10" } });
-    fireEvent.change(screen.getByLabelText(/Duration/i), { target: { value: "5" } });
-    
-    // Trigger mocked upload via test-id
+
+    // Switch to Media & Assets tab to upload cover image
+    fireEvent.click(screen.getByRole("button", { name: /Media & Assets/i }));
     const coverInputErr = screen.getByTestId("cover-image-upload").querySelector('input[type="file"]');
     if (coverInputErr) fireEvent.change(coverInputErr, { target: { files: [] } });
 

@@ -49,8 +49,7 @@ export default async function BookingSuccessPage({
         },
         participants: true,
         payments: {
-          orderBy: { createdAt: "desc" },
-          take: 1,
+          orderBy: { createdAt: "asc" },
         },
       },
     }),
@@ -67,7 +66,7 @@ export default async function BookingSuccessPage({
   }
 
   const { experience, slot, participants, payments } = booking;
-  const payment = payments[0]; // the most recent one
+  const payment = payments[payments.length - 1]; // the most recent one
 
   // Dates
   const startDate = slot?.date ? new Date(slot.date) : null;
@@ -354,10 +353,30 @@ export default async function BookingSuccessPage({
                 </div>
                 <div className="text-4xl font-black text-foreground">₹{paidAmount.toLocaleString("en-IN")}</div>
                 {booking.paymentStatus === "PARTIALLY_PAID" && (
-                  <div className="mt-2 text-xs text-red-400 font-semibold">
+                  <div className="mt-1 text-xs text-amber-500 font-bold">
                     Remaining Balance: ₹{remainingBalance.toLocaleString("en-IN")}
                   </div>
                 )}
+                
+                <div className="mt-4 space-y-2 border-t border-border/50 pt-3">
+                  <span className="text-[10px] font-black text-foreground/40 uppercase tracking-wider block">Transaction History</span>
+                  {payments.filter(p => p.status === "PAID").map((p, idx) => {
+                    const isAdvance = idx === 0 && booking.paymentType === "ADVANCE";
+                    const pDate = new Date(p.createdAt).toLocaleDateString("en-IN", {
+                      day: "numeric",
+                      month: "short",
+                    });
+                    return (
+                      <div key={p.id} className="flex justify-between items-center text-xs text-foreground/80 font-medium bg-foreground/3 px-2.5 py-1.5 rounded-lg">
+                        <span className="opacity-75">{isAdvance ? "Advance Payment" : `Payment #${idx + 1}`} ({pDate})</span>
+                        <span className="font-bold">₹{Number(p.amount).toLocaleString("en-IN")}</span>
+                      </div>
+                    );
+                  })}
+                  {payments.filter(p => p.status === "PAID").length === 0 && (
+                    <span className="text-xs text-foreground/40 italic">No payments confirmed yet.</span>
+                  )}
+                </div>
               </div>
               <div className="p-6 sm:w-1/2 space-y-3 text-sm">
                 <div className="flex justify-between items-center py-1">
