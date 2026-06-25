@@ -29,6 +29,7 @@ interface Booking {
   bookingStatus: BookingStatus;
   paymentStatus: PaymentStatus;
   createdAt: string;
+  updatedAt: string;
   cancelledAt?: string | null;
   refundPreference?: string | null;
   refundNote?: string | null;
@@ -52,6 +53,7 @@ interface Booking {
     amount: number;
     providerPaymentId?: string | null;
     provider: "RAZORPAY" | "MANUAL";
+    createdAt: string;
     fullPayload?: {
       proofUrl?: string | null;
       adminNotes?: string | null;
@@ -385,8 +387,14 @@ function BookingDetailsModal({
                           <p className="text-foreground/45 text-xs">Amount</p>
                           <p className="font-bold text-foreground">₹{Number(p.amount).toLocaleString("en-IN")}</p>
                         </div>
+                        <div>
+                          <p className="text-foreground/45 text-xs">Transaction Date</p>
+                          <p className="font-medium text-foreground">
+                            {p.createdAt ? new Date(p.createdAt).toLocaleString("en-IN") : "—"}
+                          </p>
+                        </div>
                         {p.providerPaymentId && (
-                          <div>
+                          <div className="col-span-2">
                             <p className="text-foreground/45 text-xs">Transaction ID / Reference ID</p>
                             <p className="font-mono text-xs text-foreground break-all">{p.providerPaymentId}</p>
                           </div>
@@ -765,6 +773,11 @@ export default function AdminBookingsPage() {
                     <p className="text-xs font-medium text-foreground/75">
                       {formatDate(b.createdAt)}
                     </p>
+                    {new Date(b.updatedAt).getTime() - new Date(b.createdAt).getTime() > 60000 && (
+                      <p className="text-[10px] font-semibold text-primary mt-1">
+                        Upd: {formatDate(b.updatedAt)}
+                      </p>
+                    )}
                   </div>
                 </button>
 
@@ -947,7 +960,16 @@ export default function AdminBookingsPage() {
                         </div>
                       </td>
                       <td className="px-5 py-4 text-xs text-foreground/50 whitespace-nowrap">
-                        {formatDate(b.createdAt)}
+                        <div>
+                          <p className="text-foreground/70" title="Creation Date">
+                            Booked: {formatDate(b.createdAt)}
+                          </p>
+                          {new Date(b.updatedAt).getTime() - new Date(b.createdAt).getTime() > 60000 && (
+                            <p className="text-[10px] text-primary mt-0.5" title="Last update/payment active date">
+                              Updated: {formatDate(b.updatedAt)}
+                            </p>
+                          )}
+                        </div>
                       </td>
                       <td className="px-5 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">

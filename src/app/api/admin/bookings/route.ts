@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
     const [bookings, total] = await Promise.all([
       prisma.booking.findMany({
         where: whereClause,
-        orderBy: { createdAt: "desc" },
+        orderBy: { updatedAt: "desc" },
         skip,
         take: limit,
         include: {
@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
           experience: { select: { id: true, title: true, slug: true } },
           slot: { select: { id: true, date: true } },
           payments: {
-            select: { id: true, status: true, amount: true, providerPaymentId: true, provider: true, fullPayload: true },
+            select: { id: true, status: true, amount: true, providerPaymentId: true, provider: true, fullPayload: true, createdAt: true },
           },
         },
       }),

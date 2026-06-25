@@ -62,7 +62,7 @@ describe("GET /api/admin/bookings", () => {
             expect.objectContaining({ slot: expect.anything() }),
           ]),
         }),
-        orderBy: { createdAt: "desc" },
+        orderBy: { updatedAt: "desc" },
       }),
     );
   });
