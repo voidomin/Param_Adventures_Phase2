@@ -135,7 +135,7 @@ function CancelModal({
           </div>
 
           {/* Refund preference */}
-          {booking.paymentStatus === "PAID" && (
+          {(booking.paymentStatus === "PAID" || booking.paymentStatus === "PARTIALLY_PAID") && (
             <div className="space-y-2">
               <p className="text-sm font-bold text-foreground/70">Refund Preference</p>
               <div className="grid grid-cols-2 gap-3">
@@ -254,6 +254,12 @@ function formatDate(dateStr: string) {
   const month = months[date.getMonth()];
   const year = date.getFullYear();
   return `${day}/${month}/${year}`;
+}
+
+function getPaymentStatusColor(status: string) {
+  if (status === "PAID") return "text-green-500";
+  if (status === "PARTIALLY_PAID") return "text-amber-500";
+  return "text-foreground/50";
 }
 
 export default function BookingsPage() {
@@ -646,13 +652,7 @@ export default function BookingsPage() {
                         <div className="text-xs space-y-1 mb-4 border-t border-border/30 pt-3">
                           <div className="flex justify-between">
                             <span className="text-foreground/60">Status:</span>
-                            <span className={`font-bold ${
-                              b.paymentStatus === "PAID"
-                                ? "text-green-500"
-                                : b.paymentStatus === "PARTIALLY_PAID"
-                                ? "text-amber-500"
-                                : "text-foreground/50"
-                            }`}>
+                            <span className={`font-bold ${getPaymentStatusColor(b.paymentStatus)}`}>
                               {b.paymentStatus === "PARTIALLY_PAID" ? "Partially Paid" : b.paymentStatus}
                             </span>
                           </div>

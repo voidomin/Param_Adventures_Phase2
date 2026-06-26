@@ -64,9 +64,11 @@ export async function POST(
       );
     }
 
-    // Determine refund: only if payment was made
+    // Determine refund: only if payment was made (fully or partially)
     const newPaymentStatus =
-      booking.paymentStatus === "PAID" ? "REFUND_PENDING" : booking.paymentStatus;
+      (booking.paymentStatus === "PAID" || booking.paymentStatus === "PARTIALLY_PAID")
+        ? "REFUND_PENDING"
+        : booking.paymentStatus;
 
     // Atomic transaction: update booking + restore slot capacity
     await prisma.$transaction(async (tx) => {

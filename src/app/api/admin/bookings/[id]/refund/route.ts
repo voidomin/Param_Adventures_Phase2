@@ -73,7 +73,7 @@ export async function POST(
       slotDate: booking.slot?.date?.toISOString() ?? new Date().toISOString(),
       refundPreference: (booking.refundPreference ?? "COUPON") as "COUPON" | "BANK_REFUND",
       refundNote,
-      totalPrice: Number(booking.totalPrice),
+      totalPrice: Number(booking.paidAmount),
     });
 
     return NextResponse.json({ success: true });

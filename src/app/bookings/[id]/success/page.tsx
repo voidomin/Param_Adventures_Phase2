@@ -89,29 +89,37 @@ export default async function BookingSuccessPage({
       : "Dates TBD";
 
   // Financials
-  // In Phase 2, we might not have a detailed breakdown stored in Booking.
-  // We'll calculate a mock breakdown based on totalPrice for display purposes, 
-  // or just show total if we don't have taxes/fees separated in DB.
   const totalPrice = Number(booking.totalPrice) || 0;
   const paidAmount = Number(booking.paidAmount) || 0;
   const remainingBalance = Number(booking.remainingBalance) || 0;
+  const baseFare = Number(booking.baseFare) || totalPrice;
 
-  const bookingMeta = booking as typeof booking & {
-    baseFare?: unknown;
-    taxBreakdown?: unknown;
-  };
-  const baseFare =
-    typeof bookingMeta.baseFare === "number"
-      ? bookingMeta.baseFare
-      : totalPrice;
-
-  const taxItems = Array.isArray(bookingMeta.taxBreakdown)
-    ? (bookingMeta.taxBreakdown as {
+  const taxItems = Array.isArray(booking.taxBreakdown)
+    ? (booking.taxBreakdown as unknown as {
         name: string;
         percentage: number;
         amount: number;
       }[])
     : [];
+
+  // Aggregate amenities across participants
+  const aggregatedAmenities = new Map<string, { name: string; price: number; count: number }>();
+  participants.forEach((p) => {
+    if (p.selectedAmenities && Array.isArray(p.selectedAmenities)) {
+      const selected = p.selectedAmenities as unknown as SelectedAmenity[];
+      selected.forEach((a) => {
+        const key = a.optionId;
+        const existing = aggregatedAmenities.get(key);
+        if (existing) {
+          existing.count += 1;
+        } else {
+          aggregatedAmenities.set(key, { name: a.optionName, price: a.price, count: 1 });
+        }
+      });
+    }
+  });
+
+  const experienceBaseTotal = Number(experience.basePrice) * booking.participantCount;
 
   // Leads
   const trekLeads = slot?.assignments?.map((a) => a.trekLead) || [];
@@ -383,11 +391,20 @@ export default async function BookingSuccessPage({
               </div>
               <div className="p-6 sm:w-1/2 space-y-3 text-sm">
                 <div className="flex justify-between items-center py-1">
-                  <span className="text-foreground/60">Total Cost</span>
-                  <span className="font-semibold text-foreground">₹{totalPrice.toLocaleString("en-IN")}</span>
+                  <span className="text-foreground/60 font-bold">Base Fare Breakdown</span>
                 </div>
-                <div className="flex justify-between items-center py-1">
-                  <span className="text-foreground/60">Base Fare (Incl. Add-ons)</span>
+                <div className="flex justify-between items-center text-xs text-foreground/70 pl-2">
+                  <span>Experience Price ({booking.participantCount} Pax)</span>
+                  <span className="font-medium text-foreground">₹{experienceBaseTotal.toLocaleString("en-IN")}</span>
+                </div>
+                {Array.from(aggregatedAmenities.values()).map((item, idx) => (
+                  <div key={`summary-amenity-${idx}`} className="flex justify-between text-xs text-foreground/70 pl-2">
+                    <span>+ {item.name} (₹{item.price.toLocaleString("en-IN")} × {item.count})</span>
+                    <span className="font-medium text-foreground">₹{(item.price * item.count).toLocaleString("en-IN")}</span>
+                  </div>
+                ))}
+                <div className="flex justify-between items-center py-1 border-t border-border/30 pt-1.5 mt-1">
+                  <span className="text-foreground/60 font-semibold">Subtotal (Base Fare)</span>
                   <span className="font-semibold text-foreground">₹{baseFare.toLocaleString("en-IN")}</span>
                 </div>
                 {taxItems.map((tax, idx) => (
@@ -402,6 +419,10 @@ export default async function BookingSuccessPage({
                     <span className="font-semibold text-foreground">₹{(totalPrice - baseFare).toLocaleString("en-IN")}</span>
                   </div>
                 )}
+                <div className="flex justify-between items-center py-1 border-t border-border/30 pt-1.5">
+                  <span className="text-foreground font-bold">Total Cost</span>
+                  <span className="font-bold text-foreground text-base">₹{totalPrice.toLocaleString("en-IN")}</span>
+                </div>
                 <div className="border-t border-border/50 my-1"></div>
                 <div className="flex justify-between items-center py-1">
                   <span className="text-foreground/60">Payment Mode</span>

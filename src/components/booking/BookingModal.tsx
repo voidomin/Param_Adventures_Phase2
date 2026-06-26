@@ -950,7 +950,23 @@ function AmenitiesFields({
                           type={group.type === "SINGLE" ? "radio" : "checkbox"}
                           name={`amenity-${index}-${group.id}`}
                           checked={isSelected}
+                          onClick={(e) => {
+                            if (group.type === "SINGLE" && isSelected) {
+                              e.preventDefault();
+                              updatePartAmenities({
+                                index,
+                                groupId: group.id,
+                                groupName: group.name,
+                                optionId: option.id,
+                                optionName: option.name,
+                                price: Number(option.price),
+                                type: group.type,
+                                selected: false,
+                              });
+                            }
+                          }}
                           onChange={(e) => {
+                            if (group.type === "SINGLE" && isSelected) return;
                             updatePartAmenities({
                               index,
                               groupId: group.id,

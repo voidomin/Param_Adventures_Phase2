@@ -20,12 +20,14 @@ import { ManualVerifyModal } from "@/components/admin/ManualVerifyModal";
 
 
 type BookingStatus = "REQUESTED" | "CONFIRMED" | "CANCELLED";
-type PaymentStatus = "PENDING" | "PAID" | "FAILED" | "REFUND_PENDING" | "REFUNDED";
+type PaymentStatus = "PENDING" | "PARTIALLY_PAID" | "PAID" | "FAILED" | "REFUND_PENDING" | "REFUNDED";
 
 interface Booking {
   id: string;
   participantCount: number;
   totalPrice: number;
+  paidAmount: number;
+  remainingBalance: number;
   bookingStatus: BookingStatus;
   paymentStatus: PaymentStatus;
   createdAt: string;
@@ -71,6 +73,7 @@ const statusStyles: Record<BookingStatus, string> = {
 
 const paymentStyles: Record<PaymentStatus, string> = {
   PENDING: "text-yellow-500",
+  PARTIALLY_PAID: "text-amber-500",
   PAID: "text-green-500",
   FAILED: "text-red-500",
   REFUND_PENDING: "text-amber-400",
@@ -307,6 +310,22 @@ function BookingDetailsModal({
                       {booking.paymentStatus}
                     </span>
                   </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/40">
+                  <div>
+                    <p className="text-xs text-foreground/45">Total Price</p>
+                    <p className="font-bold text-foreground">₹{Number(booking.totalPrice).toLocaleString("en-IN")}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-foreground/45">Paid Amount</p>
+                    <p className="font-bold text-green-500">₹{Number(booking.paidAmount || 0).toLocaleString("en-IN")}</p>
+                  </div>
+                  {Number(booking.remainingBalance) > 0 && (
+                    <div className="col-span-2">
+                      <p className="text-xs text-foreground/45">Remaining Balance</p>
+                      <p className="font-bold text-red-500">₹{Number(booking.remainingBalance).toLocaleString("en-IN")}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -802,8 +821,12 @@ export default function AdminBookingsPage() {
                   </div>
                   <div>
                     <p className="text-foreground/40">Pax & Price</p>
-                    <p className="font-medium text-foreground">
-                      {b.participantCount} Pax · ₹{Number(b.totalPrice).toLocaleString("en-IN")}
+                    <p className="font-medium text-foreground text-xs">
+                      {b.participantCount} Pax · {b.paymentStatus === "PARTIALLY_PAID" ? (
+                        <span>₹{Number(b.paidAmount).toLocaleString("en-IN")} paid / ₹{Number(b.totalPrice).toLocaleString("en-IN")}</span>
+                      ) : (
+                        <span>₹{Number(b.totalPrice).toLocaleString("en-IN")}</span>
+                      )}
                     </p>
                   </div>
                   <div>
@@ -934,7 +957,14 @@ export default function AdminBookingsPage() {
                         {b.participantCount}
                       </td>
                       <td className="px-5 py-4 text-sm font-semibold text-foreground">
-                        ₹{Number(b.totalPrice).toLocaleString("en-IN")}
+                        {b.paymentStatus === "PARTIALLY_PAID" ? (
+                          <div className="flex flex-col">
+                            <span className="text-green-500">₹{Number(b.paidAmount).toLocaleString("en-IN")}</span>
+                            <span className="text-[10px] text-foreground/40 font-normal">paid of ₹{Number(b.totalPrice).toLocaleString("en-IN")}</span>
+                          </div>
+                        ) : (
+                          <span>₹{Number(b.totalPrice).toLocaleString("en-IN")}</span>
+                        )}
                       </td>
                       <td className="px-5 py-4">
                         <div className="flex flex-col gap-1">
