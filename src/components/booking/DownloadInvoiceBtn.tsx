@@ -68,6 +68,14 @@ async function fetchImageAsBase64(url: string): Promise<string | null> {
   }
 }
 
+function formatInvoiceDate(d: string | Date) {
+  const date = new Date(d);
+  if (Number.isNaN(date.getTime())) return "—";
+  const day = String(date.getDate()).padStart(2, "0");
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${day}/${months[date.getMonth()]}/${date.getFullYear()}`;
+}
+
 export default function DownloadInvoiceBtn({ bookingId }: Readonly<{ bookingId: string }>) {
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -190,7 +198,7 @@ export default function DownloadInvoiceBtn({ bookingId }: Readonly<{ bookingId: 
       doc.setFont("helvetica", "normal");
       doc.setTextColor(75, 85, 99); // Slate-600
       doc.text(`Invoice No: INV-${booking.id.split("-")[0].toUpperCase()}`, 18, cardY + 12);
-      doc.text(`Invoice Date: ${new Date(booking.date).toLocaleDateString()}`, 18, cardY + 17);
+      doc.text(`Invoice Date: ${formatInvoiceDate(booking.date)}`, 18, cardY + 17);
       doc.text(`Place of Supply: Karnataka (29)`, 18, cardY + 22); 
       doc.text(`Status: ${booking.status}`, 18, cardY + 27);
 
@@ -275,14 +283,14 @@ export default function DownloadInvoiceBtn({ bookingId }: Readonly<{ bookingId: 
         paidPayments.forEach((p, idx) => {
           const isAdvance = idx === 0 && booking.paymentType === "ADVANCE";
           const label = isAdvance ? "Advance Payment" : `Payment #${idx + 1}`;
-          const dateStr = new Date(p.createdAt).toLocaleDateString("en-IN");
+          const dateStr = formatInvoiceDate(p.createdAt);
           const refStr = p.providerPaymentId ? `Ref: ${p.providerPaymentId}` : "Ref: N/A";
           doc.text(`${label}: Rs ${p.amount.toFixed(2)} on ${dateStr} (${refStr})`, paymentCardX + 4, payY);
           payY += 5;
         });
       } else {
         const refStr = payment?.providerPaymentId ? `Ref: ${payment.providerPaymentId}` : "Ref: N/A";
-        const dateStr = new Date(booking.date).toLocaleDateString("en-IN");
+        const dateStr = formatInvoiceDate(booking.date);
         doc.text(`Payment: Rs ${paidAmt.toFixed(2)} on ${dateStr} (${refStr})`, paymentCardX + 4, payY);
         payY += 5;
       }

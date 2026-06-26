@@ -27,6 +27,7 @@ export interface BookingParticipant {
   phoneNumber: string | null;
   gender: string | null;
   age: number | null;
+  dateOfBirth?: string | Date | null;
   bloodGroup: string | null;
   emergencyContactName: string | null;
   emergencyContactNumber: string | null;
@@ -54,6 +55,17 @@ export interface BookingDetails {
     phoneNumber: string | null;
   };
   participants: BookingParticipant[];
+}
+
+function formatDate(d: string | Date | null | undefined) {
+  if (!d) return "—";
+  const date = new Date(d);
+  if (Number.isNaN(date.getTime())) return "—";
+  const day = String(date.getDate()).padStart(2, "0");
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const month = months[date.getMonth()];
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
 }
 
 interface BookingDetailsCollapseProps {
@@ -188,6 +200,12 @@ export default function BookingDetailsCollapse({ booking }: BookingDetailsCollap
                       <p className="text-[10px] text-foreground/50 uppercase font-bold tracking-wider">Phone</p>
                       <p className="text-xs text-foreground/80 font-medium mt-0.5 flex items-center gap-1">
                         <Phone className="w-3 h-3 text-foreground/30 shrink-0" /> {p.phoneNumber ?? "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-foreground/50 uppercase font-bold tracking-wider">Date of Birth</p>
+                      <p className="font-semibold text-xs text-foreground/80 mt-0.5">
+                        {p.dateOfBirth ? formatDate(p.dateOfBirth) : "—"}
                       </p>
                     </div>
                     <div>

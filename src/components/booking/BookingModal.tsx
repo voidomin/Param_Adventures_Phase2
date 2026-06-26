@@ -574,7 +574,17 @@ function HealthLocationFields({
             type="date"
             value={p.dateOfBirth}
             onChange={(e) => {
-              updatePart(index, "dateOfBirth", e.target.value);
+              const val = e.target.value;
+              if (val) {
+                const parts = val.split("-");
+                if (parts[0] && parts[0].length > 4) {
+                  parts[0] = parts[0].slice(0, 4);
+                  const newVal = parts.join("-");
+                  updatePart(index, "dateOfBirth", newVal);
+                  return;
+                }
+              }
+              updatePart(index, "dateOfBirth", val);
               clearFieldError("dateOfBirth");
             }}
             className={`w-full px-2 py-2 bg-card border rounded-lg outline-none transition-colors ${
@@ -583,17 +593,26 @@ function HealthLocationFields({
           />
           {p.dateOfBirth && (() => {
             const birthDate = new Date(p.dateOfBirth);
-            const today = new Date();
-            let calculatedAge = today.getFullYear() - birthDate.getFullYear();
-            const m = today.getMonth() - birthDate.getMonth();
-            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-              calculatedAge--;
-            }
-            if (!Number.isNaN(calculatedAge) && calculatedAge >= 0) {
+            if (!Number.isNaN(birthDate.getTime())) {
+              const day = String(birthDate.getDate()).padStart(2, "0");
+              const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+              const month = months[birthDate.getMonth()];
+              const year = birthDate.getFullYear();
+              const formattedDob = `${day}/${month}/${year}`;
+              
+              const today = new Date();
+              let calculatedAge = today.getFullYear() - birthDate.getFullYear();
+              const m = today.getMonth() - birthDate.getMonth();
+              if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                calculatedAge--;
+              }
               return (
-                <p className="text-[11px] text-foreground/50 mt-1 font-medium">
-                  Calculated Age: <span className="text-primary font-bold">{calculatedAge} years</span>
-                </p>
+                <div className="text-[11px] text-foreground/50 mt-1 font-medium space-y-0.5">
+                  <p>Format: <span className="text-foreground font-bold">{formattedDob}</span></p>
+                  {!Number.isNaN(calculatedAge) && calculatedAge >= 0 && (
+                    <p>Calculated Age: <span className="text-primary font-bold">{calculatedAge} years</span></p>
+                  )}
+                </div>
               );
             }
             return null;

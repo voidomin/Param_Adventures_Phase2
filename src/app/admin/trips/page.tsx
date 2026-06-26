@@ -513,7 +513,18 @@ export default function AdminTripsPage() {
                   type="date"
                   required
                   value={createDate}
-                  onChange={(e) => setCreateDate(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val) {
+                      const parts = val.split("-");
+                      if (parts[0] && parts[0].length > 4) {
+                        parts[0] = parts[0].slice(0, 4);
+                        setCreateDate(parts.join("-"));
+                        return;
+                      }
+                    }
+                    setCreateDate(val);
+                  }}
                   className="w-full px-4 py-3 bg-black/50 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
                 />
               </div>

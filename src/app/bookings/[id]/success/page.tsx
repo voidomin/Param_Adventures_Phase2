@@ -75,12 +75,13 @@ export default async function BookingSuccessPage({
     endDate.setDate(endDate.getDate() + experience.durationDays - 1);
   }
 
-  const formatDate = (date: Date) =>
-    date.toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
+  const formatDate = (date: Date) => {
+    const day = String(date.getDate()).padStart(2, "0");
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
 
   const dateString =
     startDate && endDate
@@ -362,10 +363,12 @@ export default async function BookingSuccessPage({
                   <span className="text-[10px] font-black text-foreground/40 uppercase tracking-wider block">Transaction History</span>
                   {payments.filter(p => p.status === "PAID").map((p, idx) => {
                     const isAdvance = idx === 0 && booking.paymentType === "ADVANCE";
-                    const pDate = new Date(p.createdAt).toLocaleDateString("en-IN", {
-                      day: "numeric",
-                      month: "short",
-                    });
+                    const pDateObj = new Date(p.createdAt);
+                    const pDay = String(pDateObj.getDate()).padStart(2, "0");
+                    const pMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                    const pMonth = pMonths[pDateObj.getMonth()];
+                    const pYear = pDateObj.getFullYear();
+                    const pDate = `${pDay}/${pMonth}/${pYear}`;
                     return (
                       <div key={p.id} className="flex justify-between items-center text-xs text-foreground/80 font-medium bg-foreground/3 px-2.5 py-1.5 rounded-lg">
                         <span className="opacity-75">{isAdvance ? "Advance Payment" : `Payment #${idx + 1}`} ({pDate})</span>

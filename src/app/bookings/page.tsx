@@ -115,9 +115,7 @@ function CancelModal({
             <p className="font-bold text-foreground">{booking.experience.title}</p>
             {booking.slot && (
               <p className="text-foreground/50 text-sm mt-1">
-                {new Date(booking.slot.date).toLocaleDateString("en-IN", {
-                  weekday: "long", day: "numeric", month: "long", year: "numeric"
-                })}
+                {formatDate(booking.slot.date)}
               </p>
             )}
             <p className="text-foreground/50 text-sm">
@@ -249,12 +247,13 @@ function loadRazorpayScript(): Promise<boolean> {
 }
 
 function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("en-IN", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return "—";
+  const day = String(date.getDate()).padStart(2, "0");
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const month = months[date.getMonth()];
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
 }
 
 export default function BookingsPage() {

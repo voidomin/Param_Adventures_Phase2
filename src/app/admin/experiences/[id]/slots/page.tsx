@@ -358,9 +358,19 @@ export default function SlotsManagementPage() {
                   required
                   min={new Date().toISOString().slice(0, 10)}
                   value={formData.date}
-                  onChange={(e) =>
-                    setFormData((p) => ({ ...p, date: e.target.value }))
-                  }
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val) {
+                      const parts = val.split("-");
+                      if (parts[0] && parts[0].length > 4) {
+                        parts[0] = parts[0].slice(0, 4);
+                        const newVal = parts.join("-");
+                        setFormData((p) => ({ ...p, date: newVal }));
+                        return;
+                      }
+                    }
+                    setFormData((p) => ({ ...p, date: val }));
+                  }}
                   className="w-full px-4 py-3 bg-background border border-border rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50 transition-all"
                 />
               </div>

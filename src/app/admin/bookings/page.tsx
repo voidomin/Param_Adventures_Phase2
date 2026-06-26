@@ -86,11 +86,13 @@ const STATUS_FILTERS: (BookingStatus | "ALL")[] = [
 
 // Module-level utility — no component state needed
 function formatDate(d: string) {
-  return new Date(d).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+  const date = new Date(d);
+  if (Number.isNaN(date.getTime())) return "—";
+  const day = String(date.getDate()).padStart(2, "0");
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const month = months[date.getMonth()];
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
 }
 
 // Resolve Refund Modal
@@ -1157,7 +1159,16 @@ export default function AdminBookingsPage() {
                 value={bookingDateStart}
                 onChange={(e) => {
                   setIsLoading(true);
-                  setBookingDateStart(e.target.value);
+                  const val = e.target.value;
+                  if (val) {
+                    const parts = val.split("-");
+                    if (parts[0] && parts[0].length > 4) {
+                      parts[0] = parts[0].slice(0, 4);
+                      setBookingDateStart(parts.join("-"));
+                      return;
+                    }
+                  }
+                  setBookingDateStart(val);
                 }}
                 className="mt-1.5 w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all [color-scheme:dark]"
               />
@@ -1172,7 +1183,16 @@ export default function AdminBookingsPage() {
                 value={bookingDateEnd}
                 onChange={(e) => {
                   setIsLoading(true);
-                  setBookingDateEnd(e.target.value);
+                  const val = e.target.value;
+                  if (val) {
+                    const parts = val.split("-");
+                    if (parts[0] && parts[0].length > 4) {
+                      parts[0] = parts[0].slice(0, 4);
+                      setBookingDateEnd(parts.join("-"));
+                      return;
+                    }
+                  }
+                  setBookingDateEnd(val);
                 }}
                 className="mt-1.5 w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all [color-scheme:dark]"
               />
@@ -1187,7 +1207,16 @@ export default function AdminBookingsPage() {
                 value={slotDateStart}
                 onChange={(e) => {
                   setIsLoading(true);
-                  setSlotDateStart(e.target.value);
+                  const val = e.target.value;
+                  if (val) {
+                    const parts = val.split("-");
+                    if (parts[0] && parts[0].length > 4) {
+                      parts[0] = parts[0].slice(0, 4);
+                      setSlotDateStart(parts.join("-"));
+                      return;
+                    }
+                  }
+                  setSlotDateStart(val);
                 }}
                 className="mt-1.5 w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all [color-scheme:dark]"
               />
@@ -1204,7 +1233,16 @@ export default function AdminBookingsPage() {
                     value={slotDateEnd}
                     onChange={(e) => {
                       setIsLoading(true);
-                      setSlotDateEnd(e.target.value);
+                      const val = e.target.value;
+                      if (val) {
+                        const parts = val.split("-");
+                        if (parts[0] && parts[0].length > 4) {
+                          parts[0] = parts[0].slice(0, 4);
+                          setSlotDateEnd(parts.join("-"));
+                          return;
+                        }
+                      }
+                      setSlotDateEnd(val);
                     }}
                     className="mt-1.5 w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all [color-scheme:dark]"
                   />
