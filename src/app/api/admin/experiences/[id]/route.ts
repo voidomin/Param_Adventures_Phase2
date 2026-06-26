@@ -59,6 +59,7 @@ const updateExperienceSchema = z.object({
   inclusions: z.any().optional(),
   exclusions: z.any().optional(),
   thingsToCarry: z.any().optional(),
+  thingsToKeepInMind: z.any().optional(),
   faqs: z.any().optional(),
   cancellationPolicy: z.string().optional().nullable(),
   meetingPoint: z.string().optional().nullable(),

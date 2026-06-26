@@ -36,6 +36,7 @@ export interface ItineraryDay {
   description: string | object;
   meals?: string[];
   accommodation?: string;
+  transportMode?: string;
 }
 
 export interface FAQ {
@@ -75,6 +76,7 @@ export interface ExperienceFormData {
   inclusions?: string[];
   exclusions?: string[];
   thingsToCarry?: string[];
+  thingsToKeepInMind?: string[];
   faqs?: FAQ[];
   cancellationPolicy?: string;
   meetingPoint?: string;
@@ -96,6 +98,9 @@ export interface ExperienceFormData {
   advancePaymentAmount?: number | null;
   extraAmenities?: ExtraAmenityGroup[];
 }
+
+export type ActiveTab = "basic" | "itinerary" | "media" | "logistics" | "extras" | "booking";
+
 
 const MEAL_OPTIONS = ["Breakfast", "Lunch", "Dinner", "Snacks"];
 
@@ -223,6 +228,14 @@ export default function ExperienceForm({
       text,
     })),
   );
+  const [thingsToKeepInMind, setThingsToKeepInMind] = useState<
+    { id: string; text: string }[]
+  >(
+    (initialData?.thingsToKeepInMind || []).map((text: string) => ({
+      id: crypto.randomUUID(),
+      text,
+    })),
+  );
   const [faqs, setFaqs] = useState<
     { id: string; question: string; answer: string }[]
   >(
@@ -322,7 +335,7 @@ export default function ExperienceForm({
   };
 
   const [extraAmenities, setExtraAmenities] = useState<ExtraAmenityGroup[]>(getInitialAmenities());
-  const [activeTab, setActiveTab] = useState<"basic" | "itinerary" | "media" | "logistics" | "extras" | "booking">("basic");
+  const [activeTab, setActiveTab] = useState<ActiveTab>("basic");
 
   const tabs = [
     { id: "basic", label: "Basic Info", icon: Info },
@@ -370,16 +383,12 @@ export default function ExperienceForm({
   };
 
   const removeAmenityOption = (groupId: string, optionId: string) => {
+    const filterOptions = (g: ExtraAmenityGroup) => ({
+      ...g,
+      options: g.options.filter((o) => o.id !== optionId),
+    });
     setExtraAmenities((prev) =>
-      prev.map((g) => {
-        if (g.id === groupId) {
-          return {
-            ...g,
-            options: g.options.filter((o) => o.id !== optionId),
-          };
-        }
-        return g;
-      })
+      prev.map((g) => (g.id === groupId ? filterOptions(g) : g))
     );
   };
 
@@ -389,18 +398,14 @@ export default function ExperienceForm({
     field: "name" | "price",
     value: string | number
   ) => {
+    const patchOption = (g: ExtraAmenityGroup) => ({
+      ...g,
+      options: g.options.map((o) =>
+        o.id === optionId ? { ...o, [field]: value } : o
+      ),
+    });
     setExtraAmenities((prev) =>
-      prev.map((g) => {
-        if (g.id === groupId) {
-          return {
-            ...g,
-            options: g.options.map((o) =>
-              o.id === optionId ? { ...o, [field]: value } : o
-            ),
-          };
-        }
-        return g;
-      })
+      prev.map((g) => (g.id === groupId ? patchOption(g) : g))
     );
   };
 
@@ -574,6 +579,9 @@ export default function ExperienceForm({
       .map((item) => item.text)
       .filter((item) => item.trim() !== ""),
     thingsToCarry: thingsToCarry
+      .map((item) => item.text)
+      .filter((item) => item.trim() !== ""),
+    thingsToKeepInMind: thingsToKeepInMind
       .map((item) => item.text)
       .filter((item) => item.trim() !== ""),
     pickupPoints: pickupPoints
@@ -782,13 +790,29 @@ export default function ExperienceForm({
     }
   };
 
+  const applyImageData = (data: Partial<ExperienceFormData>) => {
+    if (data.coverImage) setCoverImage(data.coverImage);
+    if (data.cardImage) setCardImage(data.cardImage);
+    if (data.images) setImages(data.images);
+  };
+
+  const applyPaymentData = (data: Partial<ExperienceFormData>) => {
+    if (data.allowAdvancePayment !== undefined) setAllowAdvancePayment(data.allowAdvancePayment);
+    if (data.advancePaymentAmount !== undefined) setAdvancePaymentAmount(data.advancePaymentAmount ?? "");
+    if (data.extraAmenities !== undefined) {
+      if (typeof data.extraAmenities === "string") {
+        try { setExtraAmenities(JSON.parse(data.extraAmenities)); } catch { setExtraAmenities([]); }
+      } else if (Array.isArray(data.extraAmenities)) {
+        setExtraAmenities(data.extraAmenities);
+      } else {
+        setExtraAmenities([]);
+      }
+    }
+  };
+
   const applyBasicData = (data: Partial<ExperienceFormData>) => {
     if (data.title) setTitle(data.title);
-    if (
-      data.description &&
-      typeof data.description === "object" &&
-      Object.keys(data.description).length > 0
-    )
+    if (data.description && typeof data.description === "object" && Object.keys(data.description).length > 0)
       setDescription(data.description);
     if (data.basePrice !== undefined) setBasePrice(data.basePrice);
     if (data.capacity !== undefined) setCapacity(data.capacity);
@@ -797,30 +821,9 @@ export default function ExperienceForm({
     if (data.difficulty) setDifficulty(data.difficulty);
     if (data.status) setStatus(data.status);
     if (data.isFeatured !== undefined) setIsFeatured(data.isFeatured);
-    if (data.coverImage) setCoverImage(data.coverImage);
-    if (data.cardImage) setCardImage(data.cardImage);
-    if (data.images) setImages(data.images);
-    if (data.categories)
-      setSelectedCategories(data.categories.map((c) => c.categoryId));
-    if (data.allowAdvancePayment !== undefined) {
-      setAllowAdvancePayment(data.allowAdvancePayment);
-    }
-    if (data.advancePaymentAmount !== undefined) {
-      setAdvancePaymentAmount(data.advancePaymentAmount ?? "");
-    }
-    if (data.extraAmenities !== undefined) {
-      if (typeof data.extraAmenities === "string") {
-        try {
-          setExtraAmenities(JSON.parse(data.extraAmenities));
-        } catch {
-          setExtraAmenities([]);
-        }
-      } else if (Array.isArray(data.extraAmenities)) {
-        setExtraAmenities(data.extraAmenities);
-      } else {
-        setExtraAmenities([]);
-      }
-    }
+    if (data.categories) setSelectedCategories(data.categories.map((c) => c.categoryId));
+    applyImageData(data);
+    applyPaymentData(data);
   };
 
   const applyListData = (data: Partial<ExperienceFormData>) => {
@@ -836,6 +839,7 @@ export default function ExperienceForm({
     if (data.inclusions) setInclusions(mapToObj(data.inclusions));
     if (data.exclusions) setExclusions(mapToObj(data.exclusions));
     if (data.thingsToCarry) setThingsToCarry(mapToObj(data.thingsToCarry));
+    if (data.thingsToKeepInMind) setThingsToKeepInMind(mapToObj(data.thingsToKeepInMind));
     if (data.highlights) setHighlights(mapToObj(data.highlights));
     if (data.vibeTags) setVibeTags(mapToObj(data.vibeTags));
     if (data.pickupPoints) setPickupPoints(mapToObj(data.pickupPoints));
@@ -893,6 +897,7 @@ export default function ExperienceForm({
     inclusions: inclusions.map((i) => i.text),
     exclusions: exclusions.map((i) => i.text),
     thingsToCarry: thingsToCarry.map((i) => i.text),
+    thingsToKeepInMind: thingsToKeepInMind.map((i) => i.text),
     pickupPoints: pickupPoints.map((i) => i.text),
     dropPoints: dropPoints.map((i) => i.text),
     faqs,
@@ -1058,6 +1063,9 @@ export default function ExperienceForm({
         .filter(Boolean);
       imported.thingsToCarry = listRows
         .map((r) => ensureString(r.ThingsToCarry))
+        .filter(Boolean);
+      imported.thingsToKeepInMind = listRows
+        .map((r) => ensureString(r.ThingsToKeepInMind))
         .filter(Boolean);
       imported.highlights = listRows
         .map((r) => ensureString(r.Highlights))
@@ -1503,6 +1511,28 @@ export default function ExperienceForm({
                           }
                           className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:border-primary/50"
                           placeholder="e.g. Alpine Tent"
+                        />
+                      </div>
+                      <div>
+                        <label
+                          htmlFor={`transportMode-${ix}`}
+                          className="block text-xs font-semibold text-foreground/60 mb-2"
+                        >
+                          Transport Mode (Optional)
+                        </label>
+                        <input
+                          id={`transportMode-${ix}`}
+                          type="text"
+                          value={day.transportMode || ""}
+                          onChange={(e) =>
+                            handleItineraryChange(
+                              ix,
+                              "transportMode",
+                              e.target.value,
+                            )
+                          }
+                          className="w-full bg-background border border-border rounded-lg px-3 py-2 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                          placeholder="e.g. Trek / Jeep / Boat"
                         />
                       </div>
                     </div>
@@ -1989,6 +2019,54 @@ export default function ExperienceForm({
                 </div>
               </div>
 
+              {/* Row 2.5: Things to Keep in Mind */}
+              <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-6 space-y-6">
+                <div className="flex items-center gap-3 border-b border-amber-500/20 pb-2">
+                  <span className="text-amber-500 text-lg">⚠️</span>
+                  <h3 className="text-lg font-bold text-foreground">
+                    Things to Keep in Mind
+                  </h3>
+                </div>
+                <p className="text-sm text-foreground/60 -mt-2">
+                  Important reminders or safety notes for travellers — shown prominently on the trip page.
+                </p>
+                <div className="space-y-3">
+                  {thingsToKeepInMind.map((item) => (
+                    <div key={item.id} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={item.text}
+                        onChange={(e) =>
+                          handleStringArrayChange(
+                            setThingsToKeepInMind,
+                            item.id,
+                            e.target.value,
+                          )
+                        }
+                        className="flex-1 bg-background border border-amber-500/30 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500/60"
+                        placeholder="e.g. Carry a valid ID proof at all times"
+                      />
+                      <button
+                        type="button"
+                        onClick={() =>
+                          removeStringArrayItem(setThingsToKeepInMind, item.id)
+                        }
+                        className="p-2 text-foreground/50 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => addStringArrayItem(setThingsToKeepInMind)}
+                    className="text-xs font-medium text-amber-600 flex items-center gap-1 hover:text-amber-700"
+                  >
+                    <Plus className="w-3 h-3" /> Add Point
+                  </button>
+                </div>
+              </div>
+
               {/* Row 3: FAQs */}
               <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
                 <h3 className="text-lg font-bold text-foreground border-b border-border pb-2">
@@ -2066,10 +2144,14 @@ export default function ExperienceForm({
                     <div className="flex gap-4 items-start justify-between">
                       <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-xs font-bold text-foreground/60 mb-1">
+                          <label
+                            htmlFor={`amenity-group-name-${group.id}`}
+                            className="block text-xs font-bold text-foreground/60 mb-1"
+                          >
                             Group Name (e.g. Accommodation Sharing)
                           </label>
                           <input
+                            id={`amenity-group-name-${group.id}`}
                             type="text"
                             value={group.name}
                             onChange={(e) => updateAmenityGroup(group.id, "name", e.target.value)}
@@ -2079,10 +2161,14 @@ export default function ExperienceForm({
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-foreground/60 mb-1">
+                          <label
+                            htmlFor={`amenity-group-type-${group.id}`}
+                            className="block text-xs font-bold text-foreground/60 mb-1"
+                          >
                             Selection Mode
                           </label>
                           <select
+                            id={`amenity-group-type-${group.id}`}
                             value={group.type}
                             onChange={(e) => updateAmenityGroup(group.id, "type", e.target.value)}
                             className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary/50 text-foreground"

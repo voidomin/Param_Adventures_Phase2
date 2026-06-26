@@ -44,10 +44,12 @@ interface ItineraryBookingData {
     description?: string | object;
     meals?: string | string[];
     accommodation?: string;
+    transportMode?: string;
   }[];
   inclusions?: string[];
   exclusions?: string[];
   thingsToCarry?: string[];
+  thingsToKeepInMind?: string[];
   meetingPoint?: string;
   meetingTime?: string;
   dropoffTime?: string;
@@ -553,8 +555,8 @@ function drawItinerary(doc: jsPDF, data: ItineraryBookingData, y: number): numbe
       y += 16;
     }
 
-    // Chip-style meals and accommodation tags
-    if (day.meals || day.accommodation) {
+    // Chip-style meals, accommodation and transport tags
+    if (day.meals || day.accommodation || day.transportMode) {
       y += 2;
       let chipX = 32;
       if (day.meals) {
@@ -578,6 +580,17 @@ function drawItinerary(doc: jsPDF, data: ItineraryBookingData, y: number): numbe
         doc.setFont("helvetica", "bold");
         doc.setTextColor(...COLORS.orange);
         doc.text(stayText, chipX + 4, y + 1.5);
+        chipX += chipW + 4;
+      }
+      if (day.transportMode) {
+        const transportText = `Transport: ${cleanTextForPdf(day.transportMode)}`;
+        doc.setFontSize(7);
+        const chipW = doc.getTextWidth(transportText) + 8;
+        doc.setFillColor(220, 230, 255);
+        doc.roundedRect(chipX, y - 3, chipW, 7, 3, 3, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(50, 80, 200);
+        doc.text(transportText, chipX + 4, y + 1.5);
       }
       y += 8;
     }
@@ -673,6 +686,28 @@ function drawInclusionsExclusionsPacking(doc: jsPDF, data: ItineraryBookingData,
         if (i % 2 === 1) y += 8;
       });
       if (thingsToCarry.length % 2 !== 0) y += 8;
+      y += 12;
+    }
+
+    const thingsToKeepInMind = Array.isArray(data.thingsToKeepInMind) ? data.thingsToKeepInMind : [];
+    if (thingsToKeepInMind.length > 0) {
+      y = checkPageBreak(doc, y, 20);
+      y = drawSectionHeader(doc, "THINGS TO KEEP IN MIND", y);
+      // Draw amber warning header accent
+      doc.setFillColor(255, 180, 50);
+      doc.roundedRect(14, y - 2, pageWidth - 28, 1, 0.5, 0.5, "F");
+      doc.setFontSize(9);
+      thingsToKeepInMind.forEach((item: string, i: number) => {
+        y = checkPageBreak(doc, y, 8);
+        // Amber dot
+        doc.setFillColor(220, 140, 30);
+        doc.circle(20, y + 3, 1.5, "F");
+        doc.setTextColor(...COLORS.darkText).setFont("helvetica", "normal");
+        const cleanItem = cleanTextForPdf(item);
+        doc.text(doc.splitTextToSize(cleanItem, pageWidth - 42)[0] || cleanItem, 26, y + 4);
+        y += 8;
+        void i;
+      });
       y += 12;
     }
 

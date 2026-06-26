@@ -122,6 +122,7 @@ model Experience {
   networkConnectivity String?
   pickupPoints        String[]             @default([])
   thingsToCarry       Json?
+  thingsToKeepInMind  Json?
   trekDistance        String?
   vibeTags            String[]             @default([])
   description         Json                 @default("{}")

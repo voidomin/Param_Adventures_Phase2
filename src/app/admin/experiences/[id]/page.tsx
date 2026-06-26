@@ -60,6 +60,9 @@ export default async function EditExperiencePage({
     thingsToCarry: Array.isArray(experience.thingsToCarry)
       ? (experience.thingsToCarry as string[])
       : [],
+    thingsToKeepInMind: Array.isArray(experience.thingsToKeepInMind)
+      ? (experience.thingsToKeepInMind as string[])
+      : [],
     highlights: experience.highlights,
     vibeTags: experience.vibeTags,
     pickupPoints: experience.pickupPoints,
