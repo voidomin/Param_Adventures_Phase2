@@ -699,6 +699,40 @@ async function ExperienceNotFound() {
   );
 }
 
+function getNavSections(exp: ExperienceWithInclusions): { id: string; label: string }[] {
+  const sections: { id: string; label: string }[] = [{ id: "about", label: "About" }];
+
+  if (Array.isArray(exp.itinerary) && exp.itinerary.length > 0) {
+    sections.push({ id: "itinerary", label: "Itinerary" });
+  }
+
+  const hasInclusions = Array.isArray(exp.inclusions) && exp.inclusions.length > 0;
+  const hasExclusions = Array.isArray(exp.exclusions) && exp.exclusions.length > 0;
+  if (hasInclusions || hasExclusions) {
+    sections.push({ id: "inclusions", label: "Inclusions" });
+  }
+
+  if (Array.isArray(exp.thingsToCarry) && exp.thingsToCarry.length > 0) {
+    sections.push({ id: "things-to-carry", label: "Things to Carry" });
+  }
+
+  if (Array.isArray(exp.thingsToKeepInMind) && exp.thingsToKeepInMind.length > 0) {
+    sections.push({ id: "things-to-keep-in-mind", label: "Keep in Mind" });
+  }
+
+  if (exp.images && exp.images.length > 0) {
+    sections.push({ id: "gallery", label: "Gallery" });
+  }
+
+  if (Array.isArray(exp.faqs) && exp.faqs.length > 0) {
+    sections.push({ id: "faqs", label: "FAQs" });
+  }
+
+  sections.push({ id: "reviews", label: "Reviews" });
+
+  return sections;
+}
+
 export default async function ExperienceDetailPage({
   params,
 }: Readonly<{
@@ -755,6 +789,8 @@ export default async function ExperienceDetailPage({
     }
   );
 
+  const nightsCount = exp.durationDays > 1 ? exp.durationDays - 1 : 0;
+  const navSections = getNavSections(exp);
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-20 pt-16">
@@ -841,7 +877,7 @@ export default async function ExperienceDetailPage({
               <div className="flex items-center gap-2">
                 <Clock className="w-5 h-5 text-primary" />{" "}
                 {exp.durationDays} Days /{" "}
-                {exp.durationDays > 1 ? exp.durationDays - 1 : 0}{" "}
+                {nightsCount}{" "}
                 Nights
               </div>
             </div>
@@ -860,7 +896,7 @@ export default async function ExperienceDetailPage({
           </div>
           <div className="flex items-center gap-1.5">
             <Clock className="w-4 h-4 text-primary" />{" "}
-            {exp.durationDays} Days / {exp.durationDays > 1 ? exp.durationDays - 1 : 0} Nights
+            {exp.durationDays} Days / {nightsCount} Nights
           </div>
         </div>
       </div>
@@ -870,34 +906,7 @@ export default async function ExperienceDetailPage({
         {/* Left Column - Details */}
         <div className="lg:col-span-2 space-y-16 min-w-0">
           <ExperienceStickyNav
-            sections={[
-              { id: "about", label: "About" },
-              ...(Array.isArray(exp.itinerary) &&
-              exp.itinerary.length > 0
-                ? [{ id: "itinerary", label: "Itinerary" }]
-                : []),
-              ...((Array.isArray(exp.inclusions) &&
-                exp.inclusions.length > 0) ||
-              (Array.isArray(exp.exclusions) &&
-                exp.exclusions.length > 0)
-                ? [{ id: "inclusions", label: "Inclusions" }]
-                : []),
-              ...(Array.isArray(exp.thingsToCarry) &&
-              exp.thingsToCarry.length > 0
-                ? [{ id: "things-to-carry", label: "Things to Carry" }]
-                : []),
-              ...(Array.isArray(exp.thingsToKeepInMind) &&
-              exp.thingsToKeepInMind.length > 0
-                ? [{ id: "things-to-keep-in-mind", label: "Keep in Mind" }]
-                : []),
-              ...(exp.images?.length > 0
-                ? [{ id: "gallery", label: "Gallery" }]
-                : []),
-              ...(Array.isArray(exp.faqs) && exp.faqs.length > 0
-                ? [{ id: "faqs", label: "FAQs" }]
-                : []),
-              { id: "reviews", label: "Reviews" },
-            ]}
+            sections={navSections}
           />
 
           {/* About */}
