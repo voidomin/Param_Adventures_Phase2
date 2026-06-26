@@ -42,33 +42,18 @@ export function ManualVerifyModal({
     setError(null);
 
     try {
-      // 1. Get signed upload signature
-      const sigResponse = await fetch("/api/admin/media/cloudinary-sign", {
-        method: "POST",
-        body: JSON.stringify({ folder: "payment-proofs" }),
-      });
-      const sigData = await sigResponse.json();
-
-      if (!sigResponse.ok) throw new Error(sigData.error || "Failed to get upload signature");
-
-      // 2. Upload to Cloudinary
       const uploadFormData = new FormData();
       uploadFormData.append("file", file);
-      uploadFormData.append("api_key", sigData.apiKey);
-      uploadFormData.append("timestamp", sigData.timestamp.toString());
-      uploadFormData.append("signature", sigData.signature);
-      uploadFormData.append("folder", sigData.folder);
 
-      const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${sigData.cloudName}/image/upload`;
-      const uploadResponse = await fetch(cloudinaryUrl, {
+      const response = await fetch("/api/admin/media/upload", {
         method: "POST",
         body: uploadFormData,
       });
 
-      const uploadData = await uploadResponse.json();
-      if (!uploadResponse.ok) throw new Error(uploadData.error?.message || "Cloudinary upload failed");
+      const uploadData = await response.json();
+      if (!response.ok) throw new Error(uploadData.error || "Upload failed");
 
-      setProofUrl(uploadData.secure_url);
+      setProofUrl(uploadData.url);
     } catch (err: unknown) {
       console.error("Upload error:", err);
       setError(err instanceof Error ? err.message : "Failed to upload image.");
