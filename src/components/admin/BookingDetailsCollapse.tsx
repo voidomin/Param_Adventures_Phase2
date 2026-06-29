@@ -73,6 +73,13 @@ interface BookingDetailsCollapseProps {
 }
 
 export default function BookingDetailsCollapse({ booking }: BookingDetailsCollapseProps) {
+  let paymentStatusBadgeClasses = "bg-foreground/5 text-foreground/40 border-border";
+  if (booking.paymentStatus === "PAID") {
+    paymentStatusBadgeClasses = "bg-green-500/10 text-green-500 border-green-500/20";
+  } else if (booking.paymentStatus === "PARTIALLY_PAID") {
+    paymentStatusBadgeClasses = "bg-amber-500/10 text-amber-500 border-amber-500/20";
+  }
+
   return (
     <div className="space-y-6">
       {/* Lead Booker Info */}
@@ -135,13 +142,7 @@ export default function BookingDetailsCollapse({ booking }: BookingDetailsCollap
             {booking.paymentStatus && (
               <div>
                 <p className="text-xs text-foreground/50 font-medium">Payment Status</p>
-                <span className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded border mt-1 ${
-                  booking.paymentStatus === "PAID"
-                    ? "bg-green-500/10 text-green-500 border-green-500/20"
-                    : booking.paymentStatus === "PARTIALLY_PAID"
-                    ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
-                    : "bg-foreground/5 text-foreground/40 border-border"
-                }`}>
+                <span className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded border mt-1 ${paymentStatusBadgeClasses}`}>
                   {booking.paymentStatus === "PARTIALLY_PAID" ? "Partially Paid" : booking.paymentStatus}
                 </span>
               </div>
@@ -234,8 +235,8 @@ export default function BookingDetailsCollapse({ booking }: BookingDetailsCollap
                       <p className="text-[10px] text-foreground/50 uppercase font-bold tracking-wider">Selected Stays / Add-ons</p>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {p.selectedAmenities && Array.isArray(p.selectedAmenities) && p.selectedAmenities.length > 0 ? (
-                          p.selectedAmenities.map((amenity, aIdx: number) => (
-                            <span key={aIdx} className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded border border-primary/20 whitespace-nowrap">
+                          p.selectedAmenities.map((amenity) => (
+                            <span key={amenity.optionId} className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded border border-primary/20 whitespace-nowrap">
                               {amenity.optionName} (₹{amenity.price})
                             </span>
                           ))

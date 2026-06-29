@@ -76,6 +76,236 @@ function formatInvoiceDate(d: string | Date) {
   return `${day}/${months[date.getMonth()]}/${date.getFullYear()}`;
 }
 
+function drawInvoiceHeader(
+  doc: jsPDF,
+  logoBase64: string | null,
+  company: InvoiceData['company'],
+  pageWidth: number
+): number {
+  if (logoBase64) {
+    try {
+      doc.addImage(logoBase64, "PNG", 14, 12, 18, 18);
+    } catch (err) {
+      console.warn("Failed to draw logo on PDF:", err);
+    }
+  }
+
+  // Company details next to logo
+  const companyDetailsStartX = logoBase64 ? 36 : 14;
+  
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(31, 41, 55); // Slate-800
+  doc.text(company.companyName || "PARAM ADVENTURES", companyDetailsStartX, 18);
+  
+  doc.setFontSize(8.5);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100, 100, 100);
+  
+  // Split and render address dynamically to handle any address length without overlap
+  const addressText = company.companyAddress || "";
+  const addressLines = doc.splitTextToSize(addressText, pageWidth - companyDetailsStartX - 70) as string[];
+  const addressLineHeight = 3.6;
+  addressLines.forEach((line, index) => {
+    doc.text(line, companyDetailsStartX, 23 + (index * addressLineHeight));
+  });
+
+  const gstY = 23 + (addressLines.length * addressLineHeight) + 0.5;
+  doc.text(`GSTIN: ${company.gstNumber || "N/A"} | PAN: ${company.panNumber || "N/A"}`, companyDetailsStartX, gstY);
+  
+  const stateCodeY = gstY + 3.8;
+  doc.text(`State Code: ${company.stateCode || "N/A"}`, companyDetailsStartX, stateCodeY);
+
+  // TAX INVOICE Title (top-right)
+  doc.setFontSize(18);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(15, 118, 110); // Teal-700
+  doc.text("TAX INVOICE", pageWidth - 14, 18, { align: "right" });
+
+  // Divider Line placed dynamically below the company info
+  const dividerY = Math.max(36, stateCodeY + 5);
+  doc.setDrawColor(226, 232, 240); // Slate-200
+  doc.setLineWidth(0.5);
+  doc.line(14, dividerY, pageWidth - 14, dividerY);
+
+  return dividerY;
+}
+
+function drawInvoiceDetailsAndBilledTo(
+  doc: jsPDF,
+  booking: InvoiceData['booking'],
+  primaryContact: InvoiceData['primaryContact'],
+  dividerY: number,
+  pageWidth: number
+): { cardHeight: number; cardY: number } {
+  const cardWidth = (pageWidth - 34) / 2;
+  const cardHeight = 32;
+  const cardY = dividerY + 6;
+
+  // Left Card: Invoice details
+  doc.setFillColor(248, 250, 252); // Slate-50
+  doc.roundedRect(14, cardY, cardWidth, cardHeight, 2, 2, "F");
+  
+  doc.setFontSize(8.5);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(15, 118, 110); // Teal-700
+  doc.text("INVOICE DETAILS", 18, cardY + 6);
+  
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(75, 85, 99); // Slate-600
+  doc.text(`Invoice No: INV-${booking.id.split("-")[0].toUpperCase()}`, 18, cardY + 12);
+  doc.text(`Invoice Date: ${formatInvoiceDate(booking.date)}`, 18, cardY + 17);
+  doc.text(`Place of Supply: Karnataka (29)`, 18, cardY + 22); 
+  doc.text(`Status: ${booking.status}`, 18, cardY + 27);
+
+  // Right Card: Billed To
+  const rightCardX = 14 + cardWidth + 6;
+  doc.setFillColor(248, 250, 252); // Slate-50
+  doc.roundedRect(rightCardX, cardY, cardWidth, cardHeight, 2, 2, "F");
+
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(15, 118, 110); // Teal-700
+  doc.text("BILLED TO", rightCardX + 4, cardY + 6);
+
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(75, 85, 99); // Slate-600
+  doc.text(`Name: ${primaryContact?.name || "Guest"}`, rightCardX + 4, cardY + 12);
+  doc.text(`Email: ${primaryContact?.email || "N/A"}`, rightCardX + 4, cardY + 17);
+  doc.text(`Phone: ${primaryContact?.phoneNumber || "N/A"}`, rightCardX + 4, cardY + 22);
+
+  return { cardHeight, cardY };
+}
+
+function drawPaymentAndSummaryBlocks(
+  doc: jsPDF,
+  booking: InvoiceData['booking'],
+  payment: InvoiceData['payment'],
+  payments: InvoiceData['payments'],
+  finalY: number,
+  pageWidth: number
+): { summaryCardY: number; summaryCardH: number } {
+  const summaryCardW = 85;
+  const summaryCardH = 35;
+  const summaryCardX = pageWidth - 14 - summaryCardW;
+  const summaryCardY = finalY + 8;
+
+  // Left Card: Payment Transaction History & Balance Breakdown
+  const paymentCardX = 14;
+  const paymentCardW = summaryCardX - 14 - 6; // 91mm wide
+  const paymentCardH = summaryCardH;
+  const paymentCardY = summaryCardY;
+
+  doc.setFillColor(248, 250, 252); // Slate-50
+  doc.roundedRect(paymentCardX, paymentCardY, paymentCardW, paymentCardH, 2, 2, "F");
+
+  doc.setFontSize(8.5);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(15, 118, 110); // Teal-700
+  doc.text("PAYMENT HISTORY", paymentCardX + 4, paymentCardY + 6);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(75, 85, 99); // Slate-600
+
+  let payY = paymentCardY + 12;
+  const paidAmt = Number(booking.paidAmount ?? booking.totalPrice);
+  const remBal = Number(booking.remainingBalance ?? 0);
+  const paidPayments = payments ? payments.filter((p) => p.status === "PAID") : [];
+
+  if (paidPayments.length > 0) {
+    paidPayments.forEach((p, idx) => {
+      const isAdvance = idx === 0 && booking.paymentType === "ADVANCE";
+      const label = isAdvance ? "Advance Payment" : `Payment #${idx + 1}`;
+      const dateStr = formatInvoiceDate(p.createdAt);
+      const refStr = p.providerPaymentId ? `Ref: ${p.providerPaymentId}` : "Ref: N/A";
+      doc.text(`${label}: Rs ${p.amount.toFixed(2)} on ${dateStr} (${refStr})`, paymentCardX + 4, payY);
+      payY += 5;
+    });
+  } else {
+    const refStr = payment?.providerPaymentId ? `Ref: ${payment.providerPaymentId}` : "Ref: N/A";
+    const dateStr = formatInvoiceDate(booking.date);
+    doc.text(`Payment: Rs ${paidAmt.toFixed(2)} on ${dateStr} (${refStr})`, paymentCardX + 4, payY);
+    payY += 5;
+  }
+
+  // Draw horizontal separator inside the payment card before footer line
+  doc.setDrawColor(226, 232, 240); // Slate-200
+  doc.setLineWidth(0.3);
+  doc.line(paymentCardX + 4, paymentCardY + 24, paymentCardX + paymentCardW - 4, paymentCardY + 24);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+
+  if (remBal <= 0.01) {
+    doc.setTextColor(34, 197, 94); // Green-500
+    doc.text(`Total Paid: Rs ${paidAmt.toFixed(2)}`, paymentCardX + 4, paymentCardY + 30);
+    doc.text("FULLY PAID", paymentCardX + paymentCardW - 25, paymentCardY + 30);
+  } else {
+    doc.setTextColor(217, 119, 6); // Amber-600
+    doc.text(`Paid: Rs ${paidAmt.toFixed(2)}`, paymentCardX + 4, paymentCardY + 30);
+    doc.text(`Balance Due: Rs ${remBal.toFixed(2)}`, paymentCardX + paymentCardW - 45, paymentCardY + 30);
+  }
+
+  // Right Card: Summary / Invoice Totals
+  doc.setFillColor(248, 250, 252); // Slate-50
+  doc.roundedRect(summaryCardX, summaryCardY, summaryCardW, summaryCardH, 2, 2, "F");
+
+  doc.setFontSize(8.5);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(100, 100, 100);
+  
+  doc.text("Taxable Base Fare:", summaryCardX + 4, summaryCardY + 8);
+  doc.text(`Rs ${Number(booking.baseFare).toFixed(2)}`, pageWidth - 18, summaryCardY + 8, { align: "right" });
+
+  let currentY = summaryCardY + 14;
+  if (Array.isArray(booking.taxBreakdown)) {
+    booking.taxBreakdown.forEach((tax) => {
+      doc.text(`${tax.name} (${tax.percentage}%):`, summaryCardX + 4, currentY);
+      doc.text(`Rs ${Number(tax.amount || 0).toFixed(2)}`, pageWidth - 18, currentY, { align: "right" });
+      currentY += 6;
+    });
+  }
+
+  // Draw a line inside the summary card before total
+  doc.setDrawColor(226, 232, 240); // Slate-200
+  doc.setLineWidth(0.3);
+  doc.line(summaryCardX + 4, summaryCardY + 24, pageWidth - 18, summaryCardY + 24);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(31, 41, 55); // Slate-800
+  doc.text("Gross Total:", summaryCardX + 4, summaryCardY + 30);
+  doc.text(`Rs ${Number(booking.totalPrice).toFixed(2)}`, pageWidth - 18, summaryCardY + 30, { align: "right" });
+
+  return { summaryCardY, summaryCardH };
+}
+
+function drawInvoiceFooter(
+  doc: jsPDF,
+  companyName: string,
+  summaryCardY: number,
+  summaryCardH: number,
+  pageWidth: number
+) {
+  doc.setFontSize(8.5);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(120, 120, 120);
+
+  const footerTextY = summaryCardY + summaryCardH + 10;
+  doc.text("Tax is payable on reverse charge basis: NO", 14, footerTextY);
+  doc.text("Payment transactions processed securely via Razorpay.", 14, footerTextY + 5);
+
+  // Signatory block
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(55, 65, 81); // Slate-700
+  doc.text(`For ${companyName || "Param Adventures Pvt Ltd"}`, pageWidth - 14, footerTextY + 25, { align: "right" });
+  
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(140, 140, 140);
+  doc.text("Authorized Signatory\n(Computer Generated Invoice)", pageWidth - 14, footerTextY + 32, { align: "right" });
+}
+
 export default function DownloadInvoiceBtn({ bookingId }: Readonly<{ bookingId: string }>) {
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -134,88 +364,10 @@ export default function DownloadInvoiceBtn({ bookingId }: Readonly<{ bookingId: 
       const { booking, company, experience, primaryContact, payment, payments } = data;
 
       // 3. Header Formatting
-      // Logo in the top-left
-      if (logoBase64) {
-        try {
-          doc.addImage(logoBase64, "PNG", 14, 12, 18, 18);
-        } catch (err) {
-          console.warn("Failed to draw logo on PDF:", err);
-        }
-      }
-
-      // Company details next to logo
-      const companyDetailsStartX = logoBase64 ? 36 : 14;
-      
-      doc.setFontSize(14);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(31, 41, 55); // Slate-800
-      doc.text(company.companyName || "PARAM ADVENTURES", companyDetailsStartX, 18);
-      
-      doc.setFontSize(8.5);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(100, 100, 100);
-      
-      // Split and render address dynamically to handle any address length without overlap
-      const addressText = company.companyAddress || "";
-      const addressLines = doc.splitTextToSize(addressText, pageWidth - companyDetailsStartX - 70) as string[];
-      const addressLineHeight = 3.6;
-      addressLines.forEach((line, index) => {
-        doc.text(line, companyDetailsStartX, 23 + (index * addressLineHeight));
-      });
-
-      const gstY = 23 + (addressLines.length * addressLineHeight) + 0.5;
-      doc.text(`GSTIN: ${company.gstNumber || "N/A"} | PAN: ${company.panNumber || "N/A"}`, companyDetailsStartX, gstY);
-      
-      const stateCodeY = gstY + 3.8;
-      doc.text(`State Code: ${company.stateCode || "N/A"}`, companyDetailsStartX, stateCodeY);
-
-      // TAX INVOICE Title (top-right)
-      doc.setFontSize(18);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(15, 118, 110); // Teal-700
-      doc.text("TAX INVOICE", pageWidth - 14, 18, { align: "right" });
-
-      // Divider Line placed dynamically below the company info
-      const dividerY = Math.max(36, stateCodeY + 5);
-      doc.setDrawColor(226, 232, 240); // Slate-200
-      doc.setLineWidth(0.5);
-      doc.line(14, dividerY, pageWidth - 14, dividerY);
+      const dividerY = drawInvoiceHeader(doc, logoBase64, company, pageWidth);
 
       // 4. Details Section (Two card containers side-by-side)
-      const cardWidth = (pageWidth - 34) / 2;
-      const cardHeight = 32;
-      const cardY = dividerY + 6;
-
-      // Left Card: Invoice details
-      doc.setFillColor(248, 250, 252); // Slate-50
-      doc.roundedRect(14, cardY, cardWidth, cardHeight, 2, 2, "F");
-      
-      doc.setFontSize(8.5);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(15, 118, 110); // Teal-700
-      doc.text("INVOICE DETAILS", 18, cardY + 6);
-      
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(75, 85, 99); // Slate-600
-      doc.text(`Invoice No: INV-${booking.id.split("-")[0].toUpperCase()}`, 18, cardY + 12);
-      doc.text(`Invoice Date: ${formatInvoiceDate(booking.date)}`, 18, cardY + 17);
-      doc.text(`Place of Supply: Karnataka (29)`, 18, cardY + 22); 
-      doc.text(`Status: ${booking.status}`, 18, cardY + 27);
-
-      // Right Card: Billed To
-      const rightCardX = 14 + cardWidth + 6;
-      doc.setFillColor(248, 250, 252); // Slate-50
-      doc.roundedRect(rightCardX, cardY, cardWidth, cardHeight, 2, 2, "F");
-
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(15, 118, 110); // Teal-700
-      doc.text("BILLED TO", rightCardX + 4, cardY + 6);
-
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(75, 85, 99); // Slate-600
-      doc.text(`Name: ${primaryContact?.name || "Guest"}`, rightCardX + 4, cardY + 12);
-      doc.text(`Email: ${primaryContact?.email || "N/A"}`, rightCardX + 4, cardY + 17);
-      doc.text(`Phone: ${primaryContact?.phoneNumber || "N/A"}`, rightCardX + 4, cardY + 22);
+      const { cardHeight, cardY } = drawInvoiceDetailsAndBilledTo(doc, booking, primaryContact, dividerY, pageWidth);
 
       // 5. Table of Items
       const tableData = [
@@ -250,118 +402,10 @@ export default function DownloadInvoiceBtn({ bookingId }: Readonly<{ bookingId: 
 
       // 6. Summary Block
       const finalY = (doc as unknown as JsPDFWithAutoTable).lastAutoTable?.finalY || 110;
-      
-      const summaryCardW = 85;
-      const summaryCardH = 35;
-      const summaryCardX = pageWidth - 14 - summaryCardW;
-      const summaryCardY = finalY + 8;
-
-      // Left Card: Payment Transaction History & Balance Breakdown
-      const paymentCardX = 14;
-      const paymentCardW = summaryCardX - 14 - 6; // 91mm wide
-      const paymentCardH = summaryCardH;
-      const paymentCardY = summaryCardY;
-
-      doc.setFillColor(248, 250, 252); // Slate-50
-      doc.roundedRect(paymentCardX, paymentCardY, paymentCardW, paymentCardH, 2, 2, "F");
-
-      doc.setFontSize(8.5);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(15, 118, 110); // Teal-700
-      doc.text("PAYMENT HISTORY", paymentCardX + 4, paymentCardY + 6);
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(7.5);
-      doc.setTextColor(75, 85, 99); // Slate-600
-
-      let payY = paymentCardY + 12;
-      const paidAmt = Number(booking.paidAmount ?? booking.totalPrice);
-      const remBal = Number(booking.remainingBalance ?? 0);
-      const paidPayments = payments ? payments.filter((p) => p.status === "PAID") : [];
-
-      if (paidPayments.length > 0) {
-        paidPayments.forEach((p, idx) => {
-          const isAdvance = idx === 0 && booking.paymentType === "ADVANCE";
-          const label = isAdvance ? "Advance Payment" : `Payment #${idx + 1}`;
-          const dateStr = formatInvoiceDate(p.createdAt);
-          const refStr = p.providerPaymentId ? `Ref: ${p.providerPaymentId}` : "Ref: N/A";
-          doc.text(`${label}: Rs ${p.amount.toFixed(2)} on ${dateStr} (${refStr})`, paymentCardX + 4, payY);
-          payY += 5;
-        });
-      } else {
-        const refStr = payment?.providerPaymentId ? `Ref: ${payment.providerPaymentId}` : "Ref: N/A";
-        const dateStr = formatInvoiceDate(booking.date);
-        doc.text(`Payment: Rs ${paidAmt.toFixed(2)} on ${dateStr} (${refStr})`, paymentCardX + 4, payY);
-        payY += 5;
-      }
-
-      // Draw horizontal separator inside the payment card before footer line
-      doc.setDrawColor(226, 232, 240); // Slate-200
-      doc.setLineWidth(0.3);
-      doc.line(paymentCardX + 4, paymentCardY + 24, paymentCardX + paymentCardW - 4, paymentCardY + 24);
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(8.5);
-
-      if (remBal <= 0.01) {
-        doc.setTextColor(34, 197, 94); // Green-500
-        doc.text(`Total Paid: Rs ${paidAmt.toFixed(2)}`, paymentCardX + 4, paymentCardY + 30);
-        doc.text("FULLY PAID", paymentCardX + paymentCardW - 25, paymentCardY + 30);
-      } else {
-        doc.setTextColor(217, 119, 6); // Amber-600
-        doc.text(`Paid: Rs ${paidAmt.toFixed(2)}`, paymentCardX + 4, paymentCardY + 30);
-        doc.text(`Balance Due: Rs ${remBal.toFixed(2)}`, paymentCardX + paymentCardW - 45, paymentCardY + 30);
-      }
-
-      // Right Card: Summary / Invoice Totals
-      doc.setFillColor(248, 250, 252); // Slate-50
-      doc.roundedRect(summaryCardX, summaryCardY, summaryCardW, summaryCardH, 2, 2, "F");
-
-      doc.setFontSize(8.5);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(100, 100, 100);
-      
-      doc.text("Taxable Base Fare:", summaryCardX + 4, summaryCardY + 8);
-      doc.text(`Rs ${Number(booking.baseFare).toFixed(2)}`, pageWidth - 18, summaryCardY + 8, { align: "right" });
-
-      let currentY = summaryCardY + 14;
-      if (Array.isArray(booking.taxBreakdown)) {
-        booking.taxBreakdown.forEach((tax) => {
-          doc.text(`${tax.name} (${tax.percentage}%):`, summaryCardX + 4, currentY);
-          doc.text(`Rs ${Number(tax.amount || 0).toFixed(2)}`, pageWidth - 18, currentY, { align: "right" });
-          currentY += 6;
-        });
-      }
-
-      // Draw a line inside the summary card before total
-      doc.setDrawColor(226, 232, 240); // Slate-200
-      doc.setLineWidth(0.3);
-      doc.line(summaryCardX + 4, summaryCardY + 24, pageWidth - 18, summaryCardY + 24);
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(10);
-      doc.setTextColor(31, 41, 55); // Slate-800
-      doc.text("Gross Total:", summaryCardX + 4, summaryCardY + 30);
-      doc.text(`Rs ${Number(booking.totalPrice).toFixed(2)}`, pageWidth - 18, summaryCardY + 30, { align: "right" });
+      const { summaryCardY, summaryCardH } = drawPaymentAndSummaryBlocks(doc, booking, payment, payments, finalY, pageWidth);
 
       // 7. Footer details
-      doc.setFontSize(8.5);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(120, 120, 120);
-
-      const footerTextY = summaryCardY + summaryCardH + 10;
-      doc.text("Tax is payable on reverse charge basis: NO", 14, footerTextY);
-      doc.text("Payment transactions processed securely via Razorpay.", 14, footerTextY + 5);
-
-      // Signatory block
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(55, 65, 81); // Slate-700
-      doc.text(`For ${company.companyName || "Param Adventures Pvt Ltd"}`, pageWidth - 14, footerTextY + 25, { align: "right" });
-      
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(7.5);
-      doc.setTextColor(140, 140, 140);
-      doc.text("Authorized Signatory\n(Computer Generated Invoice)", pageWidth - 14, footerTextY + 32, { align: "right" });
+      drawInvoiceFooter(doc, company.companyName, summaryCardY, summaryCardH, pageWidth);
 
       // Save
       doc.save(`Invoice_PARAM_${booking.id.split("-")[0].toUpperCase()}.pdf`);

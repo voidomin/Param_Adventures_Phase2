@@ -75,7 +75,7 @@ export async function GET(
         providerPaymentId: p.providerPaymentId,
         createdAt: p.createdAt,
       })),
-      payment: booking.payments[booking.payments.length - 1] || null,
+      payment: booking.payments.at(-1) || null,
       company: companyInfo
     });
 

@@ -614,120 +614,134 @@ function drawItinerary(doc: jsPDF, data: ItineraryBookingData, y: number): numbe
   return y;
 }
 
-function drawInclusionsExclusionsPacking(doc: jsPDF, data: ItineraryBookingData, galleryImages: (string | null)[], y: number): number {
+function drawInclusions(doc: jsPDF, inclusions: string[], y: number): number {
   const pageWidth = doc.internal.pageSize.getWidth();
+  y = drawSectionHeader(doc, "WHAT'S INCLUDED", y);
+  doc.setFontSize(9);
+  inclusions.forEach((item: string, i: number) => {
+    y = checkPageBreak(doc, y, 9);
+    // Zebra stripe
+    if (i % 2 === 0) {
+      doc.setFillColor(...COLORS.paleGreen);
+      doc.rect(14, y - 1, pageWidth - 28, 8, "F");
+    }
+    // Filled green dot
+    doc.setFillColor(...COLORS.green);
+    doc.circle(19, y + 3, 1.8, "F");
+    // Text
+    doc.setTextColor(...COLORS.darkText).setFont("helvetica", "normal");
+    const lines = doc.splitTextToSize(cleanTextForPdf(item), pageWidth - 40);
+    doc.text(lines, 26, y + 4);
+    y += lines.length * 5 + 3;
+  });
+  return y + 10;
+}
+
+function drawExclusions(doc: jsPDF, exclusions: string[], y: number): number {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  y = drawSectionHeader(doc, "WHAT'S NOT INCLUDED", y);
+  doc.setFontSize(9);
+  exclusions.forEach((item: string, i: number) => {
+    y = checkPageBreak(doc, y, 9);
+    // Zebra stripe
+    if (i % 2 === 0) {
+      doc.setFillColor(...COLORS.paleRed);
+      doc.rect(14, y - 1, pageWidth - 28, 8, "F");
+    }
+    // Filled red dot
+    doc.setFillColor(...COLORS.red);
+    doc.circle(19, y + 3, 1.8, "F");
+    // Text
+    doc.setTextColor(...COLORS.darkText).setFont("helvetica", "normal");
+    const lines = doc.splitTextToSize(cleanTextForPdf(item), pageWidth - 40);
+    doc.text(lines, 26, y + 4);
+    y += lines.length * 5 + 3;
+  });
+  return y + 10;
+}
+
+function drawThingsToCarry(doc: jsPDF, thingsToCarry: string[], y: number): number {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  y = drawSectionHeader(doc, "THINGS TO CARRY", y);
+  doc.setFontSize(9);
+  const colWidth = (pageWidth - 28) / 2;
+  thingsToCarry.forEach((item: string, i: number) => {
+    if (i % 2 === 0) y = checkPageBreak(doc, y, 8);
+    const cx = i % 2 === 0 ? 18 : 14 + colWidth;
+    // Filled orange dot
+    doc.setFillColor(...COLORS.orange);
+    doc.circle(cx + 2, y + 3, 1.5, "F");
+    doc.setTextColor(...COLORS.darkText).setFont("helvetica", "normal");
+    const cleanItem = cleanTextForPdf(item);
+    doc.text(doc.splitTextToSize(cleanItem, colWidth - 14)[0] || cleanItem, cx + 8, y + 4);
+    if (i % 2 === 1) y += 8;
+  });
+  if (thingsToCarry.length % 2 !== 0) y += 8;
+  return y + 12;
+}
+
+function drawThingsToKeepInMind(doc: jsPDF, thingsToKeepInMind: string[], y: number): number {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  y = drawSectionHeader(doc, "THINGS TO KEEP IN MIND", y);
+  // Draw amber warning header accent
+  doc.setFillColor(255, 180, 50);
+  doc.roundedRect(14, y - 2, pageWidth - 28, 1, 0.5, 0.5, "F");
+  doc.setFontSize(9);
+  thingsToKeepInMind.forEach((item: string) => {
+    y = checkPageBreak(doc, y, 8);
+    // Amber dot
+    doc.setFillColor(220, 140, 30);
+    doc.circle(20, y + 3, 1.5, "F");
+    doc.setTextColor(...COLORS.darkText).setFont("helvetica", "normal");
+    const cleanItem = cleanTextForPdf(item);
+    doc.text(doc.splitTextToSize(cleanItem, pageWidth - 42)[0] || cleanItem, 26, y + 4);
+    y += 8;
+  });
+  return y + 12;
+}
+
+function drawGallery(doc: jsPDF, validGallery: string[], y: number): number {
+  const pageWidth = doc.internal.pageSize.getWidth();
+  y = drawSectionHeader(doc, "TRIP GALLERY", y);
+  y += 5;
+  const imgW = (pageWidth - 28 - 15) / 4;
+  const imgH = 30;
+  validGallery.forEach((img, i) => {
+    const ix = 14 + i * (imgW + 5);
+    // Shadow rect
+    doc.setFillColor(220, 220, 220);
+    doc.roundedRect(ix + 1, y + 1, imgW, imgH, 2, 2, "F");
+    // Image
+    try { doc.addImage(img, "JPEG", ix, y, imgW, imgH, undefined, "FAST"); } catch { /* skip */ }
+  });
+  return y + imgH + 12;
+}
+
+function drawInclusionsExclusionsPacking(doc: jsPDF, data: ItineraryBookingData, galleryImages: (string | null)[], y: number): number {
   const inclusions = Array.isArray(data.inclusions) ? data.inclusions : [];
   const exclusions = Array.isArray(data.exclusions) ? data.exclusions : [];
   const thingsToCarry = Array.isArray(data.thingsToCarry) ? data.thingsToCarry : [];
+  const thingsToKeepInMind = Array.isArray(data.thingsToKeepInMind) ? data.thingsToKeepInMind : [];
+  const validGallery = galleryImages.filter((img): img is string => !!img);
 
-  if (inclusions.length > 0 || exclusions.length > 0 || thingsToCarry.length > 0) {
+  if (inclusions.length > 0 || exclusions.length > 0 || thingsToCarry.length > 0 || thingsToKeepInMind.length > 0 || validGallery.length > 0) {
     doc.addPage();
     y = 20;
 
     if (inclusions.length > 0) {
-      y = drawSectionHeader(doc, "WHAT'S INCLUDED", y);
-      doc.setFontSize(9);
-      inclusions.forEach((item: string, i: number) => {
-        y = checkPageBreak(doc, y, 9);
-        // Zebra stripe
-        if (i % 2 === 0) {
-          doc.setFillColor(...COLORS.paleGreen);
-          doc.rect(14, y - 1, pageWidth - 28, 8, "F");
-        }
-        // Filled green dot
-        doc.setFillColor(...COLORS.green);
-        doc.circle(19, y + 3, 1.8, "F");
-        // Text
-        doc.setTextColor(...COLORS.darkText).setFont("helvetica", "normal");
-        const lines = doc.splitTextToSize(cleanTextForPdf(item), pageWidth - 40);
-        doc.text(lines, 26, y + 4);
-        y += lines.length * 5 + 3;
-      });
-      y += 10;
+      y = drawInclusions(doc, inclusions, y);
     }
-
     if (exclusions.length > 0) {
-      y = checkPageBreak(doc, y, 20);
-      y = drawSectionHeader(doc, "WHAT'S NOT INCLUDED", y);
-      doc.setFontSize(9);
-      exclusions.forEach((item: string, i: number) => {
-        y = checkPageBreak(doc, y, 9);
-        // Zebra stripe
-        if (i % 2 === 0) {
-          doc.setFillColor(...COLORS.paleRed);
-          doc.rect(14, y - 1, pageWidth - 28, 8, "F");
-        }
-        // Filled red dot
-        doc.setFillColor(...COLORS.red);
-        doc.circle(19, y + 3, 1.8, "F");
-        // Text
-        doc.setTextColor(...COLORS.darkText).setFont("helvetica", "normal");
-        const lines = doc.splitTextToSize(cleanTextForPdf(item), pageWidth - 40);
-        doc.text(lines, 26, y + 4);
-        y += lines.length * 5 + 3;
-      });
-      y += 10;
+      y = drawExclusions(doc, exclusions, y);
     }
-
     if (thingsToCarry.length > 0) {
-      y = checkPageBreak(doc, y, 20);
-      y = drawSectionHeader(doc, "THINGS TO CARRY", y);
-      doc.setFontSize(9);
-      const colWidth = (pageWidth - 28) / 2;
-      thingsToCarry.forEach((item: string, i: number) => {
-        if (i % 2 === 0) y = checkPageBreak(doc, y, 8);
-        const cx = i % 2 === 0 ? 18 : 14 + colWidth;
-        // Filled orange dot
-        doc.setFillColor(...COLORS.orange);
-        doc.circle(cx + 2, y + 3, 1.5, "F");
-        doc.setTextColor(...COLORS.darkText).setFont("helvetica", "normal");
-        const cleanItem = cleanTextForPdf(item);
-        doc.text(doc.splitTextToSize(cleanItem, colWidth - 14)[0] || cleanItem, cx + 8, y + 4);
-        if (i % 2 === 1) y += 8;
-      });
-      if (thingsToCarry.length % 2 !== 0) y += 8;
-      y += 12;
+      y = drawThingsToCarry(doc, thingsToCarry, y);
     }
-
-    const thingsToKeepInMind = Array.isArray(data.thingsToKeepInMind) ? data.thingsToKeepInMind : [];
     if (thingsToKeepInMind.length > 0) {
-      y = checkPageBreak(doc, y, 20);
-      y = drawSectionHeader(doc, "THINGS TO KEEP IN MIND", y);
-      // Draw amber warning header accent
-      doc.setFillColor(255, 180, 50);
-      doc.roundedRect(14, y - 2, pageWidth - 28, 1, 0.5, 0.5, "F");
-      doc.setFontSize(9);
-      thingsToKeepInMind.forEach((item: string, i: number) => {
-        y = checkPageBreak(doc, y, 8);
-        // Amber dot
-        doc.setFillColor(220, 140, 30);
-        doc.circle(20, y + 3, 1.5, "F");
-        doc.setTextColor(...COLORS.darkText).setFont("helvetica", "normal");
-        const cleanItem = cleanTextForPdf(item);
-        doc.text(doc.splitTextToSize(cleanItem, pageWidth - 42)[0] || cleanItem, 26, y + 4);
-        y += 8;
-        void i;
-      });
-      y += 12;
+      y = drawThingsToKeepInMind(doc, thingsToKeepInMind, y);
     }
-
-    // Gallery with shadow effect
-    const validGallery = galleryImages.filter((img): img is string => !!img);
     if (validGallery.length > 0) {
-      y = checkPageBreak(doc, y, 65);
-      y = drawSectionHeader(doc, "TRIP GALLERY", y);
-      y += 5;
-      const imgW = (pageWidth - 28 - 15) / 4;
-      const imgH = 30;
-      validGallery.forEach((img, i) => {
-        const ix = 14 + i * (imgW + 5);
-        // Shadow rect
-        doc.setFillColor(220, 220, 220);
-        doc.roundedRect(ix + 1, y + 1, imgW, imgH, 2, 2, "F");
-        // Image
-        try { doc.addImage(img, "JPEG", ix, y, imgW, imgH, undefined, "FAST"); } catch { /* skip */ }
-      });
-      y += imgH + 12;
+      y = drawGallery(doc, validGallery, y);
     }
   }
   return y;

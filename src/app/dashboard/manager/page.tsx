@@ -50,6 +50,117 @@ interface TripSlot {
   _count: { bookings: number };
 }
 
+interface ManagerTripCardProps {
+  trip: TripSlot;
+}
+
+function ManagerTripCard({ trip }: ManagerTripCardProps) {
+  const statusColor =
+    STATUS_COLORS[trip.status] ?? STATUS_COLORS.UPCOMING;
+  const rawContacts = trip.vendorContacts as StructuredVendorContacts | null | undefined;
+  const isStructured = rawContacts && typeof rawContacts === "object" && !Array.isArray(rawContacts);
+
+  let vendorCount = 0;
+  let vendorText = "No Vendor Contacts Yet";
+
+  if (isStructured) {
+    const staysCount = rawContacts.stays?.length ?? 0;
+    const transportsCount = rawContacts.transports?.length ?? 0;
+    const otherCount = rawContacts.otherContacts?.length ?? 0;
+    vendorCount = staysCount + transportsCount + otherCount;
+
+    const parts: string[] = [];
+    if (staysCount > 0) parts.push(`${staysCount} Stay${staysCount === 1 ? "" : "s"}`);
+    if (transportsCount > 0) parts.push(`${transportsCount} Transport${transportsCount === 1 ? "" : "s"}`);
+    if (otherCount > 0) parts.push(`${otherCount} Other`);
+    if (parts.length > 0) {
+      vendorText = parts.join(" · ");
+    }
+  } else if (Array.isArray(rawContacts)) {
+    vendorCount = rawContacts.length;
+    if (vendorCount === 1) vendorText = "1 Vendor Contact";
+    else if (vendorCount > 1) vendorText = `${vendorCount} Vendor Contacts`;
+  }
+
+  const leadCount = trip.assignments.length;
+
+  let leadText = "No Trek Lead Assigned";
+  if (leadCount === 1) leadText = "1 Trek Lead Assigned";
+  else if (leadCount > 1)
+    leadText = `${leadCount} Trek Leads Assigned`;
+
+  return (
+    <div className="bg-card border border-border rounded-[1.5rem] p-6 sm:p-8 flex flex-col gap-6 hover:shadow-xl hover:border-foreground/20 transition-all group">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="flex-1">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
+            <h3 className="text-xl font-bold text-foreground">
+              {trip.experience.title}
+            </h3>
+            <span
+              className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${statusColor}`}
+            >
+              {trip.status.replace("_", " ")}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-foreground/60">
+            <span className="flex items-center gap-1.5">
+              <CalendarDays className="w-4 h-4" />
+              {formatDate(trip.date)}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <MapPin className="w-4 h-4" />
+              {trip.experience.location || "N/A"}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Users className="w-4 h-4" />
+              {trip._count.bookings} confirmed
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Readiness checklist */}
+      <div className="flex flex-wrap gap-3 pt-3 border-t border-border/50">
+        <div
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border ${
+            leadCount > 0
+              ? "bg-green-500/10 text-green-400 border-green-500/20"
+              : "bg-orange-500/10 text-orange-400 border-orange-500/20"
+          }`}
+        >
+          {leadCount > 0 ? (
+            <UserCheck className="w-4 h-4" />
+          ) : (
+            <AlertCircle className="w-4 h-4" />
+          )}
+          {leadText}
+        </div>
+        <div
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border ${
+            vendorCount > 0
+              ? "bg-green-500/10 text-green-400 border-green-500/20"
+              : "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
+          }`}
+        >
+          <ClipboardList className="w-4 h-4" />
+          {vendorText}
+        </div>
+      </div>
+
+      <div className="flex justify-end pt-2">
+        <Link
+          href={`/dashboard/manager/trips/${trip.id}`}
+          className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-xl font-bold hover:scale-105 transition-transform shadow-lg shadow-primary/20 text-sm opacity-90 group-hover:opacity-100"
+        >
+          Action Center
+          <ChevronRight className="w-4 h-4" />
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 export default function ManagerTripsPage() {
   const [trips, setTrips] = useState<TripSlot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -97,115 +208,9 @@ export default function ManagerTripsPage() {
 
       {!isLoading && trips.length > 0 && (
         <div className="grid gap-4">
-          {trips.map((trip) => {
-            const statusColor =
-              STATUS_COLORS[trip.status] ?? STATUS_COLORS.UPCOMING;
-            const rawContacts = trip.vendorContacts as StructuredVendorContacts | null | undefined;
-            const isStructured = rawContacts && typeof rawContacts === "object" && !Array.isArray(rawContacts);
-
-            let vendorCount = 0;
-            let vendorText = "No Vendor Contacts Yet";
-
-            if (isStructured) {
-              const staysCount = rawContacts.stays?.length ?? 0;
-              const transportsCount = rawContacts.transports?.length ?? 0;
-              const otherCount = rawContacts.otherContacts?.length ?? 0;
-              vendorCount = staysCount + transportsCount + otherCount;
-
-              const parts: string[] = [];
-              if (staysCount > 0) parts.push(`${staysCount} Stay${staysCount === 1 ? "" : "s"}`);
-              if (transportsCount > 0) parts.push(`${transportsCount} Transport${transportsCount === 1 ? "" : "s"}`);
-              if (otherCount > 0) parts.push(`${otherCount} Other`);
-              if (parts.length > 0) {
-                vendorText = parts.join(" · ");
-              }
-            } else if (Array.isArray(rawContacts)) {
-              vendorCount = rawContacts.length;
-              if (vendorCount === 1) vendorText = "1 Vendor Contact";
-              else if (vendorCount > 1) vendorText = `${vendorCount} Vendor Contacts`;
-            }
-
-            const leadCount = trip.assignments.length;
-
-            let leadText = "No Trek Lead Assigned";
-            if (leadCount === 1) leadText = "1 Trek Lead Assigned";
-            else if (leadCount > 1)
-              leadText = `${leadCount} Trek Leads Assigned`;
-
-            return (
-              <div
-                key={trip.id}
-                className="bg-card border border-border rounded-[1.5rem] p-6 sm:p-8 flex flex-col gap-6 hover:shadow-xl hover:border-foreground/20 transition-all group"
-              >
-                <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                  <div className="flex-1">
-                    <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <h3 className="text-xl font-bold text-foreground">
-                        {trip.experience.title}
-                      </h3>
-                      <span
-                        className={`px-2.5 py-1 rounded-full text-xs font-semibold border ${statusColor}`}
-                      >
-                        {trip.status.replace("_", " ")}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-foreground/60">
-                      <span className="flex items-center gap-1.5">
-                        <CalendarDays className="w-4 h-4" />
-                        {formatDate(trip.date)}
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <MapPin className="w-4 h-4" />
-                        {trip.experience.location || "N/A"}
-                      </span>
-                      <span className="flex items-center gap-1.5">
-                        <Users className="w-4 h-4" />
-                        {trip._count.bookings} confirmed
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Readiness checklist */}
-                <div className="flex flex-wrap gap-3 pt-3 border-t border-border/50">
-                  <div
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border ${
-                      leadCount > 0
-                        ? "bg-green-500/10 text-green-400 border-green-500/20"
-                        : "bg-orange-500/10 text-orange-400 border-orange-500/20"
-                    }`}
-                  >
-                    {leadCount > 0 ? (
-                      <UserCheck className="w-4 h-4" />
-                    ) : (
-                      <AlertCircle className="w-4 h-4" />
-                    )}
-                    {leadText}
-                  </div>
-                  <div
-                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border ${
-                      vendorCount > 0
-                        ? "bg-green-500/10 text-green-400 border-green-500/20"
-                        : "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
-                    }`}
-                  >
-                    <ClipboardList className="w-4 h-4" />
-                    {vendorText}
-                  </div>
-                </div>
-
-                <div className="flex justify-end pt-2">
-                  <Link
-                    href={`/dashboard/manager/trips/${trip.id}`}
-                    className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-xl font-bold hover:scale-105 transition-transform shadow-lg shadow-primary/20 text-sm opacity-90 group-hover:opacity-100"
-                  >
-                    Action Center
-                    <ChevronRight className="w-4 h-4" />
-                  </Link>
-                </div>
-              </div>
-            );
-          })}
+          {trips.map((trip) => (
+            <ManagerTripCard key={trip.id} trip={trip} />
+          ))}
         </div>
       )}
     </div>

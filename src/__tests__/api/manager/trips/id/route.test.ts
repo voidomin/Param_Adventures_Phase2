@@ -47,8 +47,12 @@ describe("/api/manager/trips/[id]", () => {
       userId: "manager-2",
     } as unknown as Awaited<ReturnType<typeof authorizeRequest>>);
 
-    mockSlotFindUnique.mockResolvedValueOnce({ managerId: "manager-1" } as never);
-    mockUserFindUnique.mockResolvedValue({ role: { name: "TREK_LEAD" } } as never);
+    mockSlotFindUnique.mockResolvedValueOnce({
+      managerId: "manager-1",
+    } as never);
+    mockUserFindUnique.mockResolvedValue({
+      role: { name: "TREK_LEAD" },
+    } as never);
 
     const response = await GET({} as NextRequest, routeContext);
     const data = await response.json();
@@ -69,7 +73,9 @@ describe("/api/manager/trips/[id]", () => {
       experience: { title: "Kedarkantha" },
     } as never);
 
-    mockUserFindUnique.mockResolvedValue({ role: { name: "TREK_MANAGER" } } as never);
+    mockUserFindUnique.mockResolvedValue({
+      role: { name: "TREK_MANAGER" },
+    } as never);
 
     const response = await GET({} as NextRequest, routeContext);
     const data = await response.json();
@@ -85,7 +91,9 @@ describe("/api/manager/trips/[id]", () => {
     } as unknown as Awaited<ReturnType<typeof authorizeRequest>>);
 
     const request = {
-      json: vi.fn().mockResolvedValue({ vendorContacts: [{ label: "", value: "123" }] }),
+      json: vi
+        .fn()
+        .mockResolvedValue({ vendorContacts: [{ label: "", value: "123" }] }),
     } as unknown as NextRequest;
 
     const response = await PATCH(request, routeContext);
@@ -101,9 +109,16 @@ describe("/api/manager/trips/[id]", () => {
       userId: "manager-1",
     } as unknown as Awaited<ReturnType<typeof authorizeRequest>>);
 
-    mockSlotFindUnique.mockResolvedValueOnce({ managerId: "manager-1" } as never);
-    mockUserFindUnique.mockResolvedValue({ role: { name: "TREK_MANAGER" } } as never);
-    mockSlotUpdate.mockResolvedValue({ id: "slot-1", vendorContacts: [{ label: "Taxi", value: "999" }] } as never);
+    mockSlotFindUnique.mockResolvedValueOnce({
+      managerId: "manager-1",
+    } as never);
+    mockUserFindUnique.mockResolvedValue({
+      role: { name: "TREK_MANAGER" },
+    } as never);
+    mockSlotUpdate.mockResolvedValue({
+      id: "slot-1",
+      vendorContacts: [{ label: "Taxi", value: "999" }],
+    } as never);
 
     const request = {
       json: vi.fn().mockResolvedValue({
@@ -132,10 +147,18 @@ describe("/api/manager/trips/[id]", () => {
     const request = {
       json: vi.fn().mockResolvedValue({
         vendorContacts: {
-          stays: [{ name: "", contactNumber: "123", location: "Manali", locationLink: "http://maps", address: "123 Street" }],
+          stays: [
+            {
+              name: "",
+              contactNumber: "123",
+              location: "Manali",
+              locationLink: "http://maps",
+              address: "123 Street",
+            },
+          ],
           transports: [],
-          otherContacts: []
-        }
+          otherContacts: [],
+        },
       }),
     } as unknown as NextRequest;
 
@@ -152,16 +175,38 @@ describe("/api/manager/trips/[id]", () => {
       userId: "manager-1",
     } as unknown as Awaited<ReturnType<typeof authorizeRequest>>);
 
-    mockSlotFindUnique.mockResolvedValueOnce({ managerId: "manager-1" } as never);
-    mockUserFindUnique.mockResolvedValue({ role: { name: "TREK_MANAGER" } } as never);
-    
+    mockSlotFindUnique.mockResolvedValueOnce({
+      managerId: "manager-1",
+    } as never);
+    mockUserFindUnique.mockResolvedValue({
+      role: { name: "TREK_MANAGER" },
+    } as never);
+
     const structuredPayload = {
-      stays: [{ name: "Hotel Mountain", contactNumber: "12345", location: "Manali", locationLink: "http://maps", address: "123 Street" }],
-      transports: [{ driverName: "Driver A", contactNumber: "67890", vehicleNumber: "KA01", vehicleType: "SUV" }],
-      otherContacts: [{ label: "Guide", value: "Bill" }]
+      stays: [
+        {
+          name: "Hotel Mountain",
+          contactNumber: "12345",
+          location: "Manali",
+          locationLink: "https://maps",
+          address: "123 Street",
+        },
+      ],
+      transports: [
+        {
+          driverName: "Driver A",
+          contactNumber: "67890",
+          vehicleNumber: "KA01",
+          vehicleType: "SUV",
+        },
+      ],
+      otherContacts: [{ label: "Guide", value: "Bill" }],
     };
-    
-    mockSlotUpdate.mockResolvedValue({ id: "slot-1", vendorContacts: structuredPayload } as never);
+
+    mockSlotUpdate.mockResolvedValue({
+      id: "slot-1",
+      vendorContacts: structuredPayload,
+    } as never);
 
     const request = {
       json: vi.fn().mockResolvedValue({
@@ -177,8 +222,8 @@ describe("/api/manager/trips/[id]", () => {
       expect.objectContaining({
         where: { id: "slot-1" },
         data: {
-          vendorContacts: structuredPayload
-        }
+          vendorContacts: structuredPayload,
+        },
       }),
     );
     expect(data.slot.vendorContacts).toEqual(structuredPayload);

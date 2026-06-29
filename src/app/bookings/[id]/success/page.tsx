@@ -20,6 +20,56 @@ interface SelectedAmenity {
   price: number;
 }
 
+function formatDate(date: Date) {
+  const day = String(date.getDate()).padStart(2, "0");
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const month = months[date.getMonth()];
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+function getDates(slotDate: string | Date | null | undefined, durationDays: number) {
+  const startDate = slotDate ? new Date(slotDate) : null;
+  const endDate = startDate ? new Date(startDate) : null;
+  if (endDate) {
+    endDate.setDate(endDate.getDate() + durationDays - 1);
+  }
+  return { startDate, endDate };
+}
+
+function getTaxItems(taxBreakdown: unknown) {
+  return Array.isArray(taxBreakdown)
+    ? (taxBreakdown as unknown as {
+        name: string;
+        percentage: number;
+        amount: number;
+      }[])
+    : [];
+}
+
+interface ParticipantWithAmenities {
+  selectedAmenities?: unknown;
+}
+
+function getAggregatedAmenities(participants: ParticipantWithAmenities[]) {
+  const aggregatedAmenities = new Map<string, { name: string; price: number; count: number }>();
+  participants.forEach((p) => {
+    if (p.selectedAmenities && Array.isArray(p.selectedAmenities)) {
+      const selected = p.selectedAmenities as unknown as SelectedAmenity[];
+      selected.forEach((a) => {
+        const key = a.optionId;
+        const existing = aggregatedAmenities.get(key);
+        if (existing) {
+          existing.count += 1;
+        } else {
+          aggregatedAmenities.set(key, { name: a.optionName, price: a.price, count: 1 });
+        }
+      });
+    }
+  });
+  return aggregatedAmenities;
+}
+
 export default async function BookingSuccessPage({
   params,
 }: Readonly<Props>) {
@@ -66,22 +116,10 @@ export default async function BookingSuccessPage({
   }
 
   const { experience, slot, participants, payments } = booking;
-  const payment = payments[payments.length - 1]; // the most recent one
+  const payment = payments.at(-1); // the most recent one
 
   // Dates
-  const startDate = slot?.date ? new Date(slot.date) : null;
-  const endDate = startDate ? new Date(startDate) : null;
-  if (endDate) {
-    endDate.setDate(endDate.getDate() + experience.durationDays - 1);
-  }
-
-  const formatDate = (date: Date) => {
-    const day = String(date.getDate()).padStart(2, "0");
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const month = months[date.getMonth()];
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
+  const { startDate, endDate } = getDates(slot?.date, experience.durationDays);
 
   const dateString =
     startDate && endDate
@@ -94,30 +132,10 @@ export default async function BookingSuccessPage({
   const remainingBalance = Number(booking.remainingBalance) || 0;
   const baseFare = Number(booking.baseFare) || totalPrice;
 
-  const taxItems = Array.isArray(booking.taxBreakdown)
-    ? (booking.taxBreakdown as unknown as {
-        name: string;
-        percentage: number;
-        amount: number;
-      }[])
-    : [];
+  const taxItems = getTaxItems(booking.taxBreakdown);
 
   // Aggregate amenities across participants
-  const aggregatedAmenities = new Map<string, { name: string; price: number; count: number }>();
-  participants.forEach((p) => {
-    if (p.selectedAmenities && Array.isArray(p.selectedAmenities)) {
-      const selected = p.selectedAmenities as unknown as SelectedAmenity[];
-      selected.forEach((a) => {
-        const key = a.optionId;
-        const existing = aggregatedAmenities.get(key);
-        if (existing) {
-          existing.count += 1;
-        } else {
-          aggregatedAmenities.set(key, { name: a.optionName, price: a.price, count: 1 });
-        }
-      });
-    }
-  });
+  const aggregatedAmenities = getAggregatedAmenities(participants);
 
   const experienceBaseTotal = Number(experience.basePrice) * booking.participantCount;
 
@@ -125,6 +143,13 @@ export default async function BookingSuccessPage({
   const trekLeads = slot?.assignments?.map((a) => a.trekLead) || [];
 
   const adventureImage = experience.cardImage || experience.coverImage || experience.images?.[0];
+
+  let statusBadgeClasses = "text-foreground/50 bg-muted";
+  if (booking.paymentStatus === "PAID") {
+    statusBadgeClasses = "text-green-500 bg-green-500/10";
+  } else if (booking.paymentStatus === "PARTIALLY_PAID") {
+    statusBadgeClasses = "text-amber-500 bg-amber-500/10";
+  }
 
   return (
     <main className="min-h-screen bg-background/50 py-12 px-4 sm:px-6 lg:px-8">
@@ -273,8 +298,8 @@ export default async function BookingSuccessPage({
                           <td className="px-6 py-4">
                             {p.selectedAmenities && Array.isArray(p.selectedAmenities) && p.selectedAmenities.length > 0 ? (
                               <div className="flex flex-wrap gap-1.5">
-                                 {(p.selectedAmenities as unknown as SelectedAmenity[]).map((amenity, aIdx: number) => (
-                                   <span key={aIdx} className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-bold border border-primary/20 whitespace-nowrap">
+                                 {(p.selectedAmenities as unknown as SelectedAmenity[]).map((amenity) => (
+                                   <span key={amenity.optionId} className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-bold border border-primary/20 whitespace-nowrap">
                                      {amenity.optionName} (₹{amenity.price})
                                    </span>
                                  ))}
@@ -329,8 +354,8 @@ export default async function BookingSuccessPage({
                           <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest block">Amenities Selected</span>
                           <div className="flex flex-wrap gap-1.5 mt-1">
                             {p.selectedAmenities && Array.isArray(p.selectedAmenities) && p.selectedAmenities.length > 0 ? (
-                              (p.selectedAmenities as unknown as SelectedAmenity[]).map((amenity, aIdx: number) => (
-                                <span key={aIdx} className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-bold border border-primary/20">
+                              (p.selectedAmenities as unknown as SelectedAmenity[]).map((amenity) => (
+                                <span key={amenity.optionId} className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-bold border border-primary/20">
                                   {amenity.optionName} (₹{amenity.price})
                                 </span>
                               ))
@@ -397,8 +422,8 @@ export default async function BookingSuccessPage({
                   <span>Experience Price ({booking.participantCount} Pax)</span>
                   <span className="font-medium text-foreground">₹{experienceBaseTotal.toLocaleString("en-IN")}</span>
                 </div>
-                {Array.from(aggregatedAmenities.values()).map((item, idx) => (
-                  <div key={`summary-amenity-${idx}`} className="flex justify-between text-xs text-foreground/70 pl-2">
+                {Array.from(aggregatedAmenities.entries()).map(([optionId, item]) => (
+                  <div key={`summary-amenity-${optionId}`} className="flex justify-between text-xs text-foreground/70 pl-2">
                     <span>+ {item.name} (₹{item.price.toLocaleString("en-IN")} × {item.count})</span>
                     <span className="font-medium text-foreground">₹{(item.price * item.count).toLocaleString("en-IN")}</span>
                   </div>
@@ -433,13 +458,7 @@ export default async function BookingSuccessPage({
                 </div>
                 <div className="flex justify-between items-center py-1">
                   <span className="text-foreground/60">Status</span>
-                  <span className={`font-bold px-2.5 py-1 rounded-md uppercase text-xs tracking-wider ${
-                    booking.paymentStatus === "PAID"
-                      ? "text-green-500 bg-green-500/10"
-                      : booking.paymentStatus === "PARTIALLY_PAID"
-                      ? "text-amber-500 bg-amber-500/10"
-                      : "text-foreground/50 bg-muted"
-                  }`}>
+                  <span className={`font-bold px-2.5 py-1 rounded-md uppercase text-xs tracking-wider ${statusBadgeClasses}`}>
                     {booking.paymentStatus === "PARTIALLY_PAID" ? "Partially Paid" : booking.paymentStatus}
                   </span>
                 </div>
