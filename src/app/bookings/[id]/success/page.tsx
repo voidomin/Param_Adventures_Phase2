@@ -70,6 +70,175 @@ function getAggregatedAmenities(participants: ParticipantWithAmenities[]) {
   return aggregatedAmenities;
 }
 
+interface HeaderBannerProps {
+  bookingId: string;
+  paymentStatus: string;
+  providerPaymentId?: string | null;
+}
+
+function HeaderBanner({ bookingId, paymentStatus, providerPaymentId }: Readonly<HeaderBannerProps>) {
+  const isPartiallyPaid = paymentStatus === "PARTIALLY_PAID";
+  const bannerBgClass = isPartiallyPaid 
+    ? "bg-linear-to-r from-amber-950 via-amber-900 to-amber-950 border-amber-800/30" 
+    : "bg-linear-to-r from-green-900 via-green-800 to-green-900 border-green-800/50";
+  const iconBgClass = isPartiallyPaid ? "bg-amber-600 shadow-[0_0_30px_rgba(217,119,6,0.3)]" : "bg-green-500 shadow-[0_0_30px_rgba(34,197,94,0.3)]";
+  const textSubColorClass = isPartiallyPaid ? "text-amber-100/80" : "text-green-100/80";
+  const textRefColorClass = isPartiallyPaid ? "text-amber-200/80" : "text-green-200/80";
+
+  return (
+    <div className={`rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6 shadow-xl border relative overflow-hidden ${bannerBgClass}`}>
+      <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-20 -mt-20" />
+      
+      <div className={`w-16 h-16 shrink-0 rounded-full flex items-center justify-center ${iconBgClass}`}>
+        <CheckCircle2 className="w-10 h-10 text-white" />
+      </div>
+      
+      <div className="flex-1 text-center sm:text-left z-10">
+        <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+          {isPartiallyPaid ? "BOOKING CONFIRMED (ADVANCE)" : "BOOKING CONFIRMED!"}
+        </h1>
+        <p className={`font-medium mt-1 uppercase tracking-wider text-sm ${textSubColorClass}`}>
+          Booking ID: {bookingId.split("-")[0].toUpperCase()}
+        </p>
+      </div>
+      
+      <div className="text-center sm:text-right z-10 bg-black/20 px-6 py-4 rounded-xl border border-white/10 backdrop-blur-sm">
+        <p className="font-bold text-white mb-0.5">{isPartiallyPaid ? "Advance Paid" : "Payment Successful"}</p>
+        <p className={`text-sm ${textRefColorClass}`}>
+          Reference: {providerPaymentId || "N/A"}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+interface PaymentConfirmationCardProps {
+  paymentStatus: string;
+  paymentType?: string | null;
+  paidAmount: number;
+  remainingBalance: number;
+  participantCount: number;
+  experienceBaseTotal: number;
+  baseFare: number;
+  totalPrice: number;
+  statusBadgeClasses: string;
+  payments: {
+    id: string;
+    status: string;
+    amount: any;
+    createdAt: string | Date;
+  }[];
+  taxItems: {
+    name: string;
+    percentage: number;
+    amount: number;
+  }[];
+  aggregatedAmenities: Map<string, { name: string; price: number; count: number }>;
+}
+
+function PaymentConfirmationCard({
+  paymentStatus,
+  paymentType,
+  paidAmount,
+  remainingBalance,
+  participantCount,
+  experienceBaseTotal,
+  baseFare,
+  totalPrice,
+  statusBadgeClasses,
+  payments,
+  taxItems,
+  aggregatedAmenities,
+}: Readonly<PaymentConfirmationCardProps>) {
+  return (
+    <div className="bg-card border border-border shadow-sm rounded-2xl overflow-hidden flex flex-col sm:flex-row">
+      <div className="bg-muted/40 p-6 sm:w-1/2 flex flex-col justify-center border-b sm:border-b-0 sm:border-r border-border/50">
+        <h3 className="text-lg font-bold text-foreground mb-4">Payment Confirmation</h3>
+        <div className="text-sm font-bold text-foreground/50 uppercase tracking-wider mb-1">
+          {paymentStatus === "PARTIALLY_PAID" ? "Amount Paid (Advance)" : "Total Paid"}
+        </div>
+        <div className="text-4xl font-black text-foreground">₹{paidAmount.toLocaleString("en-IN")}</div>
+        {paymentStatus === "PARTIALLY_PAID" && (
+          <div className="mt-1 text-xs text-amber-500 font-bold">
+            Remaining Balance: ₹{remainingBalance.toLocaleString("en-IN")}
+          </div>
+        )}
+        
+        <div className="mt-4 space-y-2 border-t border-border/50 pt-3">
+          <span className="text-[10px] font-black text-foreground/40 uppercase tracking-wider block">Transaction History</span>
+          {payments.filter(p => p.status === "PAID").map((p, idx) => {
+            const isAdvance = idx === 0 && paymentType === "ADVANCE";
+            const pDateObj = new Date(p.createdAt);
+            const pDay = String(pDateObj.getDate()).padStart(2, "0");
+            const pMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            const pMonth = pMonths[pDateObj.getMonth()];
+            const pYear = pDateObj.getFullYear();
+            const pDate = `${pDay}/${pMonth}/${pYear}`;
+            return (
+              <div key={p.id} className="flex justify-between items-center text-xs text-foreground/80 font-medium bg-foreground/3 px-2.5 py-1.5 rounded-lg">
+                <span className="opacity-75">{isAdvance ? "Advance Payment" : `Payment #${idx + 1}`} ({pDate})</span>
+                <span className="font-bold">₹{Number(p.amount).toLocaleString("en-IN")}</span>
+              </div>
+            );
+          })}
+          {payments.filter(p => p.status === "PAID").length === 0 && (
+            <span className="text-xs text-foreground/40 italic">No payments confirmed yet.</span>
+          )}
+        </div>
+      </div>
+      <div className="p-6 sm:w-1/2 space-y-3 text-sm">
+        <div className="flex justify-between items-center py-1">
+          <span className="text-foreground/60 font-bold">Base Fare Breakdown</span>
+        </div>
+        <div className="flex justify-between items-center text-xs text-foreground/70 pl-2">
+          <span>Experience Price ({participantCount} Pax)</span>
+          <span className="font-medium text-foreground">₹{experienceBaseTotal.toLocaleString("en-IN")}</span>
+        </div>
+        {Array.from(aggregatedAmenities.entries()).map(([optionId, item]) => (
+          <div key={`summary-amenity-${optionId}`} className="flex justify-between text-xs text-foreground/70 pl-2">
+            <span>+ {item.name} (₹{item.price.toLocaleString("en-IN")} × {item.count})</span>
+            <span className="font-medium text-foreground">₹{(item.price * item.count).toLocaleString("en-IN")}</span>
+          </div>
+        ))}
+        <div className="flex justify-between items-center py-1 border-t border-border/30 pt-1.5 mt-1">
+          <span className="text-foreground/60 font-semibold">Subtotal (Base Fare)</span>
+          <span className="font-semibold text-foreground">₹{baseFare.toLocaleString("en-IN")}</span>
+        </div>
+        {taxItems.map((tax, idx) => (
+          <div key={`${tax.name}-${idx}`} className="flex justify-between items-center py-1">
+            <span className="text-foreground/60">{tax.name} ({tax.percentage}%)</span>
+            <span className="font-semibold text-foreground">₹{(Number(tax.amount) || 0).toLocaleString("en-IN")}</span>
+          </div>
+        ))}
+        {taxItems.length === 0 && (
+           <div className="flex justify-between items-center py-1">
+            <span className="text-foreground/60">Taxes & Fees</span>
+            <span className="font-semibold text-foreground">₹{(totalPrice - baseFare).toLocaleString("en-IN")}</span>
+          </div>
+        )}
+        <div className="flex justify-between items-center py-1 border-t border-border/30 pt-1.5">
+          <span className="text-foreground font-bold">Total Cost</span>
+          <span className="font-bold text-foreground text-base">₹{totalPrice.toLocaleString("en-IN")}</span>
+        </div>
+        <div className="border-t border-border/50 my-1"></div>
+        <div className="flex justify-between items-center py-1">
+          <span className="text-foreground/60">Payment Mode</span>
+          <span className="font-bold text-foreground flex items-center gap-1.5 bg-muted/50 px-2.5 py-1 rounded-md">
+            <CreditCard className="w-3.5 h-3.5 text-primary" />
+            {paymentType === "ADVANCE" ? "Advance Payment" : "Full Payment"}
+          </span>
+        </div>
+        <div className="flex justify-between items-center py-1">
+          <span className="text-foreground/60">Status</span>
+          <span className={`font-bold px-2.5 py-1 rounded-md uppercase text-xs tracking-wider ${statusBadgeClasses}`}>
+            {paymentStatus === "PARTIALLY_PAID" ? "Partially Paid" : paymentStatus}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default async function BookingSuccessPage({
   params,
 }: Readonly<Props>) {
@@ -155,29 +324,11 @@ export default async function BookingSuccessPage({
     <main className="min-h-screen bg-background/50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header Banner */}
-        <div className="bg-linear-to-r from-green-900 via-green-800 to-green-900 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6 shadow-xl border border-green-800/50 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-20 -mt-20" />
-          
-          <div className="w-16 h-16 shrink-0 bg-green-500 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.3)]">
-            <CheckCircle2 className="w-10 h-10 text-white" />
-          </div>
-          
-          <div className="flex-1 text-center sm:text-left z-10">
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-              BOOKING CONFIRMED!
-            </h1>
-            <p className="text-green-100/80 font-medium mt-1 uppercase tracking-wider text-sm">
-              Booking ID: {booking.id.split("-")[0].toUpperCase()}
-            </p>
-          </div>
-          
-          <div className="text-center sm:text-right z-10 bg-black/20 px-6 py-4 rounded-xl border border-white/10 backdrop-blur-sm">
-            <p className="font-bold text-white mb-0.5">Payment Successful</p>
-            <p className="text-sm text-green-200/80">
-              Reference: {payment?.providerPaymentId || "N/A"}
-            </p>
-          </div>
-        </div>
+        <HeaderBanner
+          bookingId={booking.id}
+          paymentStatus={booking.paymentStatus}
+          providerPaymentId={payment?.providerPaymentId}
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column (Wider) */}
@@ -379,91 +530,20 @@ export default async function BookingSuccessPage({
             </div>
 
             {/* Payment Confirmation */}
-            <div className="bg-card border border-border shadow-sm rounded-2xl overflow-hidden flex flex-col sm:flex-row">
-              <div className="bg-muted/40 p-6 sm:w-1/2 flex flex-col justify-center border-b sm:border-b-0 sm:border-r border-border/50">
-                <h3 className="text-lg font-bold text-foreground mb-4">Payment Confirmation</h3>
-                <div className="text-sm font-bold text-foreground/50 uppercase tracking-wider mb-1">
-                  {booking.paymentStatus === "PARTIALLY_PAID" ? "Amount Paid (Advance)" : "Total Paid"}
-                </div>
-                <div className="text-4xl font-black text-foreground">₹{paidAmount.toLocaleString("en-IN")}</div>
-                {booking.paymentStatus === "PARTIALLY_PAID" && (
-                  <div className="mt-1 text-xs text-amber-500 font-bold">
-                    Remaining Balance: ₹{remainingBalance.toLocaleString("en-IN")}
-                  </div>
-                )}
-                
-                <div className="mt-4 space-y-2 border-t border-border/50 pt-3">
-                  <span className="text-[10px] font-black text-foreground/40 uppercase tracking-wider block">Transaction History</span>
-                  {payments.filter(p => p.status === "PAID").map((p, idx) => {
-                    const isAdvance = idx === 0 && booking.paymentType === "ADVANCE";
-                    const pDateObj = new Date(p.createdAt);
-                    const pDay = String(pDateObj.getDate()).padStart(2, "0");
-                    const pMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-                    const pMonth = pMonths[pDateObj.getMonth()];
-                    const pYear = pDateObj.getFullYear();
-                    const pDate = `${pDay}/${pMonth}/${pYear}`;
-                    return (
-                      <div key={p.id} className="flex justify-between items-center text-xs text-foreground/80 font-medium bg-foreground/3 px-2.5 py-1.5 rounded-lg">
-                        <span className="opacity-75">{isAdvance ? "Advance Payment" : `Payment #${idx + 1}`} ({pDate})</span>
-                        <span className="font-bold">₹{Number(p.amount).toLocaleString("en-IN")}</span>
-                      </div>
-                    );
-                  })}
-                  {payments.filter(p => p.status === "PAID").length === 0 && (
-                    <span className="text-xs text-foreground/40 italic">No payments confirmed yet.</span>
-                  )}
-                </div>
-              </div>
-              <div className="p-6 sm:w-1/2 space-y-3 text-sm">
-                <div className="flex justify-between items-center py-1">
-                  <span className="text-foreground/60 font-bold">Base Fare Breakdown</span>
-                </div>
-                <div className="flex justify-between items-center text-xs text-foreground/70 pl-2">
-                  <span>Experience Price ({booking.participantCount} Pax)</span>
-                  <span className="font-medium text-foreground">₹{experienceBaseTotal.toLocaleString("en-IN")}</span>
-                </div>
-                {Array.from(aggregatedAmenities.entries()).map(([optionId, item]) => (
-                  <div key={`summary-amenity-${optionId}`} className="flex justify-between text-xs text-foreground/70 pl-2">
-                    <span>+ {item.name} (₹{item.price.toLocaleString("en-IN")} × {item.count})</span>
-                    <span className="font-medium text-foreground">₹{(item.price * item.count).toLocaleString("en-IN")}</span>
-                  </div>
-                ))}
-                <div className="flex justify-between items-center py-1 border-t border-border/30 pt-1.5 mt-1">
-                  <span className="text-foreground/60 font-semibold">Subtotal (Base Fare)</span>
-                  <span className="font-semibold text-foreground">₹{baseFare.toLocaleString("en-IN")}</span>
-                </div>
-                {taxItems.map((tax, idx) => (
-                  <div key={`${tax.name}-${idx}`} className="flex justify-between items-center py-1">
-                    <span className="text-foreground/60">{tax.name} ({tax.percentage}%)</span>
-                    <span className="font-semibold text-foreground">₹{(Number(tax.amount) || 0).toLocaleString("en-IN")}</span>
-                  </div>
-                ))}
-                {taxItems.length === 0 && (
-                   <div className="flex justify-between items-center py-1">
-                    <span className="text-foreground/60">Taxes & Fees</span>
-                    <span className="font-semibold text-foreground">₹{(totalPrice - baseFare).toLocaleString("en-IN")}</span>
-                  </div>
-                )}
-                <div className="flex justify-between items-center py-1 border-t border-border/30 pt-1.5">
-                  <span className="text-foreground font-bold">Total Cost</span>
-                  <span className="font-bold text-foreground text-base">₹{totalPrice.toLocaleString("en-IN")}</span>
-                </div>
-                <div className="border-t border-border/50 my-1"></div>
-                <div className="flex justify-between items-center py-1">
-                  <span className="text-foreground/60">Payment Mode</span>
-                  <span className="font-bold text-foreground flex items-center gap-1.5 bg-muted/50 px-2.5 py-1 rounded-md">
-                    <CreditCard className="w-3.5 h-3.5 text-primary" />
-                    {booking.paymentType === "ADVANCE" ? "Advance Payment" : "Full Payment"}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-1">
-                  <span className="text-foreground/60">Status</span>
-                  <span className={`font-bold px-2.5 py-1 rounded-md uppercase text-xs tracking-wider ${statusBadgeClasses}`}>
-                    {booking.paymentStatus === "PARTIALLY_PAID" ? "Partially Paid" : booking.paymentStatus}
-                  </span>
-                </div>
-              </div>
-            </div>
+            <PaymentConfirmationCard
+              paymentStatus={booking.paymentStatus}
+              paymentType={booking.paymentType}
+              paidAmount={paidAmount}
+              remainingBalance={remainingBalance}
+              participantCount={booking.participantCount}
+              experienceBaseTotal={experienceBaseTotal}
+              baseFare={baseFare}
+              totalPrice={totalPrice}
+              statusBadgeClasses={statusBadgeClasses}
+              payments={payments}
+              taxItems={taxItems}
+              aggregatedAmenities={aggregatedAmenities}
+            />
             
           </div>
 

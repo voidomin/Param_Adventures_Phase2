@@ -941,53 +941,48 @@ function AmenitiesFields({
                 {group.options.map((option: ExtraAmenityOption) => {
                   const isSelected = p.selectedAmenities?.some((a) => a.optionId === option.id) || false;
                   return (
-                    <label
+                    <button
                       key={option.id}
-                      className="flex items-center justify-between p-2 rounded-lg border border-border/40 bg-card hover:bg-foreground/[0.04] cursor-pointer transition-colors"
+                      type="button"
+                      onClick={() => {
+                        const newSelected = !isSelected;
+                        updatePartAmenities({
+                          index,
+                          groupId: group.id,
+                          groupName: group.name,
+                          optionId: option.id,
+                          optionName: option.name,
+                          price: Number(option.price),
+                          type: group.type,
+                          selected: group.type === "SINGLE" ? !isSelected : newSelected,
+                        });
+                      }}
+                      className="w-full flex items-center justify-between p-2 rounded-lg border border-border/40 bg-card hover:bg-foreground/[0.04] cursor-pointer transition-colors text-left focus:outline-none focus:ring-1 focus:ring-primary/45"
                     >
                       <div className="flex items-center gap-2.5">
-                        <input
-                          type={group.type === "SINGLE" ? "radio" : "checkbox"}
-                          name={`amenity-${index}-${group.id}`}
-                          checked={isSelected}
-                          onClick={(e) => {
-                            if (group.type === "SINGLE" && isSelected) {
-                              e.preventDefault();
-                              updatePartAmenities({
-                                index,
-                                groupId: group.id,
-                                groupName: group.name,
-                                optionId: option.id,
-                                optionName: option.name,
-                                price: Number(option.price),
-                                type: group.type,
-                                selected: false,
-                              });
-                            }
-                          }}
-                          onChange={(e) => {
-                            if (group.type === "SINGLE" && isSelected) return;
-                            updatePartAmenities({
-                              index,
-                              groupId: group.id,
-                              groupName: group.name,
-                              optionId: option.id,
-                              optionName: option.name,
-                              price: Number(option.price),
-                              type: group.type,
-                              selected: e.target.checked,
-                            });
-                          }}
-                          className={`w-4 h-4 text-primary focus:ring-primary focus:ring-offset-background bg-background ${
+                        <div
+                          className={`w-4 h-4 flex items-center justify-center border transition-all ${
                             group.type === "SINGLE" ? "rounded-full" : "rounded"
+                          } ${
+                            isSelected
+                              ? "bg-primary border-primary text-primary-foreground animate-in zoom-in-50 duration-75"
+                              : "border-foreground/20 bg-background"
                           }`}
-                        />
+                        >
+                          {isSelected && (
+                            <div
+                              className={`w-1.5 h-1.5 bg-current ${
+                                group.type === "SINGLE" ? "rounded-full" : ""
+                              }`}
+                            />
+                          )}
+                        </div>
                         <span className="text-xs font-semibold text-foreground/80">{option.name}</span>
                       </div>
                       <span className="text-xs font-bold text-primary">
                         {option.price > 0 ? `+ ₹${option.price}` : "Free"}
                       </span>
-                    </label>
+                    </button>
                   );
                 })}
               </div>

@@ -143,7 +143,7 @@ function RefundResolveModal({
         <div className="p-6 space-y-4">
           <div className="bg-foreground/5 rounded-xl p-4 space-y-1">
             <p className="text-sm text-foreground">
-              <strong>Amount:</strong> ₹{Number(booking.totalPrice).toLocaleString()}
+              <strong>Amount Paid (Refundable):</strong> ₹{Number(booking.paidAmount).toLocaleString()}
             </p>
             <p className="text-sm text-foreground">
               <strong>Preference:</strong>{" "}
