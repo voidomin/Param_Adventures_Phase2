@@ -53,17 +53,32 @@ export async function POST(
       );
     }
 
+    const refundAmt = booking.refundAmount ? Number(booking.refundAmount) : Number(booking.paidAmount);
+    const newPaidAmount = Math.max(0, Number(booking.paidAmount) - refundAmt);
+    const remainingBalance = Number(booking.totalPrice) - newPaidAmount;
+
+    let newPaymentStatus: "REFUNDED" | "PARTIALLY_PAID" | "PAID" = "PAID";
+    if (booking.bookingStatus === "CANCELLED") {
+      newPaymentStatus = "REFUNDED";
+    } else if (remainingBalance > 0.01) {
+      newPaymentStatus = "PARTIALLY_PAID";
+    }
+
     await prisma.booking.update({
       where: { id: bookingId },
       data: {
-        paymentStatus: "REFUNDED",
+        paymentStatus: newPaymentStatus,
+        paidAmount: newPaidAmount,
+        remainingBalance: Math.max(0, remainingBalance),
         refundNote,
+        refundAmount: null,
       },
     });
 
     await logActivity("REFUND_RESOLVED", adminId, "Booking", bookingId, {
       refundNote,
       refundPreference: booking.refundPreference,
+      refundAmount: refundAmt,
     });
 
     await sendRefundResolved({
@@ -73,7 +88,7 @@ export async function POST(
       slotDate: booking.slot?.date?.toISOString() ?? new Date().toISOString(),
       refundPreference: (booking.refundPreference ?? "COUPON") as "COUPON" | "BANK_REFUND",
       refundNote,
-      totalPrice: Number(booking.paidAmount),
+      totalPrice: refundAmt,
     });
 
     return NextResponse.json({ success: true });

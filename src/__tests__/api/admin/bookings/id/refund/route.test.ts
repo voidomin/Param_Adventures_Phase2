@@ -90,9 +90,12 @@ describe("POST /api/admin/bookings/[id]/refund", () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
     mockBookingFindUnique.mockResolvedValue({
       id: "b1",
+      bookingStatus: "CANCELLED",
       paymentStatus: "REFUND_PENDING",
       refundPreference: "BANK_TRANSFER",
       totalPrice: 2500,
+      paidAmount: 2500,
+      refundAmount: null,
       slot: { date: new Date("2026-04-01T00:00:00.000Z") },
       user: { name: "Akash", email: "akash@example.com" },
       experience: { title: "Everest Base Camp" },
@@ -109,7 +112,10 @@ describe("POST /api/admin/bookings/[id]/refund", () => {
       where: { id: "b1" },
       data: {
         paymentStatus: "REFUNDED",
+        paidAmount: 0,
+        remainingBalance: 2500,
         refundNote: "UTR123",
+        refundAmount: null,
       },
     });
     expect(mockLogActivity).toHaveBeenCalledWith(
@@ -126,9 +132,12 @@ describe("POST /api/admin/bookings/[id]/refund", () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
     mockBookingFindUnique.mockResolvedValue({
       id: "b1",
+      bookingStatus: "CANCELLED",
       paymentStatus: "REFUND_PENDING",
       refundPreference: "COUPON",
       totalPrice: 1500,
+      paidAmount: 1500,
+      refundAmount: null,
       slot: { date: new Date("2026-04-01T00:00:00.000Z") },
       user: { name: null, email: "akash@example.com" },
       experience: { title: "Everest Base Camp" },
@@ -148,9 +157,12 @@ describe("POST /api/admin/bookings/[id]/refund", () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
     mockBookingFindUnique.mockResolvedValue({
       id: "b1",
+      bookingStatus: "CANCELLED",
       paymentStatus: "REFUND_PENDING",
       refundPreference: null,
       totalPrice: 1500,
+      paidAmount: 1500,
+      refundAmount: null,
       slot: null,
       user: { name: "Akash", email: "akash@example.com" },
       experience: { title: "Everest Base Camp" },
@@ -173,9 +185,12 @@ describe("POST /api/admin/bookings/[id]/refund", () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
     mockBookingFindUnique.mockResolvedValue({
       id: "b1",
+      bookingStatus: "CANCELLED",
       paymentStatus: "REFUND_PENDING",
       refundPreference: "COUPON",
       totalPrice: 2500,
+      paidAmount: 2500,
+      refundAmount: null,
       slot: { date: new Date("2026-04-01T00:00:00.000Z") },
       user: { name: "Akash", email: "akash@example.com" },
       experience: { title: "Everest Base Camp" },
@@ -193,9 +208,12 @@ describe("POST /api/admin/bookings/[id]/refund", () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
     mockBookingFindUnique.mockResolvedValue({
       id: "b1",
+      bookingStatus: "CANCELLED",
       paymentStatus: "REFUND_PENDING",
       refundPreference: "COUPON",
       totalPrice: 2500,
+      paidAmount: 2500,
+      refundAmount: null,
       slot: { date: new Date("2026-04-01T00:00:00.000Z") },
       user: { name: "Akash", email: "akash@example.com" },
       experience: { title: "Everest Base Camp" },
@@ -213,9 +231,12 @@ describe("POST /api/admin/bookings/[id]/refund", () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
     mockBookingFindUnique.mockResolvedValue({
       id: "b1",
+      bookingStatus: "CANCELLED",
       paymentStatus: "REFUND_PENDING",
       refundPreference: "COUPON",
       totalPrice: 2500,
+      paidAmount: 2500,
+      refundAmount: null,
       slot: { date: new Date("2026-04-01T00:00:00.000Z") },
       user: { name: "Akash", email: "akash@example.com" },
       experience: { title: "Everest Base Camp" },

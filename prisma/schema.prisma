@@ -190,6 +190,7 @@ model Booking {
   paymentType        BookingPaymentType   @default(FULL)
   paidAmount         Decimal              @default(0) @db.Decimal(10, 2)
   remainingBalance   Decimal              @default(0) @db.Decimal(10, 2)
+  refundAmount       Decimal?             @db.Decimal(10, 2)
   deletedAt          DateTime?
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
@@ -250,6 +251,8 @@ model BookingParticipant {
   dropPoint              String?
   selectedAmenities      Json?    @default("[]")
   attended               Boolean  @default(false)
+  isCancelled            Boolean  @default(false)
+  cancelledAt            DateTime?
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
   booking                Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)

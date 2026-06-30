@@ -36,6 +36,7 @@ interface Booking {
   refundPreference?: string | null;
   refundNote?: string | null;
   cancellationReason?: string | null;
+  refundAmount?: number | null;
   user: {
     name: string;
     email: string;
@@ -143,7 +144,7 @@ function RefundResolveModal({
         <div className="p-6 space-y-4">
           <div className="bg-foreground/5 rounded-xl p-4 space-y-1">
             <p className="text-sm text-foreground">
-              <strong>Amount Paid (Refundable):</strong> ₹{Number(booking.paidAmount).toLocaleString()}
+              <strong>Amount (Refundable):</strong> ₹{Number(booking.refundAmount ?? booking.paidAmount).toLocaleString()}
             </p>
             <p className="text-sm text-foreground">
               <strong>Preference:</strong>{" "}

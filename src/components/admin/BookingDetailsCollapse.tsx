@@ -36,6 +36,8 @@ export interface BookingParticipant {
   dropPoint: string | null;
   attended?: boolean;
   selectedAmenities?: SelectedAmenity[];
+  isCancelled?: boolean;
+  cancelledAt?: string | Date | null;
 }
 
 export interface BookingDetails {
@@ -166,21 +168,31 @@ export default function BookingDetailsCollapse({ booking }: BookingDetailsCollap
             {booking.participants.map((p, index) => (
               <div
                 key={p.id}
-                className="border border-border rounded-xl overflow-hidden bg-card/60 shadow-xs"
+                className={`border border-border rounded-xl overflow-hidden shadow-xs ${
+                  p.isCancelled ? "bg-red-500/[0.02] border-red-500/10 opacity-60" : "bg-card/60"
+                }`}
               >
                 {/* Header of Guest Card */}
                 <div className="px-4 py-2 bg-foreground/[0.01] border-b border-border flex items-center justify-between">
                   <span className="font-bold text-sm text-foreground flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
-                      {index + 1}
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-xs ${
+                      p.isCancelled ? "bg-red-500/10 text-red-500" : "bg-primary/10 text-primary"
+                    }`}>
+                      {p.isCancelled ? "✕" : index + 1}
                     </span>
-                    {" Guest Profile"}
+                    <span className={p.isCancelled ? "line-through text-foreground/50" : ""}>
+                      Guest Profile
+                    </span>
                   </span>
-                  {p.isPrimary && (
+                  {p.isCancelled ? (
+                    <span className="text-[10px] font-black uppercase text-red-500 border border-red-500/20 bg-red-500/10 px-1.5 py-0.5 rounded-md">
+                      Cancelled
+                    </span>
+                  ) : p.isPrimary ? (
                     <span className="text-[10px] font-black uppercase text-primary border border-primary/20 bg-primary/10 px-1.5 py-0.5 rounded-md">
                       Primary Booker
                     </span>
-                  )}
+                  ) : null}
                 </div>
 
                 {/* Guest Information */}

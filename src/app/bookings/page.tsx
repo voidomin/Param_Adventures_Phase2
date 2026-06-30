@@ -259,7 +259,16 @@ function formatDate(dateStr: string) {
 function getPaymentStatusColor(status: string) {
   if (status === "PAID") return "text-green-500";
   if (status === "PARTIALLY_PAID") return "text-amber-500";
+  if (status === "REFUND_PENDING") return "text-orange-500";
+  if (status === "REFUNDED") return "text-green-500/80";
   return "text-foreground/50";
+}
+
+function getPaymentStatusLabel(status: string) {
+  if (status === "PARTIALLY_PAID") return "Partially Paid";
+  if (status === "REFUND_PENDING") return "Refund Pending";
+  if (status === "REFUNDED") return "Refunded";
+  return status;
 }
 
 export default function BookingsPage() {
@@ -653,7 +662,7 @@ export default function BookingsPage() {
                           <div className="flex justify-between">
                             <span className="text-foreground/60">Status:</span>
                             <span className={`font-bold ${getPaymentStatusColor(b.paymentStatus)}`}>
-                              {b.paymentStatus === "PARTIALLY_PAID" ? "Partially Paid" : b.paymentStatus}
+                              {getPaymentStatusLabel(b.paymentStatus)}
                             </span>
                           </div>
                           {b.paymentStatus === "PARTIALLY_PAID" && (

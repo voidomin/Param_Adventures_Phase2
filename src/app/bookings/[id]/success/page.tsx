@@ -7,6 +7,7 @@ import Image from "next/image";
 import Link from "next/link";
 import DownloadInvoiceBtn from "@/components/booking/DownloadInvoiceBtn";
 import DownloadItineraryBtn from "@/components/experiences/DownloadItineraryBtn";
+import EditParticipantsClient from "@/components/booking/EditParticipantsClient";
 
 import { withBuildSafety } from "@/lib/db-utils";
 
@@ -78,12 +79,30 @@ interface HeaderBannerProps {
 
 function HeaderBanner({ bookingId, paymentStatus, providerPaymentId }: Readonly<HeaderBannerProps>) {
   const isPartiallyPaid = paymentStatus === "PARTIALLY_PAID";
-  const bannerBgClass = isPartiallyPaid 
-    ? "bg-linear-to-r from-amber-950 via-amber-900 to-amber-950 border-amber-800/30" 
-    : "bg-linear-to-r from-green-900 via-green-800 to-green-900 border-green-800/50";
-  const iconBgClass = isPartiallyPaid ? "bg-amber-600 shadow-[0_0_30px_rgba(217,119,6,0.3)]" : "bg-green-500 shadow-[0_0_30px_rgba(34,197,94,0.3)]";
-  const textSubColorClass = isPartiallyPaid ? "text-amber-100/80" : "text-green-100/80";
-  const textRefColorClass = isPartiallyPaid ? "text-amber-200/80" : "text-green-200/80";
+  const isRefundPending = paymentStatus === "REFUND_PENDING";
+
+  let bannerBgClass = "bg-linear-to-r from-green-900 via-green-800 to-green-900 border-green-800/50";
+  let iconBgClass = "bg-green-500 shadow-[0_0_30px_rgba(34,197,94,0.3)]";
+  let textSubColorClass = "text-green-100/80";
+  let textRefColorClass = "text-green-200/80";
+  let titleText = "BOOKING CONFIRMED!";
+  let badgeText = "Payment Successful";
+
+  if (isPartiallyPaid) {
+    bannerBgClass = "bg-linear-to-r from-amber-950 via-amber-900 to-amber-950 border-amber-800/30";
+    iconBgClass = "bg-amber-600 shadow-[0_0_30px_rgba(217,119,6,0.3)]";
+    textSubColorClass = "text-amber-100/80";
+    textRefColorClass = "text-amber-200/80";
+    titleText = "BOOKING CONFIRMED (ADVANCE)";
+    badgeText = "Advance Paid";
+  } else if (isRefundPending) {
+    bannerBgClass = "bg-linear-to-r from-orange-950 via-orange-900 to-orange-950 border-orange-800/30";
+    iconBgClass = "bg-orange-600 shadow-[0_0_30px_rgba(234,88,12,0.3)]";
+    textSubColorClass = "text-orange-100/80";
+    textRefColorClass = "text-orange-200/80";
+    titleText = "REFUND PENDING";
+    badgeText = "Awaiting Verification";
+  }
 
   return (
     <div className={`rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6 shadow-xl border relative overflow-hidden ${bannerBgClass}`}>
@@ -95,7 +114,7 @@ function HeaderBanner({ bookingId, paymentStatus, providerPaymentId }: Readonly<
       
       <div className="flex-1 text-center sm:text-left z-10">
         <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-          {isPartiallyPaid ? "BOOKING CONFIRMED (ADVANCE)" : "BOOKING CONFIRMED!"}
+          {titleText}
         </h1>
         <p className={`font-medium mt-1 uppercase tracking-wider text-sm ${textSubColorClass}`}>
           Booking ID: {bookingId.split("-")[0].toUpperCase()}
@@ -103,7 +122,7 @@ function HeaderBanner({ bookingId, paymentStatus, providerPaymentId }: Readonly<
       </div>
       
       <div className="text-center sm:text-right z-10 bg-black/20 px-6 py-4 rounded-xl border border-white/10 backdrop-blur-sm">
-        <p className="font-bold text-white mb-0.5">{isPartiallyPaid ? "Advance Paid" : "Payment Successful"}</p>
+        <p className="font-bold text-white mb-0.5">{badgeText}</p>
         <p className={`text-sm ${textRefColorClass}`}>
           Reference: {providerPaymentId || "N/A"}
         </p>
@@ -117,6 +136,7 @@ interface PaymentConfirmationCardProps {
   paymentType?: string | null;
   paidAmount: number;
   remainingBalance: number;
+  refundAmount?: number | null;
   participantCount: number;
   experienceBaseTotal: number;
   baseFare: number;
@@ -141,6 +161,7 @@ function PaymentConfirmationCard({
   paymentType,
   paidAmount,
   remainingBalance,
+  refundAmount,
   participantCount,
   experienceBaseTotal,
   baseFare,
@@ -163,6 +184,11 @@ function PaymentConfirmationCard({
             Remaining Balance: ₹{remainingBalance.toLocaleString("en-IN")}
           </div>
         )}
+        {refundAmount && refundAmount > 0 ? (
+          <div className="mt-2 text-xs text-orange-500 font-bold bg-orange-500/10 px-3 py-1.5 rounded-lg border border-orange-500/20 max-w-fit">
+            Pending Refund: ₹{refundAmount.toLocaleString("en-IN")}
+          </div>
+        ) : null}
         
         <div className="mt-4 space-y-2 border-t border-border/50 pt-3">
           <span className="text-[10px] font-black text-foreground/40 uppercase tracking-wider block">Transaction History</span>
@@ -318,6 +344,8 @@ export default async function BookingSuccessPage({
     statusBadgeClasses = "text-green-500 bg-green-500/10";
   } else if (booking.paymentStatus === "PARTIALLY_PAID") {
     statusBadgeClasses = "text-amber-500 bg-amber-500/10";
+  } else if (booking.paymentStatus === "REFUND_PENDING") {
+    statusBadgeClasses = "text-orange-500 bg-orange-500/10";
   }
 
   return (
@@ -391,143 +419,18 @@ export default async function BookingSuccessPage({
                         "To be communicated by Trip Manager"
                       )}
                     </div>
-                  </div>
                 </div>
               </div>
             </div>
+          </div>
 
             {/* Guest Details */}
-            <div className="bg-card border border-border shadow-sm rounded-2xl overflow-hidden">
-              <div className="bg-muted/30 px-6 py-4 border-b border-border/50">
-                <h3 className="text-lg font-bold text-foreground">Guest Details</h3>
-              </div>
-              <div className="p-0">
-                {/* Desktop Table - Hidden on smaller screens */}
-                <div className="hidden xl:block overflow-x-auto">
-                  <table className="w-full text-sm text-left border-collapse">
-                    <thead className="text-[10px] font-black text-foreground/40 uppercase tracking-widest bg-muted/20 border-b border-border/50">
-                      <tr>
-                        <th className="px-6 py-4">Guest</th>
-                        <th className="px-6 py-4">Email Address</th>
-                        <th className="px-6 py-4">Phone Number</th>
-                        <th className="px-6 py-4">Personal Details</th>
-                        <th className="px-6 py-4">Amenities</th>
-                        <th className="px-6 py-4 whitespace-nowrap">Pickup & Drop</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/50">
-                      {participants.map((p, idx) => (
-                        <tr key={p.id} className="hover:bg-muted/10 transition-colors group">
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${p.isPrimary ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground/40'}`}>
-                                {idx + 1}
-                              </div>
-                              <div className="flex flex-col">
-                                <span className="font-bold text-foreground">{p.name}</span>
-                                {p.isPrimary && (
-                                  <span className="w-fit text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded uppercase font-black tracking-tighter mt-1">Primary Host</span>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-foreground/80 font-medium">
-                            {p.email || "—"}
-                          </td>
-                          <td className="px-6 py-4 text-foreground/80 font-medium">
-                            {p.phoneNumber || "—"}
-                          </td>
-                          <td className="px-6 py-4 text-foreground/70">
-                            <div className="flex flex-wrap gap-x-3 gap-y-1">
-                              <span className="font-medium">Age: {p.age || "—"}</span>
-                              <span className="opacity-40">•</span>
-                              <span className="font-medium">{p.gender || "—"}</span>
-                              <span className="opacity-40">•</span>
-                              <span className="font-medium">Blood: {p.bloodGroup || "—"}</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                            {p.selectedAmenities && Array.isArray(p.selectedAmenities) && p.selectedAmenities.length > 0 ? (
-                              <div className="flex flex-wrap gap-1.5">
-                                 {(p.selectedAmenities as unknown as SelectedAmenity[]).map((amenity) => (
-                                   <span key={amenity.optionId} className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-bold border border-primary/20 whitespace-nowrap">
-                                     {amenity.optionName} (₹{amenity.price})
-                                   </span>
-                                 ))}
-                              </div>
-                            ) : (
-                              <span className="text-xs text-foreground/40 italic">None</span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4">
-                             <div className="flex items-center gap-2 text-foreground/80">
-                                <MapPin className="w-4 h-4 text-primary shrink-0" />
-                                <span className="font-medium">{p.pickupPoint || "Pick-up Point"}</span>
-                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Mobile/Tablet Cards - Better for vertical stacking without scroll */}
-                <div className="xl:hidden divide-y divide-border/50">
-                  {participants.map((p, idx) => (
-                    <div key={p.id} className="p-6 space-y-4 hover:bg-muted/5 transition-colors">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${p.isPrimary ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground/40'}`}>
-                            {idx + 1}
-                          </div>
-                          <div>
-                            <span className="font-bold text-lg text-foreground block">{p.name}</span>
-                            {p.isPrimary && (
-                              <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded uppercase font-black tracking-wider">Primary Host</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                        <div className="space-y-1">
-                          <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest block">Contact Information</span>
-                          <div className="text-foreground/80 font-semibold">{p.email || "No email"}</div>
-                          <div className="text-foreground/80 font-semibold">{p.phoneNumber || "No phone"}</div>
-                        </div>
-                        <div className="space-y-1">
-                          <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest block">Personal Details</span>
-                          <div className="text-foreground/70 font-medium">
-                            {p.age ? `Age: ${p.age}` : "Age: —"} • {p.gender || "—"} • Blood: {p.bloodGroup || "—"}
-                          </div>
-                        </div>
-                        <div className="space-y-1">
-                          <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest block">Amenities Selected</span>
-                          <div className="flex flex-wrap gap-1.5 mt-1">
-                            {p.selectedAmenities && Array.isArray(p.selectedAmenities) && p.selectedAmenities.length > 0 ? (
-                              (p.selectedAmenities as unknown as SelectedAmenity[]).map((amenity) => (
-                                <span key={amenity.optionId} className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-bold border border-primary/20">
-                                  {amenity.optionName} (₹{amenity.price})
-                                </span>
-                              ))
-                            ) : (
-                              <span className="text-xs text-foreground/40 italic">None selected</span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="md:col-span-2 pt-2">
-                           <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest block mb-2">Logistics</span>
-                           <div className="flex items-center gap-2 bg-muted/40 p-3 rounded-xl border border-border/50">
-                              <MapPin className="w-5 h-5 text-primary shrink-0" />
-                              <span className="font-bold text-foreground">{p.pickupPoint || "Assigned by Trip Manager"}</span>
-                           </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <EditParticipantsClient
+              participants={participants as any}
+              bookingId={booking.id}
+              pickupPoints={experience.pickupPoints}
+              dropPoints={experience.dropPoints}
+            />
 
             {/* Payment Confirmation */}
             <PaymentConfirmationCard
@@ -535,6 +438,7 @@ export default async function BookingSuccessPage({
               paymentType={booking.paymentType}
               paidAmount={paidAmount}
               remainingBalance={remainingBalance}
+              refundAmount={booking.refundAmount ? Number(booking.refundAmount) : 0}
               participantCount={booking.participantCount}
               experienceBaseTotal={experienceBaseTotal}
               baseFare={baseFare}
