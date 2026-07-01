@@ -122,6 +122,19 @@ function CancelModal({
               {booking.participantCount} participant{booking.participantCount > 1 ? "s" : ""} ·{" "}
               ₹{Number(booking.totalPrice).toLocaleString()}
             </p>
+            {booking.participantCount > 1 && (
+              <div className="mt-3 pt-3 border-t border-border/50 flex flex-col gap-2">
+                <p className="text-xs text-foreground/70">
+                  💡 <strong>Need to cancel only some of the guests?</strong> Instead of cancelling the whole booking here, you can select individual guest slots.
+                </p>
+                <Link
+                  href={`/bookings/${booking.id}/success#guests`}
+                  className="text-xs font-bold text-primary hover:underline flex items-center gap-1 self-start"
+                >
+                  Go to Guest List & Cancel Individually &rarr;
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Policy notice */}
