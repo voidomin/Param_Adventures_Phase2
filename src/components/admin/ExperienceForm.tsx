@@ -104,15 +104,50 @@ export type ActiveTab = "basic" | "itinerary" | "media" | "logistics" | "extras"
 
 const MEAL_OPTIONS = ["Breakfast", "Lunch", "Dinner", "Snacks"];
 
+const CANCEL_POLICY_OPTIONS = [
+  {
+    id: "gst",
+    label: "GST & Convenience Fee",
+    defaultText: "GST and convenience charges are non-refundable under all circumstances.",
+  },
+  {
+    id: "refund_processing",
+    label: "Refund Processing",
+    defaultText: "Eligible refunds will be processed to the original payment method within 5–7 working days after approval. Credit timelines may vary depending on your bank/payment provider.",
+  },
+  {
+    id: "partial_refund",
+    label: "Partial Refund",
+    defaultText: "Refunds, if applicable, will be calculated after deducting the non-refundable booking amount and the applicable cancellation charges.",
+  },
+  {
+    id: "refundable_amount",
+    label: "Refundable Amount",
+    defaultText: "Only the amount paid over and above the booking amount is eligible for a refund, subject to the cancellation policy.",
+  },
+  {
+    id: "force_majeure",
+    label: "Force Majeure",
+    defaultText: "In case of natural disasters, pandemics, government restrictions, war, adverse weather, or other unforeseen events, our Emergency Case Cancellation Policy will override the standard cancellation and refund policy. Refunds, credits, or rescheduling will depend on recoveries from our vendors and service providers.",
+  },
+  {
+    id: "calculation_days",
+    label: "Cancellation Days Calculation",
+    defaultText: "The date of cancellation is counted, while the trip departure date is not counted when calculating the applicable cancellation period.",
+  }
+];
+
 function parseCancellationPolicyData(policyStr: string | null | undefined) {
   let template = "custom";
   let text = "";
+  let selectedPolicies: string[] = [];
   if (policyStr) {
     try {
       const parsed = JSON.parse(policyStr);
       if (parsed && typeof parsed === "object" && "template" in parsed) {
         template = parsed.template || "custom";
         text = parsed.text || "";
+        selectedPolicies = Array.isArray(parsed.selectedPolicies) ? parsed.selectedPolicies : [];
       } else {
         text = policyStr;
       }
@@ -120,7 +155,7 @@ function parseCancellationPolicyData(policyStr: string | null | undefined) {
       text = policyStr;
     }
   }
-  return { template, text };
+  return { template, text, selectedPolicies };
 }
 
 function MealButtons({
@@ -268,6 +303,9 @@ export default function ExperienceForm({
   const initialPolicy = getInitialCancellationPolicy();
   const [cancelPolicyType, setCancelPolicyType] = useState(initialPolicy.template);
   const [cancelPolicyText, setCancelPolicyText] = useState(initialPolicy.text);
+  const [selectedPolicies, setSelectedPolicies] = useState<string[]>(
+    initialPolicy.selectedPolicies || []
+  );
   const [meetingPoint, setMeetingPoint] = useState(
     initialData?.meetingPoint || "",
   );
@@ -593,7 +631,7 @@ export default function ExperienceForm({
     faqs: faqs
       .filter((faq) => faq.question.trim() !== "" && faq.answer.trim() !== "")
       .map(({ question, answer }) => ({ question, answer })),
-    cancellationPolicy: JSON.stringify({ template: cancelPolicyType, text: cancelPolicyText }),
+    cancellationPolicy: JSON.stringify({ template: cancelPolicyType, text: cancelPolicyText, selectedPolicies }),
     meetingPoint,
     minAge: minAge ? Number(minAge) : null,
     maxAltitude,
@@ -901,7 +939,7 @@ export default function ExperienceForm({
     pickupPoints: pickupPoints.map((i) => i.text),
     dropPoints: dropPoints.map((i) => i.text),
     faqs,
-    cancellationPolicy: JSON.stringify({ template: cancelPolicyType, text: cancelPolicyText }),
+    cancellationPolicy: JSON.stringify({ template: cancelPolicyType, text: cancelPolicyText, selectedPolicies }),
     meetingPoint,
     minAge,
     maxAltitude,
@@ -1103,7 +1141,7 @@ export default function ExperienceForm({
         { Key: "meetingTime", Value: meetingTime },
         { Key: "dropoffTime", Value: dropoffTime },
         { Key: "meetingPoint", Value: meetingPoint },
-        { Key: "cancellationPolicy", Value: JSON.stringify({ template: cancelPolicyType, text: cancelPolicyText }) },
+        { Key: "cancellationPolicy", Value: JSON.stringify({ template: cancelPolicyType, text: cancelPolicyText, selectedPolicies }) },
         { Key: "allowAdvancePayment", Value: allowAdvancePayment },
         { Key: "advancePaymentAmount", Value: advancePaymentAmount },
         { Key: "extraAmenities", Value: JSON.stringify(extraAmenities) },
@@ -2015,6 +2053,50 @@ export default function ExperienceForm({
                       className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
                       placeholder="e.g. 100% refund if cancelled 30 days prior..."
                     />
+                  </div>
+
+                  <div className="space-y-4 border-t border-border pt-4">
+                    <span className="block text-xs font-bold text-foreground/80">
+                      Select Cancellation Policy Alerts/Callouts to Add
+                    </span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {CANCEL_POLICY_OPTIONS.map((policy) => {
+                        const isChecked = selectedPolicies.includes(policy.id);
+                        return (
+                          <label
+                            key={policy.id}
+                            className={`p-3 rounded-xl border transition-all flex items-start gap-3 cursor-pointer ${
+                              isChecked
+                                ? "bg-primary/5 border-primary/40 ring-1 ring-primary/10"
+                                : "bg-background border-border hover:bg-foreground/5"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSelectedPolicies([...selectedPolicies, policy.id]);
+                                } else {
+                                  setSelectedPolicies(
+                                    selectedPolicies.filter((id) => id !== policy.id)
+                                  );
+                                }
+                              }}
+                              className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary/20 cursor-pointer"
+                            />
+                            <div className="flex-1">
+                              <span className="block text-xs font-bold text-foreground">
+                                {policy.label}
+                              </span>
+                              <span className="block text-[10px] text-foreground/50 mt-1 line-clamp-2" title={policy.defaultText}>
+                                {policy.defaultText}
+                              </span>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>

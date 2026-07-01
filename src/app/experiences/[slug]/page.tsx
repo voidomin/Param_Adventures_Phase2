@@ -23,7 +23,10 @@ import {
   CalendarDays,
   Footprints,
   Utensils,
-  ArrowLeft
+  ArrowLeft,
+  AlertTriangle,
+  CheckCircle2,
+  LucideIcon
 } from "lucide-react";
 import type { MediaSettings } from "@/types/media";
 import { getPlainTextFromJSON } from "@/lib/utils/rich-text";
@@ -207,6 +210,58 @@ const CANCELLATION_TEMPLATES = {
       ["Remaining Amount", "Full Refund (deduction of 10% booking amount)", "Refund, deduction 50% of the trip amount", "Refund, deduction 75% of the trip amount", "No Refund"]
     ]
   }
+};
+
+const CANCEL_POLICY_OPTIONS = [
+  {
+    id: "gst",
+    label: "GST",
+    defaultText: "GST and convenience charges are non-refundable under all circumstances.",
+    icon: "AlertTriangle",
+    color: "yellow",
+  },
+  {
+    id: "refund_processing",
+    label: "Pending Refund",
+    defaultText: "Eligible refunds will be processed to the original payment method within 5–7 working days after approval. Credit timelines may vary depending on your bank/payment provider.",
+    icon: "CheckCircle2",
+    color: "green",
+  },
+  {
+    id: "partial_refund",
+    label: "Partial Refund",
+    defaultText: "Refunds, if applicable, will be calculated after deducting the non-refundable booking amount and the applicable cancellation charges.",
+    icon: "Info",
+    color: "gray",
+  },
+  {
+    id: "refundable_amount",
+    label: "Remaining Amount",
+    defaultText: "Only the amount paid over and above the booking amount is eligible for a refund, subject to the cancellation policy.",
+    icon: "Info",
+    color: "gray",
+  },
+  {
+    id: "force_majeure",
+    label: "Bypass Policy",
+    defaultText: "In case of natural disasters, pandemics, government restrictions, war, adverse weather, or other unforeseen events, our Emergency Case Cancellation Policy will override the standard cancellation and refund policy. Refunds, credits, or rescheduling will depend on recoveries from our vendors and service providers.",
+    icon: "AlertTriangle",
+    color: "red",
+  },
+  {
+    id: "calculation_days",
+    label: "Cancellation Days Calculation",
+    defaultText: "The date of cancellation is counted, while the trip departure date is not counted when calculating the applicable cancellation period.",
+    icon: "Info",
+    color: "gray",
+  }
+];
+
+const iconMap: Record<string, LucideIcon> = {
+  AlertTriangle,
+  CheckCircle2,
+  Info,
+  Shield,
 };
 
 type ExperienceJsonLdProps = {
@@ -1101,11 +1156,13 @@ export default async function ExperienceDetailPage({
               {(() => {
                 let policyTemplate = "custom";
                 let policyText = "";
+                let selectedPolicies: string[] = [];
                 try {
                   const parsed = JSON.parse(exp.cancellationPolicy);
                   if (parsed && typeof parsed === "object" && "template" in parsed) {
                     policyTemplate = parsed.template || "custom";
                     policyText = parsed.text || "";
+                    selectedPolicies = Array.isArray(parsed.selectedPolicies) ? parsed.selectedPolicies : [];
                   } else {
                     policyText = exp.cancellationPolicy;
                   }
@@ -1160,6 +1217,45 @@ export default async function ExperienceDetailPage({
                       <p className="text-foreground/80 leading-relaxed whitespace-pre-line text-sm">
                         {policyText}
                       </p>
+                    )}
+
+                    {selectedPolicies && selectedPolicies.length > 0 && (
+                      <div className="space-y-4 mt-6">
+                        {selectedPolicies.map((policyId: string) => {
+                          const policy = CANCEL_POLICY_OPTIONS.find(p => p.id === policyId);
+                          if (!policy) return null;
+                          
+                          let bgClass = "bg-amber-500/5 border-amber-500/20 text-foreground";
+                          let iconClass = "text-amber-500";
+                          let sideBorderClass = "border-l-4 border-amber-500";
+                          
+                          if (policy.color === "green") {
+                            bgClass = "bg-green-500/5 border-green-500/20 text-foreground";
+                            iconClass = "text-green-500";
+                            sideBorderClass = "border-l-4 border-green-500";
+                          } else if (policy.color === "red") {
+                            bgClass = "bg-red-500/5 border-red-500/20 text-foreground";
+                            iconClass = "text-red-500";
+                            sideBorderClass = "border-l-4 border-red-500";
+                          } else if (policy.color === "gray") {
+                            bgClass = "bg-foreground/5 border-border text-foreground";
+                            iconClass = "text-foreground/40";
+                            sideBorderClass = "border-l-4 border-foreground/30";
+                          }
+                          
+                          const IconComp = iconMap[policy.icon] || Info;
+                          
+                          return (
+                            <div key={policy.id} className={`flex items-start gap-3 p-4 rounded-xl border ${bgClass} ${sideBorderClass} text-left`}>
+                              <IconComp className={`w-5 h-5 shrink-0 mt-0.5 ${iconClass}`} />
+                              <div className="text-sm">
+                                <strong className="font-bold">{policy.label}: </strong>
+                                <span className="opacity-95">{policy.defaultText}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
                 );
