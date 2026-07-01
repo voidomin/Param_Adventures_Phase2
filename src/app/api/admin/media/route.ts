@@ -1,6 +1,9 @@
 import { NextResponse, NextRequest } from "next/server";
 import { authorizeRequest } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
+import { mediaFactory } from "@/lib/media/factory";
+import { logActivity } from "@/lib/audit-logger";
+import { isCloudinaryUrl, isS3Url } from "@/lib/utils/url-safety";
 
 interface ImageUsage {
   type: string;
@@ -222,6 +225,96 @@ export async function POST(request: NextRequest) {
     console.error("Save media error:", error);
     return NextResponse.json(
       { error: "Failed to save media record" },
+      { status: 500 },
+    );
+  }
+}
+
+async function deleteFromCloudStorage(url: string, type: "IMAGE" | "VIDEO") {
+  try {
+    const provider = await mediaFactory.getProvider();
+    let deleted = true;
+    if (isCloudinaryUrl(url)) {
+      const parts = url.split("/upload/");
+      if (parts.length >= 2) {
+        const pathParts = parts[1].split("/");
+        // Remove version part (e.g. v1774883043)
+        if (pathParts[0].startsWith("v") && /^\d+$/.test(pathParts[0].substring(1))) {
+          pathParts.shift();
+        }
+        const pathWithoutVersion = pathParts.join("/");
+        const dotIndex = pathWithoutVersion.lastIndexOf(".");
+        const publicId = dotIndex > -1 ? pathWithoutVersion.substring(0, dotIndex) : pathWithoutVersion;
+        deleted = await provider.delete(publicId, type === "VIDEO" ? "video" : "image");
+      }
+    } else if (isS3Url(url)) {
+      const urlObj = new URL(url);
+      const key = urlObj.pathname.substring(1);
+      deleted = await provider.delete(key);
+    }
+    return deleted;
+  } catch (error) {
+    console.error("Failed to delete from cloud storage:", error);
+    return false;
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const auth = await authorizeRequest(request, [
+      "trip:create",
+      "system:config",
+    ]);
+    if (!auth.authorized) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const parseResult = z.object({
+      ids: z.array(z.string()).min(1, "At least one ID is required")
+    }).safeParse(body);
+
+    if (!parseResult.success) {
+      return NextResponse.json(
+        { error: parseResult.error.issues[0].message },
+        { status: 400 },
+      );
+    }
+    const { ids } = parseResult.data;
+
+    // Retrieve image records
+    const images = await prisma.image.findMany({
+      where: { id: { in: ids } },
+    });
+
+    if (images.length === 0) {
+      return NextResponse.json({ error: "No media records found for provided IDs" }, { status: 404 });
+    }
+
+    // Process deletion from cloud storage
+    for (const image of images) {
+      await deleteFromCloudStorage(image.originalUrl, image.type);
+    }
+
+    // Remove from database
+    await prisma.image.deleteMany({
+      where: { id: { in: ids } },
+    });
+
+    // Log bulk activity
+    await logActivity(
+      "MEDIA_BULK_DELETED",
+      auth.userId,
+      "Image",
+      ids.join(", "),
+      { count: ids.length }
+    );
+
+    return NextResponse.json({ success: true, count: ids.length });
+  } catch (error: unknown) {
+    console.error("Bulk delete media error:", error);
+    return NextResponse.json(
+      { error: "Failed to delete media" },
       { status: 500 },
     );
   }
