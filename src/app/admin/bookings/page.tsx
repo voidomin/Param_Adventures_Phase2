@@ -13,6 +13,7 @@ import {
   Eye,
   ExternalLink,
   Archive,
+  AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
 import { TableSkeleton } from "@/components/admin/TableSkeleton";
@@ -37,6 +38,11 @@ interface Booking {
   refundNote?: string | null;
   cancellationReason?: string | null;
   refundAmount?: number | null;
+  participants?: {
+    id: string;
+    name: string;
+    isCancelled: boolean;
+  }[] | null;
   user: {
     name: string;
     email: string;
@@ -534,6 +540,11 @@ export default function AdminBookingsPage() {
   const [resolvingBooking, setResolvingBooking] = useState<Booking | null>(null);
   const [activeDetailsBooking, setActiveDetailsBooking] = useState<Booking | null>(null);
 
+  // Pagination and specialized refund filtering states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [showOnlyRefunds, setShowOnlyRefunds] = useState(false);
+  const itemsPerPage = 15;
+
   // New filters state
   const [bookingDateStart, setBookingDateStart] = useState("");
   const [bookingDateEnd, setBookingDateEnd] = useState("");
@@ -542,6 +553,11 @@ export default function AdminBookingsPage() {
   const [viewArchived, setViewArchived] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [hideFinishedTrips, setHideFinishedTrips] = useState(true);
+
+  // Reset pagination when any filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, showOnlyRefunds, bookingDateStart, bookingDateEnd, slotDateStart, slotDateEnd, viewArchived]);
 
   const fetchBookings = () => {
     const params = new URLSearchParams();
@@ -710,6 +726,9 @@ export default function AdminBookingsPage() {
   };
 
   const filtered = bookings.filter((b) => {
+    if (showOnlyRefunds) {
+      if (b.paymentStatus !== "REFUND_PENDING") return false;
+    }
     if (hideFinishedTrips && !viewArchived) {
       if (!b.slot) return false;
       const tripDate = new Date(b.slot.date);
@@ -726,6 +745,22 @@ export default function AdminBookingsPage() {
       b.id.toLowerCase().includes(q)
     );
   });
+
+  // Sort filtered list: bubble up REFUND_PENDING by default
+  const sortedFiltered = [...filtered].sort((a, b) => {
+    const aRefund = a.paymentStatus === "REFUND_PENDING" ? 1 : 0;
+    const bRefund = b.paymentStatus === "REFUND_PENDING" ? 1 : 0;
+    if (aRefund !== bRefund) {
+      return bRefund - aRefund; // REFUND_PENDING comes first
+    }
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+
+  const totalPages = Math.ceil(sortedFiltered.length / itemsPerPage);
+  const paginated = sortedFiltered.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const statusIcon = (s: BookingStatus) => {
     if (s === "CONFIRMED") return <CheckCircle2 className="w-3.5 h-3.5" />;
@@ -766,7 +801,7 @@ export default function AdminBookingsPage() {
       <div className="space-y-4">
         {/* Mobile View: Card List */}
         <div className="block md:hidden space-y-4">
-          {filtered.map((b) => {
+          {paginated.map((b) => {
             const confMode = getConfirmationMode(b);
             
             return (
@@ -822,13 +857,29 @@ export default function AdminBookingsPage() {
                   </div>
                   <div>
                     <p className="text-foreground/40">Pax & Price</p>
-                    <p className="font-medium text-foreground text-xs">
-                      {b.participantCount} Pax · {b.paymentStatus === "PARTIALLY_PAID" ? (
-                        <span>₹{Number(b.paidAmount).toLocaleString("en-IN")} paid / ₹{Number(b.totalPrice).toLocaleString("en-IN")}</span>
-                      ) : (
-                        <span>₹{Number(b.totalPrice).toLocaleString("en-IN")}</span>
-                      )}
-                    </p>
+                    <div className="font-medium text-foreground text-xs flex flex-col gap-0.5 mt-0.5">
+                      <div>
+                        {(() => {
+                          const cancelledCount = b.participants ? b.participants.filter(p => p.isCancelled).length : 0;
+                          if (cancelledCount > 0) {
+                            const totalCount = b.participants ? b.participants.length : b.participantCount;
+                            const activeCount = totalCount - cancelledCount;
+                            return (
+                              <span className="text-foreground font-semibold">
+                                {activeCount} Active ({cancelledCount} Refund Asked)
+                              </span>
+                            );
+                          }
+                          return <span>{b.participantCount} Pax</span>;
+                        })()}
+                        {" · "}
+                        {b.paymentStatus === "PARTIALLY_PAID" ? (
+                          <span>₹{Number(b.paidAmount).toLocaleString("en-IN")} paid / ₹{Number(b.totalPrice).toLocaleString("en-IN")}</span>
+                        ) : (
+                          <span>₹{Number(b.totalPrice).toLocaleString("en-IN")}</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                   <div>
                     <p className="text-foreground/40">Status</p>
@@ -918,7 +969,7 @@ export default function AdminBookingsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filtered.map((b) => {
+                {paginated.map((b) => {
                   const confMode = getConfirmationMode(b);
                   return (
                     <tr
@@ -955,7 +1006,20 @@ export default function AdminBookingsPage() {
                         </div>
                       </td>
                       <td className="px-5 py-4 text-sm text-foreground/70">
-                        {b.participantCount}
+                        {(() => {
+                          const cancelledCount = b.participants ? b.participants.filter(p => p.isCancelled).length : 0;
+                          if (cancelledCount > 0) {
+                            const totalCount = b.participants ? b.participants.length : b.participantCount;
+                            const activeCount = totalCount - cancelledCount;
+                            return (
+                              <div className="flex flex-col">
+                                <span className="font-semibold">{activeCount} Active</span>
+                                <span className="text-[10px] text-red-400 font-medium">{cancelledCount} Refund Asked</span>
+                              </div>
+                            );
+                          }
+                          return <span>{b.participantCount} Pax</span>;
+                        })()}
                       </td>
                       <td className="px-5 py-4 text-sm font-semibold text-foreground">
                         {b.paymentStatus === "PARTIALLY_PAID" ? (
@@ -1041,6 +1105,64 @@ export default function AdminBookingsPage() {
             </table>
           </div>
         </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border pt-6 mt-4">
+            <span className="text-xs text-foreground/50">
+              Showing {Math.min(sortedFiltered.length, (currentPage - 1) * itemsPerPage + 1)} to{" "}
+              {Math.min(sortedFiltered.length, currentPage * itemsPerPage)} of {sortedFiltered.length} bookings
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                className="px-3.5 py-2 rounded-xl border border-border bg-card text-xs font-bold uppercase tracking-wider text-foreground/70 hover:bg-foreground/5 disabled:opacity-40 disabled:hover:bg-card cursor-pointer"
+              >
+                Previous
+              </button>
+              
+              {/* Page Numbers */}
+              {Array.from({ length: totalPages }).map((_, index) => {
+                const pageNumber = index + 1;
+                const isNearCurrent = Math.abs(pageNumber - currentPage) <= 1;
+                const isEndPage = pageNumber === 1 || pageNumber === totalPages;
+                
+                if (!isNearCurrent && !isEndPage) {
+                  if (pageNumber === 2 || pageNumber === totalPages - 1) {
+                    return <span key={`ellipsis-${pageNumber}`} className="text-xs text-foreground/30 px-1">...</span>;
+                  }
+                  return null;
+                }
+
+                return (
+                  <button
+                    key={`page-${pageNumber}`}
+                    type="button"
+                    onClick={() => setCurrentPage(pageNumber)}
+                    className={`w-9 h-9 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      currentPage === pageNumber
+                        ? "bg-primary text-primary-foreground font-black shadow-md shadow-primary/10"
+                        : "border border-border bg-card text-foreground/70 hover:bg-foreground/5"
+                    }`}
+                  >
+                    {pageNumber}
+                  </button>
+                );
+              })}
+
+              <button
+                type="button"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                className="px-3.5 py-2 rounded-xl border border-border bg-card text-xs font-bold uppercase tracking-wider text-foreground/70 hover:bg-foreground/5 disabled:opacity-40 disabled:hover:bg-card cursor-pointer"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -1130,6 +1252,39 @@ export default function AdminBookingsPage() {
           <p className="text-2xl font-bold mt-1 text-foreground">{bookings.length}</p>
         </div>
       </div>
+
+      {/* Refund Pending Alerts */}
+      {pendingRefunds.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4 gap-4 animate-in fade-in duration-200 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 shrink-0 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-500">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-foreground">
+                Refund Verification Required
+              </p>
+              <p className="text-xs text-foreground/60 mt-0.5">
+                You have {pendingRefunds.length} pending refund {pendingRefunds.length === 1 ? "request" : "requests"} that require action.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setShowOnlyRefunds(!showOnlyRefunds);
+              setCurrentPage(1);
+            }}
+            className={`w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold transition-all uppercase tracking-wider cursor-pointer border ${
+              showOnlyRefunds 
+                ? "bg-yellow-500 text-black border-yellow-500 hover:bg-yellow-600" 
+                : "bg-transparent text-yellow-500 border-yellow-500/30 hover:bg-yellow-500/10"
+            }`}
+          >
+            {showOnlyRefunds ? "Show All Bookings" : "View Requests"}
+          </button>
+        </div>
+      )}
 
       {/* Filters Bar */}
       <div className="flex flex-col gap-4 bg-foreground/[0.01] border border-border/60 rounded-2xl p-4 mb-6">
