@@ -2,6 +2,22 @@ import { useState, useCallback } from "react";
 import { UploadCloud, Loader2 } from "lucide-react";
 import ImageCropper from "./ImageCropper";
 
+function getMimeType(file: File | Blob): string {
+  if (file.type) return file.type;
+  if (file instanceof File) {
+    const ext = file.name.split(".").pop()?.toLowerCase();
+    if (ext === "mp4") return "video/mp4";
+    if (ext === "mov") return "video/quicktime";
+    if (ext === "webm") return "video/webm";
+    if (ext === "avi") return "video/x-msvideo";
+    if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+    if (ext === "png") return "image/png";
+    if (ext === "gif") return "image/gif";
+    if (ext === "webp") return "image/webp";
+  }
+  return "application/octet-stream";
+}
+
 // ... [rest of the helper functions remain same until MediaUploader] ...
 async function uploadToCloudinaryDirect(
   file: File | Blob,
@@ -21,7 +37,8 @@ async function uploadToCloudinaryDirect(
       formData.append("signature", String(uploadData.signature));
       formData.append("folder", String(uploadData.folder));
 
-      const resType = file.type.startsWith("video/") ? "video" : "image";
+      const fileType = getMimeType(file);
+      const resType = fileType.startsWith("video/") ? "video" : "image";
       const url = `https://api.cloudinary.com/v1_1/${uploadData.cloudName}/${resType}/upload`;
 
       xhr.open("POST", url, true);
@@ -73,7 +90,8 @@ async function uploadToCloudinaryDirect(
       formData.append("signature", String(uploadData.signature));
       formData.append("folder", String(uploadData.folder));
 
-      const resType = file.type.startsWith("video/") ? "video" : "image";
+      const fileType = getMimeType(file);
+      const resType = fileType.startsWith("video/") ? "video" : "image";
       const url = `https://api.cloudinary.com/v1_1/${uploadData.cloudName}/${resType}/upload`;
 
       xhr.open("POST", url, true);
@@ -196,12 +214,13 @@ async function executeDirectUpload(
   onProgress?: (percent: number) => void,
 ): Promise<string> {
   const fileName = (file as File).name || "upload";
+  const fileType = getMimeType(file);
   const presignRes = await fetch(`${apiPrefix}/presign`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       fileName,
-      contentType: file.type,
+      contentType: fileType,
     }),
   });
 
@@ -245,8 +264,9 @@ async function uploadSingleFile(
   onProgress?: (percent: number) => void,
   onReused?: () => void,
 ): Promise<string> {
-  const isVideo = file.type.startsWith("video/");
-  const isImage = file.type.startsWith("image/");
+  const fileType = getMimeType(file);
+  const isVideo = fileType.startsWith("video/");
+  const isImage = fileType.startsWith("image/");
 
   if (!isImage && !isVideo) {
     throw new Error("Only images and videos are supported.");
@@ -323,7 +343,8 @@ export default function MediaUploader({
   };
 
   const handleInitialFile = (primaryFile: File, allFiles: File[]) => {
-    const isImage = primaryFile.type.startsWith("image/");
+    const fileType = getMimeType(primaryFile);
+    const isImage = fileType.startsWith("image/");
 
     // If we have a single image and cropping is enabled
     if (shouldCrop && isImage && allFiles.length === 1) {

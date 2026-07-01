@@ -148,16 +148,6 @@ export default function MediaLibraryPage() {
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  const handleVideoMouseEnter = (e: React.MouseEvent<HTMLVideoElement>) => {
-    const video = e.target as HTMLVideoElement;
-    video.play().catch(() => {});
-  };
-
-  const handleVideoMouseLeave = (e: React.MouseEvent<HTMLVideoElement>) => {
-    const video = e.target as HTMLVideoElement;
-    video.pause();
-  };
-
   const handleMerge = async () => {
     if (!mergeSourceItem || !mergeTargetId) return;
 
@@ -263,7 +253,17 @@ export default function MediaLibraryPage() {
               </div>
 
               {/* Media Preview Container - Fixed Square Aspect Ratio */}
-              <div className="relative aspect-square bg-foreground/5 w-full overflow-hidden">
+              <div 
+                className="relative aspect-square bg-foreground/5 w-full overflow-hidden"
+                onMouseEnter={(e) => {
+                  const video = e.currentTarget.querySelector("video");
+                  if (video) video.play().catch(() => {});
+                }}
+                onMouseLeave={(e) => {
+                  const video = e.currentTarget.querySelector("video");
+                  if (video) video.pause();
+                }}
+              >
                 {item.type === "IMAGE" ? (
                   <Image
                     src={item.originalUrl}
@@ -280,8 +280,6 @@ export default function MediaLibraryPage() {
                       muted
                       loop
                       playsInline
-                      onMouseEnter={handleVideoMouseEnter}
-                      onMouseLeave={handleVideoMouseLeave}
                     />
                     <div className="absolute top-2 right-2 pointer-events-none z-10">
                       <span className="bg-black/60 text-white text-[9px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold backdrop-blur-xs border border-white/20">
