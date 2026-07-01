@@ -322,6 +322,7 @@ model HeroSlide {
   ctaLink  String?
   order    Int
   isActive Boolean @default(true)
+  features Json?
 }
 
 model AuditLog {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -10,7 +10,38 @@ import {
   Zap,
   ChevronLeft,
   ChevronRight,
+  Calendar,
+  Heart,
+  Star,
+  Compass,
+  Award,
+  CheckCircle2,
+  Clock,
+  Smile,
+  Users,
+  Info,
+  Flame,
+  Eye,
+  LucideIcon,
 } from "lucide-react";
+
+const iconMap: Record<string, LucideIcon> = {
+  MapPin,
+  Shield,
+  Zap,
+  Calendar,
+  Heart,
+  Star,
+  Compass,
+  Award,
+  CheckCircle: CheckCircle2,
+  Clock,
+  Smile,
+  Users,
+  Info,
+  Flame,
+  Eye,
+};
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { getMediaUrl } from "@/lib/media/media-gateway";
@@ -22,6 +53,7 @@ interface HeroSlide {
   subtitle: string | null;
   videoUrl: string;
   ctaLink: string | null;
+  features?: any;
 }
 
 const FALLBACK_SLIDES: HeroSlide[] = [
@@ -242,22 +274,46 @@ export default function Hero({
               </Link>
             </div>
 
-            <div className="mt-12 flex flex-wrap items-center justify-start gap-x-8 gap-y-4 text-white/50 text-[10px] font-bold tracking-[0.2em] uppercase">
-              <div className="flex items-center gap-2 group/item">
-                <MapPin className="w-4 h-4 text-primary group-hover/item:scale-110 transition-transform" />
-                <span>Pan-India</span>
-              </div>
-              <div className="w-1 h-1 bg-primary/40 rounded-full hidden md:block" />
-              <div className="flex items-center gap-2">
-                <Shield className="w-4 h-4 text-primary" />
-                <span>Verified Guides</span>
-              </div>
-              <div className="w-1 h-1 bg-primary/40 rounded-full hidden md:block" />
-              <div className="flex items-center gap-2">
-                <Zap className="w-4 h-4 text-primary" />
-                <span>Live Support</span>
-              </div>
-            </div>
+            {(() => {
+              const slideFeatures = (() => {
+                if (currentSlide?.features) {
+                  try {
+                    const parsed = typeof currentSlide.features === "string"
+                      ? JSON.parse(currentSlide.features)
+                      : currentSlide.features;
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                      return parsed;
+                    }
+                  } catch {
+                    // fallback
+                  }
+                }
+                return [
+                  { icon: "MapPin", text: "Pan-India" },
+                  { icon: "Shield", text: "Verified Guides" },
+                  { icon: "Zap", text: "Live Support" }
+                ];
+              })();
+
+              return (
+                <div className="mt-12 flex flex-wrap items-center justify-start gap-x-8 gap-y-4 text-white/50 text-[10px] font-bold tracking-[0.2em] uppercase">
+                  {slideFeatures.map((feat: any, idx: number) => {
+                    const IconComponent = iconMap[feat.icon] || Info;
+                    return (
+                      <React.Fragment key={`feat-${idx}`}>
+                        {idx > 0 && (
+                          <div className="w-1 h-1 bg-primary/40 rounded-full hidden md:block" />
+                        )}
+                        <div className="flex items-center gap-2 group/item">
+                          <IconComponent className="w-4 h-4 text-primary group-hover/item:scale-110 transition-transform" />
+                          <span>{feat.text}</span>
+                        </div>
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </motion.div>
         </AnimatePresence>
       </div>
