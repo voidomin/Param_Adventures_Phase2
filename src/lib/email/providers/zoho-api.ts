@@ -15,7 +15,10 @@ export class ZohoAPIProvider implements EmailProvider {
   private readonly baseUrl: string;
 
   constructor(config: ZohoAPIConfig) {
-    this.apiKey = config.apiKey;
+    let key = config.apiKey || "";
+    // Automatically strip any "zoho-enczapikey" prefix (case-insensitive) and spaces
+    key = key.replace(/^zoho-enczapikey\s+/i, "").trim();
+    this.apiKey = key;
     const region = config.region || "in";
     this.baseUrl = `https://api.zeptomail.${region}/v1.1/email`;
   }
@@ -49,7 +52,7 @@ export class ZohoAPIProvider implements EmailProvider {
         },
         body: JSON.stringify({
           from: { address: fromAddress, name: fromName },
-          to: [{ customer_details: { email_address: options.to } }],
+          to: [{ email_address: { address: options.to } }],
           subject: options.subject,
           htmlbody: options.html,
         }),
