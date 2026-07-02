@@ -1480,7 +1480,24 @@ export default function AdminBookingsPage() {
                     <span className="text-foreground/40 font-normal text-sm">&lt;{b.user.email}&gt;</span>
                   </p>
                   <p className="text-sm text-foreground/60">{b.experience.title}{b.slot ? ` · ${formatDate(b.slot.date)}` : ""}</p>
-                  <p className="text-sm">₹{Number(b.totalPrice).toLocaleString("en-IN")} · {b.participantCount} pax</p>
+                  <p className="text-sm">
+                    ₹{Number(b.totalPrice).toLocaleString("en-IN")} ·{" "}
+                    {(() => {
+                      const cancelledCount = b.participants ? b.participants.filter(p => p.isCancelled).length : 0;
+                      if (cancelledCount > 0) {
+                        const totalCount = b.participants ? b.participants.length : b.participantCount;
+                        return (
+                          <span>
+                            {cancelledCount} Refund Asked{" "}
+                            <span className="text-foreground/45 font-normal text-xs">
+                              (of {totalCount} pax)
+                            </span>
+                          </span>
+                        );
+                      }
+                      return <span>{b.participantCount} pax</span>;
+                    })()}
+                  </p>
                   {b.cancellationReason && (
                     <p className="text-xs text-foreground/40">Reason: {b.cancellationReason}</p>
                   )}
