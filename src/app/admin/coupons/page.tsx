@@ -7,15 +7,9 @@ import {
   Filter,
   Plus,
   Trash2,
-  Calendar,
-  Lock,
-  Unlock,
   GitMerge,
   Split,
-  History,
-  TrendingUp,
   AlertTriangle,
-  FileText,
 } from "lucide-react";
 import { TableSkeleton } from "@/components/admin/TableSkeleton";
 
@@ -24,29 +18,22 @@ type CouponStatus = "ACTIVE" | "PARTIALLY_USED" | "FULLY_USED" | "EXPIRED" | "CA
 interface TravelCoupon {
   id: string;
   code: string;
-  customerId: string;
   originalValue: number;
   balance: number;
   expiryDate: string;
   status: CouponStatus;
-  type: string;
-  reason?: string | null;
-  createdAt: string;
+  customerId: string;
   customer: {
-    id: string;
     name: string;
     email: string;
   };
-  issuedBy?: {
-    name: string;
-  } | null;
 }
 
 const statusStyles: Record<CouponStatus, string> = {
-  ACTIVE: "bg-green-500/10 text-green-600 border-green-500/20",
-  PARTIALLY_USED: "bg-blue-500/10 text-blue-600 border-blue-500/20",
-  FULLY_USED: "bg-slate-500/10 text-slate-500 border-slate-500/20",
-  EXPIRED: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
+  ACTIVE: "bg-green-500/10 text-green-500 border-green-500/20",
+  PARTIALLY_USED: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+  FULLY_USED: "bg-zinc-500/10 text-zinc-500 border-zinc-500/20",
+  EXPIRED: "bg-amber-500/10 text-amber-500 border-amber-500/20",
   CANCELLED: "bg-red-500/10 text-red-500 border-red-500/20",
   BLOCKED: "bg-zinc-500/10 text-zinc-500 border-zinc-500/20",
 };
@@ -90,7 +77,7 @@ export default function AdminCouponsPage() {
   const [adjStatus, setAdjStatus] = useState<CouponStatus | "">("");
   const [adjRemarks, setAdjRemarks] = useState("");
   const [mergeIds, setMergeIds] = useState<string[]>([]);
-  const [splitAmounts, setSplitAmounts] = useState<string[]>([""]);
+  const [splitAmounts, setSplitAmounts] = useState<{ id: string; amount: string }[]>([{ id: "split-1", amount: "" }]);
   const [isUpdating, setIsUpdating] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
@@ -136,18 +123,18 @@ export default function AdminCouponsPage() {
     }
   };
 
-  const handleCreateCoupon = async (e: React.FormEvent) => {
+  const handleCreateCoupon = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!newCustId) {
       setCreateError("Please lookup and select a valid customer first.");
       return;
     }
     if (!newVal || Number(newVal) <= 0) {
-      setCreateError("Please enter a valid coupon value.");
+      setCreateError("Please enter a valid credit value.");
       return;
     }
     if (!newExpiry) {
-      setCreateError("Please select an expiry date.");
+      setCreateError("Expiry date is required.");
       return;
     }
 
@@ -162,15 +149,14 @@ export default function AdminCouponsPage() {
           customerId: newCustId,
           originalValue: Number(newVal),
           expiryDate: newExpiry,
-          reason: newReason,
+          reason: newReason || "Goodwill Credit Allocation",
         }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to issue coupon");
+      if (!res.ok) throw new Error(data.error || "Failed to create coupon");
 
       setIsCreateOpen(false);
-      // Reset form
       setNewCustEmail("");
       setNewCustId("");
       setNewCustName("");
@@ -179,23 +165,10 @@ export default function AdminCouponsPage() {
       setNewReason("");
       fetchCoupons();
     } catch (err: any) {
-      setCreateError(err.message || "Failed to create coupon.");
+      setCreateError(err.message || "Something went wrong.");
     } finally {
       setIsCreating(false);
     }
-  };
-
-  const handleOpenManage = (coupon: TravelCoupon) => {
-    setSelectedCoupon(coupon);
-    setActionTab("ADJUST");
-    setAdjAction("NONE");
-    setAdjAmount("");
-    setAdjExpiry(coupon.expiryDate.split("T")[0]);
-    setAdjStatus(coupon.status);
-    setAdjRemarks("");
-    setMergeIds([]);
-    setSplitAmounts([""]);
-    setActionError(null);
   };
 
   const handleApplyAdjustment = async () => {
@@ -205,19 +178,20 @@ export default function AdminCouponsPage() {
 
     try {
       const res = await fetch(`/api/admin/coupons/${selectedCoupon.id}`, {
-        method: "PATCH",
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          balanceAction: adjAction === "NONE" ? null : adjAction,
-          amount: adjAmount ? Number(adjAmount) : 0,
-          expiryDate: adjExpiry,
-          status: adjStatus,
-          remarks: adjRemarks,
+          action: "ADJUST",
+          balanceAction: adjAction,
+          amount: adjAction === "NONE" ? undefined : Number(adjAmount),
+          status: adjStatus || undefined,
+          expiryDate: adjExpiry || undefined,
+          remarks: adjRemarks || "Voucher configuration update",
         }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to update coupon");
+      if (!res.ok) throw new Error(data.error || "Failed to adjust coupon");
 
       setSelectedCoupon(null);
       fetchCoupons();
@@ -231,7 +205,7 @@ export default function AdminCouponsPage() {
   const handleMergeCoupons = async () => {
     if (!selectedCoupon) return;
     if (mergeIds.length === 0) {
-      setActionError("Please select at least one other coupon to merge.");
+      setActionError("Please select at least one coupon to merge.");
       return;
     }
     setIsUpdating(true);
@@ -261,7 +235,7 @@ export default function AdminCouponsPage() {
 
   const handleSplitCoupon = async () => {
     if (!selectedCoupon) return;
-    const amounts = splitAmounts.map(Number).filter(n => n > 0);
+    const amounts = splitAmounts.map(s => Number(s.amount)).filter(n => n > 0);
     if (amounts.length === 0) {
       setActionError("Please add split values.");
       return;
@@ -300,7 +274,7 @@ export default function AdminCouponsPage() {
       setSelectedCoupon(null);
       fetchCoupons();
     } catch (err: any) {
-      alert(err.message);
+      alert(err.message || "Failed to delete coupon");
     }
   };
 
@@ -314,6 +288,97 @@ export default function AdminCouponsPage() {
       coupon.customer.email.toLowerCase().includes(query)
     );
   });
+
+  // Flat render elements to resolve nested ternary warnings
+  let contentElement;
+  if (isLoading) {
+    contentElement = <TableSkeleton rows={5} columns={7} />;
+  } else if (error) {
+    contentElement = (
+      <div className="bg-red-500/10 border border-red-500/20 text-red-500 rounded-2xl p-6 text-center">
+        <AlertTriangle className="w-12 h-12 mx-auto mb-3 animate-bounce" />
+        <p className="font-bold">{error}</p>
+      </div>
+    );
+  } else if (filteredCoupons.length === 0) {
+    contentElement = (
+      <div className="bg-card border border-border rounded-2xl p-16 text-center italic text-foreground/40 text-sm">
+        No coupons match your search filters.
+      </div>
+    );
+  } else {
+    contentElement = (
+      <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left text-sm">
+            <thead>
+              <tr className="bg-foreground/5 border-b border-border">
+                <th className="px-6 py-4 font-black uppercase text-xs tracking-widest text-foreground/40">Coupon Code</th>
+                <th className="px-6 py-4 font-black uppercase text-xs tracking-widest text-foreground/40">Customer</th>
+                <th className="px-6 py-4 font-black uppercase text-xs tracking-widest text-foreground/40 text-center">Original Value</th>
+                <th className="px-6 py-4 font-black uppercase text-xs tracking-widest text-foreground/40 text-center">Remaining Balance</th>
+                <th className="px-6 py-4 font-black uppercase text-xs tracking-widest text-foreground/40 text-center">Expiry Date</th>
+                <th className="px-6 py-4 font-black uppercase text-xs tracking-widest text-foreground/40 text-center">Status</th>
+                <th className="px-6 py-4 font-black uppercase text-xs tracking-widest text-foreground/40 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/55">
+              {filteredCoupons.map((coupon) => (
+                <tr key={coupon.id} className="group hover:bg-foreground/5 transition-colors">
+                  <td className="px-6 py-5">
+                    <span className="font-mono font-black text-primary bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-xl tracking-wider select-all">
+                      {coupon.code}
+                    </span>
+                  </td>
+                  <td className="px-6 py-5">
+                    <span className="font-bold text-foreground block leading-tight">{coupon.customer.name}</span>
+                    <span className="text-xs text-foreground/45 mt-0.5 block">{coupon.customer.email}</span>
+                  </td>
+                  <td className="px-6 py-5 text-center font-medium text-foreground/70">
+                    ₹{Number(coupon.originalValue).toLocaleString("en-IN")}
+                  </td>
+                  <td className="px-6 py-5 text-center text-green-500 font-black text-base">
+                    ₹{Number(coupon.balance).toLocaleString("en-IN")}
+                  </td>
+                  <td className="px-6 py-5 text-center font-semibold text-foreground/75">
+                    {formatDate(coupon.expiryDate)}
+                  </td>
+                  <td className="px-6 py-5 text-center">
+                    <span
+                      className={`px-3 py-1 rounded-full text-2xs font-black uppercase tracking-wider border ${
+                        statusStyles[coupon.status]
+                      }`}
+                    >
+                      {coupon.status.replace("_", " ")}
+                    </span>
+                  </td>
+                  <td className="px-6 py-5 text-right">
+                    <button
+                      onClick={() => {
+                        setSelectedCoupon(coupon);
+                        setActionTab("ADJUST");
+                        setAdjAction("NONE");
+                        setAdjAmount("");
+                        setAdjStatus(coupon.status);
+                        setAdjExpiry(coupon.expiryDate.split("T")[0]);
+                        setAdjRemarks("");
+                        setMergeIds([]);
+                        setSplitAmounts([{ id: "split-1", amount: "" }]);
+                        setActionError(null);
+                      }}
+                      className="px-3.5 py-2 text-xs font-bold text-primary hover:bg-primary/5 rounded-xl border border-primary/20 hover:border-primary/50 transition-all uppercase tracking-wider"
+                    >
+                      Manage
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 p-4 md:p-8 animate-in fade-in duration-500">
@@ -370,74 +435,8 @@ export default function AdminCouponsPage() {
         </div>
       </div>
 
-      {/* Main Table */}
-      {isLoading ? (
-        <TableSkeleton rows={5} cols={7} />
-      ) : error ? (
-        <div className="bg-red-500/10 border border-red-500/20 text-red-500 rounded-2xl p-6 text-center">
-          <AlertTriangle className="w-12 h-12 mx-auto mb-3 animate-bounce" />
-          <p className="font-bold">{error}</p>
-        </div>
-      ) : filteredCoupons.length === 0 ? (
-        <div className="bg-card border border-border rounded-2xl p-16 text-center italic text-foreground/40 text-sm">
-          No coupons match your search filters.
-        </div>
-      ) : (
-        <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left text-sm">
-              <thead>
-                <tr className="bg-foreground/5 border-b border-border">
-                  <th className="px-6 py-4 font-black uppercase text-xs tracking-widest text-foreground/40">Coupon Code</th>
-                  <th className="px-6 py-4 font-black uppercase text-xs tracking-widest text-foreground/40">Customer</th>
-                  <th className="px-6 py-4 font-black uppercase text-xs tracking-widest text-foreground/40 text-center">Original Value</th>
-                  <th className="px-6 py-4 font-black uppercase text-xs tracking-widest text-foreground/40 text-center">Remaining Balance</th>
-                  <th className="px-6 py-4 font-black uppercase text-xs tracking-widest text-foreground/40 text-center">Expiry Date</th>
-                  <th className="px-6 py-4 font-black uppercase text-xs tracking-widest text-foreground/40 text-center">Status</th>
-                  <th className="px-6 py-4 font-black uppercase text-xs tracking-widest text-foreground/40 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/55">
-                {filteredCoupons.map((coupon) => (
-                  <tr key={coupon.id} className="group hover:bg-foreground/5 transition-colors">
-                    <td className="px-6 py-5">
-                      <span className="font-mono font-black text-primary bg-primary/10 border border-primary/20 px-2.5 py-1 rounded-xl tracking-wider select-all">
-                        {coupon.code}
-                      </span>
-                    </td>
-                    <td className="px-6 py-5">
-                      <span className="font-bold text-foreground block leading-tight">{coupon.customer.name}</span>
-                      <span className="text-xs text-foreground/45 mt-0.5 block">{coupon.customer.email}</span>
-                    </td>
-                    <td className="px-6 py-5 text-center font-medium text-foreground/70">
-                      ₹{Number(coupon.originalValue).toLocaleString("en-IN")}
-                    </td>
-                    <td className="px-6 py-5 text-center text-green-500 font-black text-base">
-                      ₹{Number(coupon.balance).toLocaleString("en-IN")}
-                    </td>
-                    <td className="px-6 py-5 text-center font-semibold text-foreground/75">
-                      {formatDate(coupon.expiryDate)}
-                    </td>
-                    <td className="px-6 py-5 text-center">
-                      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border uppercase tracking-wider ${statusStyles[coupon.status]}`}>
-                        {coupon.status.replace("_", " ")}
-                      </span>
-                    </td>
-                    <td className="px-6 py-5 text-right">
-                      <button
-                        onClick={() => handleOpenManage(coupon)}
-                        className="px-4 py-2 bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground font-black text-xs uppercase tracking-widest rounded-xl transition-all border border-primary/25"
-                      >
-                        Manage
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+      {/* Main Table Content Render */}
+      {contentElement}
 
       {/* CREATE GOODWILL COUPON DIALOG */}
       {isCreateOpen && (
@@ -452,9 +451,10 @@ export default function AdminCouponsPage() {
             </div>
             <div className="p-6 space-y-4">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground/60 uppercase">Customer Email</label>
+                <label htmlFor="new-coupon-email" className="text-xs font-bold text-foreground/60 uppercase">Customer Email</label>
                 <div className="flex gap-2">
                   <input
+                    id="new-coupon-email"
                     type="email"
                     value={newCustEmail}
                     onChange={(e) => setNewCustEmail(e.target.value)}
@@ -475,8 +475,9 @@ export default function AdminCouponsPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground/60 uppercase">Coupon Value (INR)</label>
+                <label htmlFor="new-coupon-val" className="text-xs font-bold text-foreground/60 uppercase">Coupon Value (INR)</label>
                 <input
+                  id="new-coupon-val"
                   type="number"
                   value={newVal}
                   onChange={(e) => setNewVal(e.target.value)}
@@ -486,8 +487,9 @@ export default function AdminCouponsPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground/60 uppercase">Expiry Date</label>
+                <label htmlFor="new-coupon-expiry" className="text-xs font-bold text-foreground/60 uppercase">Expiry Date</label>
                 <input
+                  id="new-coupon-expiry"
                   type="date"
                   value={newExpiry}
                   onChange={(e) => setNewExpiry(e.target.value)}
@@ -496,8 +498,9 @@ export default function AdminCouponsPage() {
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-foreground/60 uppercase">Reason / Remarks</label>
+                <label htmlFor="new-coupon-reason" className="text-xs font-bold text-foreground/60 uppercase">Reason / Remarks</label>
                 <textarea
+                  id="new-coupon-reason"
                   value={newReason}
                   onChange={(e) => setNewReason(e.target.value)}
                   placeholder="Compensation for bus delay, operational issue etc..."
@@ -569,8 +572,9 @@ export default function AdminCouponsPage() {
                 <div className="space-y-4 animate-in fade-in duration-200">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-foreground/60 uppercase">Adjustment Action</label>
+                      <label htmlFor="adj-action" className="text-xs font-bold text-foreground/60 uppercase">Adjustment Action</label>
                       <select
+                        id="adj-action"
                         value={adjAction}
                         onChange={(e) => setAdjAction(e.target.value as any)}
                         className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm focus:ring-1 focus:ring-primary outline-none font-bold"
@@ -582,8 +586,9 @@ export default function AdminCouponsPage() {
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-foreground/60 uppercase">Adjustment Amount (INR)</label>
+                      <label htmlFor="adj-amount" className="text-xs font-bold text-foreground/60 uppercase">Adjustment Amount (INR)</label>
                       <input
+                        id="adj-amount"
                         type="number"
                         value={adjAmount}
                         disabled={adjAction === "NONE"}
@@ -596,8 +601,9 @@ export default function AdminCouponsPage() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-foreground/60 uppercase">Status override</label>
+                      <label htmlFor="adj-status" className="text-xs font-bold text-foreground/60 uppercase">Status override</label>
                       <select
+                        id="adj-status"
                         value={adjStatus}
                         onChange={(e) => setAdjStatus(e.target.value as CouponStatus)}
                         className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm focus:ring-1 focus:ring-primary outline-none font-bold"
@@ -609,8 +615,9 @@ export default function AdminCouponsPage() {
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-foreground/60 uppercase">Extended Expiry Date</label>
+                      <label htmlFor="adj-expiry" className="text-xs font-bold text-foreground/60 uppercase">Extended Expiry Date</label>
                       <input
+                        id="adj-expiry"
                         type="date"
                         value={adjExpiry}
                         onChange={(e) => setAdjExpiry(e.target.value)}
@@ -620,8 +627,9 @@ export default function AdminCouponsPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-foreground/60 uppercase">Action audit remarks</label>
+                    <label htmlFor="adj-remarks" className="text-xs font-bold text-foreground/60 uppercase">Action audit remarks</label>
                     <textarea
+                      id="adj-remarks"
                       value={adjRemarks}
                       onChange={(e) => setAdjRemarks(e.target.value)}
                       placeholder="Why is this credit adjustment being performed..."
@@ -643,15 +651,16 @@ export default function AdminCouponsPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-foreground/60 uppercase">Coupons to Merge</label>
+                    <span className="block text-xs font-bold text-foreground/60 uppercase">Coupons to Merge</span>
                     <div className="border border-border rounded-2xl divide-y divide-border max-h-48 overflow-y-auto">
                       {coupons
                         .filter(c => c.customerId === selectedCoupon.customerId && c.id !== selectedCoupon.id && c.status === "ACTIVE")
                         .map(c => {
                           const isChecked = mergeIds.includes(c.id);
                           return (
-                            <label key={c.id} className="flex items-center gap-3 p-3 hover:bg-foreground/5 cursor-pointer text-sm font-medium">
+                            <div key={c.id} className="flex items-center gap-3 p-3 hover:bg-foreground/5 cursor-pointer text-sm font-medium">
                               <input
+                                id={`merge-${c.id}`}
                                 type="checkbox"
                                 checked={isChecked}
                                 onChange={(e) => {
@@ -663,11 +672,11 @@ export default function AdminCouponsPage() {
                                 }}
                                 className="rounded border-border text-primary focus:ring-primary shrink-0"
                               />
-                              <div className="flex-1">
+                              <label htmlFor={`merge-${c.id}`} className="flex-1 cursor-pointer">
                                 <span className="font-mono font-bold text-foreground">{c.code}</span>
                                 <span className="text-xs text-foreground/45 ml-2">(Balance: ₹{Number(c.balance).toLocaleString("en-IN")})</span>
-                              </div>
-                            </label>
+                              </label>
+                            </div>
                           );
                         })}
                       {coupons.filter(c => c.customerId === selectedCoupon.customerId && c.id !== selectedCoupon.id && c.status === "ACTIVE").length === 0 && (
@@ -689,16 +698,17 @@ export default function AdminCouponsPage() {
                   </div>
 
                   <div className="space-y-3">
-                    <label className="text-xs font-bold text-foreground/60 uppercase">Split values (INR)</label>
+                    <span className="block text-xs font-bold text-foreground/60 uppercase">Split values (INR)</span>
                     <div className="space-y-2">
-                      {splitAmounts.map((amt, idx) => (
-                        <div key={`split-${idx}`} className="flex gap-2 items-center">
+                      {splitAmounts.map((item, idx) => (
+                        <div key={item.id} className="flex gap-2 items-center">
                           <input
+                            id={`split-input-${item.id}`}
                             type="number"
-                            value={amt}
+                            value={item.amount}
                             onChange={(e) => {
                               const newSplit = [...splitAmounts];
-                              newSplit[idx] = e.target.value;
+                              newSplit[idx] = { ...newSplit[idx], amount: e.target.value };
                               setSplitAmounts(newSplit);
                             }}
                             placeholder="e.g. 500"
@@ -719,8 +729,8 @@ export default function AdminCouponsPage() {
 
                     <button
                       type="button"
-                      onClick={() => setSplitAmounts([...splitAmounts, ""])}
-                      className="text-xs font-bold text-primary hover:underline flex items-center gap-1 mt-1"
+                      onClick={() => setSplitAmounts([...splitAmounts, { id: `split-${Date.now()}-${splitAmounts.length}`, amount: "" }])}
+                      className="text-xs font-bold text-primary hover:underline flex items-center gap-1 mt-1 font-heading"
                     >
                       + Add split division
                     </button>

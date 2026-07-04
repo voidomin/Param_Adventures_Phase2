@@ -91,6 +91,7 @@ export const BookingService = {
       // Perform coupon redemptions updates
       for (const red of redemptionsList) {
         const c = await tx.travelCoupon.findUnique({ where: { id: red.couponId } });
+        if (!c) throw new Error("Coupon not found.");
         const curBal = Number(c.balance);
         const newBal = Math.max(0, curBal - red.amount);
         const newStatus = newBal === 0 ? "FULLY_USED" : "PARTIALLY_USED";
@@ -245,6 +246,7 @@ export const BookingService = {
 
         for (const r of redemptions) {
           const coupon = await rollbackTx.travelCoupon.findUnique({ where: { id: r.couponId } });
+          if (!coupon) continue;
           const currentBal = Number(coupon.balance);
           const newBal = currentBal + Number(r.amount);
           
