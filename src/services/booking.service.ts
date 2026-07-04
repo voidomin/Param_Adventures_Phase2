@@ -53,22 +53,143 @@ export const BookingService = {
         ? Number(experience.advancePaymentAmount) * data.participantCount
         : pricing.totalPrice;
 
+      // Validate and subtract applied travel coupons inside serializable transaction
+      let remainingPaymentAmount = paymentAmount;
+      let totalCouponRedeemed = 0;
+      const redemptionsList: { couponId: string; amount: number }[] = [];
+
+      if (data.appliedCoupons && data.appliedCoupons.length > 0) {
+        for (const code of data.appliedCoupons) {
+          if (remainingPaymentAmount <= 0) break;
+
+          const dbCoupon = await tx.travelCoupon.findUnique({
+            where: { code: code.toUpperCase().trim() },
+          });
+
+          if (!dbCoupon) throw new Error(`COUPON_ERROR: Invalid coupon code: ${code}`);
+          if (dbCoupon.customerId !== userId) throw new Error(`COUPON_ERROR: Coupon belongs to another customer.`);
+          if (dbCoupon.status === "EXPIRED" || new Date(dbCoupon.expiryDate) < new Date()) {
+            throw new Error(`COUPON_ERROR: Coupon has expired.`);
+          }
+          if (dbCoupon.status === "FULLY_USED" || Number(dbCoupon.balance) <= 0) {
+            throw new Error(`COUPON_ERROR: Coupon has no balance left.`);
+          }
+          if (dbCoupon.status === "BLOCKED" || dbCoupon.status === "CANCELLED") {
+            throw new Error(`COUPON_ERROR: Coupon is blocked or cancelled.`);
+          }
+
+          const redeemAmount = Math.min(Number(dbCoupon.balance), remainingPaymentAmount);
+          remainingPaymentAmount = Math.round((remainingPaymentAmount - redeemAmount) * 100) / 100;
+          totalCouponRedeemed += redeemAmount;
+          redemptionsList.push({ couponId: dbCoupon.id, amount: redeemAmount });
+        }
+      }
+
       // Create Booking record
       const booking = await BookingRepo.createBooking(tx, userId, data, pricing);
 
-      // EXTERNAL READINESS: Create the pending Payment record ATOMICALLY with the booking
+      // Perform coupon redemptions updates
+      for (const red of redemptionsList) {
+        const c = await tx.travelCoupon.findUnique({ where: { id: red.couponId } });
+        const curBal = Number(c.balance);
+        const newBal = Math.max(0, curBal - red.amount);
+        const newStatus = newBal === 0 ? "FULLY_USED" : "PARTIALLY_USED";
+
+        await tx.travelCoupon.update({
+          where: { id: red.couponId },
+          data: { balance: newBal, status: newStatus },
+        });
+
+        await tx.couponTransaction.create({
+          data: {
+            couponId: red.couponId,
+            bookingId: booking.id,
+            type: "REDEEMED",
+            amount: red.amount,
+            previousBalance: curBal,
+            newBalance: newBal,
+            remarks: `Redeemed on booking ${booking.id.substring(0, 8)}...`,
+          },
+        });
+      }
+
+      // Update booking paid amount with coupons applied
+      await tx.booking.update({
+        where: { id: booking.id },
+        data: {
+          paidAmount: totalCouponRedeemed,
+          remainingBalance: Math.max(0, Number(booking.totalPrice) - totalCouponRedeemed),
+        },
+      });
+
+      // If fully covered by coupon(s), confirm instantly! (Case 1)
+      if (remainingPaymentAmount <= 0.01) {
+        await tx.booking.update({
+          where: { id: booking.id },
+          data: {
+            bookingStatus: "CONFIRMED",
+            paymentStatus: "PAID",
+          },
+        });
+
+        await tx.slot.update({
+          where: { id: slot.id },
+          data: { remainingCapacity: { decrement: booking.participantCount } },
+        });
+
+        const payment = await BookingRepo.createPayment(tx, {
+          bookingId: booking.id,
+          orderId: "COUPON_REDEMPTION",
+          totalPrice: totalCouponRedeemed,
+        });
+
+        await tx.payment.updateMany({
+          where: { bookingId: booking.id, status: "PENDING" },
+          data: { status: "PAID", provider: "MANUAL", providerPaymentId: "COUPON_PAID" },
+        });
+
+        return { booking, payment, fullyPaid: true, totalCouponRedeemed };
+      }
+
+      // Regular Flow with remaining Razorpay charge (Case 2)
       const payment = await BookingRepo.createPayment(tx, {
         bookingId: booking.id,
         orderId: "PENDING_AUTH",
-        totalPrice: paymentAmount,
+        totalPrice: remainingPaymentAmount,
       });
 
-      return { booking, payment };
+      return { booking, payment, fullyPaid: false, totalCouponRedeemed };
     }, {
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
     });
 
     const { booking } = result;
+
+    if (result.fullyPaid) {
+      await logActivity("BOOKING_REQUESTED", userId, "Booking", booking.id, {
+        experienceId: data.experienceId,
+        slotId: data.slotId,
+        participantCount: data.participantCount,
+        paymentType: "COUPON",
+      });
+
+      await logActivity("BOOKING_CONFIRMED", userId, "Booking", booking.id, {
+        paymentType: "COUPON",
+        totalCouponRedeemed: result.totalCouponRedeemed,
+      });
+
+      revalidatePath("/", "layout");
+
+      // Send confirmation email
+      this.sendBookingConfirmationWithDetails(booking.id).catch((err) =>
+        console.error("[BookingService] Background email error:", err),
+      );
+
+      return {
+        bookingId: booking.id,
+        fullyPaidByCoupon: true,
+      };
+    }
 
     // 3. External Integration: Razorpay
     try {
@@ -90,7 +211,6 @@ export const BookingService = {
       });
 
       // 4. Finalize Payment & Audit Trail
-      // Update the payment with the real provider order ID
       await prisma.payment.updateMany({
         where: { bookingId: booking.id, status: "PENDING" },
         data: { providerOrderId: order.id }
@@ -114,10 +234,37 @@ export const BookingService = {
       };
 
     } catch (razorpayError) {
-      // 5. Graceful Soft-Rollback: Preserve the record but mark as CANCELLED
-      // This maintains the audit trail as requested by senior engineering review.
+      // 5. Graceful Soft-Rollback: Restore coupons and set booking CANCELLED
       await prisma.$transaction(async (rollbackTx) => {
         await BookingRepo.updateStatus(rollbackTx, booking.id, "CANCELLED");
+        
+        // Restore applied coupons on Razorpay error
+        const redemptions = await rollbackTx.couponTransaction.findMany({
+          where: { bookingId: booking.id, type: "REDEEMED" },
+        });
+
+        for (const r of redemptions) {
+          const coupon = await rollbackTx.travelCoupon.findUnique({ where: { id: r.couponId } });
+          const currentBal = Number(coupon.balance);
+          const newBal = currentBal + Number(r.amount);
+          
+          await rollbackTx.travelCoupon.update({
+            where: { id: coupon.id },
+            data: { balance: newBal, status: "ACTIVE" },
+          });
+
+          await rollbackTx.couponTransaction.create({
+            data: {
+              couponId: coupon.id,
+              bookingId: booking.id,
+              type: "RESTORED",
+              amount: r.amount,
+              previousBalance: currentBal,
+              newBalance: newBal,
+              remarks: "Restored due to Razorpay order initialization failure",
+            },
+          });
+        }
       }, {
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
       });
@@ -150,6 +297,18 @@ export const BookingService = {
 
         if (!paymentRecord) {
           throw new Error("PAYMENT_NOT_FOUND");
+        }
+
+        // Case 5: Verify coupons used in this booking have not expired in the meantime
+        const redemptions = await tx.couponTransaction.findMany({
+          where: { bookingId, type: "REDEEMED" },
+          include: { coupon: true },
+        });
+
+        for (const r of redemptions) {
+          if (new Date(r.coupon.expiryDate) < new Date()) {
+            throw new Error("COUPON_EXPIRED_DURING_CHECKOUT");
+          }
         }
 
         // If this specific payment is already PAID, return the booking (idempotency)

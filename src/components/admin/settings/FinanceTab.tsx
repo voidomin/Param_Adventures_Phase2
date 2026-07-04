@@ -21,6 +21,45 @@ export default function FinanceTab(props: Readonly<TabProps>) {
     updateSetting("PLATFORM", "taxConfig", JSON.stringify(config));
   };
 
+  const [localPolicyRules, setLocalPolicyRules] = useState<{ minDays: number; maxDays: number | null; refundPercent: number }[]>(() => {
+    const raw = getVal("PLATFORM", "cancellation_policy_rules");
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const savePolicyRules = (rules: { minDays: number; maxDays: number | null; refundPercent: number }[]) => {
+    const sorted = [...rules].sort((a, b) => b.minDays - a.minDays);
+    updateSetting("PLATFORM", "cancellation_policy_rules", JSON.stringify(sorted));
+  };
+
+  const addPolicyRule = () => {
+    const newRules = [
+      ...localPolicyRules,
+      { minDays: 0, maxDays: null, refundPercent: 0 }
+    ];
+    setLocalPolicyRules(newRules);
+    savePolicyRules(newRules);
+  };
+
+  const removePolicyRule = (index: number) => {
+    const newRules = localPolicyRules.filter((_, idx) => idx !== index);
+    setLocalPolicyRules(newRules);
+    savePolicyRules(newRules);
+  };
+
+  const updatePolicyRule = (index: number, field: "minDays" | "refundPercent", value: number) => {
+    const newRules = localPolicyRules.map((rule, idx) => 
+      idx === index ? { ...rule, [field]: value } : rule
+    );
+    setLocalPolicyRules(newRules);
+    savePolicyRules(newRules);
+  };
+
   const addTaxItem = () => {
     const newConfig = [
       ...localTaxConfig,
@@ -108,6 +147,76 @@ export default function FinanceTab(props: Readonly<TabProps>) {
           >
             <Plus className="w-4 h-4" /> Add Tax Component
           </button>
+        </div>
+      </div>
+
+      <div className="space-y-8 pt-8 border-t border-border/20">
+        <SectionTitle 
+          title="Cancellation Policy Rules" 
+          subtitle="Define refund percentages based on the number of days prior to departure." 
+          icon={ShieldAlert} 
+        />
+
+        <div className="bg-card border border-border rounded-3xl overflow-hidden">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="bg-foreground/5 border-b border-border">
+                <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-foreground/40">Minimum Days Before Departure</th>
+                <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-foreground/40 text-center">Refund Percentage (%)</th>
+                <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-foreground/40 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/50">
+              {localPolicyRules.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="px-6 py-12 text-center text-sm text-foreground/30 italic">No rules configured. Click add to begin.</td>
+                </tr>
+              ) : (
+                localPolicyRules.map((rule, idx) => (
+                  <tr key={`policy-rule-${idx}`} className="group hover:bg-foreground/5 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <input 
+                          type="number" 
+                          value={rule.minDays}
+                          onChange={(e) => updatePolicyRule(idx, "minDays", Number.parseInt(e.target.value) || 0)}
+                          className="bg-foreground/5 border border-border rounded-lg px-3 py-1.5 w-24 text-center font-bold focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                        />
+                        <span className="text-xs text-foreground/50">Days or more before departure</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <input 
+                          type="number" 
+                          value={rule.refundPercent}
+                          onChange={(e) => updatePolicyRule(idx, "refundPercent", Number.parseInt(e.target.value) || 0)}
+                          className="bg-foreground/5 border border-border rounded-lg px-3 py-1.5 w-20 text-center font-bold focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                        />
+                        <span className="text-xs text-foreground/50">%</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button 
+                        onClick={() => removePolicyRule(idx)}
+                        className="p-2 text-foreground/20 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+          <div className="p-4 bg-foreground/5 border-t border-border">
+            <button 
+              onClick={addPolicyRule}
+              className="w-full py-3 flex items-center justify-center gap-2 text-sm font-bold text-primary hover:bg-primary/5 rounded-xl transition-all border border-dashed border-primary/20"
+            >
+              <Plus className="w-4 h-4" /> Add Cancellation Tier
+            </button>
+          </div>
         </div>
       </div>
 

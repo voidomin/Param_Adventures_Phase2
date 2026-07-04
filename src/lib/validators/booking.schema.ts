@@ -28,6 +28,7 @@ export const bookingSchema = z.object({
   participantCount: z.number().int().min(1),
   participants: z.array(participantSchema).min(1),
   paymentType: z.enum(["FULL", "ADVANCE"]).optional().default("FULL"),
+  appliedCoupons: z.array(z.string()).optional(),
 }).refine(data => data.participants.length === data.participantCount, {
   message: "Participant details must match the participant count.",
   path: ["participants"]

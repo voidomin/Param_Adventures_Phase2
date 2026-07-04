@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
 import { z } from "zod";
+import { getRefundPercentage, calculateRefundBreakdown } from "@/lib/refund-engine";
+import { restoreCouponsForBooking, generateCouponCode } from "@/lib/coupon-engine";
 
 const cancelSchema = z.object({
   participantIds: z.array(z.string()).min(1, "At least one participant must be specified"),
@@ -10,26 +12,7 @@ const cancelSchema = z.object({
   preference: z.enum(["COUPON", "BANK_REFUND"]),
 });
 
-// Helper to extract tax config settings
-async function getTaxPercentage(): Promise<number> {
-  let taxPercentage = 0;
-  const taxSettings = await prisma.platformSetting.findUnique({
-    where: { key: "tax_config" },
-  });
-  if (taxSettings?.value) {
-    try {
-      const config = JSON.parse(taxSettings.value);
-      if (Array.isArray(config)) {
-        taxPercentage = config.reduce((acc, tax: { percentage: number }) => acc + (Number(tax.percentage) || 0), 0);
-      }
-    } catch {
-      console.error("Failed to parse tax_config");
-    }
-  }
-  return taxPercentage;
-}
-
-// Helper to perform full booking cancellation
+// Helper to perform full booking cancellation using refund-engine
 async function processFullCancellation(params: {
   bookingId: string;
   booking: any;
@@ -39,12 +22,29 @@ async function processFullCancellation(params: {
   preference: "COUPON" | "BANK_REFUND";
 }) {
   const { bookingId, booking, activeCount, userId, reason, preference } = params;
-  const newPaymentStatus =
-    (booking.paymentStatus === "PAID" || booking.paymentStatus === "PARTIALLY_PAID")
-      ? "REFUND_PENDING"
-      : booking.paymentStatus;
 
-  const refundAmount = Number(booking.paidAmount);
+  // Resolve cancellation policy based on departure date
+  const departureDate = booking.slot ? new Date(booking.slot.date) : new Date();
+  const { refundPercent } = await getRefundPercentage(departureDate, new Date());
+
+  const breakdown = calculateRefundBreakdown({
+    baseFare: Number(booking.baseFare),
+    totalPrice: Number(booking.totalPrice),
+    paidAmount: Number(booking.paidAmount),
+    paymentType: booking.paymentType as "FULL" | "ADVANCE",
+    refundPercent,
+    taxBreakdown: booking.taxBreakdown,
+  });
+
+  const finalRefund = breakdown.finalRefundAmount;
+
+  // If selecting coupon refund, booking paymentStatus does not need to remain REFUND_PENDING
+  const newPaymentStatus =
+    preference === "BANK_REFUND" && (booking.paymentStatus === "PAID" || booking.paymentStatus === "PARTIALLY_PAID") && finalRefund > 0
+      ? "REFUND_PENDING"
+      : finalRefund > 0 && preference === "COUPON"
+      ? "REFUNDED"
+      : booking.paymentStatus;
 
   await prisma.$transaction(async (tx) => {
     await tx.booking.update({
@@ -56,7 +56,8 @@ async function processFullCancellation(params: {
         cancelledByUserId: userId,
         cancellationReason: reason || null,
         refundPreference: preference,
-        refundAmount: refundAmount > 0 ? refundAmount : null,
+        refundAmount: finalRefund > 0 && preference === "BANK_REFUND" ? finalRefund : null,
+        refundNote: preference === "COUPON" ? "Travel Coupon Refund Issued" : null,
       },
     });
 
@@ -77,56 +78,119 @@ async function processFullCancellation(params: {
         },
       });
     }
+
+    // Restore coupons originally used in the booking
+    await restoreCouponsForBooking({
+      bookingId,
+      cancellationCharges: Number(breakdown.cancellationCharges),
+      tx,
+    });
+
+    // Create travel coupon if coupon preference is selected
+    if (preference === "COUPON" && finalRefund > 0) {
+      const couponCode = generateCouponCode("PARAM");
+      const expiry = new Date();
+      expiry.setMonth(expiry.getMonth() + 12); // Travel Coupon valid for 12 months
+
+      const newCoupon = await tx.travelCoupon.create({
+        data: {
+          code: couponCode,
+          customerId: booking.userId,
+          bookingId,
+          originalValue: finalRefund,
+          balance: finalRefund,
+          expiryDate: expiry,
+          status: "ACTIVE",
+          type: "CANCELLATION",
+          reason: `Refund for cancelled booking ${bookingId.substring(0, 8)}`,
+        },
+      });
+
+      await tx.couponTransaction.create({
+        data: {
+          couponId: newCoupon.id,
+          bookingId,
+          type: "ISSUED",
+          amount: finalRefund,
+          previousBalance: 0,
+          newBalance: finalRefund,
+          remarks: `Issued Travel Coupon refund for booking ${bookingId.substring(0, 8)}`,
+        },
+      });
+    } else if (preference === "BANK_REFUND" && finalRefund > 0) {
+      // Create Refund Request if bank transfer and refund is due
+      await tx.refundRequest.create({
+        data: {
+          bookingId,
+          customerId: booking.userId,
+          refundMethod: "BANK_TRANSFER",
+          baseFare: breakdown.baseFare,
+          gst: breakdown.gst,
+          convenienceFee: breakdown.convenienceFee,
+          cancellationPercent: breakdown.cancellationPercent,
+          cancellationCharges: breakdown.cancellationCharges,
+          finalRefundAmount: breakdown.finalRefundAmount,
+          status: "REQUESTED",
+        },
+      });
+    }
   });
 
   await logActivity("BOOKING_CANCELLED", userId, "Booking", bookingId, {
     preference,
     reason: reason || "No reason provided",
     participantCount: activeCount,
+    refundAmount: finalRefund,
   });
 }
 
-// Helper to calculate financials for partial cancellation
-function computePartialFinancials(params: {
+// Helper to calculate financials for partial cancellation using refund-engine
+async function computePartialFinancials(params: {
   booking: any;
   activeParticipants: any[];
   participantIds: string[];
-  taxPercentage: number;
 }) {
-  const { booking, activeParticipants, participantIds, taxPercentage } = params;
+  const { booking, activeParticipants, participantIds } = params;
   const experienceBasePrice = Number(booking.experience.basePrice);
 
   let totalCancelledBase = 0;
-  let totalCancelledAmenities = 0;
-
   const cancelledParticipants = activeParticipants.filter((p) => participantIds.includes(p.id));
 
   for (const p of cancelledParticipants) {
     totalCancelledBase += experienceBasePrice;
     if (p.selectedAmenities && Array.isArray(p.selectedAmenities)) {
-      const amenities = p.selectedAmenities as any[];
-      for (const item of amenities) {
-        totalCancelledAmenities += Number(item.price) || 0;
+      for (const item of p.selectedAmenities as any[]) {
+        totalCancelledBase += Number(item.price) || 0;
       }
     }
   }
 
-  const cancelledBaseCost = totalCancelledBase + totalCancelledAmenities;
-  const cancelledTax = (cancelledBaseCost * taxPercentage) / 100;
-  const cancelledTotalCost = cancelledBaseCost + cancelledTax;
+  // Calculate proportional totals for the cancelled participants
+  const totalActiveCount = activeParticipants.length;
+  const cancelledCount = participantIds.length;
+  const ratio = cancelledCount / totalActiveCount;
 
-  // Calculate refund amount
-  let refundAmount = 0;
-  if (booking.paymentStatus === "PAID") {
-    refundAmount = cancelledTotalCost;
-  } else if (booking.paymentStatus === "PARTIALLY_PAID" && booking.paymentType === "ADVANCE") {
-    const advancePerPerson = Number(booking.experience.advancePaymentAmount) || 0;
-    refundAmount = advancePerPerson * participantIds.length;
-  }
+  const proportionalTotalPrice = Number(booking.totalPrice) * ratio;
+  const proportionalPaidAmount = Number(booking.paidAmount) * ratio;
 
-  const newBaseFare = Math.max(0, Number(booking.baseFare) - cancelledBaseCost);
-  const newTotalPrice = Math.max(0, Number(booking.totalPrice) - cancelledTotalCost);
-  const newParticipantCount = Math.max(1, booking.participantCount - participantIds.length);
+  // Resolve cancellation policy based on departure date
+  const departureDate = booking.slot ? new Date(booking.slot.date) : new Date();
+  const { refundPercent } = await getRefundPercentage(departureDate, new Date());
+
+  const breakdown = calculateRefundBreakdown({
+    baseFare: totalCancelledBase,
+    totalPrice: proportionalTotalPrice,
+    paidAmount: proportionalPaidAmount,
+    paymentType: booking.paymentType as "FULL" | "ADVANCE",
+    refundPercent,
+    taxBreakdown: booking.taxBreakdown,
+  });
+
+  const refundAmount = breakdown.finalRefundAmount;
+
+  const newBaseFare = Math.max(0, Number(booking.baseFare) - totalCancelledBase);
+  const newTotalPrice = Math.max(0, Number(booking.totalPrice) - proportionalTotalPrice);
+  const newParticipantCount = Math.max(1, booking.participantCount - cancelledCount);
 
   let newRemainingBalance = 0;
   if (booking.paymentStatus === "PARTIALLY_PAID") {
@@ -143,6 +207,7 @@ function computePartialFinancials(params: {
     newRemainingBalance,
     newRefundAmount,
     refundAmount,
+    breakdown,
   };
 }
 
@@ -214,12 +279,10 @@ export async function POST(
     }
 
     // Process partial cancellation
-    const taxPercentage = await getTaxPercentage();
-    const financials = computePartialFinancials({
+    const financials = await computePartialFinancials({
       booking,
       activeParticipants,
       participantIds,
-      taxPercentage,
     });
 
     // Execute atomic transaction for partial cancellation
@@ -232,6 +295,13 @@ export async function POST(
         },
       });
 
+      const newPaymentStatus =
+        preference === "BANK_REFUND" && financials.refundAmount > 0
+          ? "REFUND_PENDING"
+          : financials.refundAmount > 0 && preference === "COUPON"
+          ? "PARTIALLY_PAID"
+          : booking.paymentStatus;
+
       await tx.booking.update({
         where: { id: bookingId },
         data: {
@@ -239,8 +309,8 @@ export async function POST(
           baseFare: financials.newBaseFare,
           totalPrice: financials.newTotalPrice,
           remainingBalance: financials.newRemainingBalance,
-          refundAmount: financials.newRefundAmount > 0 ? financials.newRefundAmount : null,
-          paymentStatus: financials.refundAmount > 0 ? "REFUND_PENDING" : booking.paymentStatus,
+          refundAmount: preference === "BANK_REFUND" && financials.newRefundAmount > 0 ? financials.newRefundAmount : null,
+          paymentStatus: newPaymentStatus,
           cancellationReason: reason || null,
           refundPreference: preference,
         },
@@ -254,22 +324,75 @@ export async function POST(
           },
         });
       }
+
+      // Restore coupons originally used in the booking
+      await restoreCouponsForBooking({
+        bookingId,
+        cancellationCharges: Number(financials.breakdown.cancellationCharges),
+        tx,
+      });
+
+      // Create Travel Coupon if coupon preference is selected
+      if (preference === "COUPON" && financials.refundAmount > 0) {
+        const couponCode = generateCouponCode("PARAM");
+        const expiry = new Date();
+        expiry.setMonth(expiry.getMonth() + 12);
+
+        const newCoupon = await tx.travelCoupon.create({
+          data: {
+            code: couponCode,
+            customerId: booking.userId,
+            bookingId,
+            originalValue: financials.refundAmount,
+            balance: financials.refundAmount,
+            expiryDate: expiry,
+            status: "ACTIVE",
+            type: "CANCELLATION",
+            reason: `Partial refund for cancelled booking ${bookingId.substring(0, 8)}`,
+          },
+        });
+
+        await tx.couponTransaction.create({
+          data: {
+            couponId: newCoupon.id,
+            bookingId,
+            type: "ISSUED",
+            amount: financials.refundAmount,
+            previousBalance: 0,
+            newBalance: financials.refundAmount,
+            remarks: `Issued travel coupon refund for partial cancellation of booking ${bookingId.substring(0, 8)}`,
+          },
+        });
+      } else if (preference === "BANK_REFUND" && financials.refundAmount > 0) {
+        // Create Refund Request if bank transfer and refund is due
+        await tx.refundRequest.create({
+          data: {
+            bookingId,
+            customerId: booking.userId,
+            refundMethod: "BANK_TRANSFER",
+            baseFare: financials.breakdown.baseFare,
+            gst: financials.breakdown.gst,
+            convenienceFee: financials.breakdown.convenienceFee,
+            cancellationPercent: financials.breakdown.cancellationPercent,
+            cancellationCharges: financials.breakdown.cancellationCharges,
+            finalRefundAmount: financials.breakdown.finalRefundAmount,
+            status: "REQUESTED",
+          },
+        });
+      }
     });
 
     await logActivity("BOOKING_PARTIAL_CANCEL", userId, "Booking", bookingId, {
       preference,
       reason: reason || "No reason provided",
-      cancelledParticipantIds: participantIds,
+      participantCount: participantIds.length,
       refundAmount: financials.refundAmount,
     });
 
-    return NextResponse.json({
-      success: true,
-      message: "Participants cancelled successfully.",
-      refundAmount: financials.refundAmount,
-    });
-  } catch (error: unknown) {
-    console.error("Partial cancellation error:", error);
-    return NextResponse.json({ error: "Failed to process partial cancellation." }, { status: 500 });
+    return NextResponse.json({ success: true, message: "Participants cancelled successfully." });
+
+  } catch (error) {
+    console.error("Cancel participants error:", error);
+    return NextResponse.json({ error: "Failed to cancel participants." }, { status: 500 });
   }
 }

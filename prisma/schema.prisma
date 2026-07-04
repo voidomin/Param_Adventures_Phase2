@@ -66,7 +66,10 @@ model User {
   assignments            TripAssignment[]   @relation("TrekLeadAssignments")
   auditLogs              AuditLog[]
   role                   Role               @relation(fields: [roleId], references: [id])
-
+  refundRequests         RefundRequest[]
+  coupons                TravelCoupon[]     @relation("CustomerCoupons")
+  issuedCoupons          TravelCoupon[]     @relation("IssuedCoupons")
+  
   @@index([roleId])
   @@index([status])
   @@index([createdAt])
@@ -208,6 +211,9 @@ model Booking {
   user               User                 @relation(fields: [userId], references: [id])
   participants       BookingParticipant[]
   payments           Payment[]
+  refundRequest      RefundRequest?
+  generatedCoupons   TravelCoupon[]
+  couponTransactions CouponTransaction[]
 
   @@index([userId])
   @@index([experienceId])
@@ -500,4 +506,101 @@ model ProcessedWebhookEvent {
   id          String   @id
   provider    String   @default("RAZORPAY")
   processedAt DateTime @default(now())
+}
+
+enum RefundStatus {
+  REQUESTED
+  UNDER_REVIEW
+  APPROVED
+  PAYMENT_INITIATED
+  TRANSFER_COMPLETED
+  COMPLETED
+}
+
+model RefundRequest {
+  id                  String             @id @default(uuid())
+  bookingId           String             @unique
+  customerId          String
+  refundMethod        String             @default("BANK_TRANSFER")
+  baseFare            Decimal            @db.Decimal(10, 2)
+  gst                 Decimal            @db.Decimal(10, 2)
+  convenienceFee      Decimal            @db.Decimal(10, 2)
+  cancellationPercent Int                @default(0)
+  cancellationCharges Decimal            @db.Decimal(10, 2)
+  finalRefundAmount   Decimal            @db.Decimal(10, 2)
+  status              RefundStatus       @default(REQUESTED)
+  requestedAt         DateTime           @default(now())
+  approvedAt          DateTime?
+  processedAt         DateTime?
+  utrNumber           String?
+  remarks             String?
+  booking             Booking            @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  customer            User               @relation(fields: [customerId], references: [id])
+
+  @@index([customerId])
+  @@index([status])
+}
+
+enum CouponStatus {
+  ACTIVE
+  PARTIALLY_USED
+  FULLY_USED
+  EXPIRED
+  CANCELLED
+  BLOCKED
+}
+
+enum CouponType {
+  CANCELLATION
+  GOODWILL
+  PROMOTIONAL
+}
+
+enum CouponTransactionType {
+  ISSUED
+  REDEEMED
+  RESTORED
+  EXPIRED
+  ADJUSTED
+}
+
+model TravelCoupon {
+  id                String              @id @default(uuid())
+  code              String              @unique
+  customerId        String
+  bookingId         String?
+  originalValue     Decimal             @db.Decimal(10, 2)
+  balance           Decimal             @db.Decimal(10, 2)
+  expiryDate        DateTime
+  status            CouponStatus        @default(ACTIVE)
+  type              CouponType          @default(CANCELLATION)
+  reason            String?
+  issuedById        String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  
+  customer          User                @relation("CustomerCoupons", fields: [customerId], references: [id])
+  booking           Booking?            @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  issuedBy          User?               @relation("IssuedCoupons", fields: [issuedById], references: [id], onDelete: SetNull)
+  transactions      CouponTransaction[]
+
+  @@index([customerId])
+  @@index([status])
+}
+
+model CouponTransaction {
+  id              String                @id @default(uuid())
+  couponId        String
+  bookingId       String?
+  type            CouponTransactionType
+  amount          Decimal               @db.Decimal(10, 2)
+  previousBalance Decimal               @db.Decimal(10, 2)
+  newBalance      Decimal               @db.Decimal(10, 2)
+  remarks         String?
+  createdAt       DateTime              @default(now())
+
+  coupon          TravelCoupon          @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  booking         Booking?              @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+
+  @@index([couponId])
 }

@@ -28,6 +28,33 @@ const ImageCropper = dynamic(() => import("@/components/admin/ImageCropper"), {
 });
 import { ASPECT_RATIOS } from "@/lib/constants/aspect-ratios";
 
+interface RefundRequest {
+  id: string;
+  refundMethod: string;
+  finalRefundAmount: string;
+  status: string;
+  utrNumber: string | null;
+  remarks: string | null;
+  requestedAt: string;
+  booking: {
+    experience: {
+      title: string;
+    };
+  };
+}
+
+interface TravelCoupon {
+  id: string;
+  code: string;
+  originalValue: string;
+  balance: string;
+  expiryDate: string;
+  status: string;
+  type: string;
+  reason: string | null;
+  createdAt: string;
+}
+
 interface DashboardData {
   user: {
     id: string;
@@ -51,6 +78,8 @@ interface DashboardData {
     upcoming: number;
     past: number;
   };
+  refundRequests?: RefundRequest[];
+  coupons?: TravelCoupon[];
 }
 
 interface Booking {
@@ -109,6 +138,51 @@ function getPaymentStatusStyle(status: string) {
     default:
       return "bg-slate-500/10 text-slate-500 border-slate-500/20";
   }
+}
+
+function getRefundStatusStyle(status: string) {
+  switch (status) {
+    case "COMPLETED":
+    case "TRANSFER_COMPLETED":
+      return "bg-green-500/10 text-green-600 border-green-500/20";
+    case "REQUESTED":
+      return "bg-yellow-500/10 text-yellow-600 border-yellow-500/20";
+    case "APPROVED":
+    case "PAYMENT_INITIATED":
+      return "bg-blue-500/10 text-blue-600 border-blue-500/20";
+    case "UNDER_REVIEW":
+      return "bg-purple-500/10 text-purple-600 border-purple-500/20";
+    default:
+      return "bg-slate-500/10 text-slate-500 border-slate-500/20";
+  }
+}
+
+function getCouponStatusStyle(status: string) {
+  switch (status) {
+    case "ACTIVE":
+      return "bg-green-500/10 text-green-600 border-green-500/20";
+    case "PARTIALLY_USED":
+      return "bg-blue-500/10 text-blue-600 border-blue-500/20";
+    case "FULLY_USED":
+      return "bg-slate-500/10 text-slate-500 border-slate-500/20";
+    case "EXPIRED":
+      return "bg-yellow-500/10 text-yellow-600 border-yellow-500/20";
+    case "CANCELLED":
+    case "BLOCKED":
+      return "bg-red-500/10 text-red-500 border-red-500/20";
+    default:
+      return "bg-slate-500/10 text-slate-500 border-slate-500/20";
+  }
+}
+
+function formatDate(d: string) {
+  const date = new Date(d);
+  if (Number.isNaN(date.getTime())) return "—";
+  const day = String(date.getDate()).padStart(2, "0");
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const month = months[date.getMonth()];
+  const year = date.getFullYear();
+  return `${day} ${month} ${year}`;
 }
 
 function BookingCard({
@@ -610,6 +684,123 @@ export default function DashboardPage() {
             )}
           </div>
         </section>
+
+        {/* Refund Requests ("My Refunds") */}
+        {data.refundRequests && data.refundRequests.length > 0 && (
+          <section className="animate-in fade-in slide-in-from-bottom-3 duration-300">
+            <div className="mb-8">
+              <h2 className="text-2xl font-heading font-bold text-foreground">
+                My Refunds
+              </h2>
+              <p className="text-foreground/50 text-sm mt-1">
+                Track your active and completed refund requests
+              </p>
+            </div>
+
+            <div className="space-y-4">
+              {data.refundRequests.map((refund) => (
+                <div
+                  key={refund.id}
+                  className="bg-card border border-border rounded-xl p-5 flex flex-col sm:flex-row gap-4 items-start sm:items-center hover:bg-foreground/5 transition-colors"
+                >
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-foreground mb-1 truncate text-lg">
+                      {refund.booking.experience.title}
+                    </h3>
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-foreground/50">
+                      <span className="flex items-center gap-1 font-medium">
+                        Refund Method: <strong className="text-foreground/80">Bank Transfer</strong>
+                      </span>
+                      {refund.utrNumber && (
+                        <span className="flex items-center gap-1 font-semibold text-foreground/75">
+                          UTR: {refund.utrNumber}
+                        </span>
+                      )}
+                      {refund.remarks && (
+                        <span className="text-foreground/40 italic">
+                          "{refund.remarks}"
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-bold border uppercase tracking-wider ${getRefundStatusStyle(refund.status)}`}
+                    >
+                      {refund.status.replace("_", " ")}
+                    </span>
+                    <div className="text-left sm:text-right">
+                      <div className="text-xs text-foreground/40 font-medium">Refund Amount</div>
+                      <div className="text-lg font-black text-green-500">
+                        ₹{Number(refund.finalRefundAmount).toLocaleString("en-IN")}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Travel Coupons ("My Coupons") */}
+        {data.coupons && data.coupons.length > 0 && (
+          <section className="animate-in fade-in slide-in-from-bottom-3 duration-300">
+            <div className="mb-8">
+              <h2 className="text-2xl font-heading font-bold text-foreground">
+                My Coupons & Travel Credits
+              </h2>
+              <p className="text-foreground/50 text-sm mt-1">
+                Use these credits during checkout to pay for your upcoming adventures
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {data.coupons.map((coupon) => (
+                <div
+                  key={coupon.id}
+                  className="bg-card border border-border rounded-2xl p-6 flex flex-col justify-between hover:bg-foreground/[0.02] hover:border-primary/20 transition-all shadow-sm relative overflow-hidden"
+                >
+                  <div className="absolute -right-4 -top-4 w-24 h-24 bg-primary/5 rounded-full blur-xl pointer-events-none" />
+                  
+                  <div>
+                    <div className="flex items-center justify-between gap-4 mb-4">
+                      <span className="font-mono font-black text-lg tracking-wider text-primary bg-primary/10 border border-primary/25 px-3 py-1 rounded-xl select-all">
+                        {coupon.code}
+                      </span>
+                      <span
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-black tracking-wider border uppercase ${getCouponStatusStyle(coupon.status)}`}
+                      >
+                        {coupon.status.replace("_", " ")}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-foreground/45 mb-4 leading-normal italic">
+                      {coupon.reason || "Travel Credit Voucher"}
+                    </p>
+                  </div>
+
+                  <div className="border-t border-border/50 pt-4 flex items-center justify-between gap-4">
+                    <div className="text-left">
+                      <span className="text-[10px] uppercase font-black tracking-widest text-foreground/40 block">Remaining Balance</span>
+                      <span className="text-2xl font-black text-green-500 block mt-0.5">
+                        ₹{Number(coupon.balance).toLocaleString("en-IN")}
+                      </span>
+                      <span className="text-[10px] text-foreground/50 mt-1 block">
+                        Original: ₹{Number(coupon.originalValue).toLocaleString("en-IN")}
+                      </span>
+                    </div>
+
+                    <div className="text-right text-xs text-foreground/45">
+                      <span className="block font-medium">Expires On</span>
+                      <span className="block font-bold text-foreground mt-0.5">{formatDate(coupon.expiryDate)}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Booking History */}
         <section>

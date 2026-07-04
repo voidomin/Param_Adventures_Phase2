@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState, useTransition } from "react";
+import React, { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { MapPin, User, X, AlertTriangle, Edit2, ShieldAlert, CheckCircle2 } from "lucide-react";
+import { MapPin, User, X, AlertTriangle, Edit2, ShieldAlert, CheckCircle2, Loader2 } from "lucide-react";
 
 interface SelectedAmenity {
   groupId: string;
@@ -106,6 +106,33 @@ export default function EditParticipantsClient({
   const [cancelReason, setCancelReason] = useState("");
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [isCancelSubmitting, setIsCancelSubmitting] = useState(false);
+  const [previewData, setPreviewData] = useState<any | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+
+  useEffect(() => {
+    if (cancellingParticipants.length === 0) {
+      setPreviewData(null);
+      return;
+    }
+
+    const fetchPreview = async () => {
+      setIsPreviewLoading(true);
+      try {
+        const ids = cancellingParticipants.map((p) => p.id).join(",");
+        const res = await fetch(`/api/bookings/${bookingId}/cancel-preview?participantIds=${ids}`);
+        if (!res.ok) throw new Error("Failed to load refund preview");
+        const json = await res.json();
+        setPreviewData(json);
+      } catch (err) {
+        console.error(err);
+        setPreviewData(null);
+      } finally {
+        setIsPreviewLoading(false);
+      }
+    };
+
+    fetchPreview();
+  }, [cancellingParticipants, bookingId]);
 
   const activeParticipants = participants.filter((p) => !p.isCancelled);
 
@@ -737,6 +764,54 @@ export default function EditParticipantsClient({
                   </button>
                 </div>
               </div>
+
+              {/* Refund Breakdown Panel */}
+              {cancelPreference === "BANK_REFUND" && (
+                <div className="bg-foreground/5 border border-border/80 rounded-2xl p-5 text-left space-y-3">
+                  <span className="text-[10px] font-black text-foreground/45 uppercase tracking-widest block">Refund Breakdown Preview</span>
+                  {isPreviewLoading ? (
+                    <div className="flex items-center gap-2 text-xs text-foreground/50 py-2">
+                      <Loader2 className="w-4 h-4 animate-spin text-primary" /> Calculating eligible refund details...
+                    </div>
+                  ) : previewData ? (
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-foreground/60">Trip Cost (Base Fare):</span>
+                        <span className="font-bold text-foreground">₹{previewData.baseFare.toLocaleString("en-IN")}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-foreground/60">GST Component (Non-Refundable):</span>
+                        <span className="font-bold text-foreground">₹{previewData.gst.toLocaleString("en-IN")}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-foreground/60">Convenience Fee (Non-Refundable):</span>
+                        <span className="font-bold text-foreground">₹{previewData.convenienceFee.toLocaleString("en-IN")}</span>
+                      </div>
+                      <div className="flex justify-between text-red-400">
+                        <span>Cancellation Charges ({previewData.cancellationPercent}%):</span>
+                        <span className="font-bold">-₹{previewData.cancellationCharges.toLocaleString("en-IN")}</span>
+                      </div>
+                      
+                      <div className="border-t border-border/50 pt-2 flex justify-between font-black text-base">
+                        <span className="text-foreground">Net Refund Amount:</span>
+                        <span className="text-green-500">₹{previewData.finalRefundAmount.toLocaleString("en-IN")}</span>
+                      </div>
+                      
+                      <p className="text-[10px] text-foreground/45 leading-normal pt-1 italic">
+                        * GST and Convenience Fee are non-refundable for guest-initiated cancellations as per Param Adventures policies.
+                      </p>
+
+                      <div className="mt-4 p-3 bg-primary/10 border border-primary/20 rounded-xl text-xs text-primary font-bold text-center">
+                        Confirming: You will receive ₹{previewData.finalRefundAmount.toLocaleString("en-IN")} via Bank Transfer.
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-red-400">
+                      Failed to load breakdown. Using policy defaults on submit.
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="space-y-1.5 text-left">
                 <label htmlFor="cancel-reason" className="text-xs font-bold text-foreground/60 uppercase">Reason (Optional)</label>
