@@ -185,6 +185,14 @@ export async function POST(
 
   } catch (error: any) {
     console.error("Manual verification error:", error);
+    
+    // Catch unique constraint violation on providerPaymentId
+    if (error.code === "P2002" && error.meta?.target?.includes("providerPaymentId")) {
+      return NextResponse.json({
+        error: "This Transaction ID / Reference has already been registered for another payment. Please verify the Reference ID and try again."
+      }, { status: 400 });
+    }
+
     return NextResponse.json({
       error: "Internal server error",
       details: error instanceof Error ? error.message : String(error),
