@@ -224,6 +224,237 @@ function CancelModal({
   );
 }
 
+interface PayBalanceModalProps {
+  booking: BookingItem;
+  onClose: () => void;
+  onSuccess: () => void;
+  razorpayKeyId: string;
+}
+
+function PayBalanceModal({
+  booking,
+  onClose,
+  onSuccess,
+  razorpayKeyId,
+}: Readonly<PayBalanceModalProps>) {
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupons, setAppliedCoupons] = useState<{ id: string; code: string; balance: number }[]>([]);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const totalPrice = Number(booking.remainingBalance);
+  const couponDiscount = appliedCoupons.reduce((sum, c) => sum + c.balance, 0);
+  const finalPriceToPay = Math.max(0, totalPrice - couponDiscount);
+
+  const handleApplyCoupon = async () => {
+    setCouponLoading(true);
+    setCouponError(null);
+    try {
+      const remainingToDiscount = totalPrice - couponDiscount;
+      const res = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: couponCode,
+          paymentAmount: remainingToDiscount
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to validate coupon.");
+
+      if (appliedCoupons.some(c => c.code.toUpperCase() === couponCode.toUpperCase().trim())) {
+        throw new Error("Coupon already applied.");
+      }
+
+      setAppliedCoupons(prev => [...prev, data.coupon]);
+      setCouponCode("");
+    } catch (err: any) {
+      setCouponError(err.message || "Invalid coupon.");
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleProceed = async () => {
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      const isFullyPaidByCoupon = finalPriceToPay <= 0.01;
+      if (!isFullyPaidByCoupon) {
+        const loaded = await loadRazorpayScript();
+        if (!loaded) throw new Error("Failed to load Razorpay script.");
+      }
+
+      const res = await fetch(`/api/bookings/${booking.id}/pay-balance`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          appliedCoupons: appliedCoupons.map(c => c.code)
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to initiate payment.");
+
+      if (data.fullyPaidByCoupon) {
+        alert("Payment Successful (Fully covered by Coupons)!");
+        onSuccess();
+        onClose();
+        return;
+      }
+
+      const { orderId, amount, currency, keyId } = data;
+      const RazorpayCtor = globalThis.window.Razorpay;
+      if (!RazorpayCtor) {
+        throw new Error("Payment gateway is unavailable.");
+      }
+
+      const rzp = new RazorpayCtor({
+        key: keyId || razorpayKeyId || "",
+        amount,
+        currency,
+        order_id: orderId,
+        name: "Param Adventures",
+        description: `Balance - ${booking.experience.title}`,
+        theme: { color: "#D4AF37" },
+        handler: async (response: {
+          razorpay_order_id: string;
+          razorpay_payment_id: string;
+          razorpay_signature: string;
+        }) => {
+          try {
+            const verifyRes = await fetch("/api/bookings/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                bookingId: booking.id,
+              }),
+            });
+            const verifyData = await verifyRes.json();
+            if (!verifyRes.ok) throw new Error(verifyData.error);
+            alert("Payment Successful!");
+            onSuccess();
+            onClose();
+          } catch (err: any) {
+            alert("Payment verification failed: " + err.message);
+          }
+        },
+        modal: {
+          ondismiss: () => setIsSubmitting(false),
+        },
+      });
+      rzp.open();
+
+    } catch (err: any) {
+      setError(err.message || "Failed to process payment.");
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+      <div className="bg-card border border-border w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="flex justify-between items-center p-6 border-b border-border">
+          <h3 className="text-xl font-heading font-bold text-foreground">Pay Remaining Balance</h3>
+          <button type="button" onClick={onClose} className="text-foreground/40 hover:text-foreground transition-colors">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+        <div className="p-6 space-y-4">
+          <div className="bg-foreground/5 rounded-xl p-4 space-y-1.5 text-sm text-left">
+            <p className="text-foreground"><strong>Trek:</strong> {booking.experience.title}</p>
+            <p className="text-foreground"><strong>Outstanding Balance:</strong> ₹{totalPrice.toLocaleString("en-IN")}</p>
+            {appliedCoupons.length > 0 && (
+              <p className="text-primary"><strong>Coupon Discount:</strong> - ₹{couponDiscount.toLocaleString("en-IN")}</p>
+            )}
+            <p className="text-foreground border-t border-border pt-1.5 mt-1 text-base"><strong>Net Payable:</strong> <span className="font-black text-primary">₹{finalPriceToPay.toLocaleString("en-IN")}</span></p>
+          </div>
+
+          <div className="space-y-3 pt-2">
+            <span className="block text-xs font-black uppercase tracking-wider text-foreground/50 text-left">
+              Apply Travel Vouchers & Coupons
+            </span>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={couponCode}
+                onChange={(e) => {
+                  setCouponCode(e.target.value);
+                  setCouponError(null);
+                }}
+                placeholder="Enter coupon code (e.g. PARAM-XXXXXX)"
+                className="flex-1 bg-background border border-border rounded-xl px-4 py-2 text-xs text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-foreground/30 uppercase"
+              />
+              <button
+                type="button"
+                disabled={couponLoading || !couponCode.trim()}
+                onClick={handleApplyCoupon}
+                className="px-4 py-2 bg-foreground text-background dark:bg-foreground dark:text-background rounded-xl font-bold text-xs hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center min-w-[70px]"
+              >
+                {couponLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Apply"}
+              </button>
+            </div>
+            {couponError && (
+              <p className="text-xs text-red-500 text-left font-semibold">{couponError}</p>
+            )}
+
+            {appliedCoupons.length > 0 && (
+              <div className="space-y-1.5 mt-2">
+                {appliedCoupons.map((coupon) => (
+                  <div key={coupon.id} className="flex justify-between items-center bg-primary/5 border border-primary/20 rounded-lg px-3 py-2 text-xs">
+                    <span className="font-bold text-primary flex items-center gap-1">
+                      🎟️ {coupon.code}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-foreground">- ₹{coupon.balance.toLocaleString("en-IN")}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAppliedCoupons(prev => prev.filter(c => c.id !== coupon.id));
+                        }}
+                        className="text-red-500 hover:text-red-700 transition-colors text-[10px] font-bold uppercase tracking-wider"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {error && <p className="text-red-500 text-xs font-semibold text-left">{error}</p>}
+
+          <div className="flex gap-3 pt-4 border-t border-border mt-6">
+            <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-border text-foreground/60 font-bold hover:bg-foreground/5 text-sm">
+              Cancel
+            </button>
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={handleProceed}
+              className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity disabled:opacity-50 text-sm flex items-center justify-center gap-1.5"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                `Pay ₹${finalPriceToPay.toLocaleString("en-IN")}`
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 declare global {
   interface Window {
     Razorpay: new (options: Record<string, unknown>) => { open(): void };
@@ -298,6 +529,7 @@ export default function BookingsPage() {
   const [dataLoading, setDataLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [cancellingBooking, setCancellingBooking] = useState<BookingItem | null>(null);
+  const [payingBalanceBooking, setPayingBalanceBooking] = useState<BookingItem | null>(null);
   const [razorpayKeyId, setRazorpayKeyId] = useState<string>("");
 
   const fetchData = async () => {
@@ -522,6 +754,18 @@ export default function BookingsPage() {
             setCancellingBooking(null);
             fetchData();
           }}
+        />
+      )}
+
+      {payingBalanceBooking && (
+        <PayBalanceModal
+          booking={payingBalanceBooking}
+          onClose={() => setPayingBalanceBooking(null)}
+          onSuccess={() => {
+            setPayingBalanceBooking(null);
+            fetchData();
+          }}
+          razorpayKeyId={razorpayKeyId}
         />
       )}
 
@@ -794,7 +1038,7 @@ export default function BookingsPage() {
                                 {b.paymentStatus === "PARTIALLY_PAID" && (
                                   <button
                                     disabled={processingId === b.id}
-                                    onClick={() => handlePayBalance(b)}
+                                    onClick={() => setPayingBalanceBooking(b)}
                                     className="w-full py-2.5 bg-primary text-primary-foreground font-bold rounded-xl flex items-center justify-center disabled:opacity-50"
                                   >
                                     {processingId === b.id ? (

@@ -115,20 +115,35 @@ function RefundResolveModal({
   onClose: () => void;
   onSuccess: () => void;
 }>) {
-  const [note, setNote] = useState("");
+  const isCoupon = booking.refundPreference === "COUPON";
+  const [note, setNote] = useState(isCoupon ? "AUTO_GENERATE" : "");
+  const [customAmount, setCustomAmount] = useState(
+    String(booking.refundAmount ?? booking.paidAmount)
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const isCoupon = booking.refundPreference === "COUPON";
 
   const handleResolve = async () => {
-    if (!note.trim()) { setError("Please enter a " + (isCoupon ? "coupon code" : "bank UTR number")); return; }
+    if (!note.trim()) { setError("Please enter a bank UTR number"); return; }
+    const amt = Number(customAmount);
+    if (Number.isNaN(amt) || amt < 0) {
+      setError("Please enter a valid non-negative refund amount.");
+      return;
+    }
+    if (amt > Number(booking.paidAmount)) {
+      setError(`Refund amount cannot exceed the paid amount of ₹${Number(booking.paidAmount).toLocaleString()}`);
+      return;
+    }
     setIsSubmitting(true);
     setError(null);
     try {
       const res = await fetch(`/api/admin/bookings/${booking.id}/refund`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refundNote: note }),
+        body: JSON.stringify({
+          refundNote: note,
+          refundAmount: amt,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -150,7 +165,7 @@ function RefundResolveModal({
         <div className="p-6 space-y-4">
           <div className="bg-foreground/5 rounded-xl p-4 space-y-1">
             <p className="text-sm text-foreground">
-              <strong>Amount (Refundable):</strong> ₹{Number(booking.refundAmount ?? booking.paidAmount).toLocaleString()}
+              <strong>Amount (Paid):</strong> ₹{Number(booking.paidAmount).toLocaleString()}
             </p>
             <p className="text-sm text-foreground">
               <strong>Preference:</strong>{" "}
@@ -162,19 +177,49 @@ function RefundResolveModal({
               </p>
             )}
           </div>
-          <div className="space-y-1.5">
-            <label htmlFor="refund-note" className="text-sm font-bold text-foreground/60">
-              {isCoupon ? "Coupon Code" : "Bank UTR / Reference"}
-            </label>
-            <input
-              id="refund-note"
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder={isCoupon ? "e.g. PARAM2024TREK" : "e.g. UTR123456789"}
-              className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-            />
-          </div>
+          
+          {isCoupon ? (
+            <div className="space-y-4">
+              <div className="space-y-1.5 text-left">
+                <label htmlFor="custom-amount" className="text-sm font-bold text-foreground/60">
+                  Voucher Value (Refund Amount)
+                </label>
+                <input
+                  id="custom-amount"
+                  type="number"
+                  step="any"
+                  value={customAmount}
+                  onChange={(e) => {
+                    setCustomAmount(e.target.value);
+                    setError(null);
+                  }}
+                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                />
+                <p className="text-[10px] text-foreground/40 leading-relaxed mt-1">
+                  Adjust this value to match custom policy deductions (e.g. for late cancellations). Paid amount was: ₹{Number(booking.paidAmount).toLocaleString("en-IN")}.
+                </p>
+              </div>
+              <div className="p-3 bg-primary/5 border border-primary/20 rounded-xl">
+                <p className="text-xs text-primary leading-relaxed">
+                  🎟️ A Travel Coupon code worth <strong>₹{Number(customAmount || 0).toLocaleString()}</strong> will be automatically generated and emailed to the customer.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <label htmlFor="refund-note" className="text-sm font-bold text-foreground/60">
+                Bank UTR / Reference
+              </label>
+              <input
+                id="refund-note"
+                type="text"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="e.g. UTR123456789"
+                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+              />
+            </div>
+          )}
           {error && <p className="text-red-400 text-sm">{error}</p>}
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-border text-foreground/60 font-bold hover:bg-foreground/5">

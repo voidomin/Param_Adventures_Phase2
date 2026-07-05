@@ -55,6 +55,10 @@ export const BookingService = {
         ? Number(experience.advancePaymentAmount) * data.participantCount
         : pricing.totalPrice;
 
+      if (isAdvance && data.appliedCoupons && data.appliedCoupons.length > 0) {
+        throw new Error("COUPON_ERROR: Coupons cannot be used for advance payments.");
+      }
+
       // Validate and subtract applied travel coupons inside serializable transaction
       let remainingPaymentAmount = paymentAmount;
       let totalCouponRedeemed = 0;
@@ -78,6 +82,10 @@ export const BookingService = {
           }
           if (dbCoupon.status === "BLOCKED" || dbCoupon.status === "CANCELLED") {
             throw new Error(`COUPON_ERROR: Coupon is blocked or cancelled.`);
+          }
+
+          if (remainingPaymentAmount < Number(dbCoupon.balance)) {
+            throw new Error(`COUPON_ERROR: Coupon value exceeds the booking/payment amount.`);
           }
 
           const redeemAmount = Math.min(Number(dbCoupon.balance), remainingPaymentAmount);

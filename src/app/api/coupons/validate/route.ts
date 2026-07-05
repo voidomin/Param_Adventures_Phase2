@@ -5,6 +5,7 @@ import { z } from "zod";
 
 const validateSchema = z.object({
   code: z.string().min(1, "Coupon code is required"),
+  paymentAmount: z.number().optional(),
 });
 
 /**
@@ -22,11 +23,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
     }
 
-    const { code } = parsed.data;
+    const { code, paymentAmount } = parsed.data;
     const { coupon, error } = await validateCoupon(code, auth.userId);
 
     if (error) {
       return NextResponse.json({ error }, { status: 400 });
+    }
+
+    if (paymentAmount !== undefined && paymentAmount < Number(coupon.balance)) {
+      return NextResponse.json(
+        { error: `Coupon value (₹${Number(coupon.balance)}) cannot exceed the booking/payment amount (₹${paymentAmount}).` },
+        { status: 400 }
+      );
     }
 
     return NextResponse.json({

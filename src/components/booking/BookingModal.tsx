@@ -1150,6 +1150,18 @@ export default function BookingModal({
 
   const [experienceDetail, setExperienceDetail] = useState<ExperienceDetail | null>(null);
   const [paymentType, setPaymentType] = useState<"FULL" | "ADVANCE">("FULL");
+  const [appliedCoupons, setAppliedCoupons] = useState<{ id: string; code: string; balance: number }[]>([]);
+  const [couponInput, setCouponInput] = useState("");
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+
+  useEffect(() => {
+    if (paymentType === "ADVANCE") {
+      setAppliedCoupons([]);
+      setCouponInput("");
+      setCouponError(null);
+    }
+  }, [paymentType]);
 
   const extraAmenitiesConfig = useMemo(() => {
     if (!experienceDetail?.extraAmenities) return [];
@@ -1418,17 +1430,28 @@ export default function BookingModal({
 
   const totalPrice = baseFare + taxAmount;
 
+  const couponDiscount = useMemo(() => {
+    return appliedCoupons.reduce((sum, c) => sum + c.balance, 0);
+  }, [appliedCoupons]);
+
+  const finalPriceToPay = Math.max(0, totalPrice - couponDiscount);
+  const payableAmount = paymentType === "ADVANCE" ? (Number(experienceDetail?.advancePaymentAmount ?? 0) * participants) : finalPriceToPay;
+
   async function handleProceedToPay() {
     setStep("processing");
     setErrorMsg("");
 
-    const scriptLoaded = await loadRazorpayScript();
-    if (!scriptLoaded) {
-      setErrorMsg(
-        "Failed to load payment gateway. Please check your internet connection.",
-      );
-      setStep("error");
-      return;
+    const isFullyPaidByCoupon = paymentType === "FULL" && payableAmount <= 0.01;
+    
+    if (!isFullyPaidByCoupon) {
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        setErrorMsg(
+          "Failed to load payment gateway. Please check your internet connection.",
+        );
+        setStep("error");
+        return;
+      }
     }
 
     try {
@@ -1446,13 +1469,19 @@ export default function BookingModal({
             selectedAmenities: p.selectedAmenities || [],
           })),
           paymentType,
+          appliedCoupons: appliedCoupons.map((c) => c.code),
         }),
       });
       const bookData = await bookRes.json();
       if (!bookRes.ok)
         throw new Error(bookData.error || "Failed to create booking.");
 
-      const { bookingId: bId, orderId, amount, currency, keyId } = bookData;
+      const { bookingId: bId, orderId, amount, currency, keyId, fullyPaidByCoupon } = bookData;
+
+      if (fullyPaidByCoupon) {
+        router.push(`/bookings/${bId}/success`);
+        return;
+      }
 
       const rzp = new globalThis.window.Razorpay({
         key: keyId,
@@ -1831,16 +1860,112 @@ export default function BookingModal({
                 );
               })}
 
+              {appliedCoupons.length > 0 && (
+                <div className="flex items-center justify-between py-3 border-b border-border">
+                  <div className="flex items-center gap-2 text-primary font-medium pl-6">
+                    <span className="text-sm">Coupon Discount</span>
+                  </div>
+                  <span className="font-semibold text-primary text-sm">
+                    - ₹{couponDiscount.toLocaleString("en-IN")}
+                  </span>
+                </div>
+              )}
+
               <div className="flex items-center justify-between py-3 border-b border-border last:border-none">
                 <div className="flex items-center gap-2 text-foreground/60">
                   <IndianRupee className="w-4 h-4 text-primary" />
-                  <span className="text-sm font-bold">Total Amount</span>
+                  <span className="text-sm font-bold">{appliedCoupons.length > 0 ? "Net Payable" : "Total Amount"}</span>
                 </div>
                 <span className="font-bold text-primary text-base">
-                  ₹{totalPrice.toLocaleString("en-IN")}
+                  ₹{payableAmount.toLocaleString("en-IN")}
                 </span>
               </div>
             </div>
+
+            {paymentType === "FULL" && (
+              <div className="border-t border-border/50 pt-4 space-y-3">
+                <span className="block text-xs font-black uppercase tracking-wider text-foreground/50 text-left">
+                  Travel Vouchers & Coupons
+                </span>
+                
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={couponInput}
+                    onChange={(e) => {
+                      setCouponInput(e.target.value);
+                      setCouponError(null);
+                    }}
+                    placeholder="Enter coupon code (e.g. PARAM-XXXXXX)"
+                    className="flex-1 bg-background border border-border rounded-xl px-4 py-2.5 text-xs text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-foreground/30 uppercase"
+                  />
+                  <button
+                    type="button"
+                    disabled={couponLoading || !couponInput.trim()}
+                    onClick={async () => {
+                      setCouponLoading(true);
+                      setCouponError(null);
+                      try {
+                        const remainingToDiscount = totalPrice - appliedCoupons.reduce((sum, c) => sum + c.balance, 0);
+                        
+                        const res = await fetch("/api/coupons/validate", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            code: couponInput,
+                            paymentAmount: remainingToDiscount
+                          }),
+                        });
+                        const data = await res.json();
+                        if (!res.ok) throw new Error(data.error || "Failed to validate coupon.");
+                        
+                        if (appliedCoupons.some(c => c.code.toUpperCase() === couponInput.toUpperCase().trim())) {
+                          throw new Error("Coupon already applied.");
+                        }
+                        
+                        setAppliedCoupons(prev => [...prev, data.coupon]);
+                        setCouponInput("");
+                      } catch (err: any) {
+                        setCouponError(err.message || "Invalid coupon.");
+                      } finally {
+                        setCouponLoading(false);
+                      }
+                    }}
+                    className="px-4 py-2 bg-foreground text-background dark:bg-foreground dark:text-background rounded-xl font-bold text-xs hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center min-w-[70px]"
+                  >
+                    {couponLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Apply"}
+                  </button>
+                </div>
+
+                {couponError && (
+                  <p className="text-xs text-red-500 text-left font-semibold">{couponError}</p>
+                )}
+
+                {appliedCoupons.length > 0 && (
+                  <div className="space-y-1.5 mt-2">
+                    {appliedCoupons.map((coupon) => (
+                      <div key={coupon.id} className="flex justify-between items-center bg-primary/5 border border-primary/20 rounded-lg px-3 py-2 text-xs">
+                        <span className="font-bold text-primary flex items-center gap-1.5">
+                          🎟️ {coupon.code}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-foreground">- ₹{coupon.balance.toLocaleString("en-IN")}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAppliedCoupons(prev => prev.filter(c => c.id !== coupon.id));
+                            }}
+                            className="text-red-500 hover:text-red-700 transition-colors text-[10px] font-bold uppercase tracking-wider"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="bg-foreground/3 border border-border rounded-xl p-3 text-xs text-foreground/50 text-center">
               Secure payment powered by Razorpay • 100% Safe
@@ -1901,9 +2026,9 @@ export default function BookingModal({
                 className="flex-1 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 transition-colors"
               >
                 Pay {paymentType === "ADVANCE"
-                  ? `₹${(Number(experienceDetail?.advancePaymentAmount ?? 0) * participants).toLocaleString("en-IN")}`
-                  : `₹${totalPrice.toLocaleString("en-IN")}`
-                }
+                   ? `₹${(Number(experienceDetail?.advancePaymentAmount ?? 0) * participants).toLocaleString("en-IN")}`
+                   : `₹${payableAmount.toLocaleString("en-IN")}`
+                 }
               </button>
             </div>
           </div>
