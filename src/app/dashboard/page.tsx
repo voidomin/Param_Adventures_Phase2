@@ -86,8 +86,10 @@ interface Booking {
   id: string;
   participantCount: number;
   totalPrice: string;
+  paidAmount: string;
+  remainingBalance: string;
   bookingStatus: "REQUESTED" | "CONFIRMED" | "CANCELLED";
-  paymentStatus: "PENDING" | "PAID" | "FAILED";
+  paymentStatus: "PENDING" | "PARTIALLY_PAID" | "PAID" | "FAILED";
   createdAt: string;
   experience: {
     title: string;
@@ -133,6 +135,8 @@ function getPaymentStatusStyle(status: string) {
   switch (status) {
     case "PAID":
       return "bg-emerald-500/10 text-emerald-600 border-emerald-500/20";
+    case "PARTIALLY_PAID":
+      return "bg-amber-500/10 text-amber-600 border-amber-500/20";
     case "FAILED":
       return "bg-red-500/10 text-red-500 border-red-500/20";
     default:
@@ -288,9 +292,16 @@ function BookingCard({
         )}
 
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1 text-xl font-black text-foreground">
-            <IndianRupee className="w-5 h-5 text-primary" />
-            {Number(booking.totalPrice).toLocaleString("en-IN")}
+          <div className="flex flex-col text-left">
+            <div className="flex items-center gap-1 text-xl font-black text-foreground">
+              <IndianRupee className="w-5 h-5 text-primary" />
+              {Number(booking.totalPrice).toLocaleString("en-IN")}
+            </div>
+            {booking.paymentStatus === "PARTIALLY_PAID" && (
+              <span className="text-[10px] text-amber-500 font-bold mt-0.5">
+                Paid: ₹{Number(booking.paidAmount || 0).toLocaleString("en-IN")} | Bal: ₹{Number(booking.remainingBalance || 0).toLocaleString("en-IN")}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <Link

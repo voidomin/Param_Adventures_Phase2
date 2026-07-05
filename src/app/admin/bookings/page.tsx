@@ -921,7 +921,11 @@ export default function AdminBookingsPage() {
                   </button>
                   {b.bookingStatus === "REQUESTED" && b.paymentStatus !== "PAID" && (
                     <button
-                      onClick={() => setSelectedBooking({ id: b.id, amount: Number(b.totalPrice) })}
+                      onClick={() => {
+                        const pending = b.payments.find((p) => p.status === "PENDING");
+                        const amt = pending ? Number(pending.amount) : Number(b.remainingBalance);
+                        setSelectedBooking({ id: b.id, amount: amt });
+                      }}
                       className="flex-2 py-2 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5 text-xs"
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" />
@@ -1080,7 +1084,11 @@ export default function AdminBookingsPage() {
                           </button>
                           {b.bookingStatus === "REQUESTED" && b.paymentStatus !== "PAID" && (
                             <button
-                              onClick={() => setSelectedBooking({ id: b.id, amount: Number(b.totalPrice) })}
+                              onClick={() => {
+                                const pending = b.payments.find((p) => p.status === "PENDING");
+                                const amt = pending ? Number(pending.amount) : Number(b.remainingBalance);
+                                setSelectedBooking({ id: b.id, amount: amt });
+                              }}
                               className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all flex items-center gap-1.5 text-xs font-bold"
                               title="Approve Manual Payment"
                             >
@@ -1565,7 +1573,9 @@ export default function AdminBookingsPage() {
           onClose={() => setActiveDetailsBooking(null)}
           onApprove={() => {
             setActiveDetailsBooking(null);
-            setSelectedBooking({ id: activeDetailsBooking.id, amount: Number(activeDetailsBooking.totalPrice) });
+            const pending = activeDetailsBooking.payments.find((p) => p.status === "PENDING");
+            const amt = pending ? Number(pending.amount) : Number(activeDetailsBooking.remainingBalance);
+            setSelectedBooking({ id: activeDetailsBooking.id, amount: amt });
           }}
           onArchive={() => {
             setActiveDetailsBooking(null);

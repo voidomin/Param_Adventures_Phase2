@@ -122,6 +122,11 @@ export async function POST(
         },
       });
 
+      // Clean up any pending payment records for this booking
+      await tx.payment.deleteMany({
+        where: { bookingId, status: "PENDING" },
+      });
+
       if (freshBooking.slotId && freshBooking.bookingStatus !== "CONFIRMED") {
         await tx.slot.update({
           where: { id: freshBooking.slotId },
