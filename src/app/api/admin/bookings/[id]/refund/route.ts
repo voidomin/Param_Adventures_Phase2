@@ -63,8 +63,16 @@ export async function POST(
     if (refundAmt < 0) {
       return NextResponse.json({ error: "Refund amount cannot be negative." }, { status: 400 });
     }
-    if (refundAmt > Number(booking.paidAmount)) {
-      return NextResponse.json({ error: `Refund amount (₹${refundAmt}) cannot exceed the paid amount (₹${Number(booking.paidAmount)}).` }, { status: 400 });
+
+    // Use the pre-stored refundAmount as a cap fallback when paidAmount is 0.
+    // The refundAmount on the booking was already validated during cancellation,
+    // so it can be trusted as the effective paid cap in partial-cancel scenarios.
+    const effectivePaidCap = booking.refundAmount
+      ? Math.max(Number(booking.paidAmount), Number(booking.refundAmount))
+      : Number(booking.paidAmount);
+
+    if (refundAmt > effectivePaidCap) {
+      return NextResponse.json({ error: `Refund amount (₹${refundAmt}) cannot exceed the paid amount (₹${effectivePaidCap}).` }, { status: 400 });
     }
 
     const newPaidAmount = Math.max(0, Number(booking.paidAmount) - refundAmt);
