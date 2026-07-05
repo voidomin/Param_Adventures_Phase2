@@ -1,7 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { validateCoupon, redeemCoupon, restoreCouponsForBooking } from "@/lib/coupon-engine";
+import { validateCoupon, redeemCoupon, restoreCouponsForBooking, isExpiredIST } from "@/lib/coupon-engine";
 import { prisma } from "@/lib/db";
-import { CouponStatus } from "@prisma/client";
+const CouponStatus = {
+  ACTIVE: "ACTIVE",
+  PARTIALLY_USED: "PARTIALLY_USED",
+  FULLY_USED: "FULLY_USED",
+  EXPIRED: "EXPIRED",
+  CANCELLED: "CANCELLED",
+  BLOCKED: "BLOCKED",
+} as const;
+
+const prismaClient = prisma as any;
 
 vi.mock("@/lib/db", () => ({
   prisma: {
@@ -24,13 +33,13 @@ describe("Coupon Engine Unit Tests", () => {
 
   describe("validateCoupon", () => {
     it("returns error if coupon does not exist", async () => {
-      vi.mocked(prisma.travelCoupon.findUnique).mockResolvedValue(null);
+      vi.mocked(prismaClient.travelCoupon.findUnique).mockResolvedValue(null);
       const res = await validateCoupon("BAD-CODE", "user1");
       expect(res.error).toBe("Invalid coupon code.");
     });
 
     it("returns error if coupon belongs to another user", async () => {
-      vi.mocked(prisma.travelCoupon.findUnique).mockResolvedValue({
+      vi.mocked(prismaClient.travelCoupon.findUnique).mockResolvedValue({
         id: "c1",
         code: "CODE",
         customerId: "user2",
@@ -43,7 +52,7 @@ describe("Coupon Engine Unit Tests", () => {
       const pastDate = new Date();
       pastDate.setDate(pastDate.getDate() - 2);
 
-      vi.mocked(prisma.travelCoupon.findUnique).mockResolvedValue({
+      vi.mocked(prismaClient.travelCoupon.findUnique).mockResolvedValue({
         id: "c1",
         code: "CODE",
         customerId: "user1",
@@ -53,7 +62,7 @@ describe("Coupon Engine Unit Tests", () => {
 
       const res = await validateCoupon("CODE", "user1");
       expect(res.error).toBe("This coupon has expired.");
-      expect(prisma.travelCoupon.update).toHaveBeenCalled();
+      expect(prismaClient.travelCoupon.update).toHaveBeenCalled();
     });
 
     it("returns coupon if valid", async () => {
@@ -69,7 +78,7 @@ describe("Coupon Engine Unit Tests", () => {
         balance: 1000,
       };
 
-      vi.mocked(prisma.travelCoupon.findUnique).mockResolvedValue(mockCoupon as any);
+      vi.mocked(prismaClient.travelCoupon.findUnique).mockResolvedValue(mockCoupon as any);
 
       const res = await validateCoupon("CODE", "user1");
       expect(res.error).toBeUndefined();
@@ -179,6 +188,32 @@ describe("Coupon Engine Unit Tests", () => {
       });
 
       expect(result.totalRestored).toBe(400);
+    });
+  });
+
+  describe("isExpiredIST", () => {
+    it("marks coupon as not expired during the calendar day of expiry in IST", () => {
+      const expiryDateStr = "2026-07-04T00:00:00.000Z";
+      const mockCurrentDate = new Date("2026-07-04T12:30:00.000Z"); // July 4, 6:00 PM IST
+      
+      vi.useFakeTimers();
+      vi.setSystemTime(mockCurrentDate);
+      
+      expect(isExpiredIST(expiryDateStr)).toBe(false);
+      
+      vi.useRealTimers();
+    });
+
+    it("marks coupon as expired after the calendar day of expiry has passed in IST", () => {
+      const expiryDateStr = "2026-07-04T00:00:00.000Z";
+      const mockExpiredDate = new Date("2026-07-04T18:35:00.000Z"); // July 5, 12:05 AM IST
+      
+      vi.useFakeTimers();
+      vi.setSystemTime(mockExpiredDate);
+      
+      expect(isExpiredIST(expiryDateStr)).toBe(true);
+      
+      vi.useRealTimers();
     });
   });
 });

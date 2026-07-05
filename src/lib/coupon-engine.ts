@@ -2,6 +2,22 @@ import { prisma } from "@/lib/db";
 import { CouponStatus, TravelCoupon } from "@prisma/client";
 
 /**
+ * Checks if the current time is past the end of the expiry day in Indian Standard Time (IST, UTC+5.5).
+ */
+export function isExpiredIST(expiryDate: Date | string): boolean {
+  const expiry = new Date(expiryDate);
+  if (Number.isNaN(expiry.getTime())) return true;
+
+  const expiryYear = expiry.getUTCFullYear();
+  const expiryMonth = expiry.getUTCMonth();
+  const expiryDay = expiry.getUTCDate();
+
+  const endOfExpiryDayIST = new Date(Date.UTC(expiryYear, expiryMonth, expiryDay, 18, 29, 59, 999));
+
+  return new Date() > endOfExpiryDayIST;
+}
+
+/**
  * Validates a coupon code against business criteria.
  */
 export async function validateCoupon(
@@ -21,7 +37,7 @@ export async function validateCoupon(
       return { coupon, error: "This coupon belongs to another customer." };
     }
 
-    if (coupon.status === CouponStatus.EXPIRED || new Date(coupon.expiryDate) < new Date()) {
+    if (coupon.status === CouponStatus.EXPIRED || isExpiredIST(coupon.expiryDate)) {
       // Auto-update status to EXPIRED if date passed
       if (coupon.status !== CouponStatus.EXPIRED) {
         await prisma.travelCoupon.update({
@@ -122,7 +138,7 @@ export async function restoreCouponsForBooking(params: {
     const redeemedAmount = Number(r.amount);
 
     // Scenario 6: Do not restore if coupon has expired
-    if (new Date(coupon.expiryDate) < new Date()) {
+    if (isExpiredIST(coupon.expiryDate)) {
       // Keep transaction logs but don't restore balance
       await tx.couponTransaction.create({
         tx,

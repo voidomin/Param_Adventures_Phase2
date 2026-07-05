@@ -1,10 +1,11 @@
-import { prisma } from "@/lib/db";
+import { prisma, runWithRetry } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { getRazorpay } from "@/lib/razorpay";
 import { logActivity } from "@/lib/audit-logger";
 import { revalidatePath } from "next/cache";
 import { BookingRepo, BookingPricing } from "@/repositories/booking.repo";
 import { BookingInput } from "@/lib/validators/booking.schema";
+import { isExpiredIST } from "@/lib/coupon-engine";
 
 export const BookingService = {
   /**
@@ -18,8 +19,9 @@ export const BookingService = {
 
     // 2. ATOMIC TRANSACTION: Ensuring Slot Capacity vs Booking Entry
     // We use Serializable isolation to prevent phantom reads and ensure absolute consistency.
-    const result = await prisma.$transaction(async (tx) => {
-      // Idempotency: Check if a similar requested booking exists for this user/slot
+    const result = await runWithRetry(() =>
+      prisma.$transaction(async (tx) => {
+        // Idempotency: Check if a similar requested booking exists for this user/slot
       const existing = await BookingRepo.findExistingPendingBooking(tx, userId, data.slotId);
       if (existing) {
         throw new Error("ALREADY_REQUESTED");
@@ -68,7 +70,7 @@ export const BookingService = {
 
           if (!dbCoupon) throw new Error(`COUPON_ERROR: Invalid coupon code: ${code}`);
           if (dbCoupon.customerId !== userId) throw new Error(`COUPON_ERROR: Coupon belongs to another customer.`);
-          if (dbCoupon.status === "EXPIRED" || new Date(dbCoupon.expiryDate) < new Date()) {
+          if (dbCoupon.status === "EXPIRED" || isExpiredIST(dbCoupon.expiryDate)) {
             throw new Error(`COUPON_ERROR: Coupon has expired.`);
           }
           if (dbCoupon.status === "FULLY_USED" || Number(dbCoupon.balance) <= 0) {
@@ -159,10 +161,11 @@ export const BookingService = {
         totalPrice: remainingPaymentAmount,
       });
 
-      return { booking, payment, fullyPaid: false, totalCouponRedeemed };
-    }, {
-      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-    });
+        return { booking, payment, fullyPaid: false, totalCouponRedeemed };
+      }, {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      })
+    );
 
     const { booking } = result;
 
@@ -308,7 +311,7 @@ export const BookingService = {
         });
 
         for (const r of redemptions) {
-          if (new Date(r.coupon.expiryDate) < new Date()) {
+          if (isExpiredIST(r.coupon.expiryDate)) {
             throw new Error("COUPON_EXPIRED_DURING_CHECKOUT");
           }
         }
