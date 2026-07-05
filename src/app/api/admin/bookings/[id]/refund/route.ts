@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
@@ -56,9 +57,10 @@ export async function POST(
       );
     }
 
-    const refundAmt = refundAmount !== undefined
-      ? refundAmount
-      : (booking.refundAmount ? Number(booking.refundAmount) : Number(booking.paidAmount));
+    const storedRefundAmt = booking.refundAmount != null
+      ? Number(booking.refundAmount)
+      : Number(booking.paidAmount);
+    const refundAmt = refundAmount ?? storedRefundAmt;
 
     if (refundAmt < 0) {
       return NextResponse.json({ error: "Refund amount cannot be negative." }, { status: 400 });
@@ -90,7 +92,8 @@ export async function POST(
       couponCode = generateCouponCode("PARAM");
     }
 
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (rawTx) => {
+      const tx = rawTx as unknown as PrismaClient;
       await tx.booking.update({
         where: { id: bookingId },
         data: {
