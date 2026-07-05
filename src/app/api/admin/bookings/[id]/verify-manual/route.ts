@@ -183,8 +183,12 @@ export async function POST(
       booking: updatedBooking,
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error("Manual verification error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    return NextResponse.json({
+      error: "Internal server error",
+      details: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    }, { status: 500 });
   }
 }
