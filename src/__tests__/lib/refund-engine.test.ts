@@ -170,4 +170,66 @@ describe("Refund Calculation Engine Tests", () => {
     const resExpired = await getRefundPercentage(departureExpired, new Date());
     expect(resExpired.refundPercent).toBe(0);
   });
+
+  it("Scenario 8: Coupon Refund vs Bank Transfer Refund policies", () => {
+    // 1. Coupon refund policy (Should refund GST and convenience fee, only deducting cancellation charges)
+    // 75% refund policy -> 25% cancellation fee of Base Fare (25% of 10000 = 2500).
+    // finalRefundAmount = paidAmount (10600) - cancellationCharges (2500) = 8100.
+    const couponBreakdown = calculateRefundBreakdown({
+      baseFare: 10000,
+      totalPrice: 10600,
+      paidAmount: 10600,
+      paymentType: "FULL",
+      refundPercent: 75,
+      taxBreakdown,
+      refundPreference: "COUPON",
+    });
+
+    expect(couponBreakdown.cancellationCharges).toBe(2500);
+    expect(couponBreakdown.finalRefundAmount).toBe(8100); // 10600 - 2500 = 8100 (GST & Conv Fee fully refunded)
+
+    // 2. Bank transfer refund policy (GST and convenience fee are withheld)
+    // 75% refund policy -> 25% cancellation fee of Base Fare (25% of 10000 = 2500).
+    // finalRefundAmount = baseFare (10000) - cancellationCharges (2500) = 7500.
+    const bankBreakdown = calculateRefundBreakdown({
+      baseFare: 10000,
+      totalPrice: 10600,
+      paidAmount: 10600,
+      paymentType: "FULL",
+      refundPercent: 75,
+      taxBreakdown,
+      refundPreference: "BANK_REFUND",
+    });
+
+    expect(bankBreakdown.cancellationCharges).toBe(2500);
+    expect(bankBreakdown.finalRefundAmount).toBe(7500); // Only Base Fare minus cancellation charges is refunded
+
+    // 3. Fully paid booking that started as ADVANCE (Complete payment after advance)
+    // 75% refund policy -> 25% cancellation charges (25% of 10000 = 2500)
+    // COUPON choice -> should refund GST and conv fee (10600 - 2500 = 8100)
+    const advancePaidFullCoupon = calculateRefundBreakdown({
+      baseFare: 10000,
+      totalPrice: 10600,
+      paidAmount: 10600,
+      paymentType: "ADVANCE",
+      refundPercent: 75,
+      taxBreakdown,
+      refundPreference: "COUPON",
+    });
+    expect(advancePaidFullCoupon.cancellationCharges).toBe(2500);
+    expect(advancePaidFullCoupon.finalRefundAmount).toBe(8100);
+
+    // BANK_REFUND choice -> should withhold GST and conv fee (10000 - 2500 = 7500)
+    const advancePaidFullBank = calculateRefundBreakdown({
+      baseFare: 10000,
+      totalPrice: 10600,
+      paidAmount: 10600,
+      paymentType: "ADVANCE",
+      refundPercent: 75,
+      taxBreakdown,
+      refundPreference: "BANK_REFUND",
+    });
+    expect(advancePaidFullBank.cancellationCharges).toBe(2500);
+    expect(advancePaidFullBank.finalRefundAmount).toBe(7500);
+  });
 });

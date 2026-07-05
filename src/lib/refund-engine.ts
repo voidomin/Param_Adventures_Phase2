@@ -76,6 +76,7 @@ export function calculateRefundBreakdown(params: {
   refundPercent: number;
   taxBreakdown: unknown;
   isCompanyCancellation?: boolean;
+  refundPreference?: "COUPON" | "BANK_REFUND" | null;
 }): RefundBreakdown {
   const {
     baseFare,
@@ -85,6 +86,7 @@ export function calculateRefundBreakdown(params: {
     refundPercent,
     taxBreakdown,
     isCompanyCancellation = false,
+    refundPreference = null,
   } = params;
 
   // Calculate GST from taxBreakdown
@@ -113,8 +115,11 @@ export function calculateRefundBreakdown(params: {
   const cancellationCharges = Math.round((baseFare * cancellationPercent) / 100);
   const refundableBaseFare = Math.max(0, baseFare - cancellationCharges);
 
+  // Treat as FULL payment if they paid the complete amount (totalPrice) even if paymentType is ADVANCE.
+  const isEffectiveFullPayment = paymentType === "FULL" || Number(paidAmount) >= Number(totalPrice) - 0.1;
+
   let finalRefundAmount = 0;
-  if (paymentType === "ADVANCE") {
+  if (!isEffectiveFullPayment) {
     // Scenario 6: Partial / Advance payment -> seat block only, no GST/conv fee charged by company.
     if (refundPercent === 100) {
       finalRefundAmount = paidAmount;
@@ -123,8 +128,13 @@ export function calculateRefundBreakdown(params: {
       finalRefundAmount = Math.max(0, paidAmount - cancellationCharges);
     }
   } else {
-    // Regular / Full payment -> GST and Conv Fee are non-refundable. Only base fare minus cancellation charges.
-    finalRefundAmount = Math.min(refundableBaseFare, paidAmount);
+    if (refundPreference === "COUPON") {
+      // Coupon Refund -> GST and Convenience Fee are refunded. Only deduct cancellation charges.
+      finalRefundAmount = Math.max(0, paidAmount - cancellationCharges);
+    } else {
+      // Regular / Full payment -> GST and Conv Fee are non-refundable. Only base fare minus cancellation charges.
+      finalRefundAmount = Math.min(refundableBaseFare, paidAmount);
+    }
   }
 
   return {

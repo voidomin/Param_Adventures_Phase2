@@ -130,8 +130,12 @@ function RefundResolveModal({
       setError("Please enter a valid non-negative refund amount.");
       return;
     }
-    if (amt > Number(booking.paidAmount)) {
-      setError(`Refund amount cannot exceed the paid amount of ₹${Number(booking.paidAmount).toLocaleString()}`);
+    const effectiveCap = booking.refundAmount
+      ? Math.max(Number(booking.paidAmount), Number(booking.refundAmount))
+      : Number(booking.paidAmount);
+
+    if (amt > effectiveCap) {
+      setError(`Refund amount cannot exceed the paid/refund limit of ₹${effectiveCap.toLocaleString()}`);
       return;
     }
     setIsSubmitting(true);
@@ -167,6 +171,11 @@ function RefundResolveModal({
             <p className="text-sm text-foreground">
               <strong>Amount (Paid):</strong> ₹{Number(booking.paidAmount).toLocaleString()}
             </p>
+            {booking.refundAmount && (
+              <p className="text-sm text-foreground">
+                <strong>Suggested Refund (Canceled):</strong> ₹{Number(booking.refundAmount).toLocaleString()}
+              </p>
+            )}
             <p className="text-sm text-foreground">
               <strong>Preference:</strong>{" "}
               {isCoupon ? "🎟️ Adventure Coupon" : "🏦 Bank Refund"}
@@ -1610,8 +1619,15 @@ export default function AdminBookingsPage() {
                     <span className="text-foreground/40 font-normal text-sm">&lt;{b.user.email}&gt;</span>
                   </p>
                   <p className="text-sm text-foreground/60">{b.experience.title}{b.slot ? ` · ${formatDate(b.slot.date)}` : ""}</p>
-                  <p className="text-sm">
-                    ₹{Number(b.totalPrice).toLocaleString("en-IN")} ·{" "}
+                  <p className="text-sm text-foreground/80">
+                    {b.refundAmount ? (
+                      <span className="font-bold text-amber-500">
+                        Refund Asked: ₹{Number(b.refundAmount).toLocaleString("en-IN")}
+                      </span>
+                    ) : (
+                      <span>Total: ₹{Number(b.totalPrice).toLocaleString("en-IN")}</span>
+                    )}{" "}
+                    ·{" "}
                     {(() => {
                       const cancelledCount = b.participants ? b.participants.filter(p => p.isCancelled).length : 0;
                       if (cancelledCount > 0) {

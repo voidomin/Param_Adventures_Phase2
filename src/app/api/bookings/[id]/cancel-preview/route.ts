@@ -88,6 +88,8 @@ export async function GET(
     const departureDate = booking.slot ? new Date(booking.slot.date) : new Date();
     const { refundPercent, daysBefore } = await getRefundPercentage(departureDate, new Date());
 
+    const preference = (searchParams.get("preference") as "COUPON" | "BANK_REFUND" | null) || "COUPON";
+
     // Run core breakdown engine
     const breakdown = calculateRefundBreakdown({
       baseFare: selectedBaseFare,
@@ -96,6 +98,7 @@ export async function GET(
       paymentType: booking.paymentType as "FULL" | "ADVANCE",
       refundPercent,
       taxBreakdown: booking.taxBreakdown,
+      refundPreference: preference,
     });
 
     return NextResponse.json({

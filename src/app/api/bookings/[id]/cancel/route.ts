@@ -4,6 +4,7 @@ import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
 import { sendBookingCancellation } from "@/lib/email";
 import { z } from "zod";
+import { getRefundPercentage, calculateRefundBreakdown } from "@/lib/refund-engine";
 
 const cancelSchema = z.object({
   reason: z.string().optional().or(z.literal("")),
@@ -70,6 +71,22 @@ export async function POST(
         ? "REFUND_PENDING"
         : booking.paymentStatus;
 
+    // Resolve cancellation policy based on departure date
+    const departureDate = booking.slot ? new Date(booking.slot.date) : new Date();
+    const { refundPercent } = await getRefundPercentage(departureDate, new Date());
+
+    const breakdown = calculateRefundBreakdown({
+      baseFare: Number(booking.baseFare),
+      totalPrice: Number(booking.totalPrice),
+      paidAmount: Number(booking.paidAmount),
+      paymentType: booking.paymentType as "FULL" | "ADVANCE",
+      refundPercent,
+      taxBreakdown: booking.taxBreakdown,
+      refundPreference: preference,
+    });
+
+    const finalRefund = breakdown.finalRefundAmount;
+
     // Atomic transaction: update booking + restore slot capacity
     await prisma.$transaction(async (tx) => {
       await tx.booking.update({
@@ -81,6 +98,7 @@ export async function POST(
           cancelledByUserId: userId,
           cancellationReason: reason || null,
           refundPreference: preference,
+          refundAmount: finalRefund > 0 ? finalRefund : null,
         },
       });
 
