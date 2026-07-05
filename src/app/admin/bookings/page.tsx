@@ -918,11 +918,36 @@ export default function AdminBookingsPage() {
                           return <span>{b.participantCount} Pax</span>;
                         })()}
                         {" · "}
-                        {b.paymentStatus === "PARTIALLY_PAID" ? (
-                          <span>₹{Number(b.paidAmount).toLocaleString("en-IN")} paid / ₹{Number(b.totalPrice).toLocaleString("en-IN")}</span>
-                        ) : (
-                          <span>₹{Number(b.totalPrice).toLocaleString("en-IN")}</span>
-                        )}
+                        {(() => {
+                          const total = Number(b.totalPrice);
+                          const paid = Number(b.paidAmount);
+                          const pendingPayment = b.payments.find(p => p.status === "PENDING");
+                          const pendingAmt = pendingPayment ? Number(pendingPayment.amount) : 0;
+
+                          if (b.paymentStatus === "PARTIALLY_PAID") {
+                            return (
+                              <span>
+                                Paid: ₹{paid.toLocaleString("en-IN")}
+                                {pendingAmt > 0 && ` / Pending: ₹${pendingAmt.toLocaleString("en-IN")}`}
+                                {` (of ₹${total.toLocaleString("en-IN")})`}
+                              </span>
+                            );
+                          }
+                          if (b.paymentStatus === "PENDING") {
+                            return (
+                              <span>
+                                {pendingAmt > 0 ? `Pending: ₹${pendingAmt.toLocaleString("en-IN")}` : "Unpaid"}
+                                {` (Total: ₹${total.toLocaleString("en-IN")})`}
+                              </span>
+                            );
+                          }
+                          return (
+                            <span>
+                              ₹{total.toLocaleString("en-IN")}
+                              {b.paymentStatus === "PAID" && " (Fully Paid)"}
+                            </span>
+                          );
+                        })()}
                       </div>
                     </div>
                   </div>
@@ -1071,14 +1096,52 @@ export default function AdminBookingsPage() {
                         })()}
                       </td>
                       <td className="px-5 py-4 text-sm font-semibold text-foreground">
-                        {b.paymentStatus === "PARTIALLY_PAID" ? (
-                          <div className="flex flex-col">
-                            <span className="text-green-500">₹{Number(b.paidAmount).toLocaleString("en-IN")}</span>
-                            <span className="text-[10px] text-foreground/40 font-normal">paid of ₹{Number(b.totalPrice).toLocaleString("en-IN")}</span>
-                          </div>
-                        ) : (
-                          <span>₹{Number(b.totalPrice).toLocaleString("en-IN")}</span>
-                        )}
+                        {(() => {
+                          const total = Number(b.totalPrice);
+                          const paid = Number(b.paidAmount);
+                          const pendingPayment = b.payments.find(p => p.status === "PENDING");
+                          const pendingAmt = pendingPayment ? Number(pendingPayment.amount) : 0;
+
+                          if (b.paymentStatus === "PARTIALLY_PAID") {
+                            return (
+                              <div className="flex flex-col text-xs">
+                                <span className="text-green-500 font-bold">Paid: ₹{paid.toLocaleString("en-IN")}</span>
+                                {pendingAmt > 0 && (
+                                  <span className="text-yellow-500 font-bold">Pending: ₹{pendingAmt.toLocaleString("en-IN")}</span>
+                                )}
+                                <span className="text-[10px] text-foreground/45 font-normal">Total: ₹{total.toLocaleString("en-IN")}</span>
+                              </div>
+                            );
+                          }
+                          if (b.paymentStatus === "PENDING") {
+                            return (
+                              <div className="flex flex-col text-xs">
+                                {pendingAmt > 0 ? (
+                                  <span className="text-yellow-500 font-bold">Pending: ₹{pendingAmt.toLocaleString("en-IN")}</span>
+                                ) : (
+                                  <span className="text-foreground/50 font-bold">Unpaid</span>
+                                )}
+                                <span className="text-[10px] text-foreground/45 font-normal">Total: ₹{total.toLocaleString("en-IN")}</span>
+                              </div>
+                            );
+                          }
+                          if (b.paymentStatus === "PAID") {
+                            return (
+                              <div className="flex flex-col text-xs">
+                                <span className="text-green-500 font-bold">₹{total.toLocaleString("en-IN")}</span>
+                                <span className="text-[10px] text-green-500/60 font-medium">Fully Paid</span>
+                              </div>
+                            );
+                          }
+                          return (
+                            <div className="flex flex-col text-xs">
+                              <span>₹{total.toLocaleString("en-IN")}</span>
+                              {paid > 0 && (
+                                <span className="text-[10px] text-green-500 font-medium">Paid: ₹{paid.toLocaleString("en-IN")}</span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="px-5 py-4">
                         <div className="flex flex-col gap-1">
