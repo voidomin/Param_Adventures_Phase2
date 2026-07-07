@@ -65,6 +65,8 @@ export async function getRefundPercentage(
   return { refundPercent: 0, daysBefore };
 }
 
+const round2 = (num: number) => Number(num.toFixed(2));
+
 /**
  * Calculates the exact refund breakdown following Param Adventures business rules.
  */
@@ -94,25 +96,25 @@ export function calculateRefundBreakdown(params: {
   if (Array.isArray(taxBreakdown)) {
     gst = taxBreakdown.reduce((sum, item: any) => sum + (Number(item.amount) || 0), 0);
   }
-  gst = Math.round(gst);
+  gst = round2(gst);
 
   // Convenience Fee is the remainder (totalPrice - baseFare - gst)
-  const convenienceFee = Math.max(0, Math.round(totalPrice - (baseFare + gst)));
+  const convenienceFee = Math.max(0, round2(totalPrice - (baseFare + gst)));
 
   if (isCompanyCancellation) {
     // Scenario 7: Company cancels -> 100% refund of whatever was paid (Base Fare + GST + Convenience Fee)
     return {
-      baseFare: Math.round(baseFare),
+      baseFare: round2(baseFare),
       gst,
       convenienceFee,
       cancellationPercent: 0,
       cancellationCharges: 0,
-      finalRefundAmount: Math.round(paidAmount),
+      finalRefundAmount: round2(paidAmount),
     };
   }
 
   const cancellationPercent = 100 - refundPercent;
-  const cancellationCharges = Math.round((baseFare * cancellationPercent) / 100);
+  const cancellationCharges = round2((baseFare * cancellationPercent) / 100);
   const refundableBaseFare = Math.max(0, baseFare - cancellationCharges);
 
   // Treat as FULL payment if they paid the complete amount (totalPrice) even if paymentType is ADVANCE.
@@ -138,11 +140,11 @@ export function calculateRefundBreakdown(params: {
   }
 
   return {
-    baseFare: Math.round(baseFare),
+    baseFare: round2(baseFare),
     gst,
     convenienceFee,
     cancellationPercent,
     cancellationCharges,
-    finalRefundAmount: Math.round(finalRefundAmount),
+    finalRefundAmount: round2(finalRefundAmount),
   };
 }
