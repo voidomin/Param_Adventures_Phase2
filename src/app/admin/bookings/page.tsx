@@ -1309,7 +1309,7 @@ export default function AdminBookingsPage() {
             href="/admin/refunds"
             className="w-full sm:w-auto px-4 py-2.5 bg-amber-500/10 border border-amber-500/25 hover:bg-amber-500 text-amber-600 hover:text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 h-11"
           >
-            Refund Requests
+            Bank Refunds
           </Link>
           <Link
             href="/admin/coupons"

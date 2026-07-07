@@ -211,7 +211,7 @@ export default function AdminRefundRequestsPage() {
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border/50">
         <div className="space-y-1 text-left">
           <h1 className="text-3xl font-black font-heading flex items-center gap-3">
-            <CreditCard className="w-8 h-8 text-primary" /> Refund <span className="text-primary">Requests</span>
+            <CreditCard className="w-8 h-8 text-primary" /> Bank <span className="text-primary">Refunds</span>
           </h1>
           <p className="text-foreground/50 text-sm font-medium">Verify guest cancellations, manage GST deductions, and process Bank Transfer payouts.</p>
         </div>
