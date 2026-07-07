@@ -6,6 +6,56 @@ import { BookingRepo } from "@/repositories/booking.repo";
 import { logActivity } from "@/lib/audit-logger";
 import { isExpiredIST } from "@/lib/coupon-engine";
 
+function checkCouponValidity(coupon: any, userId: string) {
+  if (!coupon) throw new Error("COUPON_ERROR: Invalid coupon code.");
+  if (coupon.customerId !== userId) throw new Error("COUPON_ERROR: Coupon belongs to another customer.");
+  if (coupon.status === "EXPIRED" || isExpiredIST(coupon.expiryDate)) {
+    throw new Error("COUPON_ERROR: Coupon has expired.");
+  }
+  if (coupon.status === "FULLY_USED" || Number(coupon.balance) <= 0) {
+    throw new Error("COUPON_ERROR: Coupon has no balance left.");
+  }
+  if (coupon.status === "BLOCKED" || coupon.status === "CANCELLED") {
+    throw new Error(`COUPON_ERROR: Coupon is ${coupon.status.toLowerCase()}.`);
+  }
+}
+
+async function validateAndCalculateCoupons(
+  tx: any,
+  appliedCoupons: string[],
+  userId: string,
+  initialRemaining: number
+) {
+  let remaining = initialRemaining;
+  let totalCouponRedeemed = 0;
+  const redemptionsList: { couponId: string; amount: number }[] = [];
+
+  for (const code of appliedCoupons) {
+    if (remaining <= 0.01) break;
+
+    const dbCoupon = await tx.travelCoupon.findUnique({
+      where: { code: code.toUpperCase().trim() },
+    });
+
+    checkCouponValidity(dbCoupon, userId);
+
+    if (remaining < Number(dbCoupon.balance)) {
+      throw new Error(`COUPON_ERROR: Coupon value exceeds the booking/payment amount.`);
+    }
+
+    const redeemAmount = Number(dbCoupon.balance);
+    const nextRemaining = Math.round((remaining - redeemAmount) * 100) / 100;
+    if (nextRemaining > 0 && nextRemaining < 1) {
+      throw new Error(`COUPON_ERROR: Applying this coupon would leave a balance of ₹${nextRemaining}, which is below the minimum online payment of ₹1.00.`);
+    }
+    remaining = nextRemaining;
+    totalCouponRedeemed += redeemAmount;
+    redemptionsList.push({ couponId: dbCoupon.id, amount: redeemAmount });
+  }
+
+  return { remaining, totalCouponRedeemed, redemptionsList };
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -41,7 +91,7 @@ export async function POST(
 
     // Execute changes atomically inside transaction with serialization retries
     const transactionResult = await runWithRetry(() =>
-      prisma.$transaction(async (tx) => {
+      prisma.$transaction(async (tx: any) => {
         const booking = await tx.booking.findUnique({
           where: { id: bookingId },
           include: { experience: { select: { title: true } } }
@@ -49,40 +99,12 @@ export async function POST(
 
         if (!booking) throw new Error("BOOKING_NOT_FOUND");
 
-        let remaining = Number(booking.remainingBalance);
-        let totalCouponRedeemed = 0;
-        const redemptionsList: { couponId: string; amount: number }[] = [];
-
-        if (appliedCoupons.length > 0) {
-          for (const code of appliedCoupons) {
-            if (remaining <= 0.01) break;
-
-            const dbCoupon = await tx.travelCoupon.findUnique({
-              where: { code: code.toUpperCase().trim() },
-            });
-
-            if (!dbCoupon) throw new Error(`COUPON_ERROR: Invalid coupon code: ${code}`);
-            if (dbCoupon.customerId !== userId) throw new Error(`COUPON_ERROR: Coupon belongs to another customer.`);
-            if (dbCoupon.status === "EXPIRED" || isExpiredIST(dbCoupon.expiryDate)) {
-              throw new Error(`COUPON_ERROR: Coupon has expired.`);
-            }
-            if (dbCoupon.status === "FULLY_USED" || Number(dbCoupon.balance) <= 0) {
-              throw new Error(`COUPON_ERROR: Coupon has no balance left.`);
-            }
-            if (dbCoupon.status === "BLOCKED" || dbCoupon.status === "CANCELLED") {
-              throw new Error(`COUPON_ERROR: Coupon is blocked or cancelled.`);
-            }
-
-            if (remaining < Number(dbCoupon.balance)) {
-              throw new Error(`COUPON_ERROR: Coupon value exceeds the booking/payment amount.`);
-            }
-
-            const redeemAmount = Number(dbCoupon.balance);
-            remaining = Math.round((remaining - redeemAmount) * 100) / 100;
-            totalCouponRedeemed += redeemAmount;
-            redemptionsList.push({ couponId: dbCoupon.id, amount: redeemAmount });
-          }
-        }
+        const { remaining, totalCouponRedeemed, redemptionsList } = await validateAndCalculateCoupons(
+          tx,
+          appliedCoupons,
+          userId,
+          Number(booking.remainingBalance)
+        );
 
         // Apply coupon redemptions
         for (const red of redemptionsList) {
@@ -105,18 +127,19 @@ export async function POST(
               amount: red.amount,
               previousBalance: curBal,
               newBalance: newBal,
-              remarks: `Redeemed to pay remaining balance on booking ${booking.id.substring(0, 8)}...`,
+              remarks: `Redeemed on balance payment for booking ${booking.id.substring(0, 8)}...`,
             },
           });
         }
 
-        // Update booking totals
+        // Update booking records with coupon application
+        const newRemaining = remaining;
         const newPaidAmount = Number(booking.paidAmount) + totalCouponRedeemed;
-        const newRemaining = Math.max(0, Number(booking.remainingBalance) - totalCouponRedeemed);
+        const isFullyPaid = newRemaining <= 0.01;
 
         let finalBookingStatus = booking.bookingStatus;
         let finalPaymentStatus = booking.paymentStatus;
-        if (newRemaining <= 0.01) {
+        if (isFullyPaid) {
           finalPaymentStatus = "PAID";
           finalBookingStatus = "CONFIRMED";
         } else if (newPaidAmount > 0.01) {

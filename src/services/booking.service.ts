@@ -7,6 +7,94 @@ import { BookingRepo, BookingPricing } from "@/repositories/booking.repo";
 import { BookingInput } from "@/lib/validators/booking.schema";
 import { isExpiredIST } from "@/lib/coupon-engine";
 
+interface ExtraAmenityOption {
+  id: string;
+  name: string;
+  price: number;
+}
+
+interface ExtraAmenityGroup {
+  id: string;
+  name: string;
+  type: "SINGLE" | "MULTI";
+  options: ExtraAmenityOption[];
+}
+
+function calculateParticipantsBaseFare(
+  participants: BookingInput["participants"],
+  experienceBasePrice: number,
+  extraAmenitiesConfig: ExtraAmenityGroup[]
+): number {
+  let baseFare = 0;
+  for (const p of participants) {
+    let participantFare = experienceBasePrice;
+    if (p.selectedAmenities && Array.isArray(p.selectedAmenities)) {
+      for (const selected of p.selectedAmenities) {
+        const group = extraAmenitiesConfig.find((g) => g.id === selected.groupId);
+        const option = group?.options?.find((o) => o.id === selected.optionId);
+        if (option) {
+          participantFare += Number(option.price) || 0;
+          selected.price = Number(option.price) || 0;
+        } else {
+          selected.price = 0;
+        }
+      }
+    }
+    baseFare += participantFare;
+  }
+  return baseFare;
+}
+
+function checkCouponValidity(coupon: any, userId: string) {
+  if (!coupon) throw new Error("COUPON_ERROR: Invalid coupon code.");
+  if (coupon.customerId !== userId) throw new Error("COUPON_ERROR: Coupon belongs to another customer.");
+  if (coupon.status === "EXPIRED" || isExpiredIST(coupon.expiryDate)) {
+    throw new Error("COUPON_ERROR: Coupon has expired.");
+  }
+  if (coupon.status === "FULLY_USED" || Number(coupon.balance) <= 0) {
+    throw new Error("COUPON_ERROR: Coupon has no balance left.");
+  }
+  if (coupon.status === "BLOCKED" || coupon.status === "CANCELLED") {
+    throw new Error(`COUPON_ERROR: Coupon is ${coupon.status.toLowerCase()}.`);
+  }
+}
+
+async function processCheckoutCoupons(
+  tx: any,
+  appliedCoupons: string[],
+  userId: string,
+  initialRemaining: number
+) {
+  let remaining = initialRemaining;
+  let totalCouponRedeemed = 0;
+  const redemptionsList: { couponId: string; amount: number }[] = [];
+
+  for (const code of appliedCoupons) {
+    if (remaining <= 0) break;
+
+    const dbCoupon = await tx.travelCoupon.findUnique({
+      where: { code: code.toUpperCase().trim() },
+    });
+
+    checkCouponValidity(dbCoupon, userId);
+
+    if (remaining < Number(dbCoupon.balance)) {
+      throw new Error(`COUPON_ERROR: Coupon value exceeds the booking/payment amount.`);
+    }
+
+    const redeemAmount = Math.min(Number(dbCoupon.balance), remaining);
+    const nextRemaining = Math.round((remaining - redeemAmount) * 100) / 100;
+    if (nextRemaining > 0 && nextRemaining < 1) {
+      throw new Error(`COUPON_ERROR: Applying this coupon would leave a balance of ₹${nextRemaining}, which is below the minimum online payment of ₹1.00.`);
+    }
+    remaining = nextRemaining;
+    totalCouponRedeemed += redeemAmount;
+    redemptionsList.push({ couponId: dbCoupon.id, amount: redeemAmount });
+  }
+
+  return { remaining, totalCouponRedeemed, redemptionsList };
+}
+
 export const BookingService = {
   /**
    * Orchestrates the entire booking creation flow with production-grade safety.
@@ -20,7 +108,7 @@ export const BookingService = {
     // 2. ATOMIC TRANSACTION: Ensuring Slot Capacity vs Booking Entry
     // We use Serializable isolation to prevent phantom reads and ensure absolute consistency.
     const result = await runWithRetry(() =>
-      prisma.$transaction(async (tx) => {
+      prisma.$transaction(async (tx: any) => {
         // Idempotency: Check if a similar requested booking exists for this user/slot
       const existing = await BookingRepo.findExistingPendingBooking(tx, userId, data.slotId);
       if (existing) {
@@ -60,40 +148,11 @@ export const BookingService = {
       }
 
       // Validate and subtract applied travel coupons inside serializable transaction
-      let remainingPaymentAmount = paymentAmount;
-      let totalCouponRedeemed = 0;
-      const redemptionsList: { couponId: string; amount: number }[] = [];
-
-      if (data.appliedCoupons && data.appliedCoupons.length > 0) {
-        for (const code of data.appliedCoupons) {
-          if (remainingPaymentAmount <= 0) break;
-
-          const dbCoupon = await tx.travelCoupon.findUnique({
-            where: { code: code.toUpperCase().trim() },
-          });
-
-          if (!dbCoupon) throw new Error(`COUPON_ERROR: Invalid coupon code: ${code}`);
-          if (dbCoupon.customerId !== userId) throw new Error(`COUPON_ERROR: Coupon belongs to another customer.`);
-          if (dbCoupon.status === "EXPIRED" || isExpiredIST(dbCoupon.expiryDate)) {
-            throw new Error(`COUPON_ERROR: Coupon has expired.`);
-          }
-          if (dbCoupon.status === "FULLY_USED" || Number(dbCoupon.balance) <= 0) {
-            throw new Error(`COUPON_ERROR: Coupon has no balance left.`);
-          }
-          if (dbCoupon.status === "BLOCKED" || dbCoupon.status === "CANCELLED") {
-            throw new Error(`COUPON_ERROR: Coupon is blocked or cancelled.`);
-          }
-
-          if (remainingPaymentAmount < Number(dbCoupon.balance)) {
-            throw new Error(`COUPON_ERROR: Coupon value exceeds the booking/payment amount.`);
-          }
-
-          const redeemAmount = Math.min(Number(dbCoupon.balance), remainingPaymentAmount);
-          remainingPaymentAmount = Math.round((remainingPaymentAmount - redeemAmount) * 100) / 100;
-          totalCouponRedeemed += redeemAmount;
-          redemptionsList.push({ couponId: dbCoupon.id, amount: redeemAmount });
-        }
-      }
+      const {
+        remaining: remainingPaymentAmount,
+        totalCouponRedeemed,
+        redemptionsList,
+      } = await processCheckoutCoupons(tx, data.appliedCoupons || [], userId, paymentAmount);
 
       // Create Booking record
       const booking = await BookingRepo.createBooking(tx, userId, data, pricing);
@@ -247,7 +306,7 @@ export const BookingService = {
 
     } catch (razorpayError) {
       // 5. Graceful Soft-Rollback: Restore coupons and set booking CANCELLED
-      await prisma.$transaction(async (rollbackTx) => {
+      await prisma.$transaction(async (rollbackTx: any) => {
         await BookingRepo.updateStatus(rollbackTx, booking.id, "CANCELLED");
         
         // Restore applied coupons on Razorpay error
@@ -294,7 +353,7 @@ export const BookingService = {
    */
   async confirmPayment(bookingId: string, razorpayOrderId: string, razorpayPaymentId: string, payload: Record<string, unknown>) {
     try {
-      const updatedBooking = await prisma.$transaction(async (tx) => {
+      const updatedBooking = await prisma.$transaction(async (tx: any) => {
         const booking = await tx.booking.findUnique({
           where: { id: bookingId },
           select: { id: true, userId: true, bookingStatus: true, participantCount: true, slotId: true, totalPrice: true, paidAmount: true },
@@ -439,42 +498,20 @@ export const BookingService = {
 
     if (!experience) throw new Error("EXPERIENCE_NOT_FOUND");
 
-    interface ExtraAmenityOption {
-      id: string;
-      name: string;
-      price: number;
-    }
-
-    interface ExtraAmenityGroup {
-      id: string;
-      name: string;
-      type: "SINGLE" | "MULTI";
-      options: ExtraAmenityOption[];
-    }
-
-    const extraAmenitiesConfig = (experience.extraAmenities
-      ? (typeof experience.extraAmenities === "string"
-        ? JSON.parse(experience.extraAmenities)
-        : experience.extraAmenities)
-      : []) as unknown as ExtraAmenityGroup[];
-
-    let baseFare = 0;
-    for (const p of data.participants) {
-      let participantFare = Number(experience.basePrice);
-      if (p.selectedAmenities && Array.isArray(p.selectedAmenities)) {
-        for (const selected of p.selectedAmenities) {
-          const group = extraAmenitiesConfig.find((g) => g.id === selected.groupId);
-          const option = group?.options?.find((o) => o.id === selected.optionId);
-          if (option) {
-            participantFare += Number(option.price) || 0;
-            selected.price = Number(option.price) || 0;
-          } else {
-            selected.price = 0;
-          }
-        }
+    let extraAmenitiesConfig: ExtraAmenityGroup[] = [];
+    if (experience.extraAmenities) {
+      if (typeof experience.extraAmenities === "string") {
+        extraAmenitiesConfig = JSON.parse(experience.extraAmenities);
+      } else {
+        extraAmenitiesConfig = experience.extraAmenities as any;
       }
-      baseFare += participantFare;
     }
+
+    const baseFare = calculateParticipantsBaseFare(
+      data.participants,
+      Number(experience.basePrice),
+      extraAmenitiesConfig
+    );
 
     let totalPrice = baseFare;
     let taxBreakdown: { name: string; percentage: number; amount: number }[] = [];
