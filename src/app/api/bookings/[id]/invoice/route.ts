@@ -19,7 +19,7 @@ export async function GET(
     const payload = await verifyAccessToken(token);
     if (!payload?.userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const booking = await prisma.booking.findUnique({
+    const booking = await (prisma.booking as any).findUnique({
       where: { id },
       include: {
         experience: {
@@ -31,6 +31,9 @@ export async function GET(
         payments: {
           where: { status: "PAID" },
           orderBy: { createdAt: "asc" }
+        },
+        couponTransactions: {
+          where: { type: "REDEEMED" }
         }
       }
     });
@@ -47,10 +50,12 @@ export async function GET(
       where: { key: { in: ['companyName', 'companyAddress', 'gstNumber', 'panNumber', 'stateCode'] } }
     });
     
-    const companyInfo = settings.reduce((acc, current) => {
+    const companyInfo = settings.reduce((acc: Record<string, string>, current: any) => {
       acc[current.key] = current.value;
       return acc;
     }, {} as Record<string, string>);
+
+    const couponDiscount = booking.couponTransactions ? booking.couponTransactions.reduce((sum: number, tx: any) => sum + Number(tx.amount), 0) : 0;
 
     return NextResponse.json({
       booking: {
@@ -65,10 +70,11 @@ export async function GET(
          paidAmount: Number(booking.paidAmount),
          remainingBalance: Number(booking.remainingBalance),
          paymentStatus: booking.paymentStatus,
+         couponDiscount,
       },
       experience: booking.experience,
-      primaryContact: booking.participants.find(p => p.isPrimary) || booking.participants[0],
-      payments: booking.payments.map((p) => ({
+      primaryContact: booking.participants.find((p: any) => p.isPrimary) || booking.participants[0],
+      payments: booking.payments.map((p: any) => ({
         id: p.id,
         amount: Number(p.amount),
         status: p.status,

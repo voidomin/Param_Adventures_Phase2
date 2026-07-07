@@ -154,6 +154,7 @@ interface PaymentConfirmationCardProps {
     amount: number;
   }[];
   aggregatedAmenities: Map<string, { name: string; price: number; count: number }>;
+  couponDiscount?: number;
 }
 
 function PaymentConfirmationCard({
@@ -170,6 +171,7 @@ function PaymentConfirmationCard({
   payments,
   taxItems,
   aggregatedAmenities,
+  couponDiscount,
 }: Readonly<PaymentConfirmationCardProps>) {
   return (
     <div className="bg-card border border-border shadow-sm rounded-2xl overflow-hidden flex flex-col sm:flex-row">
@@ -246,6 +248,18 @@ function PaymentConfirmationCard({
           <span className="text-foreground font-bold">Total Cost</span>
           <span className="font-bold text-foreground text-base">₹{totalPrice.toLocaleString("en-IN")}</span>
         </div>
+        {couponDiscount !== undefined && couponDiscount > 0 && (
+          <>
+            <div className="flex justify-between items-center py-1 text-orange-500 font-bold">
+              <span>Coupon Applied</span>
+              <span>-₹{couponDiscount.toLocaleString("en-IN")}</span>
+            </div>
+            <div className="flex justify-between items-center py-1 border-t border-border/30 pt-1.5 text-foreground font-black text-sm">
+              <span>Net Price</span>
+              <span>₹{(totalPrice - couponDiscount).toLocaleString("en-IN")}</span>
+            </div>
+          </>
+        )}
         <div className="border-t border-border/50 my-1"></div>
         <div className="flex justify-between items-center py-1">
           <span className="text-foreground/60">Payment Mode</span>
@@ -265,6 +279,81 @@ function PaymentConfirmationCard({
   );
 }
 
+interface AdventureSummaryCardProps {
+  experience: any;
+  dateString: string;
+  adventureImage?: string;
+}
+
+function AdventureSummaryCard({
+  experience,
+  dateString,
+  adventureImage,
+}: Readonly<AdventureSummaryCardProps>) {
+  return (
+    <div className="bg-card border border-border shadow-sm rounded-2xl p-6 flex flex-col sm:flex-row gap-6">
+      <Link 
+        href={`/experiences/${experience.slug}`}
+        className="w-full sm:w-48 xl:w-56 aspect-[4/3] sm:aspect-square shrink-0 rounded-xl overflow-hidden relative border border-border/50 group/img hover:border-primary/50 transition-colors"
+        title={`Back to ${experience.title}`}
+      >
+        {adventureImage ? (
+          <Image 
+            src={adventureImage} 
+            alt={experience.title}
+            fill
+            className="object-cover transition-transform duration-500 group-hover/img:scale-105"
+          />
+        ) : (
+          <div className="w-full h-full bg-muted flex items-center justify-center">
+            <Mountain className="w-8 h-8 text-muted-foreground/30" />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 transition-colors flex items-center justify-center">
+           <div className="bg-white/90 text-black px-3 py-1.5 rounded-full text-xs font-bold opacity-0 group-hover/img:opacity-100 transition-opacity shadow-lg">
+              View Trip
+           </div>
+        </div>
+      </Link>
+      <div className="flex-1 space-y-4">
+        <h2 className="text-2xl font-bold tracking-tight text-foreground">
+          Your Adventure Summary
+        </h2>
+        <div className="space-y-2.5 text-sm text-foreground/80">
+          <div className="flex items-start gap-3 border-b border-border/50 pb-2">
+            <MapPin className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold block text-foreground">Destination</span>
+              {experience.title} ({experience.location})
+            </div>
+          </div>
+          <div className="flex items-start gap-3 border-b border-border/50 pb-2">
+            <CalendarDays className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold block text-foreground">Dates & Duration</span>
+              {dateString} • {experience.durationDays} Days / {Math.max(1, experience.durationDays - 1)} Nights
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <Users className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold block text-foreground">Starting Point</span>
+              {experience.meetingPoint ? (
+                <>
+                  {experience.meetingPoint}
+                  {experience.meetingTime && ` • ${experience.meetingTime}`}
+                </>
+              ) : (
+                "To be communicated by Trip Manager"
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default async function BookingSuccessPage({
   params,
 }: Readonly<Props>) {
@@ -277,8 +366,8 @@ export default async function BookingSuccessPage({
     redirect("/login");
   }
 
-  const booking = await withBuildSafety(
-    () => prisma.booking.findUnique({
+  const booking: any = await withBuildSafety(
+    () => (prisma.booking as any).findUnique({
       where: { id },
       include: {
         experience: true,
@@ -295,6 +384,9 @@ export default async function BookingSuccessPage({
         participants: true,
         payments: {
           orderBy: { createdAt: "asc" },
+        },
+        couponTransactions: {
+          where: { type: "REDEEMED" },
         },
       },
     }),
@@ -315,7 +407,8 @@ export default async function BookingSuccessPage({
     redirect("/dashboard");
   }
 
-  const { experience, slot, participants, payments } = booking;
+  const { experience, slot, participants, payments, couponTransactions } = booking;
+  const couponDiscount = couponTransactions ? couponTransactions.reduce((sum: number, tx: any) => sum + Number(tx.amount), 0) : 0;
   const payment = payments.at(-1); // the most recent one
 
   // Dates
@@ -340,7 +433,7 @@ export default async function BookingSuccessPage({
   const experienceBaseTotal = Number(experience.basePrice) * booking.participantCount;
 
   // Leads
-  const trekLeads = slot?.assignments?.map((a) => a.trekLead) || [];
+  const trekLeads = slot?.assignments?.map((a: any) => a.trekLead) || [];
 
   const adventureImage = experience.cardImage || experience.coverImage || experience.images?.[0];
 
@@ -368,70 +461,15 @@ export default async function BookingSuccessPage({
           <div className="lg:col-span-2 space-y-6">
             
             {/* Adventure Summary */}
-            <div className="bg-card border border-border shadow-sm rounded-2xl p-6 flex flex-col sm:flex-row gap-6">
-              <Link 
-                href={`/experiences/${experience.slug}`}
-                className="w-full sm:w-48 xl:w-56 aspect-[4/3] sm:aspect-square shrink-0 rounded-xl overflow-hidden relative border border-border/50 group/img hover:border-primary/50 transition-colors"
-                title={`Back to ${experience.title}`}
-              >
-                {adventureImage ? (
-                  <Image 
-                    src={adventureImage} 
-                    alt={experience.title}
-                    fill
-                    className="object-cover transition-transform duration-500 group-hover/img:scale-105"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-muted flex items-center justify-center">
-                    <Mountain className="w-8 h-8 text-muted-foreground/30" />
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 transition-colors flex items-center justify-center">
-                   <div className="bg-white/90 text-black px-3 py-1.5 rounded-full text-xs font-bold opacity-0 group-hover/img:opacity-100 transition-opacity shadow-lg">
-                      View Trip
-                   </div>
-                </div>
-              </Link>
-              <div className="flex-1 space-y-4">
-                <h2 className="text-2xl font-bold tracking-tight text-foreground">
-                  Your Adventure Summary
-                </h2>
-                <div className="space-y-2.5 text-sm text-foreground/80">
-                  <div className="flex items-start gap-3 border-b border-border/50 pb-2">
-                    <MapPin className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-bold block text-foreground">Destination</span>
-                      {experience.title} ({experience.location})
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3 border-b border-border/50 pb-2">
-                    <CalendarDays className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-bold block text-foreground">Dates & Duration</span>
-                      {dateString} • {experience.durationDays} Days / {Math.max(1, experience.durationDays - 1)} Nights
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <Users className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-bold block text-foreground">Starting Point</span>
-                      {experience.meetingPoint ? (
-                        <>
-                          {experience.meetingPoint}
-                          {experience.meetingTime && ` • ${experience.meetingTime}`}
-                        </>
-                      ) : (
-                        "To be communicated by Trip Manager"
-                      )}
-                    </div>
-                </div>
-              </div>
-            </div>
-          </div>
+            <AdventureSummaryCard
+              experience={experience}
+              dateString={dateString}
+              adventureImage={adventureImage}
+            />
 
             {/* Guest Details */}
             <EditParticipantsClient
-              participants={participants as any}
+              participants={participants}
               bookingId={booking.id}
               pickupPoints={experience.pickupPoints}
               dropPoints={experience.dropPoints}
@@ -452,6 +490,7 @@ export default async function BookingSuccessPage({
               payments={payments}
               taxItems={taxItems}
               aggregatedAmenities={aggregatedAmenities}
+              couponDiscount={couponDiscount}
             />
             
           </div>
@@ -502,7 +541,7 @@ export default async function BookingSuccessPage({
               </div>
               <div className="p-5 space-y-5">
                 {trekLeads.length > 0 ? (
-                  trekLeads.map((lead) => (
+                  trekLeads.map((lead: any) => (
                     <div key={lead.id} className="flex items-center gap-4">
                       {lead.avatarUrl ? (
                          <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 border border-border">

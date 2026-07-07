@@ -18,6 +18,7 @@ interface InvoiceData {
     paidAmount?: number;
     remainingBalance?: number;
     paymentStatus?: string;
+    couponDiscount?: number;
   };
   company: {
     companyName: string;
@@ -153,25 +154,23 @@ function drawInvoiceDetailsAndBilledTo(
   
   doc.setFont("helvetica", "normal");
   doc.setTextColor(75, 85, 99); // Slate-600
-  doc.text(`Invoice No: INV-${booking.id.split("-")[0].toUpperCase()}`, 18, cardY + 12);
-  doc.text(`Invoice Date: ${formatInvoiceDate(booking.date)}`, 18, cardY + 17);
-  doc.text(`Place of Supply: Karnataka (29)`, 18, cardY + 22); 
-  doc.text(`Status: ${booking.status}`, 18, cardY + 27);
+  doc.text(`Invoice No: PARAM-${booking.id.split("-")[0].toUpperCase()}`, 18, cardY + 12);
+  doc.text(`Date: ${formatInvoiceDate(booking.date)}`, 18, cardY + 17);
+  doc.text(`Booking Status: ${booking.status}`, 18, cardY + 22);
 
-  // Right Card: Billed To
-  const rightCardX = 14 + cardWidth + 6;
-  doc.setFillColor(248, 250, 252); // Slate-50
-  doc.roundedRect(rightCardX, cardY, cardWidth, cardHeight, 2, 2, "F");
-
+  // Right Card: Billed to details
+  doc.setFillColor(248, 250, 252);
+  doc.roundedRect(14 + cardWidth + 6, cardY, cardWidth, cardHeight, 2, 2, "F");
+  
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(15, 118, 110); // Teal-700
-  doc.text("BILLED TO", rightCardX + 4, cardY + 6);
-
+  doc.setTextColor(15, 118, 110);
+  doc.text("BILLED TO", 14 + cardWidth + 10, cardY + 6);
+  
   doc.setFont("helvetica", "normal");
-  doc.setTextColor(75, 85, 99); // Slate-600
-  doc.text(`Name: ${primaryContact?.name || "Guest"}`, rightCardX + 4, cardY + 12);
-  doc.text(`Email: ${primaryContact?.email || "N/A"}`, rightCardX + 4, cardY + 17);
-  doc.text(`Phone: ${primaryContact?.phoneNumber || "N/A"}`, rightCardX + 4, cardY + 22);
+  doc.setTextColor(75, 85, 99);
+  doc.text(primaryContact?.name || "Customer", 14 + cardWidth + 10, cardY + 12);
+  doc.text(primaryContact?.email || "—", 14 + cardWidth + 10, cardY + 17);
+  doc.text(primaryContact?.phoneNumber || "—", 14 + cardWidth + 10, cardY + 22);
 
   return { cardHeight, cardY };
 }
@@ -184,8 +183,9 @@ function drawPaymentAndSummaryBlocks(
   finalY: number,
   pageWidth: number
 ): { summaryCardY: number; summaryCardH: number } {
+  const hasCoupon = booking.couponDiscount && booking.couponDiscount > 0;
   const summaryCardW = 85;
-  const summaryCardH = 35;
+  const summaryCardH = hasCoupon ? 47 : 35;
   const summaryCardX = pageWidth - 14 - summaryCardW;
   const summaryCardY = finalY + 8;
 
@@ -231,19 +231,19 @@ function drawPaymentAndSummaryBlocks(
   // Draw horizontal separator inside the payment card before footer line
   doc.setDrawColor(226, 232, 240); // Slate-200
   doc.setLineWidth(0.3);
-  doc.line(paymentCardX + 4, paymentCardY + 24, paymentCardX + paymentCardW - 4, paymentCardY + 24);
+  doc.line(paymentCardX + 4, paymentCardY + paymentCardH - 11, paymentCardX + paymentCardW - 4, paymentCardY + paymentCardH - 11);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8.5);
 
   if (remBal <= 0.01) {
     doc.setTextColor(34, 197, 94); // Green-500
-    doc.text(`Total Paid: Rs ${paidAmt.toFixed(2)}`, paymentCardX + 4, paymentCardY + 30);
-    doc.text("FULLY PAID", paymentCardX + paymentCardW - 25, paymentCardY + 30);
+    doc.text(`Total Paid: Rs ${paidAmt.toFixed(2)}`, paymentCardX + 4, paymentCardY + paymentCardH - 5);
+    doc.text("FULLY PAID", paymentCardX + paymentCardW - 25, paymentCardY + paymentCardH - 5);
   } else {
     doc.setTextColor(217, 119, 6); // Amber-600
-    doc.text(`Paid: Rs ${paidAmt.toFixed(2)}`, paymentCardX + 4, paymentCardY + 30);
-    doc.text(`Balance Due: Rs ${remBal.toFixed(2)}`, paymentCardX + paymentCardW - 45, paymentCardY + 30);
+    doc.text(`Paid: Rs ${paidAmt.toFixed(2)}`, paymentCardX + 4, paymentCardY + paymentCardH - 5);
+    doc.text(`Balance Due: Rs ${remBal.toFixed(2)}`, paymentCardX + paymentCardW - 45, paymentCardY + paymentCardH - 5);
   }
 
   // Right Card: Summary / Invoice Totals
@@ -266,16 +266,41 @@ function drawPaymentAndSummaryBlocks(
     });
   }
 
-  // Draw a line inside the summary card before total
+  // Draw a line inside the summary card before Gross Total
+  const line1Y = currentY + 1.5;
   doc.setDrawColor(226, 232, 240); // Slate-200
   doc.setLineWidth(0.3);
-  doc.line(summaryCardX + 4, summaryCardY + 24, pageWidth - 18, summaryCardY + 24);
+  doc.line(summaryCardX + 4, line1Y, pageWidth - 18, line1Y);
 
+  const grossTotalY = line1Y + 6;
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setTextColor(31, 41, 55); // Slate-800
-  doc.text("Gross Total:", summaryCardX + 4, summaryCardY + 30);
-  doc.text(`Rs ${Number(booking.totalPrice).toFixed(2)}`, pageWidth - 18, summaryCardY + 30, { align: "right" });
+  doc.text("Gross Total:", summaryCardX + 4, grossTotalY);
+  doc.text(`Rs ${Number(booking.totalPrice).toFixed(2)}`, pageWidth - 18, grossTotalY, { align: "right" });
+
+  if (hasCoupon) {
+    const couponDiscount = Number(booking.couponDiscount);
+    const couponY = grossTotalY + 5;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.5);
+    doc.setTextColor(249, 115, 22); // Orange-500
+    doc.text("Coupon Applied:", summaryCardX + 4, couponY);
+    doc.text(`-Rs ${couponDiscount.toFixed(2)}`, pageWidth - 18, couponY, { align: "right" });
+
+    // Draw second separator line before Net Price
+    const line2Y = couponY + 2.5;
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.3);
+    doc.line(summaryCardX + 4, line2Y, pageWidth - 18, line2Y);
+
+    const netPriceY = line2Y + 6;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(31, 41, 55);
+    doc.text("Net Total Paid/Due:", summaryCardX + 4, netPriceY);
+    doc.text(`Rs ${(Number(booking.totalPrice) - couponDiscount).toFixed(2)}`, pageWidth - 18, netPriceY, { align: "right" });
+  }
 
   return { summaryCardY, summaryCardH };
 }
