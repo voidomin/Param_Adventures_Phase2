@@ -3,6 +3,24 @@ import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 import { getRefundPercentage, calculateRefundBreakdown } from "@/lib/refund-engine";
 
+function calculateSelectedBaseFare(
+  participants: any[],
+  participantIds: string[],
+  experienceBasePrice: number
+): number {
+  let selectedBaseFare = 0;
+  const selectedParticipants = participants.filter(p => participantIds.includes(p.id));
+  for (const p of selectedParticipants) {
+    selectedBaseFare += experienceBasePrice;
+    if (p.selectedAmenities && Array.isArray(p.selectedAmenities)) {
+      for (const item of p.selectedAmenities as any[]) {
+        selectedBaseFare += Number(item.price) || 0;
+      }
+    }
+  }
+  return selectedBaseFare;
+}
+
 /**
  * GET /api/bookings/[id]/cancel-preview?participantIds=id1,id2
  * Preview cancellation refund details before submitting cancellation.
@@ -69,17 +87,11 @@ export async function GET(
     const ratio = cancelledCount / totalActiveCount;
 
     // Calculate base price for selected participants (including amenities)
-    const experienceBasePrice = Number(booking.experience.basePrice);
-    let selectedBaseFare = 0;
-    const selectedParticipants = activeParticipants.filter(p => participantIds.includes(p.id));
-    for (const p of selectedParticipants) {
-      selectedBaseFare += experienceBasePrice;
-      if (p.selectedAmenities && Array.isArray(p.selectedAmenities)) {
-        for (const item of p.selectedAmenities as any[]) {
-          selectedBaseFare += Number(item.price) || 0;
-        }
-      }
-    }
+    const selectedBaseFare = calculateSelectedBaseFare(
+      activeParticipants,
+      participantIds,
+      Number(booking.experience.basePrice)
+    );
 
     const selectedTotalPrice = Number(booking.totalPrice) * ratio;
     const selectedPaidAmount = Number(booking.paidAmount) * ratio;

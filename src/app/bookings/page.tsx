@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Clock, MapPin, IndianRupee, Loader2, X, AlertTriangle, MessageCircle } from "lucide-react";
 import SaveButton from "@/components/experiences/SaveButton";
+import { type RefundBreakdown } from "@/lib/refund-engine";
 
 type TabStatus = "saved" | "pending" | "upcoming" | "past" | "cancelled";
 
@@ -77,7 +78,7 @@ function CancelModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [previewData, setPreviewData] = useState<any | null>(null);
+  const [previewData, setPreviewData] = useState<RefundBreakdown | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
 
   useEffect(() => {
@@ -117,6 +118,61 @@ function CancelModal({
       setIsSubmitting(false);
     }
   };
+
+  let previewContent = null;
+  if (isPreviewLoading) {
+    previewContent = (
+      <div className="flex items-center gap-2 text-xs text-foreground/50 py-2">
+        <Loader2 className="w-4 h-4 animate-spin text-primary" /> Calculating eligible refund details...
+      </div>
+    );
+  } else if (previewData) {
+    previewContent = (
+      <div className="space-y-2 text-sm">
+        <div className="flex justify-between">
+          <span className="text-foreground/60">Trip Cost (Base Fare):</span>
+          <span className="font-bold text-foreground">₹{previewData.baseFare.toLocaleString("en-IN")}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-foreground/60">
+            {preference === "COUPON" ? "GST Component (Refunded as Coupon):" : "GST Component (Non-Refundable):"}
+          </span>
+          <span className="font-bold text-foreground">₹{previewData.gst.toLocaleString("en-IN")}</span>
+        </div>
+        <div className="flex justify-between">
+          <span className="text-foreground/60">
+            {preference === "COUPON" ? "Convenience Fee (Refunded as Coupon):" : "Convenience Fee (Non-Refundable):"}
+          </span>
+          <span className="font-bold text-foreground">₹{previewData.convenienceFee.toLocaleString("en-IN")}</span>
+        </div>
+        <div className="flex justify-between text-red-400">
+          <span>Cancellation Charges ({previewData.cancellationPercent}%):</span>
+          <span className="font-bold">-₹{previewData.cancellationCharges.toLocaleString("en-IN")}</span>
+        </div>
+        
+        <div className="border-t border-border/50 pt-2 flex justify-between font-black text-base">
+          <span className="text-foreground">Net Refund Amount:</span>
+          <span className="text-green-500">₹{previewData.finalRefundAmount.toLocaleString("en-IN")}</span>
+        </div>
+        
+        <p className="text-[10px] text-foreground/45 leading-normal pt-1 italic">
+          {preference === "COUPON"
+            ? "* GST and Convenience Fee are fully refunded in the form of a travel coupon."
+            : "* GST and Convenience Fee are non-refundable for guest-initiated bank refund cancellations."}
+        </p>
+
+        <div className="mt-4 p-3 bg-primary/10 border border-primary/20 rounded-xl text-xs text-primary font-bold text-center animate-in fade-in duration-200">
+          Confirming: You will receive <strong>₹{previewData.finalRefundAmount.toLocaleString("en-IN")}</strong> {preference === "COUPON" ? "as a Travel Coupon" : "via Bank Transfer"}.
+        </div>
+      </div>
+    );
+  } else {
+    previewContent = (
+      <div className="text-xs text-red-400">
+        Failed to load breakdown. Using policy defaults on submit.
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
@@ -209,53 +265,7 @@ function CancelModal({
           {(booking.paymentStatus === "PAID" || booking.paymentStatus === "PARTIALLY_PAID") && (
             <div className="bg-foreground/5 border border-border/80 rounded-2xl p-5 text-left space-y-3">
               <span className="text-[10px] font-black text-foreground/45 uppercase tracking-widest block">Refund Breakdown Preview</span>
-              {isPreviewLoading ? (
-                <div className="flex items-center gap-2 text-xs text-foreground/50 py-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-primary" /> Calculating eligible refund details...
-                </div>
-              ) : previewData ? (
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-foreground/60">Trip Cost (Base Fare):</span>
-                    <span className="font-bold text-foreground">₹{previewData.baseFare.toLocaleString("en-IN")}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-foreground/60">
-                      {preference === "COUPON" ? "GST Component (Refunded as Coupon):" : "GST Component (Non-Refundable):"}
-                    </span>
-                    <span className="font-bold text-foreground">₹{previewData.gst.toLocaleString("en-IN")}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-foreground/60">
-                      {preference === "COUPON" ? "Convenience Fee (Refunded as Coupon):" : "Convenience Fee (Non-Refundable):"}
-                    </span>
-                    <span className="font-bold text-foreground">₹{previewData.convenienceFee.toLocaleString("en-IN")}</span>
-                  </div>
-                  <div className="flex justify-between text-red-400">
-                    <span>Cancellation Charges ({previewData.cancellationPercent}%):</span>
-                    <span className="font-bold">-₹{previewData.cancellationCharges.toLocaleString("en-IN")}</span>
-                  </div>
-                  
-                  <div className="border-t border-border/50 pt-2 flex justify-between font-black text-base">
-                    <span className="text-foreground">Net Refund Amount:</span>
-                    <span className="text-green-500">₹{previewData.finalRefundAmount.toLocaleString("en-IN")}</span>
-                  </div>
-                  
-                  <p className="text-[10px] text-foreground/45 leading-normal pt-1 italic">
-                    {preference === "COUPON"
-                      ? "* GST and Convenience Fee are fully refunded in the form of a travel coupon."
-                      : "* GST and Convenience Fee are non-refundable for guest-initiated bank refund cancellations."}
-                  </p>
-
-                  <div className="mt-4 p-3 bg-primary/10 border border-primary/20 rounded-xl text-xs text-primary font-bold text-center animate-in fade-in duration-200">
-                    Confirming: You will receive <strong>₹{previewData.finalRefundAmount.toLocaleString("en-IN")}</strong> {preference === "COUPON" ? "as a Travel Coupon" : "via Bank Transfer"}.
-                  </div>
-                </div>
-              ) : (
-                <div className="text-xs text-red-400">
-                  Failed to load breakdown. Using policy defaults on submit.
-                </div>
-              )}
+              {previewContent}
             </div>
           )}
 
@@ -319,6 +329,10 @@ function PayBalanceModal({
   const [couponError, setCouponError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleRemoveCoupon = (couponId: string) => {
+    setAppliedCoupons((prev) => prev.filter((c) => c.id !== couponId));
+  };
 
   const totalPrice = Number(booking.remainingBalance);
   const couponDiscount = appliedCoupons.reduce((sum, c) => sum + c.balance, 0);
@@ -489,9 +503,7 @@ function PayBalanceModal({
                       <span className="font-semibold text-foreground">- ₹{coupon.balance.toLocaleString("en-IN")}</span>
                       <button
                         type="button"
-                        onClick={() => {
-                          setAppliedCoupons(prev => prev.filter(c => c.id !== coupon.id));
-                        }}
+                        onClick={() => handleRemoveCoupon(coupon.id)}
                         className="text-red-500 hover:text-red-700 transition-colors text-[10px] font-bold uppercase tracking-wider"
                       >
                         Remove
@@ -732,79 +744,7 @@ export default function BookingsPage() {
     rzp.open();
   };
 
-  const handlePayBalance = async (booking: BookingItem) => {
-    setProcessingId(booking.id);
-    const scriptLoaded = await loadRazorpayScript();
-    if (!scriptLoaded) {
-      alert("Failed to load payment gateway.");
-      setProcessingId(null);
-      return;
-    }
-
-    try {
-      const res = await fetch(`/api/bookings/${booking.id}/pay-balance`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to initiate balance payment.");
-
-      const { orderId, amount, currency, keyId } = data;
-
-      const RazorpayCtor = globalThis.window.Razorpay;
-      if (!RazorpayCtor) {
-        alert("Payment gateway is unavailable.");
-        setProcessingId(null);
-        return;
-      }
-
-      const rzp = new RazorpayCtor({
-        key: keyId || razorpayKeyId || "",
-        amount,
-        currency,
-        order_id: orderId,
-        name: "Param Adventures",
-        description: `Balance - ${booking.experience.title}`,
-        theme: { color: "#D4AF37" },
-        handler: async (response: {
-          razorpay_order_id: string;
-          razorpay_payment_id: string;
-          razorpay_signature: string;
-        }) => {
-          try {
-            const verifyRes = await fetch("/api/bookings/verify", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-                bookingId: booking.id,
-              }),
-            });
-            const verifyData = await verifyRes.json();
-            if (!verifyRes.ok) throw new Error(verifyData.error);
-
-            alert("Balance Paid Successfully!");
-            globalThis.location.reload();
-          } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : "Unknown error";
-            alert("Payment verification failed: " + message);
-          } finally {
-            setProcessingId(null);
-          }
-        },
-        modal: {
-          ondismiss: () => setProcessingId(null),
-        },
-      });
-      rzp.open();
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Unknown error";
-      alert("Error initiating payment: " + message);
-      setProcessingId(null);
-    }
-  };
+  // handlePayBalance removed as unused, balance payments now handled in PayBalanceModal
 
   const tabs = [
     { id: "saved", label: "Wishlist", count: saved.length },
