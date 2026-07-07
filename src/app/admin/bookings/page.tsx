@@ -595,7 +595,6 @@ export default function AdminBookingsPage() {
 
   // Pagination and specialized refund filtering states
   const [currentPage, setCurrentPage] = useState(1);
-  const [showOnlyRefunds, setShowOnlyRefunds] = useState(false);
   const itemsPerPage = 15;
 
   // New filters state
@@ -610,7 +609,7 @@ export default function AdminBookingsPage() {
   // Reset pagination when any filter changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [search, statusFilter, showOnlyRefunds, bookingDateStart, bookingDateEnd, slotDateStart, slotDateEnd, viewArchived]);
+  }, [search, statusFilter, bookingDateStart, bookingDateEnd, slotDateStart, slotDateEnd, viewArchived]);
 
   const fetchBookings = () => {
     const params = new URLSearchParams();
@@ -779,9 +778,6 @@ export default function AdminBookingsPage() {
   };
 
   const filtered = bookings.filter((b) => {
-    if (showOnlyRefunds) {
-      if (b.paymentStatus !== "REFUND_PENDING") return false;
-    }
     if (hideFinishedTrips && !viewArchived) {
       if (!b.slot) return false;
       const tripDate = new Date(b.slot.date);
@@ -1317,20 +1313,12 @@ export default function AdminBookingsPage() {
             Travel Coupons
           </Link>
           {pendingRefunds.length > 0 && (
-            <button
-              type="button"
-              onClick={() => {
-                setShowOnlyRefunds(!showOnlyRefunds);
-                setCurrentPage(1);
-              }}
-              className={`w-full sm:w-auto px-4 py-2.5 font-bold text-xs uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 h-11 cursor-pointer border ${
-                showOnlyRefunds 
-                  ? "bg-yellow-500 text-black border-yellow-500 hover:bg-yellow-600 shadow-lg shadow-yellow-500/20" 
-                  : "bg-yellow-500/10 border border-yellow-500/25 hover:bg-yellow-500 text-yellow-600 hover:text-white"
-              }`}
+            <Link
+              href="/admin/bookings/pending"
+              className="w-full sm:w-auto px-4 py-2.5 bg-yellow-500/10 border border-yellow-500/25 hover:bg-yellow-500 text-yellow-600 hover:text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 h-11"
             >
-              {showOnlyRefunds ? "Show All Bookings" : `Pending Refunds (${pendingRefunds.length})`}
-            </button>
+              Pending Refunds ({pendingRefunds.length})
+            </Link>
           )}
           <button
             onClick={handleExport}
