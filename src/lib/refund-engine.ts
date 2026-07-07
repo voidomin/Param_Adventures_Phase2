@@ -121,22 +121,18 @@ export function calculateRefundBreakdown(params: {
   const isEffectiveFullPayment = paymentType === "FULL" || Number(paidAmount) >= Number(totalPrice) - 0.1;
 
   let finalRefundAmount = 0;
-  if (!isEffectiveFullPayment) {
+  if (isEffectiveFullPayment && refundPreference === "COUPON") {
+    // Coupon Refund -> GST and Convenience Fee are refunded. Only deduct cancellation charges.
+    finalRefundAmount = Math.max(0, paidAmount - cancellationCharges);
+  } else if (isEffectiveFullPayment) {
+    // Regular / Full payment -> GST and Conv Fee are non-refundable. Only base fare minus cancellation charges.
+    finalRefundAmount = Math.min(refundableBaseFare, paidAmount);
+  } else if (refundPercent === 100) {
     // Scenario 6: Partial / Advance payment -> seat block only, no GST/conv fee charged by company.
-    if (refundPercent === 100) {
-      finalRefundAmount = paidAmount;
-    } else {
-      // Deduct cancellation charges directly from the paid advance amount
-      finalRefundAmount = Math.max(0, paidAmount - cancellationCharges);
-    }
+    finalRefundAmount = paidAmount;
   } else {
-    if (refundPreference === "COUPON") {
-      // Coupon Refund -> GST and Convenience Fee are refunded. Only deduct cancellation charges.
-      finalRefundAmount = Math.max(0, paidAmount - cancellationCharges);
-    } else {
-      // Regular / Full payment -> GST and Conv Fee are non-refundable. Only base fare minus cancellation charges.
-      finalRefundAmount = Math.min(refundableBaseFare, paidAmount);
-    }
+    // Deduct cancellation charges directly from the paid advance amount
+    finalRefundAmount = Math.max(0, paidAmount - cancellationCharges);
   }
 
   return {
