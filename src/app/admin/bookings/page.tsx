@@ -1317,6 +1317,22 @@ export default function AdminBookingsPage() {
           >
             Travel Coupons
           </Link>
+          {pendingRefunds.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                setShowOnlyRefunds(!showOnlyRefunds);
+                setCurrentPage(1);
+              }}
+              className={`w-full sm:w-auto px-4 py-2.5 font-bold text-xs uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 h-11 cursor-pointer border ${
+                showOnlyRefunds 
+                  ? "bg-yellow-500 text-black border-yellow-500 hover:bg-yellow-600 shadow-lg shadow-yellow-500/20" 
+                  : "bg-yellow-500/10 border border-yellow-500/25 hover:bg-yellow-500 text-yellow-600 hover:text-white"
+              }`}
+            >
+              {showOnlyRefunds ? "Show All Bookings" : `Pending Refunds (${pendingRefunds.length})`}
+            </button>
+          )}
           <button
             onClick={handleExport}
             disabled={isExporting}
@@ -1392,38 +1408,7 @@ export default function AdminBookingsPage() {
         </div>
       </div>
 
-      {/* Refund Pending Alerts */}
-      {pendingRefunds.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-yellow-500/10 border border-yellow-500/20 rounded-2xl p-4 gap-4 animate-in fade-in duration-200 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 shrink-0 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-500">
-              <AlertTriangle className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-sm font-bold text-foreground">
-                Refund Verification Required
-              </p>
-              <p className="text-xs text-foreground/60 mt-0.5">
-                You have {pendingRefunds.length} pending refund {pendingRefunds.length === 1 ? "request" : "requests"} that require action.
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setShowOnlyRefunds(!showOnlyRefunds);
-              setCurrentPage(1);
-            }}
-            className={`w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold transition-all uppercase tracking-wider cursor-pointer border ${
-              showOnlyRefunds 
-                ? "bg-yellow-500 text-black border-yellow-500 hover:bg-yellow-600" 
-                : "bg-transparent text-yellow-500 border-yellow-500/30 hover:bg-yellow-500/10"
-            }`}
-          >
-            {showOnlyRefunds ? "Show All Bookings" : "View Requests"}
-          </button>
-        </div>
-      )}
+
 
       {/* Filters Bar */}
       <div className="flex flex-col gap-4 bg-foreground/[0.01] border border-border/60 rounded-2xl p-4 mb-6">
@@ -1596,79 +1581,7 @@ export default function AdminBookingsPage() {
 
       {bookingsContent}
 
-      {/* ─── Cancellations Section ───────────────────────── */}
-      {pendingRefunds.length > 0 && (
-        <div className="mt-12 pt-8 border-t border-border">
-          <div className="mb-6">
-            <h2 className="text-2xl font-heading font-bold text-foreground flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-              {" Pending Refunds "}
-              <span className="ml-2 text-sm font-normal bg-amber-400/10 text-amber-400 border border-amber-400/20 px-2.5 py-0.5 rounded-full">
-                {pendingRefunds.length}
-              </span>
-            </h2>
-            <p className="text-foreground/50 mt-1 text-sm">
-              Users are waiting for a coupon code or bank refund. Resolve each one manually.
-            </p>
-          </div>
-          <div className="grid gap-4">
-            {pendingRefunds.map((b) => (
-              <div key={b.id} className="bg-card border border-amber-500/20 rounded-xl p-5 flex flex-col md:flex-row gap-4 items-start md:items-center">
-                <div className="flex-1 space-y-1">
-                  <p className="font-bold text-foreground">{b.user.name}{" "}
-                    <span className="text-foreground/40 font-normal text-sm">&lt;{b.user.email}&gt;</span>
-                  </p>
-                  <p className="text-sm text-foreground/60">{b.experience.title}{b.slot ? ` · ${formatDate(b.slot.date)}` : ""}</p>
-                  <p className="text-sm text-foreground/80">
-                    {b.refundAmount ? (
-                      <span className="font-bold text-amber-500">
-                        Refund Asked: ₹{Number(b.refundAmount).toLocaleString("en-IN")}
-                      </span>
-                    ) : (
-                      <span>Total: ₹{Number(b.totalPrice).toLocaleString("en-IN")}</span>
-                    )}{" "}
-                    ·{" "}
-                    {(() => {
-                      const cancelledCount = b.participants ? b.participants.filter(p => p.isCancelled).length : 0;
-                      if (cancelledCount > 0) {
-                        const totalCount = b.participants ? b.participants.length : b.participantCount;
-                        return (
-                          <span>
-                            {cancelledCount} Refund Asked{" "}
-                            <span className="text-foreground/45 font-normal text-xs">
-                              (of {totalCount} pax)
-                            </span>
-                          </span>
-                        );
-                      }
-                      return <span>{b.participantCount} pax</span>;
-                    })()}
-                  </p>
-                  {b.cancellationReason && (
-                    <p className="text-xs text-foreground/40">Reason: {b.cancellationReason}</p>
-                  )}
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={`text-sm font-bold px-3 py-1 rounded-full border ${
-                    b.refundPreference === "COUPON"
-                      ? "bg-primary/10 text-primary border-primary/20"
-                      : "bg-blue-500/10 text-blue-400 border-blue-500/20"
-                  }`}>
-                    {b.refundPreference === "COUPON" ? "🎟️ Coupon" : "🏦 Bank Refund"}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setResolvingBooking(b)}
-                    className="px-4 py-2 bg-primary text-primary-foreground font-bold text-sm rounded-xl hover:opacity-90 transition-opacity"
-                  >
-                    Resolve →
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+
 
       {selectedBooking && (
         <ManualVerifyModal
