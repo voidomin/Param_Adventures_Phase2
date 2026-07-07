@@ -20,14 +20,6 @@ export async function GET(
   try {
     const { searchParams } = new URL(request.url);
     const participantIdsStr = searchParams.get("participantIds");
-    if (!participantIdsStr) {
-      return NextResponse.json({ error: "Participant IDs are required." }, { status: 400 });
-    }
-
-    const participantIds = participantIdsStr.split(",").map(id => id.trim()).filter(Boolean);
-    if (participantIds.length === 0) {
-      return NextResponse.json({ error: "Participant IDs cannot be empty." }, { status: 400 });
-    }
 
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
@@ -52,8 +44,16 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden." }, { status: 403 });
     }
 
-    // Verify participant IDs are valid and not already cancelled
     const activeParticipants = booking.participants.filter(p => !p.isCancelled);
+    const participantIds = participantIdsStr
+      ? participantIdsStr.split(",").map(id => id.trim()).filter(Boolean)
+      : activeParticipants.map(p => p.id);
+
+    if (participantIds.length === 0) {
+      return NextResponse.json({ error: "No active participants found to cancel." }, { status: 400 });
+    }
+
+    // Verify participant IDs are valid and not already cancelled
     const activeIds = new Set(activeParticipants.map(p => p.id));
     const invalidIds = participantIds.filter(id => !activeIds.has(id));
     if (invalidIds.length > 0) {
