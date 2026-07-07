@@ -13,7 +13,6 @@ import {
   Eye,
   ExternalLink,
   Archive,
-  AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
 import { TableSkeleton } from "@/components/admin/TableSkeleton";
