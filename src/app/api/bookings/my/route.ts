@@ -51,7 +51,12 @@ export async function GET(request: NextRequest) {
     const past = bookings.filter(
       (b) => b.bookingStatus === "CONFIRMED" && b.slot && b.slot.date < now,
     );
-    const pending = bookings.filter((b) => b.bookingStatus === "REQUESTED");
+    const pending = bookings.filter(
+      (b) =>
+        b.bookingStatus === "REQUESTED" &&
+        b.paymentStatus !== "PENDING" &&
+        b.paymentStatus !== "FAILED",
+    );
     const cancelled = bookings.filter((b) => b.bookingStatus === "CANCELLED");
 
     // Fetch the public key for the frontend

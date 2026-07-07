@@ -310,6 +310,11 @@ export default async function BookingSuccessPage({
     redirect("/dashboard");
   }
 
+  // Prevent accessing success page for unpaid/failed booking attempts
+  if (booking.paymentStatus === "PENDING" || booking.paymentStatus === "FAILED") {
+    redirect("/dashboard");
+  }
+
   const { experience, slot, participants, payments } = booking;
   const payment = payments.at(-1); // the most recent one
 

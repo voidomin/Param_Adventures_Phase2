@@ -109,11 +109,17 @@ export const BookingService = {
     // We use Serializable isolation to prevent phantom reads and ensure absolute consistency.
     const result = await runWithRetry(() =>
       prisma.$transaction(async (tx: any) => {
-        // Idempotency: Check if a similar requested booking exists for this user/slot
-      const existing = await BookingRepo.findExistingPendingBooking(tx, userId, data.slotId);
-      if (existing) {
-        throw new Error("ALREADY_REQUESTED");
-      }
+        // If a similar requested/pending booking exists, mark it as cancelled so it doesn't block the new checkout
+        const existing = await BookingRepo.findExistingPendingBooking(tx, userId, data.slotId);
+        if (existing) {
+          await tx.booking.update({
+            where: { id: existing.id },
+            data: {
+              bookingStatus: "CANCELLED",
+              cancellationReason: "Superseded by new checkout attempt",
+            },
+          });
+        }
 
       // Experience & Slot checks
       const [experience, slot] = await Promise.all([
