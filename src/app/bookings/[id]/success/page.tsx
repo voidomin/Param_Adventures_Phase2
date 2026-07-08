@@ -452,7 +452,7 @@ export default async function BookingSuccessPage({
 
   const trekLeadList = trekLeads as TrekLeadInput[];
 
-  const adventureImage = experience.cardImage || experience.coverImage || (experience.images as string[])?.[0];
+  const adventureImage = experience.cardImage || experience.coverImage || experience.images?.[0];
 
   let statusBadgeClasses = "text-foreground/50 bg-muted";
   if (booking.paymentStatus === "PAID") {

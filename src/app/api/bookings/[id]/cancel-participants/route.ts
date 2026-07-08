@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { PaymentStatus } from "@prisma/client";
+import { PaymentStatus, Prisma } from "@prisma/client";
 import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
 import { z } from "zod";
@@ -67,12 +67,12 @@ async function processFullCancellation(params: {
   const finalRefund = breakdown.finalRefundAmount;
 
   // If selecting coupon refund, booking paymentStatus does not need to remain REFUND_PENDING
-  const newPaymentStatus =
-    preference === "BANK_REFUND" && (booking.paymentStatus === "PAID" || booking.paymentStatus === "PARTIALLY_PAID") && finalRefund > 0
-      ? "REFUND_PENDING"
-      : finalRefund > 0 && preference === "COUPON"
-      ? "REFUNDED"
-      : booking.paymentStatus;
+  let newPaymentStatus = booking.paymentStatus;
+  if (preference === "BANK_REFUND" && (booking.paymentStatus === "PAID" || booking.paymentStatus === "PARTIALLY_PAID") && finalRefund > 0) {
+    newPaymentStatus = "REFUND_PENDING";
+  } else if (finalRefund > 0 && preference === "COUPON") {
+    newPaymentStatus = "REFUNDED";
+  }
 
   await prisma.$transaction(async (tx) => {
     const current = await tx.booking.findUnique({
@@ -249,6 +249,41 @@ async function calculateRefundProportional(params: {
   };
 }
 
+type BookingWithRelations = Prisma.BookingGetPayload<{
+  include: {
+    participants: true;
+    experience: true;
+    slot: true;
+    user: { select: { name: true; email: true } };
+  };
+}>;
+
+function validateBookingCancellation(params: {
+  booking: BookingWithRelations | null;
+  userId: string;
+  participantIds: string[];
+}) {
+  const { booking, userId, participantIds } = params;
+  if (!booking) return { error: "Booking not found.", status: 404 };
+  if (booking.userId !== userId) return { error: "Forbidden.", status: 403 };
+  if (booking.bookingStatus === "CANCELLED") return { error: "Booking is already cancelled.", status: 409 };
+  if (booking.bookingStatus !== "REQUESTED" && booking.bookingStatus !== "CONFIRMED") {
+    return { error: "This booking cannot be cancelled.", status: 409 };
+  }
+
+  const activeParticipants = booking.participants.filter((p) => !p.isCancelled);
+  const activeIds = new Set(activeParticipants.map((p) => p.id));
+  const invalidIds = participantIds.filter((id) => !activeIds.has(id));
+  if (invalidIds.length > 0) {
+    return { error: `Invalid or already cancelled participant IDs: ${invalidIds.join(", ")}`, status: 400 };
+  }
+
+  return {
+    activeParticipants,
+    isFullCancellation: activeParticipants.length === participantIds.length
+  };
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -278,37 +313,18 @@ export async function POST(
       },
     });
 
-    if (!booking) {
-      return NextResponse.json({ error: "Booking not found." }, { status: 404 });
-    }
-    if (booking.userId !== userId) {
-      return NextResponse.json({ error: "Forbidden." }, { status: 403 });
-    }
-    if (booking.bookingStatus === "CANCELLED") {
-      return NextResponse.json({ error: "Booking is already cancelled." }, { status: 409 });
-    }
-    if (booking.bookingStatus !== "REQUESTED" && booking.bookingStatus !== "CONFIRMED") {
-      return NextResponse.json({ error: "This booking cannot be cancelled." }, { status: 409 });
+    const validation = validateBookingCancellation({ booking, userId, participantIds });
+    if ("error" in validation) {
+      return NextResponse.json({ error: validation.error }, { status: validation.status });
     }
 
-    const activeParticipants = booking.participants.filter((p) => !p.isCancelled);
-    const activeIds = new Set(activeParticipants.map((p) => p.id));
-
-    // Verify all participantIds are active in this booking
-    const invalidIds = participantIds.filter((id) => !activeIds.has(id));
-    if (invalidIds.length > 0) {
-      return NextResponse.json(
-        { error: `Invalid or already cancelled participant IDs: ${invalidIds.join(", ")}` },
-        { status: 400 }
-      );
-    }
-
-    const isFullCancellation = activeParticipants.length === participantIds.length;
+    const { activeParticipants, isFullCancellation } = validation;
+    const dbBooking = booking!;
 
     if (isFullCancellation) {
       await processFullCancellation({
         bookingId,
-        booking,
+        booking: dbBooking,
         activeCount: activeParticipants.length,
         userId,
         reason,
@@ -319,7 +335,7 @@ export async function POST(
 
     // Process partial cancellation
     const financials = await calculateRefundProportional({
-      booking,
+      booking: dbBooking,
       activeParticipants,
       participantIds,
       preference,
@@ -347,12 +363,12 @@ export async function POST(
           },
         });
 
-        const newPaymentStatus =
-          preference === "BANK_REFUND" && financials.refundAmount > 0
-            ? "REFUND_PENDING"
-            : financials.refundAmount > 0 && preference === "COUPON"
-            ? "PARTIALLY_PAID"
-            : booking.paymentStatus;
+        let newPaymentStatus = dbBooking.paymentStatus;
+        if (preference === "BANK_REFUND" && financials.refundAmount > 0) {
+          newPaymentStatus = "REFUND_PENDING";
+        } else if (financials.refundAmount > 0 && preference === "COUPON") {
+          newPaymentStatus = "PARTIALLY_PAID";
+        }
 
         await tx.booking.update({
           where: { id: bookingId },
@@ -368,9 +384,9 @@ export async function POST(
           },
         });
 
-        if (booking.slotId && booking.bookingStatus === "CONFIRMED") {
+        if (dbBooking.slotId && dbBooking.bookingStatus === "CONFIRMED") {
           await tx.slot.update({
-            where: { id: booking.slotId },
+            where: { id: dbBooking.slotId },
             data: {
               remainingCapacity: { increment: participantIds.length },
             },
@@ -393,7 +409,7 @@ export async function POST(
           const newCoupon = await tx.travelCoupon.create({
             data: {
               code: generatedCoupon,
-              customerId: booking.userId,
+              customerId: dbBooking.userId,
               bookingId,
               originalValue: financials.refundAmount,
               balance: financials.refundAmount,
@@ -420,7 +436,7 @@ export async function POST(
           await tx.refundRequest.create({
             data: {
               bookingId,
-              customerId: booking.userId,
+              customerId: dbBooking.userId,
               refundMethod: "BANK_TRANSFER",
               baseFare: financials.breakdown.baseFare,
               gst: financials.breakdown.gst,
@@ -438,14 +454,14 @@ export async function POST(
       if (preference === "COUPON" && financials.refundAmount > 0 && generatedCoupon) {
         try {
           await sendRefundResolved({
-            userName: booking.user.name || "Adventurer",
-            userEmail: booking.user.email,
-            experienceTitle: booking.experience.title,
-            slotDate: booking.slot?.date?.toISOString() ?? new Date().toISOString(),
+            userName: dbBooking.user.name || "Adventurer",
+            userEmail: dbBooking.user.email,
+            experienceTitle: dbBooking.experience.title,
+            slotDate: dbBooking.slot?.date?.toISOString() ?? new Date().toISOString(),
             refundPreference: "COUPON",
             refundNote: generatedCoupon,
             totalPrice: financials.refundAmount,
-            bookingId: booking.id,
+            bookingId: dbBooking.id,
           });
         } catch (emailErr) {
           console.error("[CancelParticipants] Error sending coupon refund email:", emailErr);
