@@ -47,7 +47,7 @@ export async function PATCH(
     const booking = refundRequest.booking;
 
     // Build update payload for RefundRequest
-    const refundUpdateData: any = {
+    const refundUpdateData: Record<string, unknown> = {
       status: status as RefundStatus,
       remarks: remarks !== undefined ? remarks : refundRequest.remarks,
       utrNumber: utrNumber !== undefined ? utrNumber : refundRequest.utrNumber,

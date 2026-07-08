@@ -3,8 +3,17 @@ import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 import { getRefundPercentage, calculateRefundBreakdown } from "@/lib/refund-engine";
 
+interface PreviewParticipant {
+  id: string;
+  selectedAmenities?: unknown;
+}
+
+interface PreviewAmenity {
+  price: unknown;
+}
+
 function calculateSelectedBaseFare(
-  participants: any[],
+  participants: PreviewParticipant[],
   participantIds: string[],
   experienceBasePrice: number
 ): number {
@@ -13,7 +22,7 @@ function calculateSelectedBaseFare(
   for (const p of selectedParticipants) {
     selectedBaseFare += experienceBasePrice;
     if (p.selectedAmenities && Array.isArray(p.selectedAmenities)) {
-      for (const item of p.selectedAmenities as any[]) {
+      for (const item of p.selectedAmenities as PreviewAmenity[]) {
         selectedBaseFare += Number(item.price) || 0;
       }
     }

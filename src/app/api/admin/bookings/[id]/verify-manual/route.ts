@@ -183,11 +183,12 @@ export async function POST(
       booking: updatedBooking,
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Manual verification error:", error);
     
     // Catch unique constraint violation on providerPaymentId
-    if (error.code === "P2002" && error.meta?.target?.includes("providerPaymentId")) {
+    const err = error as { code?: string; meta?: { target?: string[] } };
+    if (err.code === "P2002" && err.meta?.target?.includes("providerPaymentId")) {
       return NextResponse.json({
         error: "This Transaction ID / Reference has already been registered for another payment. Please verify the Reference ID and try again."
       }, { status: 400 });

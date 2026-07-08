@@ -94,7 +94,7 @@ export function calculateRefundBreakdown(params: {
   // Calculate GST from taxBreakdown
   let gst = 0;
   if (Array.isArray(taxBreakdown)) {
-    gst = taxBreakdown.reduce((sum, item: any) => sum + (Number(item.amount) || 0), 0);
+    gst = taxBreakdown.reduce((sum, item: { amount: unknown }) => sum + (Number(item.amount) || 0), 0);
   }
   gst = round2(gst);
 

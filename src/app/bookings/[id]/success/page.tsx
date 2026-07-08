@@ -145,7 +145,7 @@ interface PaymentConfirmationCardProps {
   payments: {
     id: string;
     status: string;
-    amount: any;
+    amount: unknown;
     createdAt: string | Date;
   }[];
   taxItems: {
@@ -280,7 +280,15 @@ function PaymentConfirmationCard({
 }
 
 interface AdventureSummaryCardProps {
-  experience: any;
+  experience: {
+    slug: string;
+    title: string;
+    location: string;
+    difficulty?: string | null;
+    durationDays: number;
+    meetingPoint?: string | null;
+    meetingTime?: string | null;
+  };
   dateString: string;
   adventureImage?: string;
 }
@@ -366,8 +374,8 @@ export default async function BookingSuccessPage({
     redirect("/login");
   }
 
-  const booking: any = await withBuildSafety(
-    () => (prisma.booking as any).findUnique({
+  const booking = await withBuildSafety(
+    () => prisma.booking.findUnique({
       where: { id },
       include: {
         experience: true,
@@ -408,7 +416,7 @@ export default async function BookingSuccessPage({
   }
 
   const { experience, slot, participants, payments, couponTransactions } = booking;
-  const couponDiscount = couponTransactions ? couponTransactions.reduce((sum: number, tx: any) => sum + Number(tx.amount), 0) : 0;
+  const couponDiscount = couponTransactions ? couponTransactions.reduce((sum: number, tx: { amount: unknown }) => sum + Number(tx.amount), 0) : 0;
   const payment = payments.at(-1); // the most recent one
 
   // Dates
@@ -433,9 +441,18 @@ export default async function BookingSuccessPage({
   const experienceBaseTotal = Number(experience.basePrice) * booking.participantCount;
 
   // Leads
-  const trekLeads = slot?.assignments?.map((a: any) => a.trekLead) || [];
+  const trekLeads = slot?.assignments?.map((a: { trekLead: unknown }) => a.trekLead).filter(Boolean) || [];
 
-  const adventureImage = experience.cardImage || experience.coverImage || experience.images?.[0];
+  interface TrekLeadInput {
+    id: string;
+    name: string;
+    avatarUrl?: string | null;
+    phoneNumber?: string | null;
+  }
+
+  const trekLeadList = trekLeads as TrekLeadInput[];
+
+  const adventureImage = experience.cardImage || experience.coverImage || (experience.images as string[])?.[0];
 
   let statusBadgeClasses = "text-foreground/50 bg-muted";
   if (booking.paymentStatus === "PAID") {
@@ -540,8 +557,8 @@ export default async function BookingSuccessPage({
                 <h3 className="text-base font-bold text-foreground">Your Expedition Team</h3>
               </div>
               <div className="p-5 space-y-5">
-                {trekLeads.length > 0 ? (
-                  trekLeads.map((lead: any) => (
+                {trekLeadList.length > 0 ? (
+                  trekLeadList.map((lead: TrekLeadInput) => (
                     <div key={lead.id} className="flex items-center gap-4">
                       {lead.avatarUrl ? (
                          <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 border border-border">

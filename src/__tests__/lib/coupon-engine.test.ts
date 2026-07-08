@@ -82,7 +82,7 @@ describe("Coupon Engine Unit Tests", () => {
 
       const res = await validateCoupon("CODE", "user1");
       expect(res.error).toBeUndefined();
-      expect(res.coupon.id).toBe("c1");
+      expect(res.coupon?.id).toBe("c1");
     });
   });
 
@@ -106,7 +106,7 @@ describe("Coupon Engine Unit Tests", () => {
         couponId: "c1",
         bookingId: "b1",
         amount: 400,
-        tx: mockTx,
+        tx: mockTx as any,
       });
 
       expect(mockTx.travelCoupon.update).toHaveBeenCalledWith({
@@ -170,7 +170,7 @@ describe("Coupon Engine Unit Tests", () => {
       const result = await restoreCouponsForBooking({
         bookingId: "b1",
         cancellationCharges: 100, // 100 cancellation fee
-        tx: mockTx,
+        tx: mockTx as any,
       });
 
       // Cancellation charge applies to c1 first:

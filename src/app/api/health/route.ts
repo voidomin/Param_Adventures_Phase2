@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // Perform a lightweight query to verify DB connection
     await prisma.$queryRaw`SELECT 1`;

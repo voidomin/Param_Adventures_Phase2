@@ -31,14 +31,14 @@ export async function POST(request: NextRequest) {
     }
 
     if (paymentAmount !== undefined) {
-      if (paymentAmount < Number(coupon.balance)) {
+      if (paymentAmount < Number(coupon!.balance)) {
         return NextResponse.json(
-          { error: `Coupon value (₹${Number(coupon.balance)}) cannot exceed the booking/payment amount (₹${paymentAmount}).` },
+          { error: `Coupon value (₹${Number(coupon!.balance)}) cannot exceed the booking/payment amount (₹${paymentAmount}).` },
           { status: 400 }
         );
       }
 
-      const remaining = Number((paymentAmount - Number(coupon.balance)).toFixed(2));
+      const remaining = Number((paymentAmount - Number(coupon!.balance)).toFixed(2));
       if (remaining > 0 && remaining < 1) {
         return NextResponse.json(
           { error: `Applying this coupon would leave a balance of ₹${remaining}, which is below the minimum online payment of ₹1.00.` },
@@ -50,10 +50,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       coupon: {
-        id: coupon.id,
-        code: coupon.code,
-        balance: Number(coupon.balance),
-        expiryDate: coupon.expiryDate,
+        id: coupon!.id,
+        code: coupon!.code,
+        balance: Number(coupon!.balance),
+        expiryDate: coupon!.expiryDate,
       },
     });
 

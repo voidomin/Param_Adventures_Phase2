@@ -49,14 +49,15 @@ export async function runWithRetry<T>(
   while (true) {
     try {
       return await fn();
-    } catch (error: any) {
+    } catch (error: unknown) {
       attempt++;
       
+      const err = error as { code?: string; message?: string; meta?: { code?: string } };
       const isSerializationError =
-        error.code === "P2034" ||
-        error.message?.includes("P2034") ||
-        error.meta?.code === "P2034" ||
-        error.message?.includes("could not serialize access");
+        err.code === "P2034" ||
+        err.message?.includes("P2034") ||
+        err.meta?.code === "P2034" ||
+        err.message?.includes("could not serialize access");
 
       if (isSerializationError && attempt < maxRetries) {
         console.warn(

@@ -729,7 +729,7 @@ export default function DashboardPage() {
                       )}
                       {refund.remarks && (
                         <span className="text-foreground/40 italic">
-                          "{refund.remarks}"
+                          &ldquo;{refund.remarks}&rdquo;
                         </span>
                       )}
                     </div>

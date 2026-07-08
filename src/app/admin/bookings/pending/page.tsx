@@ -215,7 +215,6 @@ export default function PendingRefundsPage() {
   const [resolvingBooking, setResolvingBooking] = useState<Booking | null>(null);
 
   const fetchBookings = () => {
-    setIsLoading(true);
     fetch("/api/admin/bookings?limit=1000")
       .then((r) => r.json())
       .then((d) => {
@@ -372,6 +371,7 @@ export default function PendingRefundsPage() {
           onClose={() => setResolvingBooking(null)}
           onSuccess={() => {
             setResolvingBooking(null);
+            setIsLoading(true);
             fetchBookings();
           }}
         />

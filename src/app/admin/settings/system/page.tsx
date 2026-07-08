@@ -28,7 +28,7 @@ import SecurityTab from "@/components/admin/settings/SecurityTab";
 import SystemTab from "@/components/admin/settings/SystemTab";
 import IntegrationsTab from "@/components/admin/settings/IntegrationsTab";
 
-const maskValue = (key: string, value: string | number | undefined | null) => {
+const _maskValue = (key: string, value: string | number | undefined | null) => {
   if (value === undefined || value === null) return "n/a";
   const str = String(value);
   const sensitiveKeys = ["secret", "key", "token", "password", "auth", "dsn"];

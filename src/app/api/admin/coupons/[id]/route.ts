@@ -32,7 +32,7 @@ export async function PATCH(
     }
 
     const updatedCoupon = await prisma.$transaction(async (tx) => {
-      let currentBal = Number(coupon.balance);
+      const currentBal = Number(coupon.balance);
       let newBal = currentBal;
 
       if (balanceAction && amount > 0) {
@@ -55,7 +55,7 @@ export async function PATCH(
         });
       }
 
-      const updatePayload: any = {
+      const updatePayload: Record<string, unknown> = {
         balance: newBal,
       };
 
@@ -257,9 +257,9 @@ export async function POST(
 
     return NextResponse.json({ error: "Invalid action." }, { status: 400 });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Admin split/merge coupon error:", error);
-    return NextResponse.json({ error: error.message || "Failed to split/merge coupon." }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Failed to split/merge coupon." }, { status: 500 });
   }
 }
 

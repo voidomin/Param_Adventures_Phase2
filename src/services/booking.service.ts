@@ -45,10 +45,17 @@ function calculateParticipantsBaseFare(
   return baseFare;
 }
 
-function checkCouponValidity(coupon: any, userId: string) {
+interface CouponInput {
+  customerId: string;
+  status: string;
+  expiryDate: string | Date | null;
+  balance: unknown;
+}
+
+function checkCouponValidity(coupon: CouponInput | null, userId: string) {
   if (!coupon) throw new Error("COUPON_ERROR: Invalid coupon code.");
   if (coupon.customerId !== userId) throw new Error("COUPON_ERROR: Coupon belongs to another customer.");
-  if (coupon.status === "EXPIRED" || isExpiredIST(coupon.expiryDate)) {
+  if (coupon.status === "EXPIRED" || isExpiredIST(coupon.expiryDate ?? "")) {
     throw new Error("COUPON_ERROR: Coupon has expired.");
   }
   if (coupon.status === "FULLY_USED" || Number(coupon.balance) <= 0) {
@@ -60,7 +67,7 @@ function checkCouponValidity(coupon: any, userId: string) {
 }
 
 async function processCheckoutCoupons(
-  tx: any,
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
   appliedCoupons: string[],
   userId: string,
   initialRemaining: number
@@ -78,18 +85,18 @@ async function processCheckoutCoupons(
 
     checkCouponValidity(dbCoupon, userId);
 
-    if (remaining < Number(dbCoupon.balance)) {
+    if (remaining < Number(dbCoupon!.balance)) {
       throw new Error(`COUPON_ERROR: Coupon value exceeds the booking/payment amount.`);
     }
 
-    const redeemAmount = Math.min(Number(dbCoupon.balance), remaining);
+    const redeemAmount = Math.min(Number(dbCoupon!.balance), remaining);
     const nextRemaining = Math.round((remaining - redeemAmount) * 100) / 100;
     if (nextRemaining > 0 && nextRemaining < 1) {
       throw new Error(`COUPON_ERROR: Applying this coupon would leave a balance of ₹${nextRemaining}, which is below the minimum online payment of ₹1.00.`);
     }
     remaining = nextRemaining;
     totalCouponRedeemed += redeemAmount;
-    redemptionsList.push({ couponId: dbCoupon.id, amount: redeemAmount });
+    redemptionsList.push({ couponId: dbCoupon!.id, amount: redeemAmount });
   }
 
   return { remaining, totalCouponRedeemed, redemptionsList };
@@ -108,7 +115,7 @@ export const BookingService = {
     // 2. ATOMIC TRANSACTION: Ensuring Slot Capacity vs Booking Entry
     // We use Serializable isolation to prevent phantom reads and ensure absolute consistency.
     const result = await runWithRetry(() =>
-      prisma.$transaction(async (tx: any) => {
+      prisma.$transaction(async (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => {
         // If a similar requested/pending booking exists, mark it as cancelled so it doesn't block the new checkout
         const existing = await BookingRepo.findExistingPendingBooking(tx, userId, data.slotId);
         if (existing) {
@@ -312,7 +319,7 @@ export const BookingService = {
 
     } catch (razorpayError) {
       // 5. Graceful Soft-Rollback: Restore coupons and set booking CANCELLED
-      await prisma.$transaction(async (rollbackTx: any) => {
+      await prisma.$transaction(async (rollbackTx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => {
         await BookingRepo.updateStatus(rollbackTx, booking.id, "CANCELLED");
         
         // Restore applied coupons on Razorpay error
@@ -359,7 +366,7 @@ export const BookingService = {
    */
   async confirmPayment(bookingId: string, razorpayOrderId: string, razorpayPaymentId: string, payload: Record<string, unknown>) {
     try {
-      const updatedBooking = await prisma.$transaction(async (tx: any) => {
+      const updatedBooking = await prisma.$transaction(async (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => {
         const booking = await tx.booking.findUnique({
           where: { id: bookingId },
           select: { id: true, userId: true, bookingStatus: true, participantCount: true, slotId: true, totalPrice: true, paidAmount: true },
@@ -509,7 +516,7 @@ export const BookingService = {
       if (typeof experience.extraAmenities === "string") {
         extraAmenitiesConfig = JSON.parse(experience.extraAmenities);
       } else {
-        extraAmenitiesConfig = experience.extraAmenities as any;
+        extraAmenitiesConfig = experience.extraAmenities as unknown as ExtraAmenityGroup[];
       }
     }
 

@@ -377,8 +377,8 @@ function PayBalanceModal({
 
       setAppliedCoupons(prev => [...prev, data.coupon]);
       setCouponCode("");
-    } catch (err: any) {
-      setCouponError(err.message || "Invalid coupon.");
+    } catch (err: unknown) {
+      setCouponError(err instanceof Error ? err.message : "Invalid coupon.");
     } finally {
       setCouponLoading(false);
     }
@@ -446,8 +446,8 @@ function PayBalanceModal({
             alert("Payment Successful!");
             onSuccess();
             onClose();
-          } catch (err: any) {
-            alert("Payment verification failed: " + err.message);
+          } catch (err: unknown) {
+            alert("Payment verification failed: " + (err instanceof Error ? err.message : "unknown error"));
           }
         },
         modal: {
@@ -456,8 +456,8 @@ function PayBalanceModal({
       });
       rzp.open();
 
-    } catch (err: any) {
-      setError(err.message || "Failed to process payment.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to process payment.");
       setIsSubmitting(false);
     }
   };

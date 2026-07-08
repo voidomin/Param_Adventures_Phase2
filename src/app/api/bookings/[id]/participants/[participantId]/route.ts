@@ -76,7 +76,7 @@ export async function PATCH(
       );
     }
 
-    const dataToUpdate: any = { ...parsed.data };
+    const dataToUpdate: Record<string, unknown> = { ...parsed.data };
     if (parsed.data.dateOfBirth) {
       dataToUpdate.dateOfBirth = new Date(parsed.data.dateOfBirth);
       dataToUpdate.age = calculateAge(parsed.data.dateOfBirth);

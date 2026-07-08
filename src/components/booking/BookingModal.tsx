@@ -1925,8 +1925,8 @@ export default function BookingModal({
                         
                         setAppliedCoupons(prev => [...prev, data.coupon]);
                         setCouponInput("");
-                      } catch (err: any) {
-                        setCouponError(err.message || "Invalid coupon.");
+                      } catch (err: unknown) {
+                        setCouponError(err instanceof Error ? err.message : "Invalid coupon.");
                       } finally {
                         setCouponLoading(false);
                       }

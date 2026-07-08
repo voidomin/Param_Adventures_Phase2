@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { PaymentStatus } from "@prisma/client";
 import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
 import { z } from "zod";
@@ -13,10 +14,35 @@ const cancelSchema = z.object({
   preference: z.enum(["COUPON", "BANK_REFUND"]),
 });
 
+interface CancelBookingInput {
+  slot: { date: string | Date } | null;
+  baseFare: unknown;
+  totalPrice: unknown;
+  paidAmount: unknown;
+  paymentType: string;
+  paymentStatus: string;
+  bookingStatus: string;
+  slotId?: string | null;
+  userId: string;
+  participantCount: number;
+  refundAmount?: unknown;
+  taxBreakdown: unknown;
+  experience?: { basePrice: unknown } | null;
+}
+
+interface CancelParticipantInput {
+  id: string;
+  selectedAmenities?: unknown;
+}
+
+interface AmenityInput {
+  price: unknown;
+}
+
 // Helper to perform full booking cancellation using refund-engine
 async function processFullCancellation(params: {
   bookingId: string;
-  booking: any;
+  booking: CancelBookingInput;
   activeCount: number;
   userId: string;
   reason?: string;
@@ -53,7 +79,7 @@ async function processFullCancellation(params: {
       where: { id: bookingId },
       data: {
         bookingStatus: "CANCELLED",
-        paymentStatus: newPaymentStatus,
+        paymentStatus: newPaymentStatus as PaymentStatus,
         cancelledAt: new Date(),
         cancelledByUserId: userId,
         cancellationReason: reason || null,
@@ -148,13 +174,13 @@ async function processFullCancellation(params: {
 
 // Helper to calculate financials for partial cancellation using refund-engine
 async function calculateRefundProportional(params: {
-  booking: any;
-  activeParticipants: any[];
+  booking: CancelBookingInput;
+  activeParticipants: CancelParticipantInput[];
   participantIds: string[];
   preference: "COUPON" | "BANK_REFUND";
 }) {
   const { booking, activeParticipants, participantIds, preference } = params;
-  const experienceBasePrice = Number(booking.experience.basePrice);
+  const experienceBasePrice = Number(booking.experience?.basePrice || 0);
 
   let totalCancelledBase = 0;
   const cancelledParticipants = activeParticipants.filter((p) => participantIds.includes(p.id));
@@ -162,7 +188,7 @@ async function calculateRefundProportional(params: {
   for (const p of cancelledParticipants) {
     totalCancelledBase += experienceBasePrice;
     if (p.selectedAmenities && Array.isArray(p.selectedAmenities)) {
-      for (const item of p.selectedAmenities as any[]) {
+      for (const item of p.selectedAmenities as AmenityInput[]) {
         totalCancelledBase += Number(item.price) || 0;
       }
     }

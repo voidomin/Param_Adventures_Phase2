@@ -23,14 +23,14 @@ export function isExpiredIST(expiryDate: Date | string): boolean {
 export async function validateCoupon(
   code: string,
   customerId: string
-): Promise<{ coupon: TravelCoupon; error?: string }> {
+): Promise<{ coupon: TravelCoupon | null; error?: string }> {
   try {
     const coupon = await prisma.travelCoupon.findUnique({
       where: { code: code.toUpperCase().trim() },
     });
 
     if (!coupon) {
-      return { coupon: null as any, error: "Invalid coupon code." };
+      return { coupon: null, error: "Invalid coupon code." };
     }
 
     if (coupon.customerId !== customerId) {
@@ -59,7 +59,7 @@ export async function validateCoupon(
     return { coupon };
   } catch (err) {
     console.error("[CouponEngine] Error validating coupon:", err);
-    return { coupon: null as any, error: "Failed to validate coupon." };
+    return { coupon: null, error: "Failed to validate coupon." };
   }
 }
 
@@ -70,7 +70,7 @@ export async function redeemCoupon(params: {
   couponId: string;
   bookingId: string;
   amount: number;
-  tx: any;
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 }): Promise<void> {
   const { couponId, bookingId, amount, tx } = params;
 
@@ -115,7 +115,7 @@ export async function redeemCoupon(params: {
 export async function restoreCouponsForBooking(params: {
   bookingId: string;
   cancellationCharges: number;
-  tx: any;
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 }): Promise<{ totalRestored: number }> {
   const { bookingId, cancellationCharges, tx } = params;
 
@@ -141,7 +141,6 @@ export async function restoreCouponsForBooking(params: {
     if (isExpiredIST(coupon.expiryDate)) {
       // Keep transaction logs but don't restore balance
       await tx.couponTransaction.create({
-        tx,
         data: {
           couponId: coupon.id,
           bookingId,

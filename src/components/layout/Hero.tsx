@@ -53,7 +53,7 @@ interface HeroSlide {
   subtitle: string | null;
   videoUrl: string;
   ctaLink: string | null;
-  features?: any;
+  features?: unknown;
 }
 
 const FALLBACK_SLIDES: HeroSlide[] = [
@@ -297,7 +297,7 @@ export default function Hero({
 
               return (
                 <div className="mt-12 flex flex-wrap items-center justify-start gap-x-8 gap-y-4 text-white/50 text-[10px] font-bold tracking-[0.2em] uppercase">
-                  {slideFeatures.map((feat: any, idx: number) => {
+                  {slideFeatures.map((feat: { icon: string; text: string }, idx: number) => {
                     const IconComponent = iconMap[feat.icon] || Info;
                     return (
                       <React.Fragment key={`feat-${idx}`}>

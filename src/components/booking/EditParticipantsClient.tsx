@@ -12,6 +12,15 @@ interface SelectedAmenity {
   price: number;
 }
 
+interface RefundPreview {
+  baseFare: number;
+  gst: number;
+  convenienceFee: number;
+  cancellationPercent: number;
+  cancellationCharges: number;
+  finalRefundAmount: number;
+}
+
 type NullableString = string | null;
 type NullableNumber = number | null;
 type DateOrStringOrNull = Date | string | null;
@@ -32,7 +41,7 @@ interface Participant {
   emergencyRelationship: NullableString;
   pickupPoint: NullableString;
   dropPoint: NullableString;
-  selectedAmenities: any;
+  selectedAmenities: unknown;
   isCancelled: boolean;
   cancelledAt: DateOrStringOrNull;
 }
@@ -106,7 +115,7 @@ export default function EditParticipantsClient({
   const [cancelReason, setCancelReason] = useState("");
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [isCancelSubmitting, setIsCancelSubmitting] = useState(false);
-  const [previewData, setPreviewData] = useState<any | null>(null);
+  const [previewData, setPreviewData] = useState<RefundPreview | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
 
   useEffect(() => {

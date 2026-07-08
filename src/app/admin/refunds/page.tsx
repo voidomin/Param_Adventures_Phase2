@@ -1,4 +1,5 @@
 "use client";
+import { useCallback } from "react";
 
 import { useState, useEffect } from "react";
 import {
@@ -60,7 +61,7 @@ export default function AdminRefundRequestsPage() {
   const [adminNotes, setAdminNotes] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const fetchRefunds = async () => {
+  const fetchRefunds = useCallback(async () => {
     setIsLoading(true);
     setError("");
     try {
@@ -68,16 +69,16 @@ export default function AdminRefundRequestsPage() {
       if (!res.ok) throw new Error("Failed to load refund requests");
       const data = await res.json();
       setRefunds(data.refundRequests || []);
-    } catch (err: any) {
-      setError(err.message || "Failed to load refund requests");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load refund requests");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [filterStatus]);
 
   useEffect(() => {
     fetchRefunds();
-  }, [filterStatus]);
+  }, [fetchRefunds]);
 
   const handleOpenReview = (refund: RefundRequest) => {
     setSelectedRefund(refund);
@@ -105,8 +106,8 @@ export default function AdminRefundRequestsPage() {
 
       setSelectedRefund(null);
       fetchRefunds();
-    } catch (err: any) {
-      alert(err.message || "Failed to update refund request status");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to update refund request status");
     } finally {
       setIsUpdating(false);
     }

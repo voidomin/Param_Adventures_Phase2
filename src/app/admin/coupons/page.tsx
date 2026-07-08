@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   CreditCard,
   Search,
@@ -81,7 +81,7 @@ export default function AdminCouponsPage() {
   const [isUpdating, setIsUpdating] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const fetchCoupons = async () => {
+  const fetchCoupons = useCallback(async () => {
     setIsLoading(true);
     setError("");
     try {
@@ -89,16 +89,16 @@ export default function AdminCouponsPage() {
       if (!res.ok) throw new Error("Failed to load travel coupons");
       const data = await res.json();
       setCoupons(data.coupons || []);
-    } catch (err: any) {
-      setError(err.message || "Something went wrong.");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [filterStatus]);
 
   useEffect(() => {
     fetchCoupons();
-  }, [filterStatus]);
+  }, [fetchCoupons]);
 
   // Lookup customer details by email for new coupons
   const handleLookupCustomer = async () => {
@@ -164,8 +164,8 @@ export default function AdminCouponsPage() {
       setNewExpiry("");
       setNewReason("");
       fetchCoupons();
-    } catch (err: any) {
-      setCreateError(err.message || "Something went wrong.");
+    } catch (err: unknown) {
+      setCreateError(err instanceof Error ? err.message : "Something went wrong.");
     } finally {
       setIsCreating(false);
     }
@@ -195,8 +195,8 @@ export default function AdminCouponsPage() {
 
       setSelectedCoupon(null);
       fetchCoupons();
-    } catch (err: any) {
-      setActionError(err.message || "Adjustment failed.");
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : "Adjustment failed.");
     } finally {
       setIsUpdating(false);
     }
@@ -226,8 +226,8 @@ export default function AdminCouponsPage() {
 
       setSelectedCoupon(null);
       fetchCoupons();
-    } catch (err: any) {
-      setActionError(err.message || "Merge failed.");
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : "Merge failed.");
     } finally {
       setIsUpdating(false);
     }
@@ -258,8 +258,8 @@ export default function AdminCouponsPage() {
 
       setSelectedCoupon(null);
       fetchCoupons();
-    } catch (err: any) {
-      setActionError(err.message || "Split failed.");
+    } catch (err: unknown) {
+      setActionError(err instanceof Error ? err.message : "Split failed.");
     } finally {
       setIsUpdating(false);
     }
@@ -273,8 +273,8 @@ export default function AdminCouponsPage() {
       if (!res.ok) throw new Error(data.error || "Failed to delete coupon");
       setSelectedCoupon(null);
       fetchCoupons();
-    } catch (err: any) {
-      alert(err.message || "Failed to delete coupon");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to delete coupon");
     }
   };
 
@@ -576,7 +576,7 @@ export default function AdminCouponsPage() {
                       <select
                         id="adj-action"
                         value={adjAction}
-                        onChange={(e) => setAdjAction(e.target.value as any)}
+                        onChange={(e) => setAdjAction(e.target.value as "INCREASE" | "DECREASE" | "NONE")}
                         className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm focus:ring-1 focus:ring-primary outline-none font-bold"
                       >
                         <option value="NONE">No balance change</option>

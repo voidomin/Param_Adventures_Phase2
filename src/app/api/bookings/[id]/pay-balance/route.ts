@@ -5,11 +5,19 @@ import { getRazorpay } from "@/lib/razorpay";
 import { BookingRepo } from "@/repositories/booking.repo";
 import { logActivity } from "@/lib/audit-logger";
 import { isExpiredIST } from "@/lib/coupon-engine";
+import { CouponStatus } from "@prisma/client";
 
-function checkCouponValidity(coupon: any, userId: string) {
+interface CouponInput {
+  customerId: string;
+  status: string;
+  expiryDate: string | Date | null;
+  balance: unknown;
+}
+
+function checkCouponValidity(coupon: CouponInput | null, userId: string) {
   if (!coupon) throw new Error("COUPON_ERROR: Invalid coupon code.");
   if (coupon.customerId !== userId) throw new Error("COUPON_ERROR: Coupon belongs to another customer.");
-  if (coupon.status === "EXPIRED" || isExpiredIST(coupon.expiryDate)) {
+  if (coupon.status === "EXPIRED" || isExpiredIST(coupon.expiryDate ?? "")) {
     throw new Error("COUPON_ERROR: Coupon has expired.");
   }
   if (coupon.status === "FULLY_USED" || Number(coupon.balance) <= 0) {
@@ -21,7 +29,7 @@ function checkCouponValidity(coupon: any, userId: string) {
 }
 
 async function validateAndCalculateCoupons(
-  tx: any,
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
   appliedCoupons: string[],
   userId: string,
   initialRemaining: number
@@ -39,18 +47,18 @@ async function validateAndCalculateCoupons(
 
     checkCouponValidity(dbCoupon, userId);
 
-    if (remaining < Number(dbCoupon.balance)) {
+    if (remaining < Number(dbCoupon!.balance)) {
       throw new Error(`COUPON_ERROR: Coupon value exceeds the booking/payment amount.`);
     }
 
-    const redeemAmount = Number(dbCoupon.balance);
+    const redeemAmount = Number(dbCoupon!.balance);
     const nextRemaining = Math.round((remaining - redeemAmount) * 100) / 100;
     if (nextRemaining > 0 && nextRemaining < 1) {
       throw new Error(`COUPON_ERROR: Applying this coupon would leave a balance of ₹${nextRemaining}, which is below the minimum online payment of ₹1.00.`);
     }
     remaining = nextRemaining;
     totalCouponRedeemed += redeemAmount;
-    redemptionsList.push({ couponId: dbCoupon.id, amount: redeemAmount });
+    redemptionsList.push({ couponId: dbCoupon!.id, amount: redeemAmount });
   }
 
   return { remaining, totalCouponRedeemed, redemptionsList };
@@ -89,9 +97,8 @@ export async function POST(
       return NextResponse.json({ error: "Booking is already fully paid." }, { status: 400 });
     }
 
-    // Execute changes atomically inside transaction with serialization retries
     const transactionResult = await runWithRetry(() =>
-      prisma.$transaction(async (tx: any) => {
+      prisma.$transaction(async (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => {
         const booking = await tx.booking.findUnique({
           where: { id: bookingId },
           include: { experience: { select: { title: true } } }
@@ -116,7 +123,7 @@ export async function POST(
 
           await tx.travelCoupon.update({
             where: { id: red.couponId },
-            data: { balance: newBal, status: newStatus as any },
+            data: { balance: newBal, status: newStatus as CouponStatus },
           });
 
           await tx.couponTransaction.create({

@@ -14,7 +14,7 @@ interface HeroSlide {
   ctaLink: string | null;
   isActive: boolean;
   order: number;
-  features?: any;
+  features?: unknown;
 }
 
 interface HeroFormProps {
