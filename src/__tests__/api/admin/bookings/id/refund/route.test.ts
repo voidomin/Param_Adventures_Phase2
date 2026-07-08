@@ -4,14 +4,25 @@ import { NextRequest, NextResponse } from "next/server";
 vi.mock("@/lib/api-auth", () => ({ authorizeRequest: vi.fn() }));
 vi.mock("@/lib/audit-logger", () => ({ logActivity: vi.fn() }));
 vi.mock("@/lib/email", () => ({ sendRefundResolved: vi.fn() }));
-vi.mock("@/lib/db", () => ({
-  prisma: {
+vi.mock("@/lib/db", () => {
+  const mockPrisma = {
     booking: {
       findUnique: vi.fn(),
       update: vi.fn(),
     },
-  },
-}));
+    travelCoupon: {
+      create: vi.fn(),
+    },
+    couponTransaction: {
+      create: vi.fn(),
+    },
+    $transaction: vi.fn(),
+  };
+  mockPrisma.$transaction = vi.fn().mockImplementation(async (callback) => {
+    return callback(mockPrisma);
+  });
+  return { prisma: mockPrisma };
+});
 
 import { POST } from "@/app/api/admin/bookings/[id]/refund/route";
 import { authorizeRequest } from "@/lib/api-auth";
@@ -36,6 +47,7 @@ describe("POST /api/admin/bookings/[id]/refund", () => {
     mockBookingUpdate.mockResolvedValue({ id: "b1" } as any);
     mockLogActivity.mockResolvedValue(undefined as any);
     mockSendRefundResolved.mockResolvedValue(undefined as any);
+    vi.mocked(prisma.travelCoupon.create).mockResolvedValue({ id: "coupon1" } as any);
   });
 
   it("returns auth response when unauthorized", async () => {
@@ -90,9 +102,12 @@ describe("POST /api/admin/bookings/[id]/refund", () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
     mockBookingFindUnique.mockResolvedValue({
       id: "b1",
+      bookingStatus: "CANCELLED",
       paymentStatus: "REFUND_PENDING",
       refundPreference: "BANK_TRANSFER",
       totalPrice: 2500,
+      paidAmount: 2500,
+      refundAmount: null,
       slot: { date: new Date("2026-04-01T00:00:00.000Z") },
       user: { name: "Akash", email: "akash@example.com" },
       experience: { title: "Everest Base Camp" },
@@ -109,7 +124,10 @@ describe("POST /api/admin/bookings/[id]/refund", () => {
       where: { id: "b1" },
       data: {
         paymentStatus: "REFUNDED",
+        paidAmount: 0,
+        remainingBalance: 2500,
         refundNote: "UTR123",
+        refundAmount: null,
       },
     });
     expect(mockLogActivity).toHaveBeenCalledWith(
@@ -126,9 +144,12 @@ describe("POST /api/admin/bookings/[id]/refund", () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
     mockBookingFindUnique.mockResolvedValue({
       id: "b1",
+      bookingStatus: "CANCELLED",
       paymentStatus: "REFUND_PENDING",
       refundPreference: "COUPON",
       totalPrice: 1500,
+      paidAmount: 1500,
+      refundAmount: null,
       slot: { date: new Date("2026-04-01T00:00:00.000Z") },
       user: { name: null, email: "akash@example.com" },
       experience: { title: "Everest Base Camp" },
@@ -148,9 +169,12 @@ describe("POST /api/admin/bookings/[id]/refund", () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
     mockBookingFindUnique.mockResolvedValue({
       id: "b1",
+      bookingStatus: "CANCELLED",
       paymentStatus: "REFUND_PENDING",
       refundPreference: null,
       totalPrice: 1500,
+      paidAmount: 1500,
+      refundAmount: null,
       slot: null,
       user: { name: "Akash", email: "akash@example.com" },
       experience: { title: "Everest Base Camp" },
@@ -173,9 +197,12 @@ describe("POST /api/admin/bookings/[id]/refund", () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
     mockBookingFindUnique.mockResolvedValue({
       id: "b1",
+      bookingStatus: "CANCELLED",
       paymentStatus: "REFUND_PENDING",
       refundPreference: "COUPON",
       totalPrice: 2500,
+      paidAmount: 2500,
+      refundAmount: null,
       slot: { date: new Date("2026-04-01T00:00:00.000Z") },
       user: { name: "Akash", email: "akash@example.com" },
       experience: { title: "Everest Base Camp" },
@@ -193,9 +220,12 @@ describe("POST /api/admin/bookings/[id]/refund", () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
     mockBookingFindUnique.mockResolvedValue({
       id: "b1",
+      bookingStatus: "CANCELLED",
       paymentStatus: "REFUND_PENDING",
       refundPreference: "COUPON",
       totalPrice: 2500,
+      paidAmount: 2500,
+      refundAmount: null,
       slot: { date: new Date("2026-04-01T00:00:00.000Z") },
       user: { name: "Akash", email: "akash@example.com" },
       experience: { title: "Everest Base Camp" },
@@ -213,9 +243,12 @@ describe("POST /api/admin/bookings/[id]/refund", () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
     mockBookingFindUnique.mockResolvedValue({
       id: "b1",
+      bookingStatus: "CANCELLED",
       paymentStatus: "REFUND_PENDING",
       refundPreference: "COUPON",
       totalPrice: 2500,
+      paidAmount: 2500,
+      refundAmount: null,
       slot: { date: new Date("2026-04-01T00:00:00.000Z") },
       user: { name: "Akash", email: "akash@example.com" },
       experience: { title: "Everest Base Camp" },
@@ -238,5 +271,61 @@ describe("POST /api/admin/bookings/[id]/refund", () => {
     });
 
     expect(response.status).toBe(500);
+  });
+
+  it("applies manual refundAmount override for coupon generation", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
+    mockBookingFindUnique.mockResolvedValue({
+      id: "b1",
+      bookingStatus: "CANCELLED",
+      paymentStatus: "REFUND_PENDING",
+      refundPreference: "COUPON",
+      totalPrice: 2500,
+      paidAmount: 2500,
+      refundAmount: null,
+      slot: { date: new Date("2026-04-01T00:00:00.000Z") },
+      user: { name: "Akash", email: "akash@example.com" },
+      experience: { title: "Everest Base Camp" },
+    } as any);
+
+    const response = await POST(createRequest({ refundNote: "AUTO_GENERATE", refundAmount: 1200 }), {
+      params: Promise.resolve({ id: "b1" }),
+    });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(prisma.travelCoupon.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          originalValue: 1200,
+          balance: 1200,
+        })
+      })
+    );
+  });
+
+  it("returns 400 if manual refundAmount exceeds paidAmount", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
+    mockBookingFindUnique.mockResolvedValue({
+      id: "b1",
+      bookingStatus: "CANCELLED",
+      paymentStatus: "REFUND_PENDING",
+      refundPreference: "COUPON",
+      totalPrice: 2500,
+      paidAmount: 2000,
+      refundAmount: null,
+      slot: { date: new Date("2026-04-01T00:00:00.000Z") },
+      user: { name: "Akash", email: "akash@example.com" },
+      experience: { title: "Everest Base Camp" },
+    } as any);
+
+    const response = await POST(createRequest({ refundNote: "AUTO_GENERATE", refundAmount: 2200 }), {
+      params: Promise.resolve({ id: "b1" }),
+    });
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toContain("cannot exceed the paid amount");
   });
 });

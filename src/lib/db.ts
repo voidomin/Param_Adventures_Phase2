@@ -35,3 +35,39 @@ export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 // Cache Prisma globally across all environments (including production build)
 // to prevent connection pool leaks and memory exhaustion during parallel page pre-rendering.
 globalForPrisma.prisma = prisma;
+
+/**
+ * Executes a database action with automatic retry on serialization failures (Prisma error P2034).
+ * This is crucial when using Serializable isolation level on concurrent transactions.
+ */
+export async function runWithRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries = 3,
+  delayMs = 50
+): Promise<T> {
+  let attempt = 0;
+  while (true) {
+    try {
+      return await fn();
+    } catch (error: unknown) {
+      attempt++;
+      
+      const err = error as { code?: string; message?: string; meta?: { code?: string } };
+      const isSerializationError =
+        err.code === "P2034" ||
+        err.message?.includes("P2034") ||
+        err.meta?.code === "P2034" ||
+        err.message?.includes("could not serialize access");
+
+      if (isSerializationError && attempt < maxRetries) {
+        console.warn(
+          `[TransactionRetry] Serialization failure encountered (attempt ${attempt}/${maxRetries}). Retrying in ${delayMs}ms...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        continue;
+      }
+      throw error;
+    }
+  }
+}
+

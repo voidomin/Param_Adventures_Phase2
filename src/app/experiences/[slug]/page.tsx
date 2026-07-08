@@ -23,7 +23,10 @@ import {
   CalendarDays,
   Footprints,
   Utensils,
-  ArrowLeft
+  ArrowLeft,
+  AlertTriangle,
+  CheckCircle2,
+  LucideIcon
 } from "lucide-react";
 import type { MediaSettings } from "@/types/media";
 import { getPlainTextFromJSON } from "@/lib/utils/rich-text";
@@ -128,6 +131,7 @@ interface ItineraryDay {
   description: string | object;
   meals?: string[] | string;
   accommodation?: string;
+  transportMode?: string;
 }
 
 interface FAQ {
@@ -157,6 +161,7 @@ interface ExperienceWithInclusions {
   inclusions?: string[];
   exclusions?: string[];
   thingsToCarry?: string[];
+  thingsToKeepInMind?: string[];
   faqs?: FAQ[];
   cancellationPolicy?: string | null;
   meetingPoint?: string | null;
@@ -205,6 +210,58 @@ const CANCELLATION_TEMPLATES = {
       ["Remaining Amount", "Full Refund (deduction of 10% booking amount)", "Refund, deduction 50% of the trip amount", "Refund, deduction 75% of the trip amount", "No Refund"]
     ]
   }
+};
+
+const CANCEL_POLICY_OPTIONS = [
+  {
+    id: "gst",
+    label: "GST",
+    defaultText: "GST and convenience charges are non-refundable under all circumstances.",
+    icon: "AlertTriangle",
+    color: "yellow",
+  },
+  {
+    id: "refund_processing",
+    label: "Pending Refund",
+    defaultText: "Eligible refunds will be processed to the original payment method within 5–7 working days after approval. Credit timelines may vary depending on your bank/payment provider.",
+    icon: "CheckCircle2",
+    color: "green",
+  },
+  {
+    id: "partial_refund",
+    label: "Partial Refund",
+    defaultText: "Refunds, if applicable, will be calculated after deducting the non-refundable booking amount and the applicable cancellation charges.",
+    icon: "Info",
+    color: "gray",
+  },
+  {
+    id: "refundable_amount",
+    label: "Remaining Amount",
+    defaultText: "Only the amount paid over and above the booking amount is eligible for a refund, subject to the cancellation policy.",
+    icon: "Info",
+    color: "gray",
+  },
+  {
+    id: "force_majeure",
+    label: "Bypass Policy",
+    defaultText: "In case of natural disasters, pandemics, government restrictions, war, adverse weather, or other unforeseen events, our Emergency Case Cancellation Policy will override the standard cancellation and refund policy. Refunds, credits, or rescheduling will depend on recoveries from our vendors and service providers.",
+    icon: "AlertTriangle",
+    color: "red",
+  },
+  {
+    id: "calculation_days",
+    label: "Cancellation Days Calculation",
+    defaultText: "The date of cancellation is counted, while the trip departure date is not counted when calculating the applicable cancellation period.",
+    icon: "Info",
+    color: "gray",
+  }
+];
+
+const iconMap: Record<string, LucideIcon> = {
+  AlertTriangle,
+  CheckCircle2,
+  Info,
+  Shield,
 };
 
 type ExperienceJsonLdProps = {
@@ -465,7 +522,7 @@ function ItinerarySection({ itinerary }: Readonly<{ itinerary: ItineraryDay[] }>
                     <RichTextRenderer content={dayItem.description} />
                   )}
                 </div>
-                {(dayItem.meals || dayItem.accommodation) && (
+                {(dayItem.meals || dayItem.accommodation || dayItem.transportMode) && (
                   <div className="mt-4 pt-4 border-t border-border/10 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                     {dayItem.meals &&
                       (Array.isArray(dayItem.meals)
@@ -491,6 +548,17 @@ function ItinerarySection({ itinerary }: Readonly<{ itinerary: ItineraryDay[] }>
                             Accommodation
                           </strong>
                           {dayItem.accommodation}
+                        </span>
+                      </div>
+                    )}
+                    {dayItem.transportMode && (
+                      <div className="flex items-start gap-2 text-foreground/80 bg-background/50 p-3 rounded-xl border border-border/30">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-primary shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="14" height="10" rx="1"/><circle cx="12" cy="21" r="1"/><circle cx="20" cy="21" r="1"/></svg>
+                        <span>
+                          <strong className="block text-xs uppercase tracking-wider text-foreground/50 mb-0.5">
+                            Transport Mode
+                          </strong>
+                          {dayItem.transportMode}
                         </span>
                       </div>
                     )}
@@ -582,6 +650,144 @@ function getPrimaryMedia(exp: ExperienceWithInclusions): string {
   );
 }
 
+function resolveMediaSettings(settings: { key: string; value: string }[]): MediaSettings {
+  const get = (key: string) => settings.find((s) => s.key === key)?.value;
+  return {
+    provider: (get("media_provider") || "CLOUDINARY") as "CLOUDINARY" | "AWS_S3" | "S3" | "LOCAL",
+    cloudinaryCloudName: get("cloudinary_cloud_name"),
+    s3Bucket: get("s3_bucket"),
+    s3Region: get("s3_region"),
+    globalQuality: Number.parseInt(get("media_quality") || "100"),
+    highFidelity: get("media_high_fidelity") === "true",
+    cdnUrl: get("cdn_url"),
+  };
+}
+
+async function ExperienceNotFound() {
+  const activeExperiences = await withBuildSafety(
+    () =>
+      prisma.experience.findMany({
+        where: { status: "PUBLISHED", deletedAt: null },
+        take: 3,
+        orderBy: { isFeatured: "desc" },
+        select: { id: true, title: true, slug: true, location: true, basePrice: true, cardImage: true, durationDays: true },
+      }),
+    [],
+  );
+  return (
+    <div className="flex min-h-[80vh] flex-col items-center justify-center px-4 pt-24 pb-20 text-center max-w-7xl mx-auto">
+      <div className="rounded-full bg-primary/10 p-4 mb-6">
+        <Mountain className="h-12 w-12 text-primary" />
+      </div>
+      <h1 className="text-3xl md:text-5xl font-heading font-black text-foreground mb-4">
+        Adventure Currently Unavailable
+      </h1>
+      <p className="text-foreground/60 mb-12 max-w-lg text-base leading-relaxed">
+        This trail is currently in draft or has been archived. But don&apos;t worry, there are plenty of other active paths to explore!
+      </p>
+      {activeExperiences.length > 0 && (
+        <div className="w-full max-w-4xl mt-6">
+          <h2 className="text-xl font-bold text-foreground mb-6 uppercase tracking-wider">
+            Recommended Trails
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {activeExperiences.map((item) => (
+              <Link
+                key={item.id}
+                href={`/experiences/${item.slug}`}
+                className="group flex flex-col bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/50 transition-all text-left shadow-xs hover:shadow-md"
+              >
+                <div className="relative aspect-[16/10] bg-muted w-full overflow-hidden">
+                  {item.cardImage ? (
+                    <Image
+                      src={item.cardImage}
+                      alt={item.title}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      sizes="(max-width: 768px) 100vw, 30vw"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-foreground/20">
+                      <Mountain className="w-8 h-8" />
+                    </div>
+                  )}
+                </div>
+                <div className="p-4 flex flex-col justify-between flex-1">
+                  <div>
+                    <h3 className="font-bold text-foreground text-sm line-clamp-2 group-hover:text-primary transition-colors">
+                      {item.title}
+                    </h3>
+                    <div className="flex items-center gap-1.5 text-foreground/50 text-xs mt-1.5 font-medium">
+                      <MapPin className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">{item.location || "India"}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-border/50 pt-3 mt-4 text-xs font-semibold">
+                    <span className="text-foreground/50">
+                      {item.durationDays} {item.durationDays === 1 ? "Day" : "Days"}
+                    </span>
+                    <span className="text-foreground font-bold text-sm">
+                      ₹{Number(item.basePrice).toLocaleString("en-IN")}
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className="mt-12 flex gap-4">
+        <Link
+          href="/experiences"
+          className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 font-bold text-primary-foreground hover:opacity-90 transition-all shadow-lg shadow-primary/25"
+        >
+          Browse All Trails
+        </Link>
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 rounded-xl bg-foreground/5 border border-border px-6 py-3 font-bold text-foreground hover:bg-foreground/10 transition-all"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to Base Camp
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function getNavSections(exp: ExperienceWithInclusions): { id: string; label: string }[] {
+  const sections: { id: string; label: string }[] = [{ id: "about", label: "About" }];
+
+  if (Array.isArray(exp.itinerary) && exp.itinerary.length > 0) {
+    sections.push({ id: "itinerary", label: "Itinerary" });
+  }
+
+  const hasInclusions = Array.isArray(exp.inclusions) && exp.inclusions.length > 0;
+  const hasExclusions = Array.isArray(exp.exclusions) && exp.exclusions.length > 0;
+  if (hasInclusions || hasExclusions) {
+    sections.push({ id: "inclusions", label: "Inclusions" });
+  }
+
+  if (Array.isArray(exp.thingsToCarry) && exp.thingsToCarry.length > 0) {
+    sections.push({ id: "things-to-carry", label: "Things to Carry" });
+  }
+
+  if (Array.isArray(exp.thingsToKeepInMind) && exp.thingsToKeepInMind.length > 0) {
+    sections.push({ id: "things-to-keep-in-mind", label: "Keep in Mind" });
+  }
+
+  if (exp.images && exp.images.length > 0) {
+    sections.push({ id: "gallery", label: "Gallery" });
+  }
+
+  if (Array.isArray(exp.faqs) && exp.faqs.length > 0) {
+    sections.push({ id: "faqs", label: "FAQs" });
+  }
+
+  sections.push({ id: "reviews", label: "Reviews" });
+
+  return sections;
+}
+
 export default async function ExperienceDetailPage({
   params,
 }: Readonly<{
@@ -592,23 +798,13 @@ export default async function ExperienceDetailPage({
   const dbPlatformSettings = await withBuildSafety(
     () => prisma.platformSetting.findMany({
       where: {
-        key: {
-          in: ["media_provider", "cloudinary_cloud_name", "s3_bucket", "s3_region", "media_quality", "media_high_fidelity", "cdn_url"]
-        }
+        key: { in: ["media_provider", "cloudinary_cloud_name", "s3_bucket", "s3_region", "media_quality", "media_high_fidelity", "cdn_url"] }
       }
     }),
     []
   );
 
-  const mediaSettings: MediaSettings = {
-    provider: (dbPlatformSettings.find(s => s.key === "media_provider")?.value || "CLOUDINARY") as "CLOUDINARY" | "AWS_S3" | "S3" | "LOCAL",
-    cloudinaryCloudName: dbPlatformSettings.find(s => s.key === "cloudinary_cloud_name")?.value,
-    s3Bucket: dbPlatformSettings.find(s => s.key === "s3_bucket")?.value,
-    s3Region: dbPlatformSettings.find(s => s.key === "s3_region")?.value,
-    globalQuality: Number.parseInt(dbPlatformSettings.find(s => s.key === "media_quality")?.value || "100"),
-    highFidelity: dbPlatformSettings.find(s => s.key === "media_high_fidelity")?.value === "true",
-    cdnUrl: dbPlatformSettings.find(s => s.key === "cdn_url")?.value,
-  };
+  const mediaSettings = resolveMediaSettings(dbPlatformSettings);
 
   const experience = await withBuildSafety(
     () =>
@@ -617,10 +813,7 @@ export default async function ExperienceDetailPage({
         include: {
           categories: { include: { category: true } },
           slots: {
-            where: {
-              date: { gte: new Date() },
-              status: "UPCOMING",
-            },
+            where: { date: { gte: new Date() }, status: "UPCOMING" },
             orderBy: { date: "asc" },
           },
         },
@@ -629,108 +822,7 @@ export default async function ExperienceDetailPage({
   );
 
   if (!experience || experience.status === "DRAFT" || experience.status === "ARCHIVED" || !!experience.deletedAt) {
-    const activeExperiences = await withBuildSafety(
-      () =>
-        prisma.experience.findMany({
-          where: {
-            status: "PUBLISHED",
-            deletedAt: null,
-          },
-          take: 3,
-          orderBy: { isFeatured: "desc" },
-          select: {
-            id: true,
-            title: true,
-            slug: true,
-            location: true,
-            basePrice: true,
-            cardImage: true,
-            durationDays: true,
-          },
-        }),
-      [],
-    );
-
-    return (
-      <div className="flex min-h-[80vh] flex-col items-center justify-center px-4 pt-24 pb-20 text-center max-w-7xl mx-auto">
-        <div className="rounded-full bg-primary/10 p-4 mb-6">
-          <Mountain className="h-12 w-12 text-primary" />
-        </div>
-        <h1 className="text-3xl md:text-5xl font-heading font-black text-foreground mb-4">
-          Adventure Currently Unavailable
-        </h1>
-        <p className="text-foreground/60 mb-12 max-w-lg text-base leading-relaxed">
-          This trail is currently in draft or has been archived. But don&apos;t worry, there are plenty of other active paths to explore!
-        </p>
-
-        {activeExperiences.length > 0 && (
-          <div className="w-full max-w-4xl mt-6">
-            <h2 className="text-xl font-bold text-foreground mb-6 uppercase tracking-wider">
-              Recommended Trails
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {activeExperiences.map((item) => (
-                <Link
-                  key={item.id}
-                  href={`/experiences/${item.slug}`}
-                  className="group flex flex-col bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/50 transition-all text-left shadow-xs hover:shadow-md"
-                >
-                  <div className="relative aspect-[16/10] bg-muted w-full overflow-hidden">
-                    {item.cardImage ? (
-                      <Image
-                        src={item.cardImage}
-                        alt={item.title}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-300"
-                        sizes="(max-width: 768px) 100vw, 30vw"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-foreground/20">
-                        <Mountain className="w-8 h-8" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-4 flex flex-col justify-between flex-1">
-                    <div>
-                      <h3 className="font-bold text-foreground text-sm line-clamp-2 group-hover:text-primary transition-colors">
-                        {item.title}
-                      </h3>
-                      <div className="flex items-center gap-1.5 text-foreground/50 text-xs mt-1.5 font-medium">
-                        <MapPin className="w-3.5 h-3.5 shrink-0" />
-                        <span className="truncate">{item.location || "India"}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between border-t border-border/50 pt-3 mt-4 text-xs font-semibold">
-                      <span className="text-foreground/50">
-                        {item.durationDays} {item.durationDays === 1 ? "Day" : "Days"}
-                      </span>
-                      <span className="text-foreground font-bold text-sm">
-                        ₹{Number(item.basePrice).toLocaleString("en-IN")}
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </div>
-        )}
-
-        <div className="mt-12 flex gap-4">
-          <Link
-            href="/experiences"
-            className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 font-bold text-primary-foreground hover:opacity-90 transition-all shadow-lg shadow-primary/25"
-          >
-            Browse All Trails
-          </Link>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 rounded-xl bg-foreground/5 border border-border px-6 py-3 font-bold text-foreground hover:bg-foreground/10 transition-all"
-          >
-            <ArrowLeft className="h-4 w-4" /> Back to Base Camp
-          </Link>
-        </div>
-      </div>
-    );
+    return <ExperienceNotFound />;
   }
 
   // Cast after null check for type safety
@@ -738,20 +830,22 @@ export default async function ExperienceDetailPage({
 
   const finalDescription = getExperienceDescription(exp);
   const primaryMedia = getPrimaryMedia(exp);
-  
   const isVideo = /\.(mp4|webm)$/i.exec(primaryMedia);
 
   const heroMediaUrl = getMediaUrl(
     primaryMedia,
     mediaSettings.provider,
     {
-       cloudinaryCloudName: mediaSettings.cloudinaryCloudName,
-       s3Bucket: mediaSettings.s3Bucket,
-       s3Region: mediaSettings.s3Region,
-       globalQuality: mediaSettings.globalQuality,
-       highFidelity: mediaSettings.highFidelity
+      cloudinaryCloudName: mediaSettings.cloudinaryCloudName,
+      s3Bucket: mediaSettings.s3Bucket,
+      s3Region: mediaSettings.s3Region,
+      globalQuality: mediaSettings.globalQuality,
+      highFidelity: mediaSettings.highFidelity,
     }
   );
+
+  const nightsCount = exp.durationDays > 1 ? exp.durationDays - 1 : 0;
+  const navSections = getNavSections(exp);
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-20 pt-16">
@@ -838,7 +932,7 @@ export default async function ExperienceDetailPage({
               <div className="flex items-center gap-2">
                 <Clock className="w-5 h-5 text-primary" />{" "}
                 {exp.durationDays} Days /{" "}
-                {exp.durationDays > 1 ? exp.durationDays - 1 : 0}{" "}
+                {nightsCount}{" "}
                 Nights
               </div>
             </div>
@@ -857,7 +951,7 @@ export default async function ExperienceDetailPage({
           </div>
           <div className="flex items-center gap-1.5">
             <Clock className="w-4 h-4 text-primary" />{" "}
-            {exp.durationDays} Days / {exp.durationDays > 1 ? exp.durationDays - 1 : 0} Nights
+            {exp.durationDays} Days / {nightsCount} Nights
           </div>
         </div>
       </div>
@@ -867,30 +961,7 @@ export default async function ExperienceDetailPage({
         {/* Left Column - Details */}
         <div className="lg:col-span-2 space-y-16 min-w-0">
           <ExperienceStickyNav
-            sections={[
-              { id: "about", label: "About" },
-              ...(Array.isArray(exp.itinerary) &&
-              exp.itinerary.length > 0
-                ? [{ id: "itinerary", label: "Itinerary" }]
-                : []),
-              ...((Array.isArray(exp.inclusions) &&
-                exp.inclusions.length > 0) ||
-              (Array.isArray(exp.exclusions) &&
-                exp.exclusions.length > 0)
-                ? [{ id: "inclusions", label: "Inclusions" }]
-                : []),
-              ...(Array.isArray(exp.thingsToCarry) &&
-              exp.thingsToCarry.length > 0
-                ? [{ id: "things-to-carry", label: "Things to Carry" }]
-                : []),
-              ...(exp.images?.length > 0
-                ? [{ id: "gallery", label: "Gallery" }]
-                : []),
-              ...(Array.isArray(exp.faqs) && exp.faqs.length > 0
-                ? [{ id: "faqs", label: "FAQs" }]
-                : []),
-              { id: "reviews", label: "Reviews" },
-            ]}
+            sections={navSections}
           />
 
           {/* About */}
@@ -1012,7 +1083,35 @@ export default async function ExperienceDetailPage({
               </section>
             )}
 
-          {/* Gallery */}
+          {/* Things to Keep in Mind */}
+          {Array.isArray(exp.thingsToKeepInMind) &&
+            exp.thingsToKeepInMind.length > 0 && (
+              <section
+                id="things-to-keep-in-mind"
+                className="scroll-mt-32"
+              >
+                <h2 className="text-3xl font-heading font-bold mb-6 flex items-center gap-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                  Things to Keep in Mind
+                </h2>
+                <div className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-6">
+                  <ul className="space-y-3">
+                    {exp.thingsToKeepInMind.map((item) => (
+                      <li
+                        key={item}
+                        className="flex items-start gap-3 text-foreground/85"
+                      >
+                        <div className="w-2 h-2 rounded-full bg-amber-500 shrink-0 mt-2" />
+                        <span className="leading-relaxed font-medium">
+                          {item}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </section>
+            )}
+
           {exp.images.length > 0 && (
             <section id="gallery" className="scroll-mt-32">
               <ExperienceGallery 
@@ -1057,11 +1156,13 @@ export default async function ExperienceDetailPage({
               {(() => {
                 let policyTemplate = "custom";
                 let policyText = "";
+                let selectedPolicies: string[] = [];
                 try {
                   const parsed = JSON.parse(exp.cancellationPolicy);
                   if (parsed && typeof parsed === "object" && "template" in parsed) {
                     policyTemplate = parsed.template || "custom";
                     policyText = parsed.text || "";
+                    selectedPolicies = Array.isArray(parsed.selectedPolicies) ? parsed.selectedPolicies : [];
                   } else {
                     policyText = exp.cancellationPolicy;
                   }
@@ -1116,6 +1217,45 @@ export default async function ExperienceDetailPage({
                       <p className="text-foreground/80 leading-relaxed whitespace-pre-line text-sm">
                         {policyText}
                       </p>
+                    )}
+
+                    {selectedPolicies && selectedPolicies.length > 0 && (
+                      <div className="space-y-4 mt-6">
+                        {selectedPolicies.map((policyId: string) => {
+                          const policy = CANCEL_POLICY_OPTIONS.find(p => p.id === policyId);
+                          if (!policy) return null;
+                          
+                          let bgClass = "bg-amber-500/5 border-amber-500/20 text-foreground";
+                          let iconClass = "text-amber-500";
+                          let sideBorderClass = "border-l-4 border-amber-500";
+                          
+                          if (policy.color === "green") {
+                            bgClass = "bg-green-500/5 border-green-500/20 text-foreground";
+                            iconClass = "text-green-500";
+                            sideBorderClass = "border-l-4 border-green-500";
+                          } else if (policy.color === "red") {
+                            bgClass = "bg-red-500/5 border-red-500/20 text-foreground";
+                            iconClass = "text-red-500";
+                            sideBorderClass = "border-l-4 border-red-500";
+                          } else if (policy.color === "gray") {
+                            bgClass = "bg-foreground/5 border-border text-foreground";
+                            iconClass = "text-foreground/40";
+                            sideBorderClass = "border-l-4 border-foreground/30";
+                          }
+                          
+                          const IconComp = iconMap[policy.icon] || Info;
+                          
+                          return (
+                            <div key={policy.id} className={`flex items-start gap-3 p-4 rounded-xl border ${bgClass} ${sideBorderClass} text-left`}>
+                              <IconComp className={`w-5 h-5 shrink-0 mt-0.5 ${iconClass}`} />
+                              <div className="text-sm">
+                                <strong className="font-bold">{policy.label}: </strong>
+                                <span className="opacity-95">{policy.defaultText}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
                 );

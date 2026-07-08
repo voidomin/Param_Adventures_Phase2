@@ -29,6 +29,25 @@ export default function MediaLibraryPage() {
   const [mergeTargetId, setMergeTargetId] = useState<string>("");
   const [isMerging, setIsMerging] = useState(false);
 
+  // Multi-selection states
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  // Compute filtered media at the top level so it is accessible by both renderGallery and bulk action toolbar
+  const filteredMedia = media.filter((item) => {
+    if (filterType === "UNUSED") return item.usageCount === 0;
+    if (filterType === "IMAGE") return item.type === "IMAGE";
+    if (filterType === "VIDEO") return item.type === "VIDEO";
+    if (filterType === "DUPLICATES") {
+      return media.some(
+        (other) =>
+          other.id !== item.id &&
+          ((item.fileHash && other.fileHash && item.fileHash === other.fileHash) ||
+           (item.originalUrl === other.originalUrl))
+      );
+    }
+    return true;
+  });
+
   // Automatically select duplicate target if one is found by hash or URL
   useEffect(() => {
     if (mergeSourceItem) {
@@ -56,6 +75,7 @@ export default function MediaLibraryPage() {
       if (res.ok) {
         const data = await res.json();
         setMedia(data.images);
+        setSelectedIds([]); // reset selection on reload
       }
     } catch (err) {
       console.error(err);
@@ -68,20 +88,57 @@ export default function MediaLibraryPage() {
     fetchMedia();
   }, []);
 
+  // Reset selection when tab changes to avoid selecting hidden/filtered assets
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [filterType]);
+
   const handleDelete = async (id: string) => {
     if (!globalThis.confirm("Are you sure you want to delete this media file?"))
       return;
 
+    const previousMedia = [...media];
+    // Optimistically update UI by removing the item immediately
+    setMedia((prev) => prev.filter((item) => item.id !== id));
+    setSelectedIds((prev) => prev.filter((selectedId) => selectedId !== id));
+
     try {
       const res = await fetch(`/api/admin/media/${id}`, { method: "DELETE" });
-      if (res.ok) {
-        fetchMedia();
-      } else {
-        alert("Failed to delete media");
+      if (!res.ok) {
+        throw new Error("Failed to delete media file from API");
       }
     } catch (err) {
       console.error(err);
-      alert("Error deleting media");
+      alert("Failed to delete media asset. Restoring library state.");
+      setMedia(previousMedia);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (!globalThis.confirm(`Are you sure you want to delete the ${selectedIds.length} selected media files?`))
+      return;
+
+    const previousMedia = [...media];
+    const idsToDelete = [...selectedIds];
+
+    // Optimistically update UI by removing items immediately
+    setMedia((prev) => prev.filter((item) => !idsToDelete.includes(item.id)));
+    setSelectedIds([]);
+
+    try {
+      const res = await fetch("/api/admin/media", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: idsToDelete }),
+      });
+      if (!res.ok) {
+        throw new Error("Failed to bulk delete media files");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error during bulk deletion. Restoring library state.");
+      setMedia(previousMedia);
     }
   };
 
@@ -89,16 +146,6 @@ export default function MediaLibraryPage() {
     navigator.clipboard.writeText(url);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
-  };
-
-  const handleVideoMouseEnter = (e: React.MouseEvent<HTMLVideoElement>) => {
-    const video = e.target as HTMLVideoElement;
-    video.play().catch(() => {});
-  };
-
-  const handleVideoMouseLeave = (e: React.MouseEvent<HTMLVideoElement>) => {
-    const video = e.target as HTMLVideoElement;
-    video.pause();
   };
 
   const handleMerge = async () => {
@@ -141,21 +188,6 @@ export default function MediaLibraryPage() {
       );
     }
 
-    const filteredMedia = media.filter((item) => {
-      if (filterType === "UNUSED") return item.usageCount === 0;
-      if (filterType === "IMAGE") return item.type === "IMAGE";
-      if (filterType === "VIDEO") return item.type === "VIDEO";
-      if (filterType === "DUPLICATES") {
-        return media.some(
-          (other) =>
-            other.id !== item.id &&
-            ((item.fileHash && other.fileHash && item.fileHash === other.fileHash) ||
-             (item.originalUrl === other.originalUrl))
-        );
-      }
-      return true;
-    });
-
     if (filteredMedia.length === 0) {
       return (
         <div className="bg-card border border-border rounded-xl p-12 text-center text-foreground/50">
@@ -175,69 +207,127 @@ export default function MediaLibraryPage() {
                (item.originalUrl === other.originalUrl))
           );
 
+          const isSelected = selectedIds.includes(item.id);
+
           return (
             <div
               key={item.id}
-              className="group bg-card border border-border rounded-xl overflow-hidden hover:border-foreground/30 transition-all relative flex flex-col"
+              className={`group bg-card border rounded-xl overflow-hidden hover:border-foreground/30 transition-all relative flex flex-col cursor-pointer ${
+                isSelected ? "border-primary ring-2 ring-primary/30" : "border-border"
+              }`}
+              onClick={() => {
+                if (selectedIds.length > 0) {
+                  setSelectedIds((prev) =>
+                    prev.includes(item.id)
+                      ? prev.filter((id) => id !== item.id)
+                      : [...prev, item.id]
+                  );
+                }
+              }}
             >
-              <div className="relative aspect-square bg-foreground/5">
+              {/* Select Checkbox Overlay */}
+              <div 
+                className={`absolute top-2.5 left-2.5 z-30 transition-opacity duration-200 cursor-pointer ${
+                  selectedIds.length > 0 || isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                }`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedIds((prev) => 
+                    prev.includes(item.id) 
+                      ? prev.filter((id) => id !== item.id) 
+                      : [...prev, item.id]
+                  );
+                }}
+              >
+                <div className={`w-5.5 h-5.5 rounded-full border flex items-center justify-center transition-all ${
+                  isSelected 
+                    ? "bg-primary border-primary text-primary-foreground scale-110 shadow-md" 
+                    : "border-white/80 bg-black/40 hover:bg-black/60"
+                }`}>
+                  {isSelected && (
+                    <svg className="w-3.5 h-3.5 stroke-[3]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </div>
+              </div>
+
+              {/* Media Preview Container - Fixed Square Aspect Ratio */}
+              <div 
+                className="relative aspect-square bg-foreground/5 w-full overflow-hidden"
+                onMouseEnter={(e) => {
+                  const video = e.currentTarget.querySelector("video");
+                  if (video) video.play().catch(() => {});
+                }}
+                onMouseLeave={(e) => {
+                  const video = e.currentTarget.querySelector("video");
+                  if (video) video.pause();
+                }}
+              >
                 {item.type === "IMAGE" ? (
-                  <div className="relative aspect-square w-full h-full">
-                    <Image
-                      src={item.originalUrl}
-                      alt={item.originalUrl.split("/").pop() || "Media upload"}
-                      fill
-                      sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
-                      className="object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
-                  </div>
+                  <Image
+                    src={item.originalUrl}
+                    alt={item.originalUrl.split("/").pop() || "Media upload"}
+                    fill
+                    sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 20vw"
+                    className="object-cover group-hover:scale-110 transition-transform duration-500"
+                  />
                 ) : (
-                  <div className="relative w-full h-full bg-black">
+                  <div className="absolute inset-0 w-full h-full bg-black">
                     <video
                       src={item.originalUrl}
                       className="w-full h-full object-cover opacity-80 transition-opacity group-hover:opacity-100"
                       muted
                       loop
                       playsInline
-                      onMouseEnter={handleVideoMouseEnter}
-                      onMouseLeave={handleVideoMouseLeave}
                     />
-                    <div className="absolute top-2 left-2 pointer-events-none z-10">
-                      <span className="bg-black/60 text-white text-[10px] px-2 py-1 rounded-full uppercase tracking-wider font-bold backdrop-blur-xs border border-white/20">
+                    <div className="absolute top-2 right-2 pointer-events-none z-10">
+                      <span className="bg-black/60 text-white text-[9px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold backdrop-blur-xs border border-white/20">
                         Video
                       </span>
                     </div>
                   </div>
                 )}
 
-                {/* Overlay actions */}
-                <div className="absolute inset-0 bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-xs z-20">
-                  <button
-                    onClick={() => copyToClipboard(item.originalUrl, item.id)}
-                    className="p-2 bg-foreground/10 hover:bg-foreground/20 text-foreground rounded-lg transition-colors"
-                    title="Copy URL"
-                  >
-                    {copiedId === item.id ? (
-                      <CheckCircle2 className="w-5 h-5 text-green-500" />
-                    ) : (
-                      <Copy className="w-5 h-5" />
-                    )}
-                  </button>
-                  <button
-                    onClick={() => setMergeSourceItem(item)}
-                    className="p-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors"
-                    title="Merge & Replace references"
-                  >
-                    <GitMerge className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(item.id)}
-                    className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-colors"
-                    title="Delete"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
-                </div>
+                {/* Overlay actions (only displayed when selection mode is inactive) */}
+                {selectedIds.length === 0 && (
+                  <div className="absolute inset-0 bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-xs z-20">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        copyToClipboard(item.originalUrl, item.id);
+                      }}
+                      className="p-2 bg-foreground/10 hover:bg-foreground/20 text-foreground rounded-lg transition-colors"
+                      title="Copy URL"
+                    >
+                      {copiedId === item.id ? (
+                        <CheckCircle2 className="w-5 h-5 text-green-500" />
+                      ) : (
+                        <Copy className="w-5 h-5" />
+                      )}
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMergeSourceItem(item);
+                      }}
+                      className="p-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-lg transition-colors"
+                      title="Merge & Replace references"
+                    >
+                      <GitMerge className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(item.id);
+                      }}
+                      className="p-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="p-3 mt-auto flex flex-col gap-2">
@@ -257,6 +347,7 @@ export default function MediaLibraryPage() {
                       <span
                         className="bg-primary/10 text-primary text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border border-primary/20 shadow-sm cursor-help"
                         title={item.usages.map((u) => `${u.type}: ${u.name}`).join("\n")}
+                        onClick={(e) => e.stopPropagation()}
                       >
                         {item.usageCount} {item.usageCount === 1 ? "usage" : "usages"}
                       </span>
@@ -275,7 +366,7 @@ export default function MediaLibraryPage() {
                   </span>
                 </p>
               </div>
-          </div>
+            </div>
           );
         })}
       </div>
@@ -317,6 +408,51 @@ export default function MediaLibraryPage() {
       </div>
 
       {renderGallery()}
+
+      {/* Floating Action Bar for Bulk Selection */}
+      {selectedIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-bottom-10 duration-300">
+          <div className="flex items-center gap-4 bg-background/80 border border-border backdrop-blur-lg px-6 py-4 rounded-2xl shadow-2xl">
+            <span className="text-sm font-bold text-foreground">
+              {selectedIds.length} {selectedIds.length === 1 ? "asset" : "assets"} selected
+            </span>
+            <div className="h-4 w-px bg-border" />
+            <button
+              onClick={() => {
+                const allFilteredIds = filteredMedia.map(m => m.id);
+                const areAllSelected = allFilteredIds.every(id => selectedIds.includes(id));
+                if (areAllSelected) {
+                  setSelectedIds(prev => prev.filter(id => !allFilteredIds.includes(id)));
+                } else {
+                  setSelectedIds(prev => {
+                    const next = [...prev];
+                    allFilteredIds.forEach(id => {
+                      if (!next.includes(id)) next.push(id);
+                    });
+                    return next;
+                  });
+                }
+              }}
+              className="px-3.5 py-1.5 rounded-xl border border-border hover:bg-foreground/5 text-xs font-bold transition-all uppercase tracking-wider cursor-pointer"
+            >
+              {filteredMedia.map(m => m.id).every(id => selectedIds.includes(id)) ? "Deselect All" : "Select All"}
+            </button>
+            <button
+              onClick={handleBulkDelete}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition-all uppercase tracking-wider shadow-lg shadow-red-500/20 cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5" /> Delete Selected
+            </button>
+            <button
+              onClick={() => setSelectedIds([])}
+              className="p-2 rounded-xl border border-border hover:bg-foreground/5 text-foreground/60 hover:text-foreground transition-all cursor-pointer"
+              title="Clear Selection"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Merge Modal */}
       {mergeSourceItem && (

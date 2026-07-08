@@ -23,18 +23,10 @@ describe("ManualVerifyModal", () => {
     
     // Standard mock for successful upload
     (fetch as any).mockImplementation((url: string) => {
-      if (url.includes("/cloudinary-sign")) {
+      if (url.includes("/media/upload")) {
         return Promise.resolve({
           ok: true,
-          json: () => Promise.resolve({ 
-            apiKey: "key", timestamp: 1234, signature: "sig", folder: "fp", cloudName: "cn" 
-          }),
-        });
-      }
-      if (url.includes("cloudinary.com")) {
-        return Promise.resolve({
-          ok: true,
-          json: () => Promise.resolve({ secure_url: "https://proof.url" }),
+          json: () => Promise.resolve({ url: "https://proof.url" }),
         });
       }
       if (url.includes("/verify-manual")) {
@@ -77,8 +69,7 @@ describe("ManualVerifyModal", () => {
   it("handles verification API errors", async () => {
     // Force the verification part of the mock to fail
     (fetch as any).mockImplementation((url: string) => {
-       if (url.includes("/cloudinary-sign")) return Promise.resolve({ ok: true, json: () => Promise.resolve({ apiKey: "k", timestamp: 1, signature: "s", folder: "f", cloudName: "c" }) });
-       if (url.includes("cloudinary.com")) return Promise.resolve({ ok: true, json: () => Promise.resolve({ secure_url: "url" }) });
+       if (url.includes("/media/upload")) return Promise.resolve({ ok: true, json: () => Promise.resolve({ url: "url" }) });
        if (url.includes("/verify-manual")) return Promise.resolve({ ok: false, json: () => Promise.resolve({ error: "Verification Failed" }) });
        return Promise.resolve({ ok: false, json: () => Promise.resolve({}) });
     });

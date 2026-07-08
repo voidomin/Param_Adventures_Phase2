@@ -84,6 +84,31 @@ export async function GET(request: NextRequest) {
       return isCancelled || isCompleted || isPast;
     });
 
+    const refundRequests = await prisma.refundRequest.findMany({
+      where: { customerId: payload.userId },
+      include: {
+        booking: {
+          select: {
+            experience: {
+              select: {
+                title: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        requestedAt: "desc",
+      },
+    });
+
+    const coupons = await prisma.travelCoupon.findMany({
+      where: { customerId: payload.userId },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
     return NextResponse.json({
       user: {
         ...user,
@@ -96,6 +121,8 @@ export async function GET(request: NextRequest) {
         upcoming: upcomingBookings.length,
         past: pastBookings.length,
       },
+      refundRequests,
+      coupons,
     });
   } catch (error) {
     console.error("[Dashboard API] Error:", error);

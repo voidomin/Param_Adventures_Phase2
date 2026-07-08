@@ -35,6 +35,9 @@ export const experienceSchema = z.object({
   meetingTime: z.string().optional().nullable(),
   dropoffTime: z.string().optional().nullable(),
   vibeTags: z.array(z.string().trim()).transform(arr => arr.filter(Boolean)).optional(),
+  allowAdvancePayment: z.boolean().optional(),
+  advancePaymentAmount: z.number().min(0).optional().nullable(),
+  extraAmenities: z.any().optional(),
 });
 
 export type ExperienceInput = z.infer<typeof experienceSchema>;

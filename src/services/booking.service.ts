@@ -1,10 +1,106 @@
-import { prisma } from "@/lib/db";
+import { prisma, runWithRetry } from "@/lib/db";
 import { Prisma } from "@prisma/client";
 import { getRazorpay } from "@/lib/razorpay";
 import { logActivity } from "@/lib/audit-logger";
 import { revalidatePath } from "next/cache";
 import { BookingRepo, BookingPricing } from "@/repositories/booking.repo";
 import { BookingInput } from "@/lib/validators/booking.schema";
+import { isExpiredIST } from "@/lib/coupon-engine";
+
+interface ExtraAmenityOption {
+  id: string;
+  name: string;
+  price: number;
+}
+
+interface ExtraAmenityGroup {
+  id: string;
+  name: string;
+  type: "SINGLE" | "MULTI";
+  options: ExtraAmenityOption[];
+}
+
+function calculateParticipantsBaseFare(
+  participants: BookingInput["participants"],
+  experienceBasePrice: number,
+  extraAmenitiesConfig: ExtraAmenityGroup[]
+): number {
+  let baseFare = 0;
+  for (const p of participants) {
+    let participantFare = experienceBasePrice;
+    if (p.selectedAmenities && Array.isArray(p.selectedAmenities)) {
+      for (const selected of p.selectedAmenities) {
+        const group = extraAmenitiesConfig.find((g) => g.id === selected.groupId);
+        const option = group?.options?.find((o) => o.id === selected.optionId);
+        if (option) {
+          participantFare += Number(option.price) || 0;
+          selected.price = Number(option.price) || 0;
+        } else {
+          selected.price = 0;
+        }
+      }
+    }
+    baseFare += participantFare;
+  }
+  return baseFare;
+}
+
+interface CouponInput {
+  customerId: string;
+  status: string;
+  expiryDate: string | Date | null;
+  balance: unknown;
+}
+
+function checkCouponValidity(coupon: CouponInput | null, userId: string) {
+  if (!coupon) throw new Error("COUPON_ERROR: Invalid coupon code.");
+  if (coupon.customerId !== userId) throw new Error("COUPON_ERROR: Coupon belongs to another customer.");
+  if (coupon.status === "EXPIRED" || isExpiredIST(coupon.expiryDate ?? "")) {
+    throw new Error("COUPON_ERROR: Coupon has expired.");
+  }
+  if (coupon.status === "FULLY_USED" || Number(coupon.balance) <= 0) {
+    throw new Error("COUPON_ERROR: Coupon has no balance left.");
+  }
+  if (coupon.status === "BLOCKED" || coupon.status === "CANCELLED") {
+    throw new Error(`COUPON_ERROR: Coupon is ${coupon.status.toLowerCase()}.`);
+  }
+}
+
+async function processCheckoutCoupons(
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  appliedCoupons: string[],
+  userId: string,
+  initialRemaining: number
+) {
+  let remaining = initialRemaining;
+  let totalCouponRedeemed = 0;
+  const redemptionsList: { couponId: string; amount: number }[] = [];
+
+  for (const code of appliedCoupons) {
+    if (remaining <= 0) break;
+
+    const dbCoupon = await tx.travelCoupon.findUnique({
+      where: { code: code.toUpperCase().trim() },
+    });
+
+    checkCouponValidity(dbCoupon, userId);
+
+    if (remaining < Number(dbCoupon!.balance)) {
+      throw new Error(`COUPON_ERROR: Coupon value exceeds the booking/payment amount.`);
+    }
+
+    const redeemAmount = Math.min(Number(dbCoupon!.balance), remaining);
+    const nextRemaining = Math.round((remaining - redeemAmount) * 100) / 100;
+    if (nextRemaining > 0 && nextRemaining < 1) {
+      throw new Error(`COUPON_ERROR: Applying this coupon would leave a balance of ₹${nextRemaining}, which is below the minimum online payment of ₹1.00.`);
+    }
+    remaining = nextRemaining;
+    totalCouponRedeemed += redeemAmount;
+    redemptionsList.push({ couponId: dbCoupon!.id, amount: redeemAmount });
+  }
+
+  return { remaining, totalCouponRedeemed, redemptionsList };
+}
 
 export const BookingService = {
   /**
@@ -18,12 +114,19 @@ export const BookingService = {
 
     // 2. ATOMIC TRANSACTION: Ensuring Slot Capacity vs Booking Entry
     // We use Serializable isolation to prevent phantom reads and ensure absolute consistency.
-    const result = await prisma.$transaction(async (tx) => {
-      // Idempotency: Check if a similar requested booking exists for this user/slot
-      const existing = await BookingRepo.findExistingPendingBooking(tx, userId, data.slotId);
-      if (existing) {
-        throw new Error("ALREADY_REQUESTED");
-      }
+    const result = await runWithRetry(() =>
+      prisma.$transaction(async (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => {
+        // If a similar requested/pending booking exists, mark it as cancelled so it doesn't block the new checkout
+        const existing = await BookingRepo.findExistingPendingBooking(tx, userId, data.slotId);
+        if (existing) {
+          await tx.booking.update({
+            where: { id: existing.id },
+            data: {
+              bookingStatus: "CANCELLED",
+              cancellationReason: "Superseded by new checkout attempt",
+            },
+          });
+        }
 
       // Experience & Slot checks
       const [experience, slot] = await Promise.all([
@@ -48,29 +151,134 @@ export const BookingService = {
         throw new Error("INSUFFICIENT_CAPACITY");
       }
 
+      const isAdvance = data.paymentType === "ADVANCE" && experience.allowAdvancePayment && experience.advancePaymentAmount;
+      const paymentAmount = isAdvance
+        ? Number(experience.advancePaymentAmount) * data.participantCount
+        : pricing.totalPrice;
+
+      if (isAdvance && data.appliedCoupons && data.appliedCoupons.length > 0) {
+        throw new Error("COUPON_ERROR: Coupons cannot be used for advance payments.");
+      }
+
+      // Validate and subtract applied travel coupons inside serializable transaction
+      const {
+        remaining: remainingPaymentAmount,
+        totalCouponRedeemed,
+        redemptionsList,
+      } = await processCheckoutCoupons(tx, data.appliedCoupons || [], userId, paymentAmount);
+
       // Create Booking record
       const booking = await BookingRepo.createBooking(tx, userId, data, pricing);
 
-      // EXTERNAL READINESS: Create the pending Payment record ATOMICALLY with the booking
-      // This ensures if the booking exists, a trace of the intended payment always exists.
-      // We don't have the orderId yet, but we'll update it once Razorpay responds.
+      // Perform coupon redemptions updates
+      for (const red of redemptionsList) {
+        const c = await tx.travelCoupon.findUnique({ where: { id: red.couponId } });
+        if (!c) throw new Error("Coupon not found.");
+        const curBal = Number(c.balance);
+        const newBal = Math.max(0, curBal - red.amount);
+        const newStatus = newBal === 0 ? "FULLY_USED" : "PARTIALLY_USED";
+
+        await tx.travelCoupon.update({
+          where: { id: red.couponId },
+          data: { balance: newBal, status: newStatus },
+        });
+
+        await tx.couponTransaction.create({
+          data: {
+            couponId: red.couponId,
+            bookingId: booking.id,
+            type: "REDEEMED",
+            amount: red.amount,
+            previousBalance: curBal,
+            newBalance: newBal,
+            remarks: `Redeemed on booking ${booking.id.substring(0, 8)}...`,
+          },
+        });
+      }
+
+      // Update booking paid amount with coupons applied
+      await tx.booking.update({
+        where: { id: booking.id },
+        data: {
+          paidAmount: totalCouponRedeemed,
+          remainingBalance: Math.max(0, Number(booking.totalPrice) - totalCouponRedeemed),
+        },
+      });
+
+      // If fully covered by coupon(s), confirm instantly! (Case 1)
+      if (remainingPaymentAmount <= 0.01) {
+        await tx.booking.update({
+          where: { id: booking.id },
+          data: {
+            bookingStatus: "CONFIRMED",
+            paymentStatus: "PAID",
+          },
+        });
+
+        await tx.slot.update({
+          where: { id: slot.id },
+          data: { remainingCapacity: { decrement: booking.participantCount } },
+        });
+
+        const payment = await BookingRepo.createPayment(tx, {
+          bookingId: booking.id,
+          orderId: "COUPON_REDEMPTION",
+          totalPrice: totalCouponRedeemed,
+        });
+
+        await tx.payment.updateMany({
+          where: { bookingId: booking.id, status: "PENDING" },
+          data: { status: "PAID", provider: "MANUAL", providerPaymentId: "COUPON_PAID" },
+        });
+
+        return { booking, payment, fullyPaid: true, totalCouponRedeemed };
+      }
+
+      // Regular Flow with remaining Razorpay charge (Case 2)
       const payment = await BookingRepo.createPayment(tx, {
         bookingId: booking.id,
         orderId: "PENDING_AUTH",
-        totalPrice: pricing.totalPrice,
+        totalPrice: remainingPaymentAmount,
       });
 
-      return { booking, payment };
-    }, {
-      isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-    });
+        return { booking, payment, fullyPaid: false, totalCouponRedeemed };
+      }, {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+      })
+    );
 
     const { booking } = result;
+
+    if (result.fullyPaid) {
+      await logActivity("BOOKING_REQUESTED", userId, "Booking", booking.id, {
+        experienceId: data.experienceId,
+        slotId: data.slotId,
+        participantCount: data.participantCount,
+        paymentType: "COUPON",
+      });
+
+      await logActivity("BOOKING_CONFIRMED", userId, "Booking", booking.id, {
+        paymentType: "COUPON",
+        totalCouponRedeemed: result.totalCouponRedeemed,
+      });
+
+      revalidatePath("/", "layout");
+
+      // Send confirmation email
+      this.sendBookingConfirmationWithDetails(booking.id).catch((err) =>
+        console.error("[BookingService] Background email error:", err),
+      );
+
+      return {
+        bookingId: booking.id,
+        fullyPaidByCoupon: true,
+      };
+    }
 
     // 3. External Integration: Razorpay
     try {
       const razorpay = await getRazorpay();
-      const amountPaise = Math.round(pricing.totalPrice * 100);
+      const amountPaise = Math.round(Number(result.payment.amount) * 100);
 
       const keyIdSetting = await BookingRepo.getRazorpayKeyId(prisma);
       const keyId = keyIdSetting?.value || process.env.RAZORPAY_KEY_ID;
@@ -87,7 +295,6 @@ export const BookingService = {
       });
 
       // 4. Finalize Payment & Audit Trail
-      // Update the payment with the real provider order ID
       await prisma.payment.updateMany({
         where: { bookingId: booking.id, status: "PENDING" },
         data: { providerOrderId: order.id }
@@ -111,10 +318,38 @@ export const BookingService = {
       };
 
     } catch (razorpayError) {
-      // 5. Graceful Soft-Rollback: Preserve the record but mark as CANCELLED
-      // This maintains the audit trail as requested by senior engineering review.
-      await prisma.$transaction(async (rollbackTx) => {
+      // 5. Graceful Soft-Rollback: Restore coupons and set booking CANCELLED
+      await prisma.$transaction(async (rollbackTx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => {
         await BookingRepo.updateStatus(rollbackTx, booking.id, "CANCELLED");
+        
+        // Restore applied coupons on Razorpay error
+        const redemptions = await rollbackTx.couponTransaction.findMany({
+          where: { bookingId: booking.id, type: "REDEEMED" },
+        });
+
+        for (const r of redemptions) {
+          const coupon = await rollbackTx.travelCoupon.findUnique({ where: { id: r.couponId } });
+          if (!coupon) continue;
+          const currentBal = Number(coupon.balance);
+          const newBal = currentBal + Number(r.amount);
+          
+          await rollbackTx.travelCoupon.update({
+            where: { id: coupon.id },
+            data: { balance: newBal, status: "ACTIVE" },
+          });
+
+          await rollbackTx.couponTransaction.create({
+            data: {
+              couponId: coupon.id,
+              bookingId: booking.id,
+              type: "RESTORED",
+              amount: r.amount,
+              previousBalance: currentBal,
+              newBalance: newBal,
+              remarks: "Restored due to Razorpay order initialization failure",
+            },
+          });
+        }
       }, {
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
       });
@@ -131,24 +366,54 @@ export const BookingService = {
    */
   async confirmPayment(bookingId: string, razorpayOrderId: string, razorpayPaymentId: string, payload: Record<string, unknown>) {
     try {
-      const updatedBooking = await prisma.$transaction(async (tx) => {
+      const updatedBooking = await prisma.$transaction(async (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => {
         const booking = await tx.booking.findUnique({
           where: { id: bookingId },
-          select: { id: true, userId: true, bookingStatus: true, participantCount: true, slotId: true },
+          select: { id: true, userId: true, bookingStatus: true, participantCount: true, slotId: true, totalPrice: true, paidAmount: true },
         });
 
         if (!booking) {
           throw new Error("BOOKING_NOT_FOUND");
         }
 
-        // If booking is already confirmed, return it (idempotency)
-        if (booking.bookingStatus === "CONFIRMED") {
+        const paymentRecord = await tx.payment.findFirst({
+          where: { providerOrderId: razorpayOrderId },
+        });
+
+        if (!paymentRecord) {
+          throw new Error("PAYMENT_NOT_FOUND");
+        }
+
+        // Case 5: Verify coupons used in this booking have not expired in the meantime
+        const redemptions = await tx.couponTransaction.findMany({
+          where: { bookingId, type: "REDEEMED" },
+          include: { coupon: true },
+        });
+
+        for (const r of redemptions) {
+          if (isExpiredIST(r.coupon.expiryDate)) {
+            throw new Error("COUPON_EXPIRED_DURING_CHECKOUT");
+          }
+        }
+
+        // If this specific payment is already PAID, return the booking (idempotency)
+        if (paymentRecord.status === "PAID") {
           return booking;
         }
 
+        const paymentAmount = Number(paymentRecord.amount);
+        const newPaidAmount = Number(booking.paidAmount) + paymentAmount;
+        const remainingBalance = Number(booking.totalPrice) - newPaidAmount;
+        const newPaymentStatus = remainingBalance > 0.01 ? "PARTIALLY_PAID" : "PAID";
+
         const updated = await tx.booking.update({
           where: { id: bookingId },
-          data: { bookingStatus: "CONFIRMED", paymentStatus: "PAID" },
+          data: { 
+            bookingStatus: "CONFIRMED", 
+            paymentStatus: newPaymentStatus,
+            paidAmount: newPaidAmount,
+            remainingBalance: Math.max(0, remainingBalance),
+          },
         });
 
         await tx.payment.updateMany({
@@ -160,7 +425,7 @@ export const BookingService = {
           },
         });
 
-        if (booking.slotId) {
+        if (booking.slotId && booking.bookingStatus !== "CONFIRMED") {
           // Decrement slot remainingCapacity by participantCount
           await tx.slot.update({
             where: { id: booking.slotId },
@@ -241,12 +506,26 @@ export const BookingService = {
   async calculatePricing(data: BookingInput) {
     const experience = await prisma.experience.findUnique({
       where: { id: data.experienceId },
-      select: { basePrice: true }
+      select: { basePrice: true, extraAmenities: true }
     });
 
     if (!experience) throw new Error("EXPERIENCE_NOT_FOUND");
 
-    const baseFare = Number(experience.basePrice) * data.participantCount;
+    let extraAmenitiesConfig: ExtraAmenityGroup[] = [];
+    if (experience.extraAmenities) {
+      if (typeof experience.extraAmenities === "string") {
+        extraAmenitiesConfig = JSON.parse(experience.extraAmenities);
+      } else {
+        extraAmenitiesConfig = experience.extraAmenities as unknown as ExtraAmenityGroup[];
+      }
+    }
+
+    const baseFare = calculateParticipantsBaseFare(
+      data.participants,
+      Number(experience.basePrice),
+      extraAmenitiesConfig
+    );
+
     let totalPrice = baseFare;
     let taxBreakdown: { name: string; percentage: number; amount: number }[] = [];
 

@@ -41,6 +41,7 @@ export interface RefundResolvedData {
   refundPreference: "COUPON" | "BANK_REFUND";
   refundNote: string;
   totalPrice: number;
+  bookingId?: string;
 }
 
 export interface WelcomeEmailData {
@@ -145,15 +146,26 @@ export async function sendBookingCancellation(data: BookingCancelledData) {
 
 export async function sendRefundResolved(data: RefundResolvedData) {
   try {
+    const isCoupon = data.refundPreference === "COUPON";
+    let expiryStr: string | undefined;
+    if (isCoupon) {
+      const expDate = new Date();
+      expDate.setMonth(expDate.getMonth() + 12);
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      expiryStr = `${String(expDate.getDate()).padStart(2, "0")} ${months[expDate.getMonth()]} ${expDate.getFullYear()}`;
+    }
+
     const html = await render(
       <RefundResolvedEmail
         userName={data.userName}
-        bookingId="N/A"
+        bookingId={data.bookingId ?? "N/A"}
         amount={data.totalPrice}
+        couponCode={isCoupon ? data.refundNote : undefined}
+        expiryDate={expiryStr}
       />,
     );
     const label =
-      data.refundPreference === "COUPON" ? "Coupon Issued" : "Refund Processed";
+      isCoupon ? "Coupon Issued" : "Refund Processed";
     await sendEmail({
       to: data.userEmail,
       subject: `${label} — ${data.experienceTitle}`,
