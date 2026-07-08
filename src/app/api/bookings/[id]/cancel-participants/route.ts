@@ -75,6 +75,14 @@ async function processFullCancellation(params: {
       : booking.paymentStatus;
 
   await prisma.$transaction(async (tx) => {
+    const current = await tx.booking.findUnique({
+      where: { id: bookingId },
+      select: { bookingStatus: true },
+    });
+    if (!current || current.bookingStatus === "CANCELLED") {
+      throw new Error("Booking is already cancelled.");
+    }
+
     await tx.booking.update({
       where: { id: bookingId },
       data: {
@@ -321,6 +329,16 @@ export async function POST(
 
       // Execute atomic transaction for partial cancellation
       await prisma.$transaction(async (tx) => {
+        const cancelledCount = await tx.bookingParticipant.count({
+          where: {
+            id: { in: participantIds },
+            isCancelled: true,
+          },
+        });
+        if (cancelledCount > 0) {
+          throw new Error("One or more participants are already cancelled.");
+        }
+
         await tx.bookingParticipant.updateMany({
           where: { id: { in: participantIds } },
           data: {
@@ -445,6 +463,9 @@ export async function POST(
 
   } catch (error) {
     console.error("Cancel participants error:", error);
+    if (error instanceof Error && (error.message.includes("already cancelled") || error.message.includes("does not exist"))) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
     return NextResponse.json({ error: "Failed to cancel participants." }, { status: 500 });
   }
 }
