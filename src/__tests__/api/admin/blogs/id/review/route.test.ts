@@ -30,6 +30,13 @@ const createRequest = (body: unknown) =>
 describe("POST /api/admin/blogs/[id]/review", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "moderator-1" } as any);
+    mockBlogFindUnique.mockResolvedValue({
+      id: "b1",
+      status: "PENDING_REVIEW",
+      deletedAt: null,
+      authorId: "author-1",
+    } as any);
   });
 
   it("returns auth response when unauthorized", async () => {
@@ -68,11 +75,12 @@ describe("POST /api/admin/blogs/[id]/review", () => {
   });
 
   it("returns 400 for invalid review payload", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "moderator-1" } as any);
     mockBlogFindUnique.mockResolvedValue({
       id: "b1",
       status: "PENDING_REVIEW",
       deletedAt: null,
+      authorId: "author-1",
     } as any);
 
     const response = await POST(createRequest({ action: "reject" }), {
@@ -83,11 +91,12 @@ describe("POST /api/admin/blogs/[id]/review", () => {
   });
 
   it("approves blog and clears rejection reason", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "moderator-1" } as any);
     mockBlogFindUnique.mockResolvedValue({
       id: "b1",
       status: "PENDING_REVIEW",
       deletedAt: null,
+      authorId: "author-1",
     } as any);
     mockBlogUpdate.mockResolvedValue({ id: "b1", status: "PUBLISHED" } as any);
 
@@ -106,11 +115,12 @@ describe("POST /api/admin/blogs/[id]/review", () => {
   });
 
   it("rejects blog and trims rejection reason", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "moderator-1" } as any);
     mockBlogFindUnique.mockResolvedValue({
       id: "b1",
       status: "PENDING_REVIEW",
       deletedAt: null,
+      authorId: "author-1",
     } as any);
     mockBlogUpdate.mockResolvedValue({ id: "b1", status: "DRAFT" } as any);
 
@@ -127,12 +137,6 @@ describe("POST /api/admin/blogs/[id]/review", () => {
   });
 
   it("returns 500 on unexpected failure", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
-    mockBlogFindUnique.mockResolvedValue({
-      id: "b1",
-      status: "PENDING_REVIEW",
-      deletedAt: null,
-    } as any);
     mockBlogUpdate.mockRejectedValue(new Error("db down"));
 
     const response = await POST(createRequest({ action: "approve" }), {
@@ -140,5 +144,17 @@ describe("POST /api/admin/blogs/[id]/review", () => {
     });
 
     expect(response.status).toBe(500);
+  });
+
+  it("returns 400 when admin tries to self-moderate their own blog", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "author-1" } as any);
+
+    const response = await POST(createRequest({ action: "approve" }), {
+      params: Promise.resolve({ id: "b1" }),
+    });
+
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error).toContain("You cannot approve or reject your own blog.");
   });
 });

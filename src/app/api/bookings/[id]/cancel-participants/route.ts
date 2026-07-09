@@ -194,12 +194,13 @@ async function calculateRefundProportional(params: {
   const cancelledParticipants = activeParticipants.filter((p) => participantIds.includes(p.id));
 
   for (const p of cancelledParticipants) {
-    totalCancelledBase += experienceBasePrice;
+    let participantFare = experienceBasePrice;
     if (p.selectedAmenities && Array.isArray(p.selectedAmenities)) {
       for (const item of p.selectedAmenities as AmenityInput[]) {
-        totalCancelledBase += Number(item.price) || 0;
+        participantFare += Number(item.price) || 0;
       }
     }
+    totalCancelledBase += Math.max(0, participantFare);
   }
 
   // Calculate proportional totals for the cancelled participants

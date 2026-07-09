@@ -40,7 +40,7 @@ function calculateParticipantsBaseFare(
         }
       }
     }
-    baseFare += participantFare;
+    baseFare += Math.max(0, participantFare);
   }
   return baseFare;
 }
