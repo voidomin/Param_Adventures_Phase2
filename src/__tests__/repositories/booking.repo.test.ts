@@ -142,3 +142,85 @@ describe("BookingRepo.createBooking", () => {
     expect(mockTx.user.update).not.toHaveBeenCalled();
   });
 });
+
+describe("BookingRepo helper methods", () => {
+  const mockTx = {
+    platformSetting: {
+      findUnique: vi.fn(),
+    },
+    slot: {
+      updateMany: vi.fn(),
+      update: vi.fn(),
+    },
+    booking: {
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    payment: {
+      create: vi.fn(),
+    },
+  } as any;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("getRazorpayKeyId calls findUnique on platformSetting", async () => {
+    mockTx.platformSetting.findUnique.mockResolvedValue({ value: "test-key" });
+    const result = await BookingRepo.getRazorpayKeyId(mockTx);
+    expect(mockTx.platformSetting.findUnique).toHaveBeenCalledWith({
+      where: { key: "razorpay_key_id" },
+    });
+    expect(result).toEqual({ value: "test-key" });
+  });
+
+  it("updateSlotCapacity calls updateMany on slot", async () => {
+    await BookingRepo.updateSlotCapacity(mockTx, "slot-1", 2);
+    expect(mockTx.slot.updateMany).toHaveBeenCalledWith({
+      where: { id: "slot-1", remainingCapacity: { gte: 2 } },
+      data: { remainingCapacity: { decrement: 2 } },
+    });
+  });
+
+  it("updateStatus calls update on booking", async () => {
+    await BookingRepo.updateStatus(mockTx, "bk-1", "CONFIRMED");
+    expect(mockTx.booking.update).toHaveBeenCalledWith({
+      where: { id: "bk-1" },
+      data: { bookingStatus: "CONFIRMED" },
+    });
+  });
+
+  it("deleteBooking calls delete on booking", async () => {
+    await BookingRepo.deleteBooking(mockTx, "bk-1");
+    expect(mockTx.booking.delete).toHaveBeenCalledWith({
+      where: { id: "bk-1" },
+    });
+  });
+
+  it("incrementSlotCapacity calls update on slot", async () => {
+    await BookingRepo.incrementSlotCapacity(mockTx, "slot-1", 3);
+    expect(mockTx.slot.update).toHaveBeenCalledWith({
+      where: { id: "slot-1" },
+      data: { remainingCapacity: { increment: 3 } },
+    });
+  });
+
+  it("createPayment calls create on payment", async () => {
+    const paymentData = {
+      bookingId: "bk-1",
+      orderId: "ord-1",
+      totalPrice: 500,
+    };
+    await BookingRepo.createPayment(mockTx, paymentData);
+    expect(mockTx.payment.create).toHaveBeenCalledWith({
+      data: {
+        bookingId: "bk-1",
+        provider: "RAZORPAY",
+        providerOrderId: "ord-1",
+        amount: 500,
+        currency: "INR",
+        status: "PENDING",
+      },
+    });
+  });
+});
