@@ -29,7 +29,7 @@ import { z } from "zod";
 import { formLimiter } from "@/lib/rate-limiter";
 
 const blogCreateSchema = z.object({
-  experienceId: z.string().min(1, "experienceId is required"),
+  experienceId: z.string().optional().nullable(),
   title: z.string().min(1, "title is required").max(120),
   coverImageUrl: z.url({ message: "Invalid cover image URL" }).optional().nullable(),
   theme: z.enum(["CLASSIC", "MODERN", "MINIMAL"]).optional(),
@@ -79,39 +79,54 @@ export async function POST(request: NextRequest) {
       authorSocials,
     } = parseResult.data;
 
-    // Gate: must have a CONFIRMED booking AND the trip must be completed (slot date in the past)
-    const now = new Date();
-    const confirmedBooking = await prisma.booking.findFirst({
-      where: {
-        userId: payload.userId,
-        experienceId,
-        bookingStatus: "CONFIRMED",
-        deletedAt: null,
-        slot: { date: { lt: now } },
-      },
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+      include: { role: { select: { name: true } } },
     });
-    if (!confirmedBooking) {
-      return NextResponse.json(
-        {
-          error:
-            "You can only write about experiences where your trip has been completed (trip date must have passed).",
-        },
-        { status: 403 },
-      );
-    }
+    const isAdmin = user?.role?.name === "ADMIN" || user?.role?.name === "SUPER_ADMIN";
 
-    // Constraint: one blog per (user, experience)
-    const existing = await prisma.blog.findFirst({
-      where: { authorId: payload.userId, experienceId, deletedAt: null },
-    });
-    if (existing) {
-      return NextResponse.json(
-        {
-          error: "You have already written a blog about this experience.",
-          blogId: existing.id,
+    if (!isAdmin) {
+      if (!experienceId) {
+        return NextResponse.json(
+          { error: "An experience is required for user blogs." },
+          { status: 400 }
+        );
+      }
+
+      // Gate: must have a CONFIRMED booking AND the trip must be completed (slot date in the past)
+      const now = new Date();
+      const confirmedBooking = await prisma.booking.findFirst({
+        where: {
+          userId: payload.userId,
+          experienceId,
+          bookingStatus: "CONFIRMED",
+          deletedAt: null,
+          slot: { date: { lt: now } },
         },
-        { status: 409 },
-      );
+      });
+      if (!confirmedBooking) {
+        return NextResponse.json(
+          {
+            error:
+              "You can only write about experiences where your trip has been completed (trip date must have passed).",
+          },
+          { status: 403 },
+        );
+      }
+
+      // Constraint: one blog per (user, experience)
+      const existing = await prisma.blog.findFirst({
+        where: { authorId: payload.userId, experienceId, deletedAt: null },
+      });
+      if (existing) {
+        return NextResponse.json(
+          {
+            error: "You have already written a blog about this experience.",
+            blogId: existing.id,
+          },
+          { status: 409 },
+        );
+      }
     }
 
     // Generate a unique slug
@@ -129,7 +144,7 @@ export async function POST(request: NextRequest) {
         slug,
         content: { type: "doc", content: [] }, // empty Tiptap doc
         authorId: payload.userId,
-        experienceId,
+        experienceId: experienceId || null,
         status: "DRAFT",
         coverImageUrl: coverImageUrl || null,
         theme: theme || "CLASSIC",

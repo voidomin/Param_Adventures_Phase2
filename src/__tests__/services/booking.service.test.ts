@@ -51,7 +51,7 @@ describe("BookingService.calculatePricing", () => {
           dateOfBirth: "1990-01-01",
           selectedAmenities: [{ groupId: "g1", optionId: "o1" }],
         },
-      ],
+      ] as any,
     };
 
     const result = await BookingService.calculatePricing(bookingInput);
@@ -85,7 +85,7 @@ describe("BookingService.calculatePricing", () => {
           gender: "MALE",
           dateOfBirth: "1990-01-01",
         },
-      ],
+      ] as any,
     };
 
     const result = await BookingService.calculatePricing(bookingInput);
@@ -119,7 +119,7 @@ describe("BookingService.calculatePricing", () => {
           gender: "MALE",
           dateOfBirth: "1990-01-01",
         },
-      ],
+      ] as any,
     };
 
     const result = await BookingService.calculatePricing(bookingInput);

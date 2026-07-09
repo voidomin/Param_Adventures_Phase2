@@ -79,6 +79,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
+async function checkModeratorStatus(): Promise<boolean> {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("accessToken")?.value;
+  if (!token) return false;
+  const payload = await verifyAccessToken(token);
+  return payload?.roleName === "SUPER_ADMIN" || payload?.roleName === "ADMIN";
+}
+
 export default async function BlogArticlePage({ params }: Props) {
   const { slug } = await params;
 
@@ -87,7 +95,13 @@ export default async function BlogArticlePage({ params }: Props) {
       prisma.blog.findUnique({
         where: { slug },
         include: {
-          author: { select: { name: true, avatarUrl: true } },
+          author: {
+            select: {
+              name: true,
+              avatarUrl: true,
+              role: { select: { name: true } },
+            },
+          },
           experience: {
             select: {
               id: true,
@@ -106,11 +120,7 @@ export default async function BlogArticlePage({ params }: Props) {
   );
 
   // Check authorization for preview
-  const cookieStore = await cookies();
-  const token = cookieStore.get("accessToken")?.value;
-  const payload = token ? await verifyAccessToken(token) : null;
-  const isModerator =
-    payload?.roleName === "SUPER_ADMIN" || payload?.roleName === "ADMIN";
+  const isModerator = await checkModeratorStatus();
 
   if (
     !blog ||
@@ -135,6 +145,11 @@ export default async function BlogArticlePage({ params }: Props) {
     month: "long",
     year: "numeric",
   });
+
+  const isOfficial =
+    blog.author?.role?.name === "ADMIN" || blog.author?.role?.name === "SUPER_ADMIN";
+  const authorName = isOfficial ? "Param Adventures" : blog.author.name;
+  const authorAvatar = isOfficial ? "/param-logo.png" : blog.author.avatarUrl;
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-20">
@@ -179,53 +194,55 @@ export default async function BlogArticlePage({ params }: Props) {
           {/* Author */}
           <div className="flex items-center gap-3">
             <div className="relative w-10 h-10 rounded-full overflow-hidden bg-primary/20 flex items-center justify-center text-primary font-bold shadow-inner">
-              {blog.author.avatarUrl ? (
+              {authorAvatar ? (
                 <Image
-                  src={blog.author.avatarUrl}
-                  alt={blog.author.name}
+                  src={authorAvatar}
+                  alt={authorName}
                   fill
                   className="object-cover"
                 />
               ) : (
-                blog.author.name.charAt(0).toUpperCase()
+                authorName.charAt(0).toUpperCase()
               )}
             </div>
             <div>
               <p className="font-semibold text-foreground text-sm">
-                {blog.author.name}
+                {authorName}
               </p>
-              <div className="flex items-center gap-3 mt-1">
-                {socials.instagram && (
-                  <a
-                    href={socials.instagram}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-foreground/40 hover:text-primary transition-colors"
-                  >
-                    <InstagramSVG />
-                  </a>
-                )}
-                {socials.twitter && (
-                  <a
-                    href={socials.twitter}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-foreground/40 hover:text-primary transition-colors"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </a>
-                )}
-                {socials.youtube && (
-                  <a
-                    href={socials.youtube}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-foreground/40 hover:text-primary transition-colors"
-                  >
-                    <YoutubeSVG />
-                  </a>
-                )}
-              </div>
+              {!isOfficial && (socials.instagram || socials.twitter || socials.youtube) && (
+                <div className="flex items-center gap-3 mt-1">
+                  {socials.instagram && (
+                    <a
+                      href={socials.instagram}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-foreground/40 hover:text-primary transition-colors"
+                    >
+                      <InstagramSVG />
+                    </a>
+                  )}
+                  {socials.twitter && (
+                    <a
+                      href={socials.twitter}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-foreground/40 hover:text-primary transition-colors"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </a>
+                  )}
+                  {socials.youtube && (
+                    <a
+                      href={socials.youtube}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-foreground/40 hover:text-primary transition-colors"
+                    >
+                      <YoutubeSVG />
+                    </a>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 

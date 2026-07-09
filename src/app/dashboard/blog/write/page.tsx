@@ -20,6 +20,7 @@ const YoutubeSVG = () => (
 
 import MediaUploader from "@/components/admin/MediaUploader";
 import { ASPECT_RATIOS } from "@/lib/constants/aspect-ratios";
+import { useAuth } from "@/lib/AuthContext";
 
 // Lazy-load the editor to avoid SSR issues
 const TiptapEditor = dynamic(() => import("@/components/blog/TiptapEditor"), {
@@ -42,6 +43,9 @@ const EMPTY_DOC = { type: "doc", content: [] };
 
 export default function WriteBlogPage() {
   const router = useRouter();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+
   const [experiences, setExperiences] = useState<ConfirmedExperience[]>([]);
   const [isLoadingExp, setIsLoadingExp] = useState(true);
   const [selectedExp, setSelectedExp] = useState("");
@@ -78,7 +82,7 @@ export default function WriteBlogPage() {
 
   const handleSaveDraft = async (): Promise<string | null> => {
     setError("");
-    if (!selectedExp) {
+    if (!selectedExp && !isAdmin) {
       setError("Please select an experience first.");
       return null;
     }
@@ -96,7 +100,7 @@ export default function WriteBlogPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            experienceId: selectedExp,
+            experienceId: selectedExp || null,
             title,
             coverImageUrl: coverImageUrl || null,
             theme,
@@ -173,7 +177,7 @@ export default function WriteBlogPage() {
     );
   }
 
-  if (experiences.length === 0) {
+  if (experiences.length === 0 && !isAdmin) {
     return (
       <div className="min-h-screen bg-background">
         <div className="max-w-2xl mx-auto px-4 pt-32 text-center">
@@ -221,7 +225,7 @@ export default function WriteBlogPage() {
               }}
               className="w-full px-4 py-3 bg-background border border-border rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
             >
-              <option value="">Select an experience…</option>
+              <option value="">{isAdmin ? "General Blog (No Experience)" : "Select an experience…"}</option>
               {experiences.map((exp) => (
                 <option key={exp.id} value={exp.id}>
                   {exp.title} — {exp.location}
@@ -424,7 +428,7 @@ export default function WriteBlogPage() {
               ) : (
                 <Send className="w-4 h-4" />
               )}
-              Submit for Review
+              {isAdmin ? "Submit for Admin Review" : "Submit for Review"}
             </button>
             {savedAt && (
               <p className="text-xs text-foreground/30 ml-auto">

@@ -32,6 +32,12 @@ export async function POST(request: NextRequest, { params }: Params) {
   if (!blog || blog.deletedAt) {
     return NextResponse.json({ error: "Blog not found." }, { status: 404 });
   }
+  if (blog.authorId === auth.userId) {
+    return NextResponse.json(
+      { error: "You cannot approve or reject your own blog." },
+      { status: 400 }
+    );
+  }
   if (blog.status !== "PENDING_REVIEW") {
     return NextResponse.json(
       { error: "Only blogs with PENDING_REVIEW status can be reviewed." },

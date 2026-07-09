@@ -17,6 +17,21 @@ export async function GET(request: NextRequest) {
   if (!payload)
     return NextResponse.json({ error: "Invalid token." }, { status: 401 });
 
+  const user = await prisma.user.findUnique({
+    where: { id: payload.userId },
+    include: { role: { select: { name: true } } },
+  });
+  const isAdmin = user?.role?.name === "ADMIN" || user?.role?.name === "SUPER_ADMIN";
+
+  if (isAdmin) {
+    const experiences = await prisma.experience.findMany({
+      where: { status: "PUBLISHED" },
+      select: { id: true, title: true, slug: true, location: true },
+      orderBy: { title: "asc" },
+    });
+    return NextResponse.json({ experiences });
+  }
+
   // Get experienceIds already blogged about
   const existingBlogs = await prisma.blog.findMany({
     where: { authorId: payload.userId, deletedAt: null },
