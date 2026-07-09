@@ -44,7 +44,10 @@ const EMPTY_DOC = { type: "doc", content: [] };
 export default function WriteBlogPage() {
   const router = useRouter();
   const { user } = useAuth();
-  const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
+  const isAdmin =
+    user?.role === "ADMIN" ||
+    user?.role === "SUPER_ADMIN" ||
+    user?.role === "MEDIA_UPLOADER";
 
   const [experiences, setExperiences] = useState<ConfirmedExperience[]>([]);
   const [isLoadingExp, setIsLoadingExp] = useState(true);

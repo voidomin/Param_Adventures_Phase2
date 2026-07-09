@@ -147,7 +147,9 @@ export default async function BlogArticlePage({ params }: Props) {
   });
 
   const isOfficial =
-    blog.author?.role?.name === "ADMIN" || blog.author?.role?.name === "SUPER_ADMIN";
+    blog.author?.role?.name === "ADMIN" ||
+    blog.author?.role?.name === "SUPER_ADMIN" ||
+    blog.author?.role?.name === "MEDIA_UPLOADER";
   const authorName = isOfficial ? "Param Adventures" : blog.author.name;
   const authorAvatar = isOfficial ? "/param-logo.png" : blog.author.avatarUrl;
 

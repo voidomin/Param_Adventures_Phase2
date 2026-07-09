@@ -35,7 +35,9 @@ export default function BlogListingClient({ initialBlogs }: Readonly<BlogListing
   const processedBlogs = useMemo(() => {
     return initialBlogs.map((blog) => {
       const isOfficial =
-        blog.author?.role?.name === "ADMIN" || blog.author?.role?.name === "SUPER_ADMIN";
+        blog.author?.role?.name === "ADMIN" ||
+        blog.author?.role?.name === "SUPER_ADMIN" ||
+        blog.author?.role?.name === "MEDIA_UPLOADER";
       return {
         ...blog,
         isOfficial,

@@ -21,7 +21,10 @@ export async function GET(request: NextRequest) {
     where: { id: payload.userId },
     include: { role: { select: { name: true } } },
   });
-  const isAdmin = user?.role?.name === "ADMIN" || user?.role?.name === "SUPER_ADMIN";
+  const isAdmin =
+    user?.role?.name === "ADMIN" ||
+    user?.role?.name === "SUPER_ADMIN" ||
+    user?.role?.name === "MEDIA_UPLOADER";
 
   if (isAdmin) {
     const experiences = await prisma.experience.findMany({
