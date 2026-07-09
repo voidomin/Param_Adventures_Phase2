@@ -13,7 +13,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const auth = await authorizeRequest(request, "blog:moderate");
+  const auth = await authorizeRequest(request, ["blog:moderate", "media:upload"]);
   if (!auth.authorized) return auth.response;
 
   const blog = await prisma.blog.findUnique({ where: { id } });

@@ -7,7 +7,7 @@ import { authorizeRequest } from "@/lib/api-auth";
  * Query params: status (DRAFT | PENDING_REVIEW | PUBLISHED), page, limit
  */
 export async function GET(request: NextRequest) {
-  const auth = await authorizeRequest(request, "blog:moderate");
+  const auth = await authorizeRequest(request, ["blog:moderate", "media:upload"]);
   if (!auth.authorized) return auth.response;
 
   const { searchParams } = new URL(request.url);
