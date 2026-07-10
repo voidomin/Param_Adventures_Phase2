@@ -27,6 +27,6 @@ export default async function BlogListingPage() {
     [],
   );
 
-  return <BlogListingClient initialBlogs={blogs as any} />;
+  return <BlogListingClient initialBlogs={blogs as unknown as Parameters<typeof BlogListingClient>[0]["initialBlogs"]} />;
 }
 

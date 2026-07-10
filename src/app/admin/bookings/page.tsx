@@ -310,7 +310,7 @@ function BookingDetailsModal({
               <select
                 id="refund-preference"
                 value={cancelPreference}
-                onChange={(e) => setCancelPreference(e.target.value as any)}
+                onChange={(e) => setCancelPreference(e.target.value as "BANK_REFUND" | "COUPON" | "NO_REFUND")}
                 className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500 text-foreground"
               >
                 <option value="BANK_REFUND">Bank Refund</option>
@@ -335,8 +335,8 @@ function BookingDetailsModal({
                 setIsCancelling(true);
                 try {
                   const activePartIds = (booking.participants || [])
-                    .filter((p: any) => !p.isCancelled)
-                    .map((p: any) => p.id);
+                    .filter((p) => !p.isCancelled)
+                    .map((p) => p.id);
 
                   const res = await fetch(`/api/bookings/${booking.id}/cancel-participants`, {
                     method: "POST",

@@ -28,13 +28,106 @@ interface JsPDFWithAutoTable extends jsPDF {
   };
 }
 
+interface MinimalExperience {
+  id: string;
+  title: string;
+}
+
+interface TaxItem {
+  name: string;
+  percentage: number;
+  amount: number;
+}
+
+interface AuditBooking {
+  id: string;
+  participantCount: number;
+  totalPrice: number;
+  baseFare: number;
+  taxBreakdown: TaxItem[] | null;
+  bookingStatus: string;
+  paymentStatus: string;
+  createdAt: string;
+  user?: {
+    name?: string | null;
+    email?: string | null;
+    phoneNumber?: string | null;
+  } | null;
+  experience?: {
+    title: string;
+  } | null;
+  slot?: {
+    date: string | Date;
+  } | null;
+  payments?: {
+    status: string;
+    provider: string;
+    providerPaymentId?: string | null;
+  }[];
+}
+
+// standalone helpers to avoid nested functions complexity
+function calculateGstTotals(taxBreakdown: TaxItem[] | null) {
+  let gstAmount = 0;
+  let gstPercent = 0;
+  if (taxBreakdown && Array.isArray(taxBreakdown)) {
+    gstAmount = taxBreakdown.reduce((sum: number, item) => sum + (Number(item.amount) || 0), 0);
+    gstPercent = taxBreakdown.reduce((sum: number, item) => sum + (Number(item.percentage) || 0), 0);
+  }
+  return { gstAmount, gstPercent };
+}
+
+function getPaymentDetails(payments?: { status: string; provider: string; providerPaymentId?: string | null }[]) {
+  const successfulPayment = payments?.find((p) => p.status === "PAID");
+  let paymentMode = "—";
+  if (successfulPayment) {
+    paymentMode = successfulPayment.provider === "MANUAL" ? "Manual Transfer" : "Razorpay Online";
+  }
+  const paymentRefId = successfulPayment?.providerPaymentId || "—";
+  return { paymentMode, paymentRefId };
+}
+
+function formatBookingRow(b: AuditBooking) {
+  const { gstAmount, gstPercent } = calculateGstTotals(b.taxBreakdown);
+  const { paymentMode, paymentRefId } = getPaymentDetails(b.payments);
+
+  return {
+    "Booking ID": b.id,
+    "Customer Name": b.user?.name || "—",
+    "Customer Email": b.user?.email || "—",
+    "Customer Phone": b.user?.phoneNumber || "—",
+    "Experience Title": b.experience?.title || "—",
+    "Slot Date": b.slot ? new Date(b.slot.date) : "—",
+    "Pax Count": b.participantCount,
+    "Base Taxable Value (INR)": Number(b.baseFare),
+    "GST Rate (%)": gstPercent,
+    "GST Amount (INR)": gstAmount,
+    "Total Price (INR)": Number(b.totalPrice),
+    "Booking Status": b.bookingStatus,
+    "Payment Status": b.paymentStatus,
+    "Payment Mode": paymentMode,
+    "Transaction Reference ID": paymentRefId,
+    "Booking Date": new Date(b.createdAt),
+  };
+}
+
+function getStatusBadgeClass(status: string): string {
+  if (status === "CONFIRMED") {
+    return "bg-green-500/10 text-green-500 border-green-500/20";
+  }
+  if (status === "CANCELLED") {
+    return "bg-red-500/10 text-red-500 border-red-500/20";
+  }
+  return "bg-yellow-500/10 text-yellow-500 border-yellow-500/20";
+}
+
 export default function InvoicesTab() {
-  const [experiences, setExperiences] = useState<any[]>([]);
+  const [experiences, setExperiences] = useState<MinimalExperience[]>([]);
   const [selectedExp, setSelectedExp] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [status, setStatus] = useState("CONFIRMED");
-  const [bookings, setBookings] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<AuditBooking[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [exportProgress, setExportProgress] = useState<string | null>(null);
@@ -66,9 +159,9 @@ export default function InvoicesTab() {
       const res = await fetch(`/api/admin/bookings?${params}`);
       if (!res.ok) throw new Error("Search failed");
       const data = await res.json();
-      const list = data.bookings || [];
+      const list = (data.bookings || []) as AuditBooking[];
       setBookings(list);
-      setSelectedIds(list.map((b: any) => b.id)); // select all by default
+      setSelectedIds(list.map((b) => b.id)); // select all by default
     } catch (err) {
       console.error(err);
       alert("Failed to search bookings.");
@@ -179,38 +272,7 @@ export default function InvoicesTab() {
         setExportProgress("Formatting GST sales ledger data...");
         
         const selectedBookings = bookings.filter((b) => selectedIds.includes(b.id));
-
-        const rows = selectedBookings.map((b) => {
-          let gstAmount = 0;
-          let gstPercent = 0;
-          if (b.taxBreakdown && Array.isArray(b.taxBreakdown)) {
-            gstAmount = b.taxBreakdown.reduce((sum: number, item: any) => sum + (Number(item.amount) || 0), 0);
-            gstPercent = b.taxBreakdown.reduce((sum: number, item: any) => sum + (Number(item.percentage) || 0), 0);
-          }
-
-          const successfulPayment = b.payments?.find((p: any) => p.status === "PAID");
-          const paymentMode = successfulPayment ? (successfulPayment.provider === "MANUAL" ? "Manual Transfer" : "Razorpay Online") : "—";
-          const paymentRefId = successfulPayment?.providerPaymentId || "—";
-
-          return {
-            "Booking ID": b.id,
-            "Customer Name": b.user?.name || "—",
-            "Customer Email": b.user?.email || "—",
-            "Customer Phone": b.user?.phoneNumber || "—",
-            "Experience Title": b.experience?.title || "—",
-            "Slot Date": b.slot ? new Date(b.slot.date) : "—",
-            "Pax Count": b.participantCount,
-            "Base Taxable Value (INR)": Number(b.baseFare),
-            "GST Rate (%)": gstPercent,
-            "GST Amount (INR)": gstAmount,
-            "Total Price (INR)": Number(b.totalPrice),
-            "Booking Status": b.bookingStatus,
-            "Payment Status": b.paymentStatus,
-            "Payment Mode": paymentMode,
-            "Transaction Reference ID": paymentRefId,
-            "Booking Date": new Date(b.createdAt),
-          };
-        });
+        const rows = selectedBookings.map(formatBookingRow);
 
         const XLSX = await import("xlsx");
         const worksheet = XLSX.utils.json_to_sheet(rows, { cellDates: true, dateNF: "yyyy-mm-dd" });
@@ -223,15 +285,15 @@ export default function InvoicesTab() {
           return acc;
         }, {} as Record<string, number>);
 
-        rows.forEach((row: Record<string, any>) => {
-          Object.keys(row).forEach((key) => {
+        rows.forEach((row: Record<string, unknown>) => {
+          for (const key of Object.keys(row)) {
             const valStr = row[key] instanceof Date
               ? row[key].toISOString().split("T")[0]
               : String(row[key] ?? "");
             if (valStr.length > (maxLens[key] || 0)) {
               maxLens[key] = valStr.length;
             }
-          });
+          }
         });
 
         worksheet["!cols"] = Object.keys(maxLens).map((key) => ({
@@ -461,13 +523,7 @@ export default function InvoicesTab() {
                         ₹{Number(b.totalPrice).toLocaleString("en-IN")}
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
-                          b.bookingStatus === "CONFIRMED"
-                            ? "bg-green-500/10 text-green-500 border-green-500/20"
-                            : b.bookingStatus === "CANCELLED"
-                            ? "bg-red-500/10 text-red-500 border-red-500/20"
-                            : "bg-yellow-500/10 text-yellow-500 border-yellow-500/20"
-                        }`}>
+                        <span className={`inline-flex px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${getStatusBadgeClass(b.bookingStatus)}`}>
                           {b.bookingStatus}
                         </span>
                       </td>
@@ -482,7 +538,7 @@ export default function InvoicesTab() {
         <div className="border border-dashed border-border rounded-3xl p-12 text-center text-foreground/40 space-y-2">
           <AlertCircle className="w-10 h-10 mx-auto opacity-30 animate-pulse" />
           <h4 className="font-bold text-foreground/75">No bookings found</h4>
-          <p className="text-xs">Adjust your search parameters and click "Search Bookings" above.</p>
+          <p className="text-xs">Adjust your search parameters and click &quot;Search Bookings&quot; above.</p>
         </div>
       )}
     </div>
