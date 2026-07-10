@@ -167,7 +167,7 @@ export default function AdminLayout({
       name: "Reviews",
       href: "/admin/reviews",
       icon: Star,
-      permission: "trip:create",
+      permission: "trip:publish",
     },
     {
       name: "System Governance",

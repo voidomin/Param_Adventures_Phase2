@@ -2065,6 +2065,7 @@ export default function ExperienceForm({
                         return (
                           <label
                             key={policy.id}
+                            htmlFor={policy.id}
                             className={`p-3 rounded-xl border transition-all flex items-start gap-3 cursor-pointer ${
                               isChecked
                                 ? "bg-primary/5 border-primary/40 ring-1 ring-primary/10"
@@ -2072,6 +2073,7 @@ export default function ExperienceForm({
                             }`}
                           >
                             <input
+                              id={policy.id}
                               type="checkbox"
                               checked={isChecked}
                               onChange={(e) => {
@@ -2283,13 +2285,33 @@ export default function ExperienceForm({
                             placeholder="e.g. Triple Sharing"
                             required
                           />
+                          {/* Plus/Minus Toggle Button */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newPrice = option.price === 0 ? -0.001 : -option.price;
+                              updateAmenityOption(group.id, option.id, "price", newPrice);
+                            }}
+                            className={`px-2.5 py-1.5 rounded-lg border font-bold text-xs transition-colors flex items-center justify-center w-20 ${
+                              option.price < 0
+                                ? "bg-red-500/10 border-red-500/20 text-red-500 hover:bg-red-500/20"
+                                : "bg-green-500/10 border-green-500/20 text-green-500 hover:bg-green-500/20"
+                            }`}
+                            title={option.price < 0 ? "Deduction (Subtracts from total)" : "Addition (Adds to total)"}
+                          >
+                            {option.price < 0 ? "- Deduct" : "+ Add"}
+                          </button>
                           <div className="w-32 relative">
                             <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-foreground/50">₹</span>
                             <input
                               type="number"
                               min="0"
-                              value={option.price}
-                              onChange={(e) => updateAmenityOption(group.id, option.id, "price", Number(e.target.value))}
+                              value={Math.abs(option.price) < 0.01 ? "" : Math.abs(option.price)}
+                              onChange={(e) => {
+                                const val = Number(e.target.value) || 0;
+                                const finalVal = option.price < 0 ? -val : val;
+                                updateAmenityOption(group.id, option.id, "price", finalVal);
+                              }}
                               className="w-full bg-background border border-border rounded-lg pl-6 pr-3 py-1.5 text-sm focus:outline-none focus:border-primary/50 text-foreground font-semibold"
                               placeholder="0"
                               required

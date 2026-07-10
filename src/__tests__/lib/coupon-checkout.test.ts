@@ -135,7 +135,7 @@ describe("Coupon Checkout Validation & Business Rules", () => {
         code: "PARAM-BIG",
         customerId: "user1",
         balance: 1500, // exceeds 1000 total price
-        expiryDate: new Date(Date.now() + 10000000),
+        expiryDate: new Date(Date.now() + 7 * 86400000),
         status: "ACTIVE",
       };
 

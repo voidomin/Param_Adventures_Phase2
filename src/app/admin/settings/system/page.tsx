@@ -17,6 +17,7 @@ import {
   CreditCard,
   Image as ImageIcon,
   Puzzle,
+  FileText,
 } from "lucide-react";
 
 // Modular Components
@@ -27,6 +28,7 @@ import MediaTab from "@/components/admin/settings/MediaTab";
 import SecurityTab from "@/components/admin/settings/SecurityTab";
 import SystemTab from "@/components/admin/settings/SystemTab";
 import IntegrationsTab from "@/components/admin/settings/IntegrationsTab";
+import InvoicesTab from "@/components/admin/settings/InvoicesTab";
 
 const _maskValue = (key: string, value: string | number | undefined | null) => {
   if (value === undefined || value === null) return "n/a";
@@ -202,6 +204,7 @@ export default function SystemSettingsPage() {
   const tabs = [
     { id: "communications", label: "Communications", icon: Mail },
     { id: "finance", label: "Finance & Taxation", icon: CreditCard },
+    { id: "invoices", label: "Invoice Auditing", icon: FileText },
     { id: "media", label: "Media Storage", icon: ImageIcon },
     { id: "security", label: "Security & Keys", icon: Lock },
     { id: "integrations", label: "Integrations", icon: Puzzle },
@@ -319,6 +322,7 @@ export default function SystemSettingsPage() {
               
               {activeTab === "communications" && <CommunicationsTab getVal={getVal} updateSetting={updateSetting} />}
               {activeTab === "finance" && <FinanceTab getVal={getVal} updateSetting={updateSetting} />}
+              {activeTab === "invoices" && <InvoicesTab />}
               {activeTab === "media" && <MediaTab getVal={getVal} updateSetting={updateSetting} />}
               {activeTab === "security" && <SecurityTab getVal={getVal} updateSetting={updateSetting} />}
               {activeTab === "integrations" && <IntegrationsTab getVal={getVal} updateSetting={updateSetting} />}

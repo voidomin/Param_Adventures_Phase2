@@ -20,6 +20,9 @@ vi.mock("@/lib/db", () => ({
     booking: {
       findFirst: vi.fn(),
     },
+    user: {
+      findUnique: vi.fn(),
+    },
   },
 }));
 
@@ -35,6 +38,7 @@ const mockBlogFindFirst = vi.mocked(prisma.blog.findFirst);
 const mockBlogFindUnique = vi.mocked(prisma.blog.findUnique);
 const mockBlogCreate = vi.mocked(prisma.blog.create);
 const mockBookingFindFirst = vi.mocked(prisma.booking.findFirst);
+const mockUserFindUnique = vi.mocked(prisma.user.findUnique);
 
 type ReqOpts = { token?: string; body?: unknown };
 const createRequest = (opts: ReqOpts = {}) =>
@@ -48,6 +52,10 @@ const createRequest = (opts: ReqOpts = {}) =>
 describe("/api/user/blogs", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUserFindUnique.mockResolvedValue({
+      id: "u1",
+      role: { name: "REGISTERED_USER" },
+    } as any);
   });
 
   it("GET returns 401 when token is missing", async () => {

@@ -54,7 +54,7 @@ interface JsPDFWithAutoTable extends jsPDF {
   };
 }
 
-async function fetchImageAsBase64(url: string): Promise<string | null> {
+export async function fetchImageAsBase64(url: string): Promise<string | null> {
   try {
     const res = await fetch(url);
     if (!res.ok) return null;
@@ -69,7 +69,7 @@ async function fetchImageAsBase64(url: string): Promise<string | null> {
   }
 }
 
-function formatInvoiceDate(d: string | Date) {
+export function formatInvoiceDate(d: string | Date) {
   const date = new Date(d);
   if (Number.isNaN(date.getTime())) return "—";
   const day = String(date.getDate()).padStart(2, "0");
@@ -77,7 +77,7 @@ function formatInvoiceDate(d: string | Date) {
   return `${day}/${months[date.getMonth()]}/${date.getFullYear()}`;
 }
 
-function drawInvoiceHeader(
+export function drawInvoiceHeader(
   doc: jsPDF,
   logoBase64: string | null,
   company: InvoiceData['company'],
@@ -132,7 +132,7 @@ function drawInvoiceHeader(
   return dividerY;
 }
 
-function drawInvoiceDetailsAndBilledTo(
+export function drawInvoiceDetailsAndBilledTo(
   doc: jsPDF,
   booking: InvoiceData['booking'],
   primaryContact: InvoiceData['primaryContact'],
@@ -175,7 +175,7 @@ function drawInvoiceDetailsAndBilledTo(
   return { cardHeight, cardY };
 }
 
-function drawPaymentAndSummaryBlocks(
+export function drawPaymentAndSummaryBlocks(
   doc: jsPDF,
   booking: InvoiceData['booking'],
   payment: InvoiceData['payment'],
@@ -305,7 +305,7 @@ function drawPaymentAndSummaryBlocks(
   return { summaryCardY, summaryCardH };
 }
 
-function drawInvoiceFooter(
+export function drawInvoiceFooter(
   doc: jsPDF,
   companyName: string,
   summaryCardY: number,

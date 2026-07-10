@@ -41,9 +41,9 @@ describe("app/blog/page", () => {
     const ui = await BlogListingPage();
     render(ui);
 
-    expect(screen.getByText("No stories yet")).toBeInTheDocument();
+    expect(screen.getByText("No stories found")).toBeInTheDocument();
     expect(
-      screen.getByText(/Be the first to share your adventure/i),
+      screen.getByText(/Try adjusting your search query/i),
     ).toBeInTheDocument();
   });
 

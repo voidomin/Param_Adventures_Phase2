@@ -910,6 +910,12 @@ function EmergencyFields({
   );
 }
 
+function formatOptionPrice(price: number): string {
+  if (price > 0) return `+ ₹${price}`;
+  if (price < 0) return `- ₹${Math.abs(price)}`;
+  return "Free";
+}
+
 interface AmenitiesFieldsProps {
   p: ParticipantDetails;
   index: number;
@@ -980,7 +986,7 @@ function AmenitiesFields({
                         <span className="text-xs font-semibold text-foreground/80">{option.name}</span>
                       </div>
                       <span className="text-xs font-bold text-primary">
-                        {option.price > 0 ? `+ ₹${option.price}` : "Free"}
+                        {formatOptionPrice(option.price)}
                       </span>
                     </button>
                   );
@@ -1162,6 +1168,10 @@ export default function BookingModal({
       setCouponError(null);
     }
   }, [paymentType]);
+
+  const handleRemoveCoupon = useCallback((couponId: string) => {
+    setAppliedCoupons((prev) => prev.filter((c) => c.id !== couponId));
+  }, []);
 
   const extraAmenitiesConfig = useMemo(() => {
     if (!experienceDetail?.extraAmenities) return [];
@@ -1410,16 +1420,18 @@ export default function BookingModal({
   };
 
   const baseFare = useMemo(() => {
-    let fare = basePrice * participants;
+    let fare = 0;
     partInfo.forEach((p) => {
+      let participantFare = basePrice;
       if (p.selectedAmenities && Array.isArray(p.selectedAmenities)) {
         p.selectedAmenities.forEach((a) => {
-          fare += a.price;
+          participantFare += a.price;
         });
       }
+      fare += Math.max(0, participantFare);
     });
     return fare;
-  }, [basePrice, participants, partInfo]);
+  }, [basePrice, partInfo]);
 
   const taxAmount = useMemo(() => {
     return taxes.reduce(
@@ -1952,9 +1964,7 @@ export default function BookingModal({
                           <span className="font-semibold text-foreground">- ₹{coupon.balance.toLocaleString("en-IN")}</span>
                           <button
                             type="button"
-                            onClick={() => {
-                              setAppliedCoupons(prev => prev.filter(c => c.id !== coupon.id));
-                            }}
+                            onClick={() => handleRemoveCoupon(coupon.id)}
                             className="text-red-500 hover:text-red-700 transition-colors text-[10px] font-bold uppercase tracking-wider"
                           >
                             Remove

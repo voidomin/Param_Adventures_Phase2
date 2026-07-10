@@ -20,12 +20,13 @@ function calculateSelectedBaseFare(
   let selectedBaseFare = 0;
   const selectedParticipants = participants.filter(p => participantIds.includes(p.id));
   for (const p of selectedParticipants) {
-    selectedBaseFare += experienceBasePrice;
+    let participantFare = experienceBasePrice;
     if (p.selectedAmenities && Array.isArray(p.selectedAmenities)) {
       for (const item of p.selectedAmenities as PreviewAmenity[]) {
-        selectedBaseFare += Number(item.price) || 0;
+        participantFare += Number(item.price) || 0;
       }
     }
+    selectedBaseFare += Math.max(0, participantFare);
   }
   return selectedBaseFare;
 }

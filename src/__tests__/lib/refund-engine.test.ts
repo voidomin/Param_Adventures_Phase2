@@ -232,4 +232,71 @@ describe("Refund Calculation Engine Tests", () => {
     expect(advancePaidFullBank.cancellationCharges).toBe(2500);
     expect(advancePaidFullBank.finalRefundAmount).toBe(7500);
   });
+
+  describe("getRefundPercentage", () => {
+    it("returns correct refund percentage based on default rules", async () => {
+      vi.mocked(prisma.platformSetting.findUnique).mockResolvedValue(null);
+
+      const departure = new Date();
+      departure.setDate(departure.getDate() + 35); // 35 days before
+
+      const result = await getRefundPercentage(departure, new Date());
+      expect(result.refundPercent).toBe(100);
+
+      const departure2 = new Date();
+      departure2.setDate(departure2.getDate() + 20); // 20 days before
+      const result2 = await getRefundPercentage(departure2, new Date());
+      expect(result2.refundPercent).toBe(75);
+
+      const departure3 = new Date();
+      departure3.setDate(departure3.getDate() + 10); // 10 days before
+      const result3 = await getRefundPercentage(departure3, new Date());
+      expect(result3.refundPercent).toBe(50);
+
+      const departure4 = new Date();
+      departure4.setDate(departure4.getDate() + 5); // 5 days before
+      const result4 = await getRefundPercentage(departure4, new Date());
+      expect(result4.refundPercent).toBe(25);
+
+      const departure5 = new Date();
+      departure5.setDate(departure5.getDate() + 1); // 1 day before
+      const result5 = await getRefundPercentage(departure5, new Date());
+      expect(result5.refundPercent).toBe(0);
+    });
+
+    it("uses custom platform setting cancellation rules if defined", async () => {
+      const customRules = JSON.stringify([
+        { minDays: 10, maxDays: null, refundPercent: 90 },
+        { minDays: 0, maxDays: 9, refundPercent: 10 },
+      ]);
+      vi.mocked(prisma.platformSetting.findUnique).mockResolvedValue({
+        key: "cancellation_policy_rules",
+        value: customRules,
+      } as any);
+
+      const departure = new Date();
+      departure.setDate(departure.getDate() + 12); // 12 days before
+
+      const result = await getRefundPercentage(departure, new Date());
+      expect(result.refundPercent).toBe(90);
+
+      const departure2 = new Date();
+      departure2.setDate(departure2.getDate() + 5); // 5 days before
+      const result2 = await getRefundPercentage(departure2, new Date());
+      expect(result2.refundPercent).toBe(10);
+    });
+
+    it("falls back to default rules if platform setting json is invalid", async () => {
+      vi.mocked(prisma.platformSetting.findUnique).mockResolvedValue({
+        key: "cancellation_policy_rules",
+        value: "invalid-json",
+      } as any);
+
+      const departure = new Date();
+      departure.setDate(departure.getDate() + 35); // 35 days before
+
+      const result = await getRefundPercentage(departure, new Date());
+      expect(result.refundPercent).toBe(100);
+    });
+  });
 });

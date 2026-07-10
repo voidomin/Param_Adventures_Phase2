@@ -13,6 +13,7 @@ import {
   Eye,
   ExternalLink,
   Archive,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { TableSkeleton } from "@/components/admin/TableSkeleton";
@@ -254,12 +255,19 @@ function BookingDetailsModal({
   onClose,
   onApprove,
   onArchive,
+  onCancelSuccess,
 }: Readonly<{
   booking: Booking;
   onClose: () => void;
   onApprove?: () => void;
   onArchive?: () => void;
+  onCancelSuccess?: () => void;
 }>) {
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelPreference, setCancelPreference] = useState<"BANK_REFUND" | "COUPON" | "NO_REFUND">("BANK_REFUND");
+  const [isCancelling, setIsCancelling] = useState(false);
+
   const payments = booking.payments;
   const isCancelled = booking.bookingStatus === "CANCELLED";
   const hasRefund = booking.paymentStatus === "REFUND_PENDING" || booking.paymentStatus === "REFUNDED";
@@ -268,6 +276,101 @@ function BookingDetailsModal({
     navigator.clipboard.writeText(booking.id);
     alert("Booking ID copied to clipboard!");
   };
+
+  if (showCancelConfirm) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+        <div className="bg-card border border-border w-full max-w-md rounded-2xl shadow-2xl overflow-hidden p-6 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+          <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+            ⚠️ Cancel Booking
+          </h3>
+          <p className="text-sm text-foreground/75">
+            Are you sure you want to cancel this booking? This will restore the slot capacity.
+          </p>
+
+          <div className="space-y-3">
+            <div>
+              <label htmlFor="cancel-reason" className="block text-xs font-semibold text-foreground/60 mb-1">
+                Reason for Cancellation
+              </label>
+              <textarea
+                id="cancel-reason"
+                rows={2}
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="e.g. Guest no-show / Late request"
+                className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500 text-foreground"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="refund-preference" className="block text-xs font-semibold text-foreground/60 mb-1">
+                Refund Method
+              </label>
+              <select
+                id="refund-preference"
+                value={cancelPreference}
+                onChange={(e) => setCancelPreference(e.target.value as "BANK_REFUND" | "COUPON" | "NO_REFUND")}
+                className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500 text-foreground"
+              >
+                <option value="BANK_REFUND">Bank Refund</option>
+                <option value="COUPON">Issue Travel Coupon</option>
+                <option value="NO_REFUND">No Refund at all (Admin Decision)</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex gap-3 justify-end pt-2">
+            <button
+              type="button"
+              onClick={() => setShowCancelConfirm(false)}
+              className="px-4 py-2 border border-border rounded-xl text-xs font-bold text-foreground/60 hover:bg-foreground/5 transition-colors"
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              disabled={isCancelling}
+              onClick={async () => {
+                setIsCancelling(true);
+                try {
+                  const activePartIds = (booking.participants || [])
+                    .filter((p) => !p.isCancelled)
+                    .map((p) => p.id);
+
+                  const res = await fetch(`/api/bookings/${booking.id}/cancel-participants`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      participantIds: activePartIds,
+                      reason: cancelReason || "Cancelled by admin",
+                      preference: cancelPreference,
+                    }),
+                  });
+                  if (!res.ok) {
+                    const data = await res.json();
+                    alert(data.error || "Failed to cancel booking.");
+                    return;
+                  }
+                  alert("Booking cancelled successfully!");
+                  if (onCancelSuccess) onCancelSuccess();
+                } catch (err) {
+                  console.error(err);
+                  alert("Failed to cancel booking.");
+                } finally {
+                  setIsCancelling(false);
+                }
+              }}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold disabled:opacity-50 flex items-center gap-1 transition-all"
+            >
+              {isCancelling && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              Confirm Cancellation
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
@@ -529,7 +632,7 @@ function BookingDetailsModal({
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 border-t border-border flex flex-wrap gap-3">
+        <div className="p-4 border-t border-border flex flex-wrap gap-3 items-center">
           {onArchive && (
             <button
               type="button"
@@ -537,6 +640,15 @@ function BookingDetailsModal({
               className="px-4 py-2.5 rounded-xl bg-red-500/10 text-red-500 font-bold hover:bg-red-500/20 transition-all text-xs"
             >
               Archive Booking
+            </button>
+          )}
+          {!isCancelled && (
+            <button
+              type="button"
+              onClick={() => setShowCancelConfirm(true)}
+              className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold transition-all text-xs"
+            >
+              Cancel Booking
             </button>
           )}
           {onApprove && booking.bookingStatus === "REQUESTED" && booking.paymentStatus !== "PAID" && (
@@ -552,7 +664,7 @@ function BookingDetailsModal({
             type="button"
             onClick={onClose}
             className={`py-2.5 px-6 rounded-xl border border-border text-foreground/60 font-bold hover:bg-foreground/5 transition-colors text-xs ${
-              booking.bookingStatus !== "REQUESTED" || booking.paymentStatus === "PAID" ? "ml-auto" : ""
+              booking.bookingStatus !== "REQUESTED" || booking.paymentStatus === "PAID" ? "ml-auto" : "ml-auto md:ml-0"
             }`}
           >
             Close
@@ -1604,6 +1716,10 @@ export default function AdminBookingsPage() {
           onArchive={() => {
             setActiveDetailsBooking(null);
             handleArchiveBooking(activeDetailsBooking.id);
+          }}
+          onCancelSuccess={() => {
+            setActiveDetailsBooking(null);
+            fetchBookings();
           }}
         />
       )}

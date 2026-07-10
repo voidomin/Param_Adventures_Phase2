@@ -84,6 +84,41 @@ describe("Coupon Engine Unit Tests", () => {
       expect(res.error).toBeUndefined();
       expect(res.coupon?.id).toBe("c1");
     });
+
+    it("returns error if coupon is fully redeemed", async () => {
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 10);
+      vi.mocked(prismaClient.travelCoupon.findUnique).mockResolvedValue({
+        id: "c1",
+        code: "CODE",
+        customerId: "user1",
+        status: CouponStatus.FULLY_USED,
+        balance: 0,
+        expiryDate: futureDate,
+      } as any);
+      const res = await validateCoupon("CODE", "user1");
+      expect(res.error).toBe("This coupon has already been fully redeemed.");
+    });
+
+    it("returns error if coupon is blocked or cancelled", async () => {
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 10);
+      vi.mocked(prismaClient.travelCoupon.findUnique).mockResolvedValue({
+        id: "c1",
+        code: "CODE",
+        customerId: "user1",
+        status: CouponStatus.BLOCKED,
+        expiryDate: futureDate,
+      } as any);
+      const res = await validateCoupon("CODE", "user1");
+      expect(res.error).toBe("This coupon is currently blocked.");
+    });
+
+    it("returns error if validation throws an error", async () => {
+      vi.mocked(prismaClient.travelCoupon.findUnique).mockRejectedValue(new Error("Db failure"));
+      const res = await validateCoupon("CODE", "user1");
+      expect(res.error).toBe("Failed to validate coupon.");
+    });
   });
 
   describe("redeemCoupon", () => {
@@ -125,6 +160,42 @@ describe("Coupon Engine Unit Tests", () => {
           amount: 400,
         }),
       });
+    });
+
+    it("throws error if coupon is not found during redemption", async () => {
+      const mockTx = {
+        travelCoupon: {
+          findUnique: vi.fn().mockResolvedValue(null),
+        },
+      };
+      await expect(
+        redeemCoupon({
+          couponId: "c1",
+          bookingId: "b1",
+          amount: 400,
+          tx: mockTx as any,
+        })
+      ).rejects.toThrow("Coupon not found during redemption.");
+    });
+
+    it("throws error if coupon balance is insufficient", async () => {
+      const mockTx = {
+        travelCoupon: {
+          findUnique: vi.fn().mockResolvedValue({
+            id: "c1",
+            balance: 200,
+            originalValue: 1000,
+          }),
+        },
+      };
+      await expect(
+        redeemCoupon({
+          couponId: "c1",
+          bookingId: "b1",
+          amount: 400,
+          tx: mockTx as any,
+        })
+      ).rejects.toThrow("Insufficient coupon balance.");
     });
   });
 

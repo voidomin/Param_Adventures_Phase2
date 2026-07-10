@@ -2,20 +2,25 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 
 vi.mock("@/lib/auth", () => ({ verifyAccessToken: vi.fn() }));
+
+const { mockBlogFindMany, mockBookingFindMany, mockUserFindUnique } = vi.hoisted(() => ({
+  mockBlogFindMany: vi.fn(),
+  mockBookingFindMany: vi.fn(),
+  mockUserFindUnique: vi.fn(),
+}));
+
 vi.mock("@/lib/db", () => ({
   prisma: {
-    blog: { findMany: vi.fn() },
-    booking: { findMany: vi.fn() },
+    blog: { findMany: mockBlogFindMany },
+    booking: { findMany: mockBookingFindMany },
+    user: { findUnique: mockUserFindUnique },
   },
 }));
 
 import { GET } from "@/app/api/user/blogs/eligible-experiences/route";
 import { verifyAccessToken } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 
 const mockVerifyAccessToken = vi.mocked(verifyAccessToken);
-const mockBlogFindMany = vi.mocked(prisma.blog.findMany);
-const mockBookingFindMany = vi.mocked(prisma.booking.findMany);
 
 type ReqOpts = { token?: string };
 
@@ -47,6 +52,7 @@ describe("GET /api/user/blogs/eligible-experiences", () => {
 
   it("returns eligible experiences", async () => {
     mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+    mockUserFindUnique.mockResolvedValue({ id: "u1", role: { name: "REGISTERED_USER" } } as any);
     mockBlogFindMany.mockResolvedValue([
       { experienceId: "e1" },
       { experienceId: null },
