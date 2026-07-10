@@ -85,6 +85,13 @@ async function processFullCancellation(params: {
       throw new Error("Booking is already cancelled.");
     }
 
+    let refundNote: string | null = null;
+    if (preference === "COUPON") {
+      refundNote = "Travel Coupon Refund Issued";
+    } else if (preference === "NO_REFUND") {
+      refundNote = "No Refund Issued (Admin Decision)";
+    }
+
     await tx.booking.update({
       where: { id: bookingId },
       data: {
@@ -95,7 +102,7 @@ async function processFullCancellation(params: {
         cancellationReason: reason || null,
         refundPreference: preference,
         refundAmount: finalRefund > 0 && preference === "BANK_REFUND" ? finalRefund : null,
-        refundNote: preference === "COUPON" ? "Travel Coupon Refund Issued" : (preference === "NO_REFUND" ? "No Refund Issued (Admin Decision)" : null),
+        refundNote,
       },
     });
 
