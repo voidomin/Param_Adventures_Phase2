@@ -13,6 +13,7 @@ import {
   ArrowRight,
   Mountain,
   X,
+  Clock,
 } from "lucide-react";
 // Custom Social SVGs to avoid Lucide deprecation warnings
 const InstagramSVG = () => (
@@ -49,6 +50,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         select: {
           title: true,
           coverImage: { select: { originalUrl: true } },
+          metaTitle: true,
+          metaDescription: true,
+          metaKeywords: true,
         },
       }),
     null,
@@ -57,22 +61,25 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!blog) return { title: "Blog Not Found" };
 
   const ogImage = blog.coverImage?.originalUrl || "/param-logo.png";
-  const desc = `Read "${blog.title}" on the Param Adventures blog.`;
+  const title = blog.metaTitle || blog.title;
+  const desc = blog.metaDescription || `Read "${blog.title}" on the Param Adventures blog.`;
+  const keywords = blog.metaKeywords || undefined;
 
   return {
-    title: blog.title,
+    title,
     description: desc,
+    keywords,
     alternates: {
       canonical: `/blog/${slug}`,
     },
     openGraph: {
-      title: blog.title,
+      title,
       description: desc,
-      images: [{ url: ogImage, alt: blog.title }],
+      images: [{ url: ogImage, alt: title }],
     },
     twitter: {
       card: "summary_large_image",
-      title: blog.title,
+      title,
       description: desc,
       images: [ogImage],
     },
@@ -250,12 +257,20 @@ export default async function BlogArticlePage({ params }: Props) {
 
           <div
             className={cn(
-              "flex items-center gap-1.5 text-sm text-foreground/40 ml-auto",
-              theme === "MINIMAL" && "ml-0 mt-2",
+              "flex items-center gap-4 text-sm text-foreground/40 ml-auto",
+              theme === "MINIMAL" && "ml-0 mt-2 flex-wrap",
             )}
           >
-            <CalendarDays className="w-3.5 h-3.5" />
-            {publishDate}
+            <div className="flex items-center gap-1.5">
+              <CalendarDays className="w-3.5 h-3.5" />
+              {publishDate}
+            </div>
+            {blog.readingTime && (
+              <div className="flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5" />
+                {blog.readingTime} min read
+              </div>
+            )}
           </div>
           {blog.experience && (
             <div className="flex items-center gap-1.5 text-sm text-foreground/50">

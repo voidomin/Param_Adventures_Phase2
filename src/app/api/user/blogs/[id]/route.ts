@@ -14,6 +14,10 @@ const blogUpdateSchema = z.object({
   coverImageUrl: z.url().optional().nullable(),
   authorSocials: z.any().optional(), // JSON
   theme: z.enum(["CLASSIC", "MODERN", "MINIMAL"]).optional(),
+  metaTitle: z.string().max(120, "Meta title cannot exceed 120 characters").optional().nullable(),
+  metaDescription: z.string().max(300, "Meta description cannot exceed 300 characters").optional().nullable(),
+  metaKeywords: z.string().optional().nullable(),
+  readingTime: z.number().int().min(1, "Reading time must be at least 1 minute").optional().nullable(),
 });
 
 async function getAuthedBlog(request: NextRequest, id: string) {
@@ -65,7 +69,17 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         { status: 400 },
       );
     }
-    const { title, content, coverImageUrl, authorSocials, theme } = parseResult.data;
+    const {
+      title,
+      content,
+      coverImageUrl,
+      authorSocials,
+      theme,
+      metaTitle,
+      metaDescription,
+      metaKeywords,
+      readingTime,
+    } = parseResult.data;
 
     const sanitizedContent =
       content === undefined ? undefined : sanitizeEditorContent(content);
@@ -80,6 +94,10 @@ export async function PATCH(request: NextRequest, { params }: Params) {
           : { coverImageUrl: coverImageUrl || null }),
         ...(authorSocials === undefined ? {} : { authorSocials }),
         ...(theme === undefined ? {} : { theme }),
+        ...(metaTitle === undefined ? {} : { metaTitle: metaTitle || null }),
+        ...(metaDescription === undefined ? {} : { metaDescription: metaDescription || null }),
+        ...(metaKeywords === undefined ? {} : { metaKeywords: metaKeywords || null }),
+        ...(readingTime === undefined ? {} : { readingTime: readingTime || null }),
       },
     });
 

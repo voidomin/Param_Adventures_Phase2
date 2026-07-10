@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Loader2, Send, Save, Mountain, X } from "lucide-react";
+import { Loader2, Send, Save, Mountain, X, Search } from "lucide-react";
 import Image from "next/image";
 // Custom Social SVGs to avoid Lucide deprecation warnings
 const InstagramSVG = () => (
@@ -66,6 +66,10 @@ export default function WriteBlogPage() {
     twitter: "",
     youtube: "",
   });
+  const [metaTitle, setMetaTitle] = useState("");
+  const [metaDescription, setMetaDescription] = useState("");
+  const [metaKeywords, setMetaKeywords] = useState("");
+  const [readingTime, setReadingTime] = useState("");
 
   // Fetch confirmed experiences eligible for blogging
   useEffect(() => {
@@ -108,6 +112,10 @@ export default function WriteBlogPage() {
             coverImageUrl: coverImageUrl || null,
             theme,
             authorSocials: socials,
+            metaTitle: metaTitle || null,
+            metaDescription: metaDescription || null,
+            metaKeywords: metaKeywords || null,
+            readingTime: readingTime ? Number(readingTime) : null,
           }),
         });
         const data = await res.json();
@@ -129,6 +137,10 @@ export default function WriteBlogPage() {
           coverImageUrl: coverImageUrl || null,
           theme,
           authorSocials: socials,
+          metaTitle: metaTitle || null,
+          metaDescription: metaDescription || null,
+          metaKeywords: metaKeywords || null,
+          readingTime: readingTime ? Number(readingTime) : null,
         }),
       });
       if (!patchRes.ok) {
@@ -396,6 +408,81 @@ export default function WriteBlogPage() {
                   className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg"
                   placeholder="https://youtube.com/..."
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* SEO Settings */}
+          <div className="p-6 border border-border rounded-2xl bg-foreground/[0.02] space-y-4">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="font-bold text-foreground flex items-center gap-2">
+                <Search className="w-4 h-4 text-primary" /> SEO Settings
+              </h3>
+              <div className="flex items-center gap-2 bg-background border border-border px-3 py-1.5 rounded-xl">
+                <input
+                  type="number"
+                  min="1"
+                  value={readingTime}
+                  onChange={(e) => setReadingTime(e.target.value)}
+                  className="w-12 bg-transparent text-center font-bold text-sm text-foreground focus:outline-none"
+                  placeholder="5"
+                />
+                <span className="text-xs text-foreground/50 font-semibold">min read</span>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="seo-meta-title" className="block text-xs font-semibold text-foreground/60 mb-1">
+                  Meta Title
+                </label>
+                <input
+                  id="seo-meta-title"
+                  type="text"
+                  value={metaTitle}
+                  onChange={(e) => setMetaTitle(e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg placeholder:text-foreground/30 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                  placeholder="SEO meta title"
+                  maxLength={120}
+                />
+                <p className="text-[10px] text-foreground/40 text-right mt-1">
+                  {metaTitle.length} characters
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="seo-meta-description" className="block text-xs font-semibold text-foreground/60 mb-1">
+                  Meta Description
+                </label>
+                <textarea
+                  id="seo-meta-description"
+                  rows={3}
+                  value={metaDescription}
+                  onChange={(e) => setMetaDescription(e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg placeholder:text-foreground/30 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                  placeholder="SEO meta description"
+                  maxLength={300}
+                />
+                <p className="text-[10px] text-foreground/40 text-right mt-1">
+                  {metaDescription.length} characters
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="seo-meta-keywords" className="block text-xs font-semibold text-foreground/60 mb-1">
+                  Meta Keywords
+                </label>
+                <input
+                  id="seo-meta-keywords"
+                  type="text"
+                  value={metaKeywords}
+                  onChange={(e) => setMetaKeywords(e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg placeholder:text-foreground/30 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                  placeholder="e.g. personal loan, EMI tips, CIBIL score"
+                />
+                <p className="text-[10px] text-foreground/40 mt-1">
+                  Separate with commas — For search engines
+                </p>
               </div>
             </div>
           </div>

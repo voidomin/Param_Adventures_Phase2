@@ -34,6 +34,10 @@ const blogCreateSchema = z.object({
   coverImageUrl: z.url({ message: "Invalid cover image URL" }).optional().nullable(),
   theme: z.enum(["CLASSIC", "MODERN", "MINIMAL"]).optional(),
   authorSocials: z.any().optional(), // JSON
+  metaTitle: z.string().max(120, "Meta title cannot exceed 120 characters").optional().nullable(),
+  metaDescription: z.string().max(300, "Meta description cannot exceed 300 characters").optional().nullable(),
+  metaKeywords: z.string().optional().nullable(),
+  readingTime: z.number().int().min(1, "Reading time must be at least 1 minute").optional().nullable(),
 });
 
 /**
@@ -77,6 +81,10 @@ export async function POST(request: NextRequest) {
       coverImageUrl,
       theme,
       authorSocials,
+      metaTitle,
+      metaDescription,
+      metaKeywords,
+      readingTime,
     } = parseResult.data;
 
     const user = await prisma.user.findUnique({
@@ -152,6 +160,10 @@ export async function POST(request: NextRequest) {
         coverImageUrl: coverImageUrl || null,
         theme: theme || "CLASSIC",
         authorSocials: authorSocials || null,
+        metaTitle: metaTitle || null,
+        metaDescription: metaDescription || null,
+        metaKeywords: metaKeywords || null,
+        readingTime: readingTime || null,
       },
     });
 

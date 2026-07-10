@@ -302,6 +302,10 @@ model Blog {
   authorSocials   Json?
   coverImageUrl   String?
   theme           String      @default("CLASSIC")
+  metaTitle       String?
+  metaDescription String?
+  metaKeywords    String?
+  readingTime     Int?
   author          User        @relation(fields: [authorId], references: [id])
   coverImage      Image?      @relation(fields: [coverImageId], references: [id])
   experience      Experience? @relation(fields: [experienceId], references: [id])
