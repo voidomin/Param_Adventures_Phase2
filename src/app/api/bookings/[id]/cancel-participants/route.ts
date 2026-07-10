@@ -9,9 +9,9 @@ import { restoreCouponsForBooking, generateCouponCode } from "@/lib/coupon-engin
 import { sendRefundResolved } from "@/lib/email";
 
 const cancelSchema = z.object({
-  participantIds: z.array(z.string()).min(1, "At least one participant must be specified"),
-  reason: z.string().optional().or(z.literal("")),
-  preference: z.enum(["COUPON", "BANK_REFUND"]),
+  participantIds: z.array(z.string()).min(1),
+  reason: z.string().optional(),
+  preference: z.enum(["BANK_REFUND", "COUPON", "NO_REFUND"]).optional().default("BANK_REFUND"),
 });
 
 interface CancelBookingInput {
@@ -46,7 +46,7 @@ async function processFullCancellation(params: {
   activeCount: number;
   userId: string;
   reason?: string;
-  preference: "COUPON" | "BANK_REFUND";
+  preference: "COUPON" | "BANK_REFUND" | "NO_REFUND";
 }) {
   const { bookingId, booking, activeCount, userId, reason, preference } = params;
 
@@ -61,10 +61,10 @@ async function processFullCancellation(params: {
     paymentType: booking.paymentType as "FULL" | "ADVANCE",
     refundPercent,
     taxBreakdown: booking.taxBreakdown,
-    refundPreference: preference,
+    refundPreference: preference === "NO_REFUND" ? "BANK_REFUND" : preference,
   });
 
-  const finalRefund = breakdown.finalRefundAmount;
+  const finalRefund = preference === "NO_REFUND" ? 0 : breakdown.finalRefundAmount;
 
   // If selecting coupon refund, booking paymentStatus does not need to remain REFUND_PENDING
   let newPaymentStatus = booking.paymentStatus;
@@ -72,6 +72,8 @@ async function processFullCancellation(params: {
     newPaymentStatus = "REFUND_PENDING";
   } else if (finalRefund > 0 && preference === "COUPON") {
     newPaymentStatus = "REFUNDED";
+  } else if (preference === "NO_REFUND") {
+    newPaymentStatus = "PAID";
   }
 
   await prisma.$transaction(async (tx) => {
@@ -93,7 +95,7 @@ async function processFullCancellation(params: {
         cancellationReason: reason || null,
         refundPreference: preference,
         refundAmount: finalRefund > 0 && preference === "BANK_REFUND" ? finalRefund : null,
-        refundNote: preference === "COUPON" ? "Travel Coupon Refund Issued" : null,
+        refundNote: preference === "COUPON" ? "Travel Coupon Refund Issued" : (preference === "NO_REFUND" ? "No Refund Issued (Admin Decision)" : null),
       },
     });
 
@@ -185,7 +187,7 @@ async function calculateRefundProportional(params: {
   booking: CancelBookingInput;
   activeParticipants: CancelParticipantInput[];
   participantIds: string[];
-  preference: "COUPON" | "BANK_REFUND";
+  preference: "COUPON" | "BANK_REFUND" | "NO_REFUND";
 }) {
   const { booking, activeParticipants, participantIds, preference } = params;
   const experienceBasePrice = Number(booking.experience?.basePrice || 0);
@@ -222,10 +224,10 @@ async function calculateRefundProportional(params: {
     paymentType: booking.paymentType as "FULL" | "ADVANCE",
     refundPercent,
     taxBreakdown: booking.taxBreakdown,
-    refundPreference: preference,
+    refundPreference: preference === "NO_REFUND" ? "BANK_REFUND" : preference,
   });
 
-  const refundAmount = breakdown.finalRefundAmount;
+  const refundAmount = preference === "NO_REFUND" ? 0 : breakdown.finalRefundAmount;
 
   const newBaseFare = Math.max(0, Number(booking.baseFare) - totalCancelledBase);
   const newTotalPrice = Math.max(0, Number(booking.totalPrice) - proportionalTotalPrice);
@@ -262,11 +264,13 @@ type BookingWithRelations = Prisma.BookingGetPayload<{
 function validateBookingCancellation(params: {
   booking: BookingWithRelations | null;
   userId: string;
+  roleName: string;
   participantIds: string[];
 }) {
-  const { booking, userId, participantIds } = params;
+  const { booking, userId, roleName, participantIds } = params;
   if (!booking) return { error: "Booking not found.", status: 404 };
-  if (booking.userId !== userId) return { error: "Forbidden.", status: 403 };
+  const isModerator = roleName === "ADMIN" || roleName === "SUPER_ADMIN";
+  if (booking.userId !== userId && !isModerator) return { error: "Forbidden.", status: 403 };
   if (booking.bookingStatus === "CANCELLED") return { error: "Booking is already cancelled.", status: 409 };
   if (booking.bookingStatus !== "REQUESTED" && booking.bookingStatus !== "CONFIRMED") {
     return { error: "This booking cannot be cancelled.", status: 409 };
@@ -314,7 +318,12 @@ export async function POST(
       },
     });
 
-    const validation = validateBookingCancellation({ booking, userId, participantIds });
+    const validation = validateBookingCancellation({
+      booking,
+      userId,
+      roleName: auth.roleName,
+      participantIds,
+    });
     if ("error" in validation) {
       return NextResponse.json({ error: validation.error }, { status: validation.status });
     }
