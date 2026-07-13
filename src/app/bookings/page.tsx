@@ -67,12 +67,14 @@ interface RefundPreviewPanelProps {
   previewData: RefundBreakdown | null;
   isPreviewLoading: boolean;
   preference: "COUPON" | "BANK_REFUND";
+  errorMessage?: string | null;
 }
 
 function RefundPreviewPanel({
   previewData,
   isPreviewLoading,
   preference,
+  errorMessage,
 }: Readonly<RefundPreviewPanelProps>) {
   if (isPreviewLoading) {
     return (
@@ -85,7 +87,7 @@ function RefundPreviewPanel({
   if (!previewData) {
     return (
       <div className="text-xs text-red-400">
-        Failed to load breakdown. Using policy defaults on submit.
+        {errorMessage || "Failed to load breakdown. Using policy defaults on submit."}
       </div>
     );
   }
@@ -148,18 +150,21 @@ function CancelModal({
 
   const [previewData, setPreviewData] = useState<RefundBreakdown | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
   useEffect(() => {
     if (booking.paymentStatus !== "PAID" && booking.paymentStatus !== "PARTIALLY_PAID") return;
     const fetchPreview = async () => {
       setIsPreviewLoading(true);
+      setPreviewError(null);
       try {
         const res = await fetch(`/api/bookings/${booking.id}/cancel-preview?preference=${preference}`);
-        if (!res.ok) throw new Error("Failed to load refund preview");
         const json = await res.json();
+        if (!res.ok) throw new Error(json.error || "Failed to load refund preview");
         setPreviewData(json);
       } catch (err) {
         console.error(err);
+        setPreviewError(err instanceof Error ? err.message : "Failed to load refund preview");
         setPreviewData(null);
       } finally {
         setIsPreviewLoading(false);
@@ -188,8 +193,8 @@ function CancelModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
+      <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl flex flex-col my-auto max-h-[85vh] overflow-hidden animate-in fade-in zoom-in duration-200">
         <div className="flex justify-between items-center p-6 border-b border-border flex-shrink-0">
           <div className="flex items-center gap-3">
             <AlertTriangle className="w-5 h-5 text-red-500" />
@@ -282,6 +287,7 @@ function CancelModal({
                 previewData={previewData}
                 isPreviewLoading={isPreviewLoading}
                 preference={preference}
+                errorMessage={previewError}
               />
             </div>
           )}
