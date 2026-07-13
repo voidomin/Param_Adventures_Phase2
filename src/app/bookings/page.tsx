@@ -189,8 +189,8 @@ function CancelModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-        <div className="flex justify-between items-center p-6 border-b border-border">
+      <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="flex justify-between items-center p-6 border-b border-border flex-shrink-0">
           <div className="flex items-center gap-3">
             <AlertTriangle className="w-5 h-5 text-red-500" />
             <h3 className="text-xl font-heading font-bold text-foreground">Cancel Booking</h3>
@@ -200,7 +200,7 @@ function CancelModal({
           </button>
         </div>
 
-        <div className="p-6 space-y-5">
+        <div className="p-6 space-y-5 overflow-y-auto flex-1">
           {/* Booking summary */}
           <div className="bg-foreground/5 rounded-xl p-4 border border-border">
             <p className="font-bold text-foreground">{booking.experience.title}</p>
@@ -303,24 +303,24 @@ function CancelModal({
           {error && (
             <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl p-3">{error}</p>
           )}
+        </div>
 
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl text-foreground/60 font-bold hover:bg-foreground/5 border border-border transition-colors"
-            >
-              Keep Booking
-            </button>
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={handleCancel}
-              className="flex-1 py-2.5 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition-colors disabled:opacity-50 shadow-lg shadow-red-500/20"
-            >
-              {isSubmitting ? "Cancelling…" : "Yes, Cancel"}
-            </button>
-          </div>
+        <div className="flex gap-3 p-6 border-t border-border flex-shrink-0 bg-background">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl text-foreground/60 font-bold hover:bg-foreground/5 border border-border transition-colors text-sm"
+          >
+            Keep Booking
+          </button>
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={handleCancel}
+            className="flex-1 py-2.5 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition-colors disabled:opacity-50 shadow-lg shadow-red-500/20 text-sm"
+          >
+            {isSubmitting ? "Cancelling…" : "Yes, Cancel"}
+          </button>
         </div>
       </div>
     </div>
@@ -464,14 +464,15 @@ function PayBalanceModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="bg-card border border-border w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-        <div className="flex justify-between items-center p-6 border-b border-border">
+      <div className="bg-card border border-border w-full max-w-md rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="flex justify-between items-center p-6 border-b border-border flex-shrink-0">
           <h3 className="text-xl font-heading font-bold text-foreground">Pay Remaining Balance</h3>
           <button type="button" onClick={onClose} className="text-foreground/40 hover:text-foreground transition-colors">
             <X className="w-6 h-6" />
           </button>
         </div>
-        <div className="p-6 space-y-4">
+
+        <div className="p-6 space-y-4 overflow-y-auto flex-1">
           <div className="bg-foreground/5 rounded-xl p-4 space-y-1.5 text-sm text-left">
             <p className="text-foreground"><strong>Trek:</strong> {booking.experience.title}</p>
             <p className="text-foreground"><strong>Outstanding Balance:</strong> ₹{totalPrice.toLocaleString("en-IN")}</p>
@@ -533,27 +534,27 @@ function PayBalanceModal({
           </div>
 
           {error && <p className="text-red-500 text-xs font-semibold text-left">{error}</p>}
+        </div>
 
-          <div className="flex gap-3 pt-4 border-t border-border mt-6">
-            <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-border text-foreground/60 font-bold hover:bg-foreground/5 text-sm">
-              Cancel
-            </button>
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={handleProceed}
-              className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity disabled:opacity-50 text-sm flex items-center justify-center gap-1.5"
-            >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                `Pay ₹${finalPriceToPay.toLocaleString("en-IN")}`
-              )}
-            </button>
-          </div>
+        <div className="flex gap-3 p-6 border-t border-border flex-shrink-0 bg-background">
+          <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-border text-foreground/60 font-bold hover:bg-foreground/5 text-sm">
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={handleProceed}
+            className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity disabled:opacity-50 text-sm flex items-center justify-center gap-1.5"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              `Pay ₹${finalPriceToPay.toLocaleString("en-IN")}`
+            )}
+          </button>
         </div>
       </div>
     </div>

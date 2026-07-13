@@ -703,8 +703,8 @@ export default function EditParticipantsClient({
       {/* CANCELLATION MODAL */}
       {cancellingParticipants.length > 0 && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
-          <div className="bg-card border border-border w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center p-6 border-b border-border">
+          <div className="bg-card border border-border w-full max-w-md rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center p-6 border-b border-border flex-shrink-0">
               <div className="flex items-center gap-3">
                 <AlertTriangle className="w-5 h-5 text-red-500" />
                 <h3 className="text-lg font-bold text-foreground">
@@ -720,7 +720,7 @@ export default function EditParticipantsClient({
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 overflow-y-auto flex-1">
               {cancellingParticipants.length === activeParticipants.length ? (
                 <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-semibold rounded-xl p-4 flex gap-2">
                   <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
@@ -844,7 +844,7 @@ export default function EditParticipantsClient({
               )}
             </div>
 
-            <div className="flex gap-3 p-6 border-t border-border bg-muted/20">
+            <div className="flex gap-3 p-6 border-t border-border bg-muted/20 flex-shrink-0">
               <button
                 type="button"
                 onClick={() => setCancellingParticipants([])}
