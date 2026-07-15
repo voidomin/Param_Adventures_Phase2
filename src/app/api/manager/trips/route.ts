@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   try {
     const userId = auth.userId;
 
-    const trips = await prisma.slot.findMany({
+    const slots = await prisma.slot.findMany({
       where: {
         managerId: userId,
         status: { not: "COMPLETED" },
@@ -37,12 +37,26 @@ export async function GET(request: NextRequest) {
             trekLead: { select: { id: true, name: true, email: true } },
           },
         },
-        _count: {
-          select: {
-            bookings: { where: { bookingStatus: "CONFIRMED" } },
-          },
+        bookings: {
+          where: { bookingStatus: "CONFIRMED" },
+          select: { participantCount: true },
         },
       },
+    });
+
+    const trips = slots.map((slot) => {
+      const confirmedParticipants = slot.bookings.reduce(
+        (sum, booking) => sum + booking.participantCount,
+        0,
+      );
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { bookings: _bookings, ...slotInfo } = slot;
+      return {
+        ...slotInfo,
+        _count: {
+          bookings: confirmedParticipants,
+        },
+      };
     });
 
     return NextResponse.json({ trips });
