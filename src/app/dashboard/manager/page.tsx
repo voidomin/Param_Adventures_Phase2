@@ -11,6 +11,8 @@ import {
   AlertCircle,
   Briefcase,
   ClipboardList,
+  Download,
+  Loader2,
 } from "lucide-react";
 import { 
   STATUS_COLORS, 
@@ -50,37 +52,201 @@ interface TripSlot {
   _count: { bookings: number };
 }
 
-interface ManagerTripCardProps {
-  trip: TripSlot;
+interface ExportParticipant {
+  id: string;
+  name: string;
+  email: string | null;
+  phoneNumber: string | null;
+  isPrimary: boolean;
+  gender?: string | null;
+  age?: number | null;
+  bloodGroup?: string | null;
+  emergencyContactName?: string | null;
+  emergencyContactNumber?: string | null;
+  emergencyRelationship?: string | null;
+  pickupPoint?: string | null;
+  dropPoint?: string | null;
+  isCancelled?: boolean;
 }
 
-function ManagerTripCard({ trip }: ManagerTripCardProps) {
+interface ExportBooking {
+  id: string;
+  totalPrice: number | string;
+  createdAt: string | Date;
+  user: {
+    name: string;
+    email: string;
+    phoneNumber: string | null;
+  };
+  participants?: ExportParticipant[];
+}
+
+async function exportTripManifestExcel(
+  tripId: string,
+  setIsExporting: (loading: boolean) => void,
+) {
+  setIsExporting(true);
+  try {
+    const res = await fetch(`/api/manager/trips/${tripId}`);
+    if (!res.ok) throw new Error("Failed to fetch trip details");
+    const data = await res.json();
+    const fullTrip = data.slot;
+
+    if (!fullTrip?.bookings || fullTrip.bookings.length === 0) {
+      alert("No confirmed bookings to export.");
+      return;
+    }
+
+    const rows = fullTrip.bookings.flatMap((booking: ExportBooking) => {
+      const activeParticipants = booking.participants?.filter((p: ExportParticipant) => !p.isCancelled) ?? [];
+      
+      if (activeParticipants.length === 0) {
+        return [
+          {
+            "Trek/Experience": fullTrip.experience.title,
+            "Departure Date": new Date(fullTrip.date),
+            "Booking ID": booking.id,
+            "Lead Booker Name": booking.user.name,
+            "Lead Booker Email": booking.user.email,
+            "Lead Booker Phone": booking.user.phoneNumber || "",
+            "Participant Name": booking.user.name,
+            "Is Primary Booker?": "Yes",
+            "Email": booking.user.email,
+            "Phone Number": booking.user.phoneNumber || "",
+            "Gender": "",
+            "Age": "",
+            "Blood Group": "",
+            "Emergency Contact Name": "",
+            "Emergency Contact Phone": "",
+            "Relationship": "",
+            "Pickup Point": "",
+            "Drop Point": "",
+            "Price Paid (INR)": Number(booking.totalPrice),
+            "Booking Date": new Date(booking.createdAt),
+          },
+        ];
+      }
+
+      return activeParticipants.map((p: ExportParticipant) => ({
+        "Trek/Experience": fullTrip.experience.title,
+        "Departure Date": new Date(fullTrip.date),
+        "Booking ID": booking.id,
+        "Lead Booker Name": booking.user.name,
+        "Lead Booker Email": booking.user.email,
+        "Lead Booker Phone": booking.user.phoneNumber || "",
+        "Participant Name": p.name,
+        "Is Primary Booker?": p.isPrimary ? "Yes" : "No",
+        "Email": p.email || "",
+        "Phone Number": p.phoneNumber || "",
+        "Gender": p.gender || "",
+        "Age": p.age !== null && p.age !== undefined ? String(p.age) : "",
+        "Blood Group": p.bloodGroup || "",
+        "Emergency Contact Name": p.emergencyContactName || "",
+        "Emergency Contact Phone": p.emergencyContactNumber || "",
+        "Relationship": p.emergencyRelationship || "",
+        "Pickup Point": p.pickupPoint || "",
+        "Drop Point": p.dropPoint || "",
+        "Price Paid (INR)": Number(booking.totalPrice),
+        "Booking Date": new Date(booking.createdAt),
+      }));
+    });
+
+    // Dynamically import xlsx (SheetJS)
+    const XLSX = await import("xlsx");
+    const worksheet = XLSX.utils.json_to_sheet(rows, { cellDates: true, dateNF: "yyyy-mm-dd" });
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Manifest");
+
+    // Auto-fit column widths
+    const maxLens = Object.keys(rows[0]).reduce((acc, key) => {
+      acc[key] = key.length;
+      return acc;
+    }, {} as Record<string, number>);
+
+    rows.forEach((row: Record<string, unknown>) => {
+      Object.keys(row).forEach((key) => {
+        const valStr = row[key] instanceof Date
+          ? row[key].toISOString().split("T")[0]
+          : String(row[key] ?? "");
+        if (valStr.length > maxLens[key]) {
+          maxLens[key] = valStr.length;
+        }
+      });
+    });
+
+    worksheet["!cols"] = Object.keys(maxLens).map((key) => ({
+      wch: Math.max(maxLens[key] + 3, 10),
+    }));
+
+    const dateStr = new Date(fullTrip.date).toISOString().split("T")[0];
+    const sanitizedTitle = fullTrip.experience.title.replace(/[^a-zA-Z0-9]/g, "_");
+    const filename = `${sanitizedTitle}_manifest_${dateStr}.xlsx`;
+    XLSX.writeFile(workbook, filename);
+  } catch (err) {
+    console.error("Export failed:", err);
+    alert("Failed to export manifest. Please try again.");
+  } finally {
+    setIsExporting(false);
+  }
+}
+
+function formatStructuredContacts(contacts: StructuredVendorContacts) {
+  const staysCount = contacts.stays?.length ?? 0;
+  const transportsCount = contacts.transports?.length ?? 0;
+  const otherCount = contacts.otherContacts?.length ?? 0;
+  const vendorCount = staysCount + transportsCount + otherCount;
+
+  const parts: string[] = [];
+  if (staysCount > 0) {
+    parts.push(`${staysCount} Stay${staysCount === 1 ? "" : "s"}`);
+  }
+  if (transportsCount > 0) {
+    parts.push(`${transportsCount} Transport${transportsCount === 1 ? "" : "s"}`);
+  }
+  if (otherCount > 0) {
+    parts.push(`${otherCount} Other`);
+  }
+
+  const vendorText = parts.length > 0 ? parts.join(" · ") : "No Vendor Contacts Yet";
+  return { vendorCount, vendorText };
+}
+
+function formatArrayContacts(contacts: unknown[]) {
+  const vendorCount = contacts.length;
+  let vendorText = "No Vendor Contacts Yet";
+  if (vendorCount === 1) {
+    vendorText = "1 Vendor Contact";
+  } else if (vendorCount > 1) {
+    vendorText = `${vendorCount} Vendor Contacts`;
+  }
+  return { vendorCount, vendorText };
+}
+
+function getVendorContactsSummary(rawContacts: unknown) {
+  const contacts = rawContacts as StructuredVendorContacts | null | undefined;
+  if (contacts && typeof contacts === "object" && !Array.isArray(contacts)) {
+    return formatStructuredContacts(contacts);
+  }
+  if (Array.isArray(rawContacts)) {
+    return formatArrayContacts(rawContacts);
+  }
+  return { vendorCount: 0, vendorText: "No Vendor Contacts Yet" };
+}
+
+interface ManagerTripCardProps {
+  readonly trip: TripSlot;
+}
+
+function ManagerTripCard({ trip }: Readonly<ManagerTripCardProps>) {
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportExcel = async () => {
+    await exportTripManifestExcel(trip.id, setIsExporting);
+  };
+
   const statusColor =
     STATUS_COLORS[trip.status] ?? STATUS_COLORS.UPCOMING;
-  const rawContacts = trip.vendorContacts as StructuredVendorContacts | null | undefined;
-  const isStructured = rawContacts && typeof rawContacts === "object" && !Array.isArray(rawContacts);
-
-  let vendorCount = 0;
-  let vendorText = "No Vendor Contacts Yet";
-
-  if (isStructured) {
-    const staysCount = rawContacts.stays?.length ?? 0;
-    const transportsCount = rawContacts.transports?.length ?? 0;
-    const otherCount = rawContacts.otherContacts?.length ?? 0;
-    vendorCount = staysCount + transportsCount + otherCount;
-
-    const parts: string[] = [];
-    if (staysCount > 0) parts.push(`${staysCount} Stay${staysCount === 1 ? "" : "s"}`);
-    if (transportsCount > 0) parts.push(`${transportsCount} Transport${transportsCount === 1 ? "" : "s"}`);
-    if (otherCount > 0) parts.push(`${otherCount} Other`);
-    if (parts.length > 0) {
-      vendorText = parts.join(" · ");
-    }
-  } else if (Array.isArray(rawContacts)) {
-    vendorCount = rawContacts.length;
-    if (vendorCount === 1) vendorText = "1 Vendor Contact";
-    else if (vendorCount > 1) vendorText = `${vendorCount} Vendor Contacts`;
-  }
+  const { vendorCount, vendorText } = getVendorContactsSummary(trip.vendorContacts);
 
   const leadCount = trip.assignments.length;
 
@@ -148,7 +314,22 @@ function ManagerTripCard({ trip }: ManagerTripCardProps) {
         </div>
       </div>
 
-      <div className="flex justify-end pt-2">
+      <div className="flex justify-end items-center gap-3 pt-2">
+        <button
+          type="button"
+          onClick={handleExportExcel}
+          disabled={isExporting}
+          className="flex items-center gap-2 px-4 py-2.5 bg-foreground/5 hover:bg-foreground/10 text-foreground border border-border rounded-xl font-bold transition-all disabled:opacity-50 text-sm cursor-pointer"
+          title="Export manifest Excel"
+        >
+          {isExporting ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Download className="w-4 h-4 text-primary" />
+          )}
+          Export Excel
+        </button>
+
         <Link
           href={`/dashboard/manager/trips/${trip.id}`}
           className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-xl font-bold hover:scale-105 transition-transform shadow-lg shadow-primary/20 text-sm opacity-90 group-hover:opacity-100"
