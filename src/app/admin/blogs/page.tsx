@@ -158,7 +158,7 @@ export default function AdminBlogsPage() {
     setApprovingId(null);
   };
 
-  const handleTogglePublish = async (id: string, currentStatus: string) => {
+  const handleTogglePublish = async (id: string) => {
     const res = await fetch(`/api/admin/blogs/${id}/publish`, {
       method: "POST",
     });
@@ -376,7 +376,7 @@ export default function AdminBlogsPage() {
                     )}
                     {blog.status === "PUBLISHED" && (
                       <button
-                        onClick={() => handleTogglePublish(blog.id, blog.status)}
+                        onClick={() => handleTogglePublish(blog.id)}
                         className="flex items-center gap-1.5 px-4 py-2 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-xl text-sm font-bold hover:bg-amber-500/20 transition-colors"
                       >
                         Unpublish
@@ -384,7 +384,7 @@ export default function AdminBlogsPage() {
                     )}
                     {blog.status === "DRAFT" && (
                       <button
-                        onClick={() => handleTogglePublish(blog.id, blog.status)}
+                        onClick={() => handleTogglePublish(blog.id)}
                         className="flex items-center gap-1.5 px-4 py-2 bg-green-500/10 text-green-500 border border-green-500/20 rounded-xl text-sm font-bold hover:bg-green-500/20 transition-colors"
                       >
                         Publish

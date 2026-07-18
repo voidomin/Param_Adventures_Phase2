@@ -41,7 +41,7 @@ const allowedStyles = {
   },
 };
 
-export function sanitizeTiptapJson(node: any): any {
+export function sanitizeTiptapJson(node: unknown): unknown {
   if (!node || typeof node !== "object") {
     return node;
   }
@@ -50,12 +50,14 @@ export function sanitizeTiptapJson(node: any): any {
     return node.map(sanitizeTiptapJson);
   }
 
-  const sanitized: any = {};
+  const nodeObj = node as Record<string, unknown>;
+  const sanitized: Record<string, unknown> = {};
 
-  for (const [key, val] of Object.entries(node)) {
+  for (const [key, val] of Object.entries(nodeObj)) {
     if (key === "attrs" && val && typeof val === "object") {
-      const sanitizedAttrs: any = {};
-      for (const [attrKey, attrVal] of Object.entries(val)) {
+      const attrsObj = val as Record<string, unknown>;
+      const sanitizedAttrs: Record<string, unknown> = {};
+      for (const [attrKey, attrVal] of Object.entries(attrsObj)) {
         if ((attrKey === "src" || attrKey === "href") && typeof attrVal === "string") {
           const trimmed = attrVal.trim();
           const isJavaScript = /^\s*javascript:/i.test(trimmed);
@@ -77,10 +79,7 @@ export function sanitizeTiptapJson(node: any): any {
   return sanitized;
 }
 
-/**
- * Sanitizes raw HTML output or Tiptap JSON from the rich text editor before storing it in the database.
- * This prevents Stored XSS attacks.
- */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function sanitizeEditorContent(content: any): any {
   if (!content) return content;
 

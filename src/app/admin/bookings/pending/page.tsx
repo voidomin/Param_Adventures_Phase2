@@ -55,15 +55,7 @@ interface Booking {
   }[];
 }
 
-function formatDate(d: string) {
-  const date = new Date(d);
-  if (Number.isNaN(date.getTime())) return "—";
-  const day = String(date.getDate()).padStart(2, "0");
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const month = months[date.getMonth()];
-  const year = date.getFullYear();
-  return `${day}/${month}/${year}`;
-}
+
 
 function RefundResolveModal({
   booking,
