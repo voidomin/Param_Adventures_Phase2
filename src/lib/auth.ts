@@ -35,8 +35,8 @@ async function getAuthConfig(): Promise<AuthConfig> {
     const getVal = (key: string) => settings.find(s => s.key === key)?.value;
 
     // session_lifetime_hrs is stored as a number (string-version), e.g. "168"
-    const lifetime = getVal("session_lifetime_hrs");
-    const expiry = lifetime ? `${lifetime}h` : process.env.JWT_EXPIRY || "1h";
+    const lifetime = getVal("session_lifetime_hrs")?.replace(/['"]+/g, "");
+    const expiry = lifetime ? `${lifetime}h` : process.env.JWT_EXPIRY || "24h";
 
     const config = { JWT_SECRET: secret, JWT_EXPIRY: expiry };
     cachedAuthConfig = { config, expiresAt: now + CACHE_TTL_MS };
@@ -93,8 +93,9 @@ export async function generateAccessToken(userId: string, roleName: string, toke
  * Helper to parse a JWT expiry string (e.g., "1h", "7d") into seconds for cookie maxAge.
  */
 export function parseExpiryToSeconds(expiry: string): number {
-  const match = /^(\d+)([dhms])$/.exec(expiry);
-  if (!match) return 60 * 60;
+  const cleanExpiry = expiry.replace(/['"]+/g, "");
+  const match = /^(\d+)([dhms])$/.exec(cleanExpiry);
+  if (!match) return 24 * 60 * 60;
   const val = Number.parseInt(match[1]);
   const unit = match[2];
   switch (unit) {

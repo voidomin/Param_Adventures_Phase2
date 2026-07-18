@@ -21,6 +21,8 @@ const YoutubeSVG = () => (
 import MediaUploader from "@/components/admin/MediaUploader";
 import { ASPECT_RATIOS } from "@/lib/constants/aspect-ratios";
 import { useAuth } from "@/lib/AuthContext";
+import ReauthModal from "@/components/auth/ReauthModal";
+
 
 // Lazy-load the editor to avoid SSR issues
 const TiptapEditor = dynamic(() => import("@/components/blog/TiptapEditor"), {
@@ -58,6 +60,8 @@ export default function WriteBlogPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [blogId, setBlogId] = useState<string | null>(null);
+  const [isReauthOpen, setIsReauthOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<"SAVE" | "SUBMIT" | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [coverImageUrl, setCoverImageUrl] = useState("");
   const [theme, setTheme] = useState("CLASSIC");
@@ -120,6 +124,10 @@ export default function WriteBlogPage() {
         });
         const data = await res.json();
         if (!res.ok) {
+          if (res.status === 401) {
+            setIsReauthOpen(true);
+            return null;
+          }
           setError(data.error || "Failed to create blog.");
           return null;
         }
@@ -144,6 +152,10 @@ export default function WriteBlogPage() {
         }),
       });
       if (!patchRes.ok) {
+        if (patchRes.status === 401) {
+          setIsReauthOpen(true);
+          return null;
+        }
         const patchData = await patchRes.json();
         setError(patchData.error || "Failed to save draft.");
         return null;
@@ -159,6 +171,26 @@ export default function WriteBlogPage() {
     }
   };
 
+  const executeReauthSuccess = () => {
+    setIsReauthOpen(false);
+    if (pendingAction === "SAVE") {
+      handleSaveDraft();
+    } else if (pendingAction === "SUBMIT") {
+      handleSubmit();
+    }
+    setPendingAction(null);
+  };
+
+  const onSaveClick = () => {
+    setPendingAction("SAVE");
+    handleSaveDraft();
+  };
+
+  const onSubmitClick = () => {
+    setPendingAction("SUBMIT");
+    handleSubmit();
+  };
+
   const handleSubmit = async () => {
     // Save draft first — get the blog ID back directly
     const savedBlogId = await handleSaveDraft();
@@ -171,6 +203,10 @@ export default function WriteBlogPage() {
       });
       const data = await res.json();
       if (!res.ok) {
+        if (res.status === 401) {
+          setIsReauthOpen(true);
+          return;
+        }
         setError(data.error || "Failed to submit blog.");
         return;
       }
@@ -497,7 +533,7 @@ export default function WriteBlogPage() {
           {/* Actions */}
           <div className="flex items-center gap-4 pt-2">
             <button
-              onClick={handleSaveDraft}
+              onClick={onSaveClick}
               disabled={isSaving || isSubmitting}
               className="flex items-center gap-2 px-5 py-2.5 border border-border rounded-xl text-foreground/70 font-semibold hover:bg-foreground/5 transition-colors disabled:opacity-50"
             >
@@ -509,7 +545,7 @@ export default function WriteBlogPage() {
               Save Draft
             </button>
             <button
-              onClick={handleSubmit}
+              onClick={onSubmitClick}
               disabled={isSaving || isSubmitting}
               className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-xl font-bold hover:opacity-90 transition-opacity disabled:opacity-50 shadow-lg shadow-primary/25"
             >
@@ -528,6 +564,15 @@ export default function WriteBlogPage() {
           </div>
         </div>
       </div>
+      <ReauthModal
+        isOpen={isReauthOpen}
+        onClose={() => {
+          setIsReauthOpen(false);
+          setPendingAction(null);
+        }}
+        onSuccess={executeReauthSuccess}
+        email={user?.email || ""}
+      />
     </div>
   );
 }

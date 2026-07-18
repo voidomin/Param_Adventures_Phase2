@@ -41,19 +41,64 @@ const allowedStyles = {
   },
 };
 
+export function sanitizeTiptapJson(node: any): any {
+  if (!node || typeof node !== "object") {
+    return node;
+  }
+
+  if (Array.isArray(node)) {
+    return node.map(sanitizeTiptapJson);
+  }
+
+  const sanitized: any = {};
+
+  for (const [key, val] of Object.entries(node)) {
+    if (key === "attrs" && val && typeof val === "object") {
+      const sanitizedAttrs: any = {};
+      for (const [attrKey, attrVal] of Object.entries(val)) {
+        if ((attrKey === "src" || attrKey === "href") && typeof attrVal === "string") {
+          const trimmed = attrVal.trim();
+          const isJavaScript = /^\s*javascript:/i.test(trimmed);
+          if (isJavaScript) {
+            sanitizedAttrs[attrKey] = "";
+          } else {
+            sanitizedAttrs[attrKey] = trimmed;
+          }
+        } else {
+          sanitizedAttrs[attrKey] = attrVal;
+        }
+      }
+      sanitized[key] = sanitizedAttrs;
+    } else {
+      sanitized[key] = sanitizeTiptapJson(val);
+    }
+  }
+
+  return sanitized;
+}
+
 /**
- * Sanitizes raw HTML output from the rich text editor before storing it in the database.
+ * Sanitizes raw HTML output or Tiptap JSON from the rich text editor before storing it in the database.
  * This prevents Stored XSS attacks.
  */
-export function sanitizeEditorContent(dirtyHTML: string): string {
-  if (!dirtyHTML) return dirtyHTML;
+export function sanitizeEditorContent(content: any): any {
+  if (!content) return content;
 
-  return sanitizeHtml(dirtyHTML, {
-    allowedTags,
-    allowedAttributes,
-    allowedStyles,
-    allowedIframeHostnames: ["www.youtube.com", "player.vimeo.com"],
-    allowedSchemes: ["http", "https", "mailto", "tel"],
-    allowedSchemesByTag: { iframe: ["https"] },
-  });
+  if (typeof content === "object") {
+    return sanitizeTiptapJson(content);
+  }
+
+  if (typeof content === "string") {
+    return sanitizeHtml(content, {
+      allowedTags,
+      allowedAttributes,
+      allowedStyles,
+      allowedIframeHostnames: ["www.youtube.com", "player.vimeo.com"],
+      allowedSchemes: ["http", "https", "mailto", "tel"],
+      allowedSchemesByTag: { iframe: ["https"] },
+    });
+  }
+
+  return content;
 }
+
