@@ -41,6 +41,20 @@ const allowedStyles = {
   },
 };
 
+function sanitizeAttributes(attrs: Record<string, unknown>): Record<string, unknown> {
+  const sanitizedAttrs: Record<string, unknown> = {};
+  for (const [attrKey, attrVal] of Object.entries(attrs)) {
+    if ((attrKey === "src" || attrKey === "href") && typeof attrVal === "string") {
+      const trimmed = attrVal.trim();
+      const isJavaScript = /^\s*javascript:/i.test(trimmed);
+      sanitizedAttrs[attrKey] = isJavaScript ? "" : trimmed;
+    } else {
+      sanitizedAttrs[attrKey] = attrVal;
+    }
+  }
+  return sanitizedAttrs;
+}
+
 export function sanitizeTiptapJson(node: unknown): unknown {
   if (!node || typeof node !== "object") {
     return node;
@@ -55,22 +69,7 @@ export function sanitizeTiptapJson(node: unknown): unknown {
 
   for (const [key, val] of Object.entries(nodeObj)) {
     if (key === "attrs" && val && typeof val === "object") {
-      const attrsObj = val as Record<string, unknown>;
-      const sanitizedAttrs: Record<string, unknown> = {};
-      for (const [attrKey, attrVal] of Object.entries(attrsObj)) {
-        if ((attrKey === "src" || attrKey === "href") && typeof attrVal === "string") {
-          const trimmed = attrVal.trim();
-          const isJavaScript = /^\s*javascript:/i.test(trimmed);
-          if (isJavaScript) {
-            sanitizedAttrs[attrKey] = "";
-          } else {
-            sanitizedAttrs[attrKey] = trimmed;
-          }
-        } else {
-          sanitizedAttrs[attrKey] = attrVal;
-        }
-      }
-      sanitized[key] = sanitizedAttrs;
+      sanitized[key] = sanitizeAttributes(val as Record<string, unknown>);
     } else {
       sanitized[key] = sanitizeTiptapJson(val);
     }
