@@ -53,7 +53,7 @@ const mockTransaction = vi.mocked(prisma.$transaction);
 const mockRevalidatePath = vi.mocked(revalidatePath);
 const mockSlotCount = vi.mocked(prisma.slot.count);
 const mockBookingCount = vi.mocked(prisma.booking.count);
-const mockBlogUpdateMany = vi.mocked(prisma.blog.updateMany);
+
 
 const createJsonRequest = (body: unknown) =>
   ({ json: vi.fn().mockResolvedValue(body) }) as unknown as NextRequest;

@@ -38,6 +38,7 @@ interface Participant {
   emergencyRelationship?: string | null;
   pickupPoint?: string | null;
   dropPoint?: string | null;
+  isCancelled?: boolean;
 }
 
 interface StayDetails {
@@ -160,7 +161,9 @@ export default function TrekLeadTripDetailPage() {
       const initAttendance: Record<string, boolean> = {};
       data.slot.bookings.forEach((b: Booking) => {
         b.participants.forEach((p) => {
-          initAttendance[p.id] = p.attended ?? false;
+          if (!p.isCancelled) {
+            initAttendance[p.id] = p.attended ?? false;
+          }
         });
       });
       setAttendance(initAttendance);
@@ -463,13 +466,13 @@ export default function TrekLeadTripDetailPage() {
             </h2>
             <span className="text-sm text-foreground/40">
               {Object.values(attendance).filter(Boolean).length} /{" "}
-              {slot.bookings.length} present
+              {totalParticipants} present
             </span>
           </div>
 
           <div className="space-y-2">
             {slot.bookings.flatMap((booking) =>
-              booking.participants.map((p) => {
+              booking.participants.filter((p) => !p.isCancelled).map((p) => {
                 const isExpanded = expandedBookingId === booking.id;
                 return (
                   <div

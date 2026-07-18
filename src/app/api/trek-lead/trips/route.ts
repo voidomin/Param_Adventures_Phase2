@@ -31,10 +31,9 @@ export async function GET(request: NextRequest) {
             manager: {
               select: { id: true, name: true, email: true, phoneNumber: true },
             },
-            _count: {
-              select: {
-                bookings: { where: { bookingStatus: "CONFIRMED" } },
-              },
+            bookings: {
+              where: { bookingStatus: "CONFIRMED" },
+              select: { participantCount: true },
             },
           },
         },
@@ -42,7 +41,21 @@ export async function GET(request: NextRequest) {
       orderBy: { slot: { date: "asc" } },
     });
 
-    const trips = assignments.map((a) => a.slot);
+    const trips = assignments.map((a) => {
+      const slot = a.slot;
+      const confirmedParticipants = slot.bookings.reduce(
+        (sum, booking) => sum + booking.participantCount,
+        0,
+      );
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { bookings: _bookings, ...slotInfo } = slot;
+      return {
+        ...slotInfo,
+        _count: {
+          bookings: confirmedParticipants,
+        },
+      };
+    });
 
     return NextResponse.json({ trips });
   } catch (error) {

@@ -37,7 +37,7 @@ import { prisma } from "@/lib/db";
 const mockAuthorizeRequest = vi.mocked(authorizeRequest);
 const mockSlotFindUnique = vi.mocked(prisma.slot.findUnique);
 const mockSlotUpdate = vi.mocked(prisma.slot.update);
-const mockSlotDelete = vi.mocked(prisma.slot.delete);
+
 const mockTransaction = vi.mocked(prisma.$transaction);
 const mockBookingFindMany = vi.mocked(prisma.booking.findMany);
 const mockBookingCount = vi.mocked(prisma.booking.count);

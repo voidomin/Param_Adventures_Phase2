@@ -30,18 +30,7 @@ import SystemTab from "@/components/admin/settings/SystemTab";
 import IntegrationsTab from "@/components/admin/settings/IntegrationsTab";
 import InvoicesTab from "@/components/admin/settings/InvoicesTab";
 
-const _maskValue = (key: string, value: string | number | undefined | null) => {
-  if (value === undefined || value === null) return "n/a";
-  const str = String(value);
-  const sensitiveKeys = ["secret", "key", "token", "password", "auth", "dsn"];
-  const isSensitive = sensitiveKeys.some(sk => key.toLowerCase().includes(sk));
-  
-  if (isSensitive && str.length > 8) {
-    return `${str.substring(0, 4)}••••${str.substring(str.length - 4)}`;
-  }
-  if (isSensitive) return "••••••••";
-  return str;
-};
+
 
 interface Setting {
   key: string;

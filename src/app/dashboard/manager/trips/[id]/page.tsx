@@ -160,9 +160,11 @@ function ConfirmedParticipantsTable({
                       </div>
                       {booking.participants && booking.participants.length > 0 && (
                         <div className="text-xs text-foreground/50 space-y-0.5 mt-1 border-t border-border/50 pt-1 inline-block">
-                          {booking.participants.map((p) => (
-                            <div key={p.id}>{p.name}</div>
-                          ))}
+                          {booking.participants
+                            .filter((p) => !p.isCancelled)
+                            .map((p) => (
+                              <div key={p.id}>{p.name}</div>
+                            ))}
                         </div>
                       )}
                     </td>

@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Loader2, Send, Save, AlertTriangle, Search } from "lucide-react";
+import { useAuth } from "@/lib/AuthContext";
+import ReauthModal from "@/components/auth/ReauthModal";
+
 
 const TiptapEditor = dynamic(() => import("@/components/blog/TiptapEditor"), {
   ssr: false,
@@ -31,6 +34,7 @@ export default function EditBlogPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const id = params.id;
+  const { user } = useAuth();
 
   const [blog, setBlog] = useState<Blog | null>(null);
   const [title, setTitle] = useState("");
@@ -40,6 +44,8 @@ export default function EditBlogPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [isReauthOpen, setIsReauthOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<"SAVE" | "SUBMIT" | null>(null);
   const [metaTitle, setMetaTitle] = useState("");
   const [metaDescription, setMetaDescription] = useState("");
   const [metaKeywords, setMetaKeywords] = useState("");
@@ -72,7 +78,7 @@ export default function EditBlogPage() {
       .finally(() => setIsLoading(false));
   }, [id, router]);
 
-  const handleSave = async () => {
+  const handleSave = async (): Promise<boolean> => {
     setError("");
     setIsSaving(true);
     try {
@@ -89,21 +95,47 @@ export default function EditBlogPage() {
         }),
       });
       if (!res.ok) {
+        if (res.status === 401) {
+          setIsReauthOpen(true);
+          return false;
+        }
         const d = await res.json();
         setError(d.error);
-        return;
+        return false;
       }
       setSavedAt(new Date().toLocaleTimeString("en-IN"));
+      return true;
     } catch {
       setError("Failed to save.");
+      return false;
     } finally {
       setIsSaving(false);
     }
   };
 
+  const executeReauthSuccess = () => {
+    setIsReauthOpen(false);
+    if (pendingAction === "SAVE") {
+      handleSave();
+    } else if (pendingAction === "SUBMIT") {
+      handleSubmit();
+    }
+    setPendingAction(null);
+  };
+
+  const onSaveClick = () => {
+    setPendingAction("SAVE");
+    handleSave();
+  };
+
+  const onSubmitClick = () => {
+    setPendingAction("SUBMIT");
+    handleSubmit();
+  };
+
   const handleSubmit = async () => {
-    await handleSave();
-    if (error) return;
+    const saved = await handleSave();
+    if (!saved) return;
     setIsSubmitting(true);
     try {
       const res = await fetch(`/api/user/blogs/${id}/submit`, {
@@ -111,6 +143,10 @@ export default function EditBlogPage() {
       });
       const data = await res.json();
       if (!res.ok) {
+        if (res.status === 401) {
+          setIsReauthOpen(true);
+          return;
+        }
         setError(data.error);
         return;
       }
@@ -275,7 +311,7 @@ export default function EditBlogPage() {
 
           <div className="flex items-center gap-4 pt-2">
             <button
-              onClick={handleSave}
+              onClick={onSaveClick}
               disabled={isSaving || blog.status !== "DRAFT"}
               className="flex items-center gap-2 px-5 py-2.5 border border-border rounded-xl text-foreground/70 font-semibold hover:bg-foreground/5 transition-colors disabled:opacity-50"
             >
@@ -287,7 +323,7 @@ export default function EditBlogPage() {
               Save Draft
             </button>
             <button
-              onClick={handleSubmit}
+              onClick={onSubmitClick}
               disabled={isSaving || isSubmitting || blog.status !== "DRAFT"}
               className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-xl font-bold hover:opacity-90 transition-opacity disabled:opacity-50 shadow-lg shadow-primary/25"
             >
@@ -306,6 +342,15 @@ export default function EditBlogPage() {
           </div>
         </div>
       </div>
+      <ReauthModal
+        isOpen={isReauthOpen}
+        onClose={() => {
+          setIsReauthOpen(false);
+          setPendingAction(null);
+        }}
+        onSuccess={executeReauthSuccess}
+        email={user?.email || ""}
+      />
     </div>
   );
 }

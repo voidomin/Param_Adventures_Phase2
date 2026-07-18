@@ -117,6 +117,7 @@ export default function EditParticipantsClient({
   const [isCancelSubmitting, setIsCancelSubmitting] = useState(false);
   const [previewData, setPreviewData] = useState<RefundPreview | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
 
   useEffect(() => {
     if (cancellingParticipants.length === 0) {
@@ -126,14 +127,16 @@ export default function EditParticipantsClient({
 
     const fetchPreview = async () => {
       setIsPreviewLoading(true);
+      setPreviewError(null);
       try {
         const ids = cancellingParticipants.map((p) => p.id).join(",");
         const res = await fetch(`/api/bookings/${bookingId}/cancel-preview?participantIds=${ids}&preference=${cancelPreference}`);
-        if (!res.ok) throw new Error("Failed to load refund preview");
         const json = await res.json();
+        if (!res.ok) throw new Error(json.error || "Failed to load refund preview");
         setPreviewData(json);
       } catch (err) {
         console.error(err);
+        setPreviewError(err instanceof Error ? err.message : "Failed to load refund preview");
         setPreviewData(null);
       } finally {
         setIsPreviewLoading(false);
@@ -242,14 +245,7 @@ export default function EditParticipantsClient({
     }
   };
 
-  const formatDateDisplay = (dateInput: Date | string | null) => {
-    if (!dateInput) return "—";
-    const date = new Date(dateInput);
-    if (Number.isNaN(date.getTime())) return "—";
-    const day = String(date.getDate()).padStart(2, "0");
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    return `${day}/${months[date.getMonth()]}/${date.getFullYear()}`;
-  };
+
 
   const isFullyCancelledBooking = activeParticipants.length === 0;
 
@@ -513,356 +509,55 @@ export default function EditParticipantsClient({
 
       {/* EDIT MODAL */}
       {editingParticipant && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center p-6 border-b border-border">
-              <div className="flex items-center gap-3">
-                <User className="w-5 h-5 text-primary" />
-                <h3 className="text-xl font-bold text-foreground">Edit Guest Profile</h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setEditingParticipant(null)}
-                className="text-foreground/40 hover:text-foreground transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label htmlFor="edit-name" className="text-xs font-bold text-foreground/60 uppercase">Full Name *</label>
-                  <input
-                    id="edit-name"
-                    type="text"
-                    value={editName}
-                    onChange={(e) => setEditName(e.target.value)}
-                    className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label htmlFor="edit-email" className="text-xs font-bold text-foreground/60 uppercase">Email Address</label>
-                  <input
-                    id="edit-email"
-                    type="email"
-                    value={editEmail}
-                    onChange={(e) => setEditEmail(e.target.value)}
-                    className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label htmlFor="edit-phone" className="text-xs font-bold text-foreground/60 uppercase">Phone Number *</label>
-                  <input
-                    id="edit-phone"
-                    type="tel"
-                    value={editPhone}
-                    onChange={(e) => setEditPhone(e.target.value)}
-                    className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label htmlFor="edit-dob" className="text-xs font-bold text-foreground/60 uppercase">Date of Birth *</label>
-                  <input
-                    id="edit-dob"
-                    type="date"
-                    value={editDob}
-                    onChange={(e) => setEditDob(e.target.value)}
-                    className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label htmlFor="edit-gender" className="text-xs font-bold text-foreground/60 uppercase">Gender *</label>
-                  <select
-                    id="edit-gender"
-                    value={editGender}
-                    onChange={(e) => setEditGender(e.target.value)}
-                    className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
-                  >
-                    <option value="">Select Gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                  </select>
-                </div>
-                <div className="space-y-1.5">
-                  <label htmlFor="edit-blood" className="text-xs font-bold text-foreground/60 uppercase">Blood Group *</label>
-                  <input
-                    id="edit-blood"
-                    type="text"
-                    value={editBlood}
-                    placeholder="e.g. A+"
-                    onChange={(e) => setEditBlood(e.target.value)}
-                    className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="border-t border-border/50 pt-4 mt-2">
-                <span className="text-[10px] font-black text-foreground/45 uppercase tracking-widest block mb-3">Emergency Contact Info</span>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-1.5">
-                    <label htmlFor="edit-ec-name" className="text-[10px] font-bold text-foreground/60 uppercase">Contact Name *</label>
-                    <input
-                      id="edit-ec-name"
-                      type="text"
-                      value={editEcName}
-                      onChange={(e) => setEditEcName(e.target.value)}
-                      className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-primary outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label htmlFor="edit-ec-phone" className="text-[10px] font-bold text-foreground/60 uppercase">Contact Phone *</label>
-                    <input
-                      id="edit-ec-phone"
-                      type="tel"
-                      value={editEcPhone}
-                      onChange={(e) => setEditEcPhone(e.target.value)}
-                      className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-primary outline-none"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <label htmlFor="edit-ec-rel" className="text-[10px] font-bold text-foreground/60 uppercase">Relationship *</label>
-                    <input
-                      id="edit-ec-rel"
-                      type="text"
-                      value={editEcRel}
-                      placeholder="e.g. Father"
-                      onChange={(e) => setEditEcRel(e.target.value)}
-                      className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-primary outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {(pickupPoints.length > 0 || dropPoints.length > 0) && (
-                <div className="border-t border-border/50 pt-4 mt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {pickupPoints.length > 0 && (
-                    <div className="space-y-1.5">
-                      <label htmlFor="edit-pickup" className="text-xs font-bold text-foreground/60 uppercase">Pick-up Location</label>
-                      <select
-                        id="edit-pickup"
-                        value={editPickup}
-                        onChange={(e) => setEditPickup(e.target.value)}
-                        className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
-                      >
-                        <option value="">Select Pickup</option>
-                        {pickupPoints.map((loc) => (
-                          <option key={`pick-${loc}`} value={loc}>{loc}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-                  {dropPoints.length > 0 && (
-                    <div className="space-y-1.5">
-                      <label htmlFor="edit-drop" className="text-xs font-bold text-foreground/60 uppercase">Drop-off Location</label>
-                      <select
-                        id="edit-drop"
-                        value={editDrop}
-                        onChange={(e) => setEditDrop(e.target.value)}
-                        className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
-                      >
-                        <option value="">Select Drop</option>
-                        {dropPoints.map((loc) => (
-                          <option key={`drop-${loc}`} value={loc}>{loc}</option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {editError && (
-                <p className="text-red-500 text-sm bg-red-500/10 border border-red-500/20 rounded-xl p-3">
-                  {editError}
-                </p>
-              )}
-            </div>
-
-            <div className="flex gap-3 p-6 border-t border-border bg-muted/20">
-              <button
-                type="button"
-                onClick={() => setEditingParticipant(null)}
-                className="flex-1 py-2.5 rounded-xl border border-border text-foreground/60 font-bold hover:bg-foreground/5"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isEditSubmitting}
-                onClick={handleSaveEdit}
-                className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity"
-              >
-                {isEditSubmitting ? "Saving…" : "Save Changes"}
-              </button>
-            </div>
-          </div>
-        </div>
+        <EditGuestModal
+          onClose={() => setEditingParticipant(null)}
+          editName={editName}
+          setEditName={setEditName}
+          editEmail={editEmail}
+          setEditEmail={setEditEmail}
+          editPhone={editPhone}
+          setEditPhone={setEditPhone}
+          editDob={editDob}
+          setEditDob={setEditDob}
+          editGender={editGender}
+          setEditGender={setEditGender}
+          editBlood={editBlood}
+          setEditBlood={setEditBlood}
+          editEcName={editEcName}
+          setEditEcName={setEditEcName}
+          editEcPhone={editEcPhone}
+          setEditEcPhone={setEditEcPhone}
+          editEcRel={editEcRel}
+          setEditEcRel={setEditEcRel}
+          editPickup={editPickup}
+          setEditPickup={setEditPickup}
+          editDrop={editDrop}
+          setEditDrop={setEditDrop}
+          pickupPoints={pickupPoints}
+          dropPoints={dropPoints}
+          editError={editError}
+          isEditSubmitting={isEditSubmitting}
+          onSave={handleSaveEdit}
+        />
       )}
 
       {/* CANCELLATION MODAL */}
       {cancellingParticipants.length > 0 && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
-          <div className="bg-card border border-border w-full max-w-md rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center p-6 border-b border-border">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="w-5 h-5 text-red-500" />
-                <h3 className="text-lg font-bold text-foreground">
-                  Cancel {cancellingParticipants.length > 1 ? `${cancellingParticipants.length} Slots` : "Guest Slot"}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setCancellingParticipants([])}
-                className="text-foreground/40 hover:text-foreground transition-colors"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div className="p-6 space-y-4">
-              {cancellingParticipants.length === activeParticipants.length ? (
-                <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-semibold rounded-xl p-4 flex gap-2">
-                  <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
-                  <p>
-                    <strong>Warning:</strong> Since you are cancelling all remaining active guest slots,
-                    this will cancel the entire booking request.
-                  </p>
-                </div>
-              ) : (
-                <p className="text-sm text-foreground/80 leading-relaxed text-left">
-                  You are cancelling slots for:{" "}
-                  <strong>
-                    {cancellingParticipants.map((p) => p.name).join(", ")}
-                  </strong>.
-                  A partial cancellation refund will be processed to your account.
-                </p>
-              )}
-
-              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 text-left">
-                <p className="text-amber-400 text-xs font-bold mb-1">📋 Cancellation Policy</p>
-                <p className="text-foreground/60 text-[11px] leading-relaxed">
-                  Refunds are processed according to our policy. Depending on the schedule proximity, you may receive a partial coupon code or bank refund.
-                </p>
-              </div>
-
-              <div className="space-y-2 text-left">
-                <p className="text-xs font-bold text-foreground/60 uppercase">Refund Preference</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setCancelPreference("COUPON")}
-                    className={`p-2.5 rounded-xl border text-xs font-bold transition-all ${
-                      cancelPreference === "COUPON"
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border text-foreground/60 hover:border-foreground/30"
-                    }`}
-                  >
-                    🎟️ Adventure Coupon
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCancelPreference("BANK_REFUND")}
-                    className={`p-2.5 rounded-xl border text-xs font-bold transition-all ${
-                      cancelPreference === "BANK_REFUND"
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border text-foreground/60 hover:border-foreground/30"
-                    }`}
-                  >
-                    🏦 Bank Refund
-                  </button>
-                </div>
-              </div>
-
-              {/* Refund Breakdown Panel */}
-              <div className="bg-foreground/5 border border-border/80 rounded-2xl p-5 text-left space-y-3">
-                <span className="text-[10px] font-black text-foreground/45 uppercase tracking-widest block">Refund Breakdown Preview</span>
-                {isPreviewLoading ? (
-                  <div className="flex items-center gap-2 text-xs text-foreground/50 py-2">
-                    <Loader2 className="w-4 h-4 animate-spin text-primary" /> Calculating eligible refund details...
-                  </div>
-                ) : previewData ? (
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-foreground/60">Trip Cost (Base Fare):</span>
-                      <span className="font-bold text-foreground">₹{previewData.baseFare.toLocaleString("en-IN")}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-foreground/60">
-                        {cancelPreference === "COUPON" ? "GST Component (Refunded as Coupon):" : "GST Component (Non-Refundable):"}
-                      </span>
-                      <span className="font-bold text-foreground">₹{previewData.gst.toLocaleString("en-IN")}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-foreground/60">
-                        {cancelPreference === "COUPON" ? "Convenience Fee (Refunded as Coupon):" : "Convenience Fee (Non-Refundable):"}
-                      </span>
-                      <span className="font-bold text-foreground">₹{previewData.convenienceFee.toLocaleString("en-IN")}</span>
-                    </div>
-                    <div className="flex justify-between text-red-400">
-                      <span>Cancellation Charges ({previewData.cancellationPercent}%):</span>
-                      <span className="font-bold">-₹{previewData.cancellationCharges.toLocaleString("en-IN")}</span>
-                    </div>
-                    
-                    <div className="border-t border-border/50 pt-2 flex justify-between font-black text-base">
-                      <span className="text-foreground">Net Refund Amount:</span>
-                      <span className="text-green-500">₹{previewData.finalRefundAmount.toLocaleString("en-IN")}</span>
-                    </div>
-                    
-                    <p className="text-[10px] text-foreground/45 leading-normal pt-1 italic">
-                      {cancelPreference === "COUPON"
-                        ? "* GST and Convenience Fee are fully refunded in the form of a travel coupon."
-                        : "* GST and Convenience Fee are non-refundable for guest-initiated bank refund cancellations."}
-                    </p>
-
-                    <div className="mt-4 p-3 bg-primary/10 border border-primary/20 rounded-xl text-xs text-primary font-bold text-center animate-in fade-in duration-200">
-                      Confirming: You will receive <strong>₹{previewData.finalRefundAmount.toLocaleString("en-IN")}</strong> {cancelPreference === "COUPON" ? "as a Travel Coupon" : "via Bank Transfer"}.
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-xs text-red-400">
-                    Failed to load breakdown. Using policy defaults on submit.
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-1.5 text-left">
-                <label htmlFor="cancel-reason" className="text-xs font-bold text-foreground/60 uppercase">Reason (Optional)</label>
-                <textarea
-                  id="cancel-reason"
-                  value={cancelReason}
-                  onChange={(e) => setCancelReason(e.target.value)}
-                  placeholder="Why is this slot being cancelled?"
-                  className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm focus:ring-1 focus:ring-primary outline-none min-h-20 resize-none"
-                />
-              </div>
-
-              {cancelError && (
-                <p className="text-red-500 text-sm bg-red-500/10 border border-red-500/20 rounded-xl p-3">
-                  {cancelError}
-                </p>
-              )}
-            </div>
-
-            <div className="flex gap-3 p-6 border-t border-border bg-muted/20">
-              <button
-                type="button"
-                onClick={() => setCancellingParticipants([])}
-                className="flex-1 py-2.5 rounded-xl border border-border text-foreground/60 font-bold hover:bg-foreground/5"
-              >
-                Keep Slots
-              </button>
-              <button
-                type="button"
-                disabled={isCancelSubmitting}
-                onClick={handleCancelParticipant}
-                className="flex-1 py-2.5 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition-colors"
-              >
-                {isCancelSubmitting ? "Processing…" : "Cancel Slots"}
-              </button>
-            </div>
-          </div>
-        </div>
+        <CancelGuestModal
+          cancellingParticipants={cancellingParticipants}
+          onClose={() => setCancellingParticipants([])}
+          cancelPreference={cancelPreference}
+          setCancelPreference={setCancelPreference}
+          previewData={previewData}
+          isPreviewLoading={isPreviewLoading}
+          previewError={previewError}
+          cancelReason={cancelReason}
+          setCancelReason={setCancelReason}
+          cancelError={cancelError}
+          isCancelSubmitting={isCancelSubmitting}
+          onCancelSubmit={handleCancelParticipant}
+          isAllCancelled={cancellingParticipants.length === activeParticipants.length}
+        />
       )}
 
       {/* Multi-Select Floating Action Bar */}
@@ -943,3 +638,465 @@ export default function EditParticipantsClient({
     </div>
   );
 }
+
+// ==========================================
+// Helper functions & Subcomponents
+// ==========================================
+
+const formatDateDisplay = (dateInput: Date | string | null) => {
+  if (!dateInput) return "—";
+  const date = new Date(dateInput);
+  if (Number.isNaN(date.getTime())) return "—";
+  const day = String(date.getDate()).padStart(2, "0");
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${day}/${months[date.getMonth()]}/${date.getFullYear()}`;
+};
+
+interface EditGuestModalProps {
+  onClose: () => void;
+  editName: string;
+  setEditName: (v: string) => void;
+  editEmail: string;
+  setEditEmail: (v: string) => void;
+  editPhone: string;
+  setEditPhone: (v: string) => void;
+  editDob: string;
+  setEditDob: (v: string) => void;
+  editGender: string;
+  setEditGender: (v: string) => void;
+  editBlood: string;
+  setEditBlood: (v: string) => void;
+  editEcName: string;
+  setEditEcName: (v: string) => void;
+  editEcPhone: string;
+  setEditEcPhone: (v: string) => void;
+  editEcRel: string;
+  setEditEcRel: (v: string) => void;
+  editPickup: string;
+  setEditPickup: (v: string) => void;
+  editDrop: string;
+  setEditDrop: (v: string) => void;
+  pickupPoints: string[];
+  dropPoints: string[];
+  editError: string | null;
+  isEditSubmitting: boolean;
+  onSave: () => void;
+}
+
+function EditGuestModal({
+  onClose,
+  editName,
+  setEditName,
+  editEmail,
+  setEditEmail,
+  editPhone,
+  setEditPhone,
+  editDob,
+  setEditDob,
+  editGender,
+  setEditGender,
+  editBlood,
+  setEditBlood,
+  editEcName,
+  setEditEcName,
+  editEcPhone,
+  setEditEcPhone,
+  editEcRel,
+  setEditEcRel,
+  editPickup,
+  setEditPickup,
+  editDrop,
+  setEditDrop,
+  pickupPoints,
+  dropPoints,
+  editError,
+  isEditSubmitting,
+  onSave,
+}: Readonly<EditGuestModalProps>) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto">
+      <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-200">
+        <div className="flex justify-between items-center p-6 border-b border-border">
+          <div className="flex items-center gap-3">
+            <User className="w-5 h-5 text-primary" />
+            <h3 className="text-xl font-bold text-foreground">Edit Guest Profile</h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-foreground/40 hover:text-foreground transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label htmlFor="edit-name" className="text-xs font-bold text-foreground/60 uppercase">Full Name *</label>
+              <input
+                id="edit-name"
+                type="text"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="edit-email" className="text-xs font-bold text-foreground/60 uppercase">Email Address</label>
+              <input
+                id="edit-email"
+                type="email"
+                value={editEmail}
+                onChange={(e) => setEditEmail(e.target.value)}
+                className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="edit-phone" className="text-xs font-bold text-foreground/60 uppercase">Phone Number *</label>
+              <input
+                id="edit-phone"
+                type="tel"
+                value={editPhone}
+                onChange={(e) => setEditPhone(e.target.value)}
+                className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="edit-dob" className="text-xs font-bold text-foreground/60 uppercase">Date of Birth *</label>
+              <input
+                id="edit-dob"
+                type="date"
+                value={editDob}
+                onChange={(e) => setEditDob(e.target.value)}
+                className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="edit-gender" className="text-xs font-bold text-foreground/60 uppercase">Gender *</label>
+              <select
+                id="edit-gender"
+                value={editGender}
+                onChange={(e) => setEditGender(e.target.value)}
+                className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
+              >
+                <option value="">Select Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            <div className="space-y-1.5">
+              <label htmlFor="edit-blood" className="text-xs font-bold text-foreground/60 uppercase">Blood Group *</label>
+              <input
+                id="edit-blood"
+                type="text"
+                value={editBlood}
+                placeholder="e.g. A+"
+                onChange={(e) => setEditBlood(e.target.value)}
+                className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="border-t border-border/50 pt-4 mt-2">
+            <span className="text-[10px] font-black text-foreground/45 uppercase tracking-widest block mb-3">Emergency Contact Info</span>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-1.5">
+                <label htmlFor="edit-ec-name" className="text-[10px] font-bold text-foreground/60 uppercase">Contact Name *</label>
+                <input
+                  id="edit-ec-name"
+                  type="text"
+                  value={editEcName}
+                  onChange={(e) => setEditEcName(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-primary outline-none"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="edit-ec-phone" className="text-[10px] font-bold text-foreground/60 uppercase">Contact Phone *</label>
+                <input
+                  id="edit-ec-phone"
+                  type="tel"
+                  value={editEcPhone}
+                  onChange={(e) => setEditEcPhone(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-primary outline-none"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <label htmlFor="edit-ec-rel" className="text-[10px] font-bold text-foreground/60 uppercase">Relationship *</label>
+                <input
+                  id="edit-ec-rel"
+                  type="text"
+                  value={editEcRel}
+                  placeholder="e.g. Father"
+                  onChange={(e) => setEditEcRel(e.target.value)}
+                  className="w-full bg-background border border-border rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-primary outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          {(pickupPoints.length > 0 || dropPoints.length > 0) && (
+            <div className="border-t border-border/50 pt-4 mt-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {pickupPoints.length > 0 && (
+                <div className="space-y-1.5">
+                  <label htmlFor="edit-pickup" className="text-xs font-bold text-foreground/60 uppercase">Pick-up Location</label>
+                  <select
+                    id="edit-pickup"
+                    value={editPickup}
+                    onChange={(e) => setEditPickup(e.target.value)}
+                    className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
+                  >
+                    <option value="">Select Pickup</option>
+                    {pickupPoints.map((loc) => (
+                      <option key={`pick-${loc}`} value={loc}>{loc}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {dropPoints.length > 0 && (
+                <div className="space-y-1.5">
+                  <label htmlFor="edit-drop" className="text-xs font-bold text-foreground/60 uppercase">Drop-off Location</label>
+                  <select
+                    id="edit-drop"
+                    value={editDrop}
+                    onChange={(e) => setEditDrop(e.target.value)}
+                    className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm focus:ring-1 focus:ring-primary outline-none"
+                  >
+                    <option value="">Select Drop</option>
+                    {dropPoints.map((loc) => (
+                      <option key={`drop-${loc}`} value={loc}>{loc}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+
+          {editError && (
+            <p className="text-red-500 text-sm bg-red-500/10 border border-red-500/20 rounded-xl p-3">
+              {editError}
+            </p>
+          )}
+        </div>
+
+        <div className="flex gap-3 p-6 border-t border-border bg-muted/20">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl border border-border text-foreground/60 font-bold hover:bg-foreground/5"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={isEditSubmitting}
+            onClick={onSave}
+            className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity"
+          >
+            {isEditSubmitting ? "Saving…" : "Save Changes"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface CancelGuestModalProps {
+  cancellingParticipants: Participant[];
+  onClose: () => void;
+  cancelPreference: "COUPON" | "BANK_REFUND";
+  setCancelPreference: (v: "COUPON" | "BANK_REFUND") => void;
+  previewData: RefundPreview | null;
+  isPreviewLoading: boolean;
+  previewError: string | null;
+  cancelReason: string;
+  setCancelReason: (v: string) => void;
+  cancelError: string | null;
+  isCancelSubmitting: boolean;
+  onCancelSubmit: () => void;
+  isAllCancelled: boolean;
+}
+
+function CancelGuestModal({
+  cancellingParticipants,
+  onClose,
+  cancelPreference,
+  setCancelPreference,
+  previewData,
+  isPreviewLoading,
+  previewError,
+  cancelReason,
+  setCancelReason,
+  cancelError,
+  isCancelSubmitting,
+  onCancelSubmit,
+  isAllCancelled,
+}: Readonly<CancelGuestModalProps>) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto">
+      <div className="bg-card border border-border w-full max-w-md rounded-2xl shadow-2xl flex flex-col my-auto max-h-[85vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="flex justify-between items-center p-6 border-b border-border flex-shrink-0">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-500" />
+            <h3 className="text-lg font-bold text-foreground">
+              Cancel {cancellingParticipants.length > 1 ? `${cancellingParticipants.length} Slots` : "Guest Slot"}
+            </h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-foreground/40 hover:text-foreground transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4 overflow-y-auto flex-1">
+          {isAllCancelled ? (
+            <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-semibold rounded-xl p-4 flex gap-2">
+              <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5" />
+              <p>
+                <strong>Warning:</strong> Since you are cancelling all remaining active guest slots,
+                this will cancel the entire booking request.
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-foreground/80 leading-relaxed text-left">
+              You are cancelling slots for:{" "}
+              <strong>
+                {cancellingParticipants.map((p) => p.name).join(", ")}
+              </strong>.
+              A partial cancellation refund will be processed to your account.
+            </p>
+          )}
+
+          <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 text-left">
+            <p className="text-amber-400 text-xs font-bold mb-1">📋 Cancellation Policy</p>
+            <p className="text-foreground/60 text-[11px] leading-relaxed">
+              Refunds are processed according to our policy. Depending on the schedule proximity, you may receive a partial coupon code or bank refund.
+            </p>
+          </div>
+
+          <div className="space-y-2 text-left">
+            <p className="text-xs font-bold text-foreground/60 uppercase">Refund Preference</p>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setCancelPreference("COUPON")}
+                className={`p-2.5 rounded-xl border text-xs font-bold transition-all ${
+                  cancelPreference === "COUPON"
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-foreground/60 hover:border-foreground/30"
+                }`}
+              >
+                🎟️ Adventure Coupon
+              </button>
+              <button
+                type="button"
+                onClick={() => setCancelPreference("BANK_REFUND")}
+                className={`p-2.5 rounded-xl border text-xs font-bold transition-all ${
+                  cancelPreference === "BANK_REFUND"
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-foreground/60 hover:border-foreground/30"
+                }`}
+              >
+                🏦 Bank Refund
+              </button>
+            </div>
+          </div>
+
+          {/* Refund Breakdown Panel */}
+          <div className="bg-foreground/5 border border-border/80 rounded-2xl p-5 text-left space-y-3">
+            <span className="text-[10px] font-black text-foreground/45 uppercase tracking-widest block">Refund Breakdown Preview</span>
+            {isPreviewLoading && (
+              <div className="flex items-center gap-2 text-xs text-foreground/50 py-2">
+                <Loader2 className="w-4 h-4 animate-spin text-primary" /> Calculating eligible refund details...
+              </div>
+            )}
+            {!isPreviewLoading && previewData && (
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-foreground/60">Trip Cost (Base Fare):</span>
+                  <span className="font-bold text-foreground">₹{previewData.baseFare.toLocaleString("en-IN")}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-foreground/60">
+                    {cancelPreference === "COUPON" ? "GST Component (Refunded as Coupon):" : "GST Component (Non-Refundable):"}
+                  </span>
+                  <span className="font-bold text-foreground">₹{previewData.gst.toLocaleString("en-IN")}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-foreground/60">
+                    {cancelPreference === "COUPON" ? "Convenience Fee (Refunded as Coupon):" : "Convenience Fee (Non-Refundable):"}
+                  </span>
+                  <span className="font-bold text-foreground">₹{previewData.convenienceFee.toLocaleString("en-IN")}</span>
+                </div>
+                <div className="flex justify-between text-red-400">
+                  <span>Cancellation Charges ({previewData.cancellationPercent}%):</span>
+                  <span className="font-bold">-₹{previewData.cancellationCharges.toLocaleString("en-IN")}</span>
+                </div>
+                
+                <div className="border-t border-border/50 pt-2 flex justify-between font-black text-base">
+                  <span className="text-foreground">Net Refund Amount:</span>
+                  <span className="text-green-500">₹{previewData.finalRefundAmount.toLocaleString("en-IN")}</span>
+                </div>
+                
+                <p className="text-[10px] text-foreground/45 leading-normal pt-1 italic">
+                  {cancelPreference === "COUPON"
+                    ? "* GST and Convenience Fee are fully refunded in the form of a travel coupon."
+                    : "* GST and Convenience Fee are non-refundable for guest-initiated bank refund cancellations."}
+                </p>
+
+                <div className="mt-4 p-3 bg-primary/10 border border-primary/20 rounded-xl text-xs text-primary font-bold text-center animate-in fade-in duration-200">
+                  Confirming: You will receive <strong>₹{previewData.finalRefundAmount.toLocaleString("en-IN")}</strong> {cancelPreference === "COUPON" ? "as a Travel Coupon" : "via Bank Transfer"}.
+                </div>
+              </div>
+            )}
+            {!isPreviewLoading && !previewData && (
+              <div className="text-xs text-red-400">
+                {previewError || "Failed to load breakdown. Using policy defaults on submit."}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-1.5 text-left">
+            <label htmlFor="cancel-reason" className="text-xs font-bold text-foreground/60 uppercase">Reason (Optional)</label>
+            <textarea
+              id="cancel-reason"
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder="Why is this slot being cancelled?"
+              className="w-full bg-background border border-border rounded-xl px-4 py-2 text-sm focus:ring-1 focus:ring-primary outline-none min-h-20 resize-none"
+            />
+          </div>
+
+          {cancelError && (
+            <p className="text-red-500 text-sm bg-red-500/10 border border-red-500/20 rounded-xl p-3">
+              {cancelError}
+            </p>
+          )}
+        </div>
+
+        <div className="flex gap-3 p-6 border-t border-border bg-muted/20 flex-shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl border border-border text-foreground/60 font-bold hover:bg-foreground/5"
+          >
+            Keep Slots
+          </button>
+          <button
+            type="button"
+            disabled={isCancelSubmitting}
+            onClick={onCancelSubmit}
+            className="flex-1 py-2.5 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition-colors"
+          >
+            {isCancelSubmitting ? "Processing…" : "Cancel Slots"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
