@@ -87,7 +87,7 @@ export async function POST(
 
     const finalRefund = breakdown.finalRefundAmount;
 
-    // Atomic transaction: update booking + restore slot capacity
+    // Atomic transaction: update booking + restore slot capacity + create refund request
     await prisma.$transaction(async (tx) => {
       await tx.booking.update({
         where: { id: bookingId },
@@ -107,6 +107,23 @@ export async function POST(
           where: { id: booking.slotId },
           data: {
             remainingCapacity: { increment: booking.participantCount },
+          },
+        });
+      }
+
+      if (newPaymentStatus === "REFUND_PENDING" && finalRefund > 0) {
+        await tx.refundRequest.create({
+          data: {
+            bookingId,
+            customerId: booking.userId,
+            refundMethod: preference === "COUPON" ? "TRAVEL_COUPON" : "BANK_TRANSFER",
+            baseFare: breakdown.baseFare,
+            gst: breakdown.gst,
+            convenienceFee: breakdown.convenienceFee,
+            cancellationPercent: breakdown.cancellationPercent,
+            cancellationCharges: breakdown.cancellationCharges,
+            finalRefundAmount: breakdown.finalRefundAmount,
+            status: "REQUESTED",
           },
         });
       }

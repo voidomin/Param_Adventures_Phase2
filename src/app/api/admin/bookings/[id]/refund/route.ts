@@ -136,6 +136,20 @@ export async function POST(
           },
         });
       }
+
+      // Update any associated RefundRequest to COMPLETED
+      if (tx.refundRequest) {
+        await tx.refundRequest.updateMany({
+          where: { bookingId, status: { not: "COMPLETED" } },
+          data: {
+            status: "COMPLETED",
+            approvedAt: new Date(),
+            processedAt: new Date(),
+            remarks: booking.refundPreference === "COUPON" ? `Coupon refund resolved: ${couponCode}` : `Bank refund resolved: ${couponCode}`,
+            utrNumber: couponCode,
+          },
+        });
+      }
     });
 
     await logActivity("REFUND_RESOLVED", adminId, "Booking", bookingId, {

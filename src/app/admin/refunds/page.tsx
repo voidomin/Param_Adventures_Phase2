@@ -168,7 +168,16 @@ export default function AdminRefundRequestsPage() {
                   <tr key={refund.id} className="group hover:bg-foreground/5 transition-colors">
                     <td className="px-6 py-5">
                       <span className="font-bold text-foreground block text-base leading-tight">{refund.booking.experience.title}</span>
-                      <span className="text-[10px] font-mono font-bold text-foreground/30 mt-1 block">ID: {refund.bookingId.substring(0, 8)}...</span>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <span className="text-[10px] font-mono font-bold text-foreground/30">ID: {refund.bookingId.substring(0, 8)}...</span>
+                        <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                          refund.refundMethod === "TRAVEL_COUPON" 
+                            ? "bg-blue-500/10 text-blue-500 border border-blue-500/20" 
+                            : "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                        }`}>
+                          {refund.refundMethod === "TRAVEL_COUPON" ? "Coupon" : "Bank Transfer"}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-6 py-5">
                       <span className="font-bold text-foreground block leading-tight">{refund.customer.name}</span>
@@ -212,9 +221,9 @@ export default function AdminRefundRequestsPage() {
       <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-border/50">
         <div className="space-y-1 text-left">
           <h1 className="text-3xl font-black font-heading flex items-center gap-3">
-            <CreditCard className="w-8 h-8 text-primary" /> Bank <span className="text-primary">Refunds</span>
+            <CreditCard className="w-8 h-8 text-primary" /> Refunds & <span className="text-primary">Coupons</span>
           </h1>
-          <p className="text-foreground/50 text-sm font-medium">Verify guest cancellations, manage GST deductions, and process Bank Transfer payouts.</p>
+          <p className="text-foreground/50 text-sm font-medium">Verify guest cancellations, manage GST deductions, and process Bank Transfer payouts or Travel Coupons.</p>
         </div>
       </header>
 
@@ -266,6 +275,7 @@ export default function AdminRefundRequestsPage() {
               <div>
                 <h3 className="text-xl font-bold text-foreground">Review Refund Claim</h3>
                 <p className="text-xs text-foreground/50 mt-0.5">Booking Reference: <strong className="font-mono text-primary select-all">{selectedRefund.bookingId}</strong></p>
+                <p className="text-xs text-foreground/50 mt-0.5">Refund Method: <strong className="text-foreground">{selectedRefund.refundMethod === "TRAVEL_COUPON" ? "Travel Coupon" : "Bank Transfer"}</strong></p>
               </div>
               <button type="button" onClick={() => setSelectedRefund(null)} className="text-foreground/40 hover:text-foreground text-xl">✕</button>
             </div>

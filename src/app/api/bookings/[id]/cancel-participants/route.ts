@@ -66,12 +66,10 @@ async function processFullCancellation(params: {
 
   const finalRefund = preference === "NO_REFUND" ? 0 : breakdown.finalRefundAmount;
 
-  // If selecting coupon refund, booking paymentStatus does not need to remain REFUND_PENDING
+  // If selecting coupon refund or bank refund, booking paymentStatus becomes REFUND_PENDING
   let newPaymentStatus = booking.paymentStatus;
-  if (preference === "BANK_REFUND" && (booking.paymentStatus === "PAID" || booking.paymentStatus === "PARTIALLY_PAID") && finalRefund > 0) {
+  if ((preference === "BANK_REFUND" || preference === "COUPON") && (booking.paymentStatus === "PAID" || booking.paymentStatus === "PARTIALLY_PAID") && finalRefund > 0) {
     newPaymentStatus = "REFUND_PENDING";
-  } else if (finalRefund > 0 && preference === "COUPON") {
-    newPaymentStatus = "REFUNDED";
   } else if (preference === "NO_REFUND") {
     newPaymentStatus = "PAID";
   }
@@ -86,9 +84,7 @@ async function processFullCancellation(params: {
     }
 
     let refundNote: string | null = null;
-    if (preference === "COUPON") {
-      refundNote = "Travel Coupon Refund Issued";
-    } else if (preference === "NO_REFUND") {
+    if (preference === "NO_REFUND") {
       refundNote = "No Refund Issued (Admin Decision)";
     }
 
@@ -101,7 +97,7 @@ async function processFullCancellation(params: {
         cancelledByUserId: userId,
         cancellationReason: reason || null,
         refundPreference: preference,
-        refundAmount: finalRefund > 0 && preference === "BANK_REFUND" ? finalRefund : null,
+        refundAmount: finalRefund > 0 && (preference === "BANK_REFUND" || preference === "COUPON") ? finalRefund : null,
         refundNote,
       },
     });
@@ -131,53 +127,39 @@ async function processFullCancellation(params: {
       tx,
     });
 
-    // Create travel coupon if coupon preference is selected
-    if (preference === "COUPON" && finalRefund > 0) {
-      const couponCode = generateCouponCode("PARAM");
-      const expiry = new Date();
-      expiry.setMonth(expiry.getMonth() + 12); // Travel Coupon valid for 12 months
-
-      const newCoupon = await tx.travelCoupon.create({
-        data: {
-          code: couponCode,
-          customerId: booking.userId,
-          bookingId,
-          originalValue: finalRefund,
-          balance: finalRefund,
-          expiryDate: expiry,
-          status: "ACTIVE",
-          type: "CANCELLATION",
-          reason: `Refund for cancelled booking ${bookingId.substring(0, 8)}`,
-        },
-      });
-
-      await tx.couponTransaction.create({
-        data: {
-          couponId: newCoupon.id,
-          bookingId,
-          type: "ISSUED",
-          amount: finalRefund,
-          previousBalance: 0,
-          newBalance: finalRefund,
-          remarks: `Issued Travel Coupon refund for booking ${bookingId.substring(0, 8)}`,
-        },
-      });
-    } else if (preference === "BANK_REFUND" && finalRefund > 0) {
-      // Create Refund Request if bank transfer and refund is due
-      await tx.refundRequest.create({
-        data: {
-          bookingId,
-          customerId: booking.userId,
-          refundMethod: "BANK_TRANSFER",
-          baseFare: breakdown.baseFare,
-          gst: breakdown.gst,
-          convenienceFee: breakdown.convenienceFee,
-          cancellationPercent: breakdown.cancellationPercent,
-          cancellationCharges: breakdown.cancellationCharges,
-          finalRefundAmount: breakdown.finalRefundAmount,
-          status: "REQUESTED",
-        },
-      });
+    // Create refund request if refund is due
+    if (finalRefund > 0) {
+      if (preference === "COUPON") {
+        await tx.refundRequest.create({
+          data: {
+            bookingId,
+            customerId: booking.userId,
+            refundMethod: "TRAVEL_COUPON",
+            baseFare: breakdown.baseFare,
+            gst: breakdown.gst,
+            convenienceFee: breakdown.convenienceFee,
+            cancellationPercent: breakdown.cancellationPercent,
+            cancellationCharges: breakdown.cancellationCharges,
+            finalRefundAmount: breakdown.finalRefundAmount,
+            status: "REQUESTED",
+          },
+        });
+      } else if (preference === "BANK_REFUND") {
+        await tx.refundRequest.create({
+          data: {
+            bookingId,
+            customerId: booking.userId,
+            refundMethod: "BANK_TRANSFER",
+            baseFare: breakdown.baseFare,
+            gst: breakdown.gst,
+            convenienceFee: breakdown.convenienceFee,
+            cancellationPercent: breakdown.cancellationPercent,
+            cancellationCharges: breakdown.cancellationCharges,
+            finalRefundAmount: breakdown.finalRefundAmount,
+            status: "REQUESTED",
+          },
+        });
+      }
     }
   });
 
@@ -358,8 +340,6 @@ export async function POST(
       preference,
     });
 
-      let generatedCoupon = "";
-
       // Execute atomic transaction for partial cancellation
       await prisma.$transaction(async (tx) => {
         const cancelledCount = await tx.bookingParticipant.count({
@@ -381,10 +361,8 @@ export async function POST(
         });
 
         let newPaymentStatus = dbBooking.paymentStatus;
-        if (preference === "BANK_REFUND" && financials.refundAmount > 0) {
+        if ((preference === "BANK_REFUND" || preference === "COUPON") && financials.refundAmount > 0) {
           newPaymentStatus = "REFUND_PENDING";
-        } else if (financials.refundAmount > 0 && preference === "COUPON") {
-          newPaymentStatus = "PARTIALLY_PAID";
         }
 
         await tx.booking.update({
@@ -394,7 +372,7 @@ export async function POST(
             baseFare: financials.newBaseFare,
             totalPrice: financials.newTotalPrice,
             remainingBalance: financials.newRemainingBalance,
-            refundAmount: preference === "BANK_REFUND" && financials.newRefundAmount > 0 ? financials.newRefundAmount : null,
+            refundAmount: (preference === "BANK_REFUND" || preference === "COUPON") && financials.newRefundAmount > 0 ? financials.newRefundAmount : null,
             paymentStatus: newPaymentStatus,
             cancellationReason: reason || null,
             refundPreference: preference,
@@ -417,73 +395,41 @@ export async function POST(
           tx,
         });
 
-        // Create Travel Coupon if coupon preference is selected
-        if (preference === "COUPON" && financials.refundAmount > 0) {
-          generatedCoupon = generateCouponCode("PARAM");
-          const expiry = new Date();
-          expiry.setMonth(expiry.getMonth() + 12);
-
-          const newCoupon = await tx.travelCoupon.create({
-            data: {
-              code: generatedCoupon,
-              customerId: dbBooking.userId,
-              bookingId,
-              originalValue: financials.refundAmount,
-              balance: financials.refundAmount,
-              expiryDate: expiry,
-              status: "ACTIVE",
-              type: "CANCELLATION",
-              reason: `Partial refund for cancelled booking ${bookingId.substring(0, 8)}`,
-            },
-          });
-
-          await tx.couponTransaction.create({
-            data: {
-              couponId: newCoupon.id,
-              bookingId,
-              type: "ISSUED",
-              amount: financials.refundAmount,
-              previousBalance: 0,
-              newBalance: financials.refundAmount,
-              remarks: `Issued travel coupon refund for partial cancellation of booking ${bookingId.substring(0, 8)}`,
-            },
-          });
-        } else if (preference === "BANK_REFUND" && financials.refundAmount > 0) {
-          // Create Refund Request if bank transfer and refund is due
-          await tx.refundRequest.create({
-            data: {
-              bookingId,
-              customerId: dbBooking.userId,
-              refundMethod: "BANK_TRANSFER",
-              baseFare: financials.breakdown.baseFare,
-              gst: financials.breakdown.gst,
-              convenienceFee: financials.breakdown.convenienceFee,
-              cancellationPercent: financials.breakdown.cancellationPercent,
-              cancellationCharges: financials.breakdown.cancellationCharges,
-              finalRefundAmount: financials.breakdown.finalRefundAmount,
-              status: "REQUESTED",
-            },
-          });
+        // Create Refund Request if refund is due
+        if (financials.refundAmount > 0) {
+          if (preference === "COUPON") {
+            await tx.refundRequest.create({
+              data: {
+                bookingId,
+                customerId: dbBooking.userId,
+                refundMethod: "TRAVEL_COUPON",
+                baseFare: financials.breakdown.baseFare,
+                gst: financials.breakdown.gst,
+                convenienceFee: financials.breakdown.convenienceFee,
+                cancellationPercent: financials.breakdown.cancellationPercent,
+                cancellationCharges: financials.breakdown.cancellationCharges,
+                finalRefundAmount: financials.breakdown.finalRefundAmount,
+                status: "REQUESTED",
+              },
+            });
+          } else if (preference === "BANK_REFUND") {
+            await tx.refundRequest.create({
+              data: {
+                bookingId,
+                customerId: dbBooking.userId,
+                refundMethod: "BANK_TRANSFER",
+                baseFare: financials.breakdown.baseFare,
+                gst: financials.breakdown.gst,
+                convenienceFee: financials.breakdown.convenienceFee,
+                cancellationPercent: financials.breakdown.cancellationPercent,
+                cancellationCharges: financials.breakdown.cancellationCharges,
+                finalRefundAmount: financials.breakdown.finalRefundAmount,
+                status: "REQUESTED",
+              },
+            });
+          }
         }
       });
-
-      // Email the travel coupon immediately if generated
-      if (preference === "COUPON" && financials.refundAmount > 0 && generatedCoupon) {
-        try {
-          await sendRefundResolved({
-            userName: dbBooking.user.name || "Adventurer",
-            userEmail: dbBooking.user.email,
-            experienceTitle: dbBooking.experience.title,
-            slotDate: dbBooking.slot?.date?.toISOString() ?? new Date().toISOString(),
-            refundPreference: "COUPON",
-            refundNote: generatedCoupon,
-            totalPrice: financials.refundAmount,
-            bookingId: dbBooking.id,
-          });
-        } catch (emailErr) {
-          console.error("[CancelParticipants] Error sending coupon refund email:", emailErr);
-        }
-      }
 
     await logActivity("BOOKING_PARTIAL_CANCEL", userId, "Booking", bookingId, {
       preference,
