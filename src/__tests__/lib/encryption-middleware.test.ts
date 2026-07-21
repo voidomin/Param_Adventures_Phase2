@@ -30,7 +30,7 @@ describe("Encryption Middleware", () => {
 
     // Verify that the value was encrypted
     expect(params.args.data.value).not.toBe("raw-password");
-    expect(params.args.data.value.split(":").length).toBe(3);
+    expect(params.args.data.value.split(":")).toHaveLength(3);
     expect(next).toHaveBeenCalledWith(params);
   });
 

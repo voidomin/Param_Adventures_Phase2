@@ -4,5 +4,13 @@
   "sonarlint.connectedMode.project": {
     "connectionId": "voidomin",
     "projectKey": "voidomin_Param_Adventures_Phase2"
-  }
+  },
+  "sonarlint.ls.vmargs": "-Xmx512m",
+  "sonarlint.analysisExcludesStandalone": [
+    "**/node_modules/**",
+    "**/.next/**",
+    "**/coverage/**",
+    "**/out/**",
+    "**/build/**"
+  ]
 }

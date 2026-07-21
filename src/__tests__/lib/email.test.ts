@@ -138,4 +138,38 @@ describe("Email Utilities", () => {
       subject: expect.stringContaining("Welcome"),
     }));
   });
+
+  it("sends custom trip acknowledgment emails", async () => {
+    const { sendCustomTripAcknowledgmentEmail } = await vi.importActual<typeof import("@/lib/email")>("@/lib/email");
+    await sendCustomTripAcknowledgmentEmail({ userName: "Alice", userEmail: "alice@test.com" });
+    expect(mockProvider.send).toHaveBeenCalledWith(expect.objectContaining({
+      subject: expect.stringContaining("We've received your custom trip request!"),
+    }));
+  });
+
+  it("logs error and does not throw in non-production on send failures", async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    (process.env as any).NODE_ENV = "test";
+    
+    mockProvider.send.mockRejectedValueOnce(new Error("SMTP down"));
+    const spyError = vi.spyOn(console, "error");
+
+    await sendWelcomeEmail({ userName: "Bob", userEmail: "bob@test.com" });
+    expect(spyError).toHaveBeenCalledWith(expect.stringContaining("Failed to send email to bob@test.com:"), expect.any(Error));
+
+    (process.env as any).NODE_ENV = originalNodeEnv;
+  });
+
+  it("throws error in production on send failures", async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    (process.env as any).NODE_ENV = "production";
+    
+    mockProvider.send.mockRejectedValueOnce(new Error("SMTP down"));
+
+    await expect(
+      sendResetPasswordEmail({ userName: "Bob", userEmail: "bob@test.com", resetLink: "https://link" })
+    ).rejects.toThrow("SMTP down");
+
+    (process.env as any).NODE_ENV = originalNodeEnv;
+  });
 });

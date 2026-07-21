@@ -1,4 +1,4 @@
-import crypto from "crypto";
+import crypto from "node:crypto";
 
 const ENCRYPTION_KEY_RAW = process.env.DB_ENCRYPTION_KEY || "default-fallback-key-should-be-changed-in-prod";
 const KEY = crypto.createHash("sha256").update(ENCRYPTION_KEY_RAW).digest(); // Always 32 bytes
