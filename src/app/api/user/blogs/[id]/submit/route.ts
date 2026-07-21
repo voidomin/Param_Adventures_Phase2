@@ -34,9 +34,29 @@ export async function POST(request: NextRequest, { params }: Params) {
   }
 
   // Validate content is not empty
-  const content = blog.content as { content?: unknown[] };
-  const hasContent =
-    Array.isArray(content?.content) && content.content.length > 0;
+  let hasContent = false;
+  const contentValue = blog.content;
+  if (contentValue) {
+    if (typeof contentValue === "string") {
+      const trimmed = contentValue.trim();
+      if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          hasContent = Array.isArray(parsed?.content) && parsed.content.length > 0;
+        } catch {
+          const stripped = trimmed.replace(/<[^>]*>/g, "").trim();
+          hasContent = stripped.length > 0;
+        }
+      } else {
+        const stripped = trimmed.replace(/<[^>]*>/g, "").trim();
+        hasContent = stripped.length > 0;
+      }
+    } else if (typeof contentValue === "object") {
+      const doc = contentValue as { content?: unknown[] };
+      hasContent = Array.isArray(doc?.content) && doc.content.length > 0;
+    }
+  }
+
   if (!blog.title.trim() || !hasContent) {
     return NextResponse.json(
       {

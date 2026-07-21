@@ -16,6 +16,9 @@ vi.mock("@/lib/db", () => {
     couponTransaction: {
       create: vi.fn(),
     },
+    refundRequest: {
+      updateMany: vi.fn(),
+    },
     $transaction: vi.fn(),
   };
   mockPrisma.$transaction = vi.fn().mockImplementation(async (callback) => {

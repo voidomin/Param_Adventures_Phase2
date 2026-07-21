@@ -98,7 +98,8 @@
     "@react-email/components": {
       "lodash": "^4.17.23"
     },
-    "axios": "^1.16.0",
+    "axios": "^1.17.1",
+    "postcss": "^8.5.10",
     "fast-uri": "^3.1.2",
     "fast-xml-builder": "^1.1.9",
     "form-data": "^4.0.6",

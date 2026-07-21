@@ -4,6 +4,7 @@ import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
 import { sendRefundResolved } from "@/lib/email";
 import { RefundStatus } from "@prisma/client";
+import { generateCouponCode } from "@/lib/coupon-engine";
 
 /**
  * PATCH /api/admin/refunds/[id]
@@ -53,12 +54,16 @@ export async function PATCH(
       utrNumber: utrNumber !== undefined ? utrNumber : refundRequest.utrNumber,
     };
 
+    const isCompleted = status === "COMPLETED" || status === "TRANSFER_COMPLETED";
+
     if (status === "APPROVED" && !refundRequest.approvedAt) {
       refundUpdateData.approvedAt = new Date();
     }
-    if (status === "COMPLETED" && !refundRequest.processedAt) {
+    if (isCompleted && !refundRequest.processedAt) {
       refundUpdateData.processedAt = new Date();
     }
+
+    let couponCode = "";
 
     // Atomic transaction for completing refund
     await prisma.$transaction(async (tx) => {
@@ -68,8 +73,8 @@ export async function PATCH(
         data: refundUpdateData,
       });
 
-      // 2. If status is COMPLETED, update the parent booking totals and payment status
-      if (status === "COMPLETED") {
+      // 2. If status is completed, update the parent booking totals and payment status
+      if (isCompleted) {
         const refundAmt = Number(refundRequest.finalRefundAmount);
         const newPaidAmount = Math.max(0, Number(booking.paidAmount) - refundAmt);
         const remainingBalance = Number(booking.totalPrice) - newPaidAmount;
@@ -81,26 +86,62 @@ export async function PATCH(
           newPaymentStatus = "PARTIALLY_PAID";
         }
 
+        if (refundRequest.refundMethod === "TRAVEL_COUPON") {
+          couponCode = generateCouponCode("PARAM");
+          const expiry = new Date();
+          expiry.setMonth(expiry.getMonth() + 12);
+
+          const newCoupon = await tx.travelCoupon.create({
+            data: {
+              code: couponCode,
+              customerId: booking.userId,
+              bookingId: booking.id,
+              originalValue: refundAmt,
+              balance: refundAmt,
+              expiryDate: expiry,
+              status: "ACTIVE",
+              type: "CANCELLATION",
+              reason: `Refund for cancelled booking ${booking.id.substring(0, 8)}`,
+              issuedById: adminId,
+            },
+          });
+
+          await tx.couponTransaction.create({
+            data: {
+              couponId: newCoupon.id,
+              bookingId: booking.id,
+              type: "ISSUED",
+              amount: refundAmt,
+              previousBalance: 0,
+              newBalance: refundAmt,
+              remarks: `Issued Travel Coupon refund for booking ${booking.id.substring(0, 8)}`,
+            },
+          });
+        } else {
+          couponCode = utrNumber || remarks || "Bank Transfer Refund Completed";
+        }
+
         await tx.booking.update({
           where: { id: booking.id },
           data: {
             paymentStatus: newPaymentStatus,
             paidAmount: newPaidAmount,
             remainingBalance: Math.max(0, remainingBalance),
-            refundNote: utrNumber || remarks || "Bank Transfer Refund Completed",
+            refundNote: couponCode,
             refundAmount: null, // Clear transient refund field as it's fully settled
           },
         });
       }
     });
 
-    // Audit logs & email on COMPLETED
-    if (status === "COMPLETED") {
+    // Audit logs & email on completed
+    if (isCompleted) {
+      const isCoupon = refundRequest.refundMethod === "TRAVEL_COUPON";
       await logActivity("REFUND_RESOLVED", adminId, "Booking", booking.id, {
-        refundNote: utrNumber || remarks || "Bank Transfer Refund Completed",
-        refundPreference: "BANK_REFUND",
+        refundNote: couponCode,
+        refundPreference: isCoupon ? "COUPON" : "BANK_REFUND",
         refundAmount: Number(refundRequest.finalRefundAmount),
-        utrNumber,
+        utrNumber: isCoupon ? undefined : utrNumber,
       });
 
       try {
@@ -109,9 +150,10 @@ export async function PATCH(
           userEmail: booking.user.email,
           experienceTitle: booking.experience.title,
           slotDate: booking.slot?.date?.toISOString() ?? new Date().toISOString(),
-          refundPreference: "BANK_REFUND",
-          refundNote: utrNumber || remarks || "Processed successfully via Bank Transfer",
+          refundPreference: isCoupon ? "COUPON" : "BANK_REFUND",
+          refundNote: isCoupon ? couponCode : (utrNumber || remarks || "Processed successfully via Bank Transfer"),
           totalPrice: Number(refundRequest.finalRefundAmount),
+          bookingId: booking.id,
         });
       } catch (emailErr) {
         console.error("[RefundAPI] Failed to send email confirmation:", emailErr);

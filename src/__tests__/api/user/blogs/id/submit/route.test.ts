@@ -137,4 +137,52 @@ describe("POST /api/user/blogs/[id]/submit", () => {
     expect(data.blog.status).toBe("PENDING_REVIEW");
     expect(mockRevalidatePath).toHaveBeenCalledWith("/", "layout");
   });
+
+  it("submits draft when content is an HTML string", async () => {
+    mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+    mockBlogFindUnique.mockResolvedValue({
+      id: "b1",
+      authorId: "u1",
+      status: "DRAFT",
+      title: "My HTML blog",
+      content: "<p>This is a paragraph</p>",
+      deletedAt: null,
+    } as any);
+    mockBlogUpdate.mockResolvedValue({
+      id: "b1",
+      status: "PENDING_REVIEW",
+    } as any);
+
+    const response = await POST(createRequest({ token: "ok" }), {
+      params: Promise.resolve({ id: "b1" }),
+    });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.blog.status).toBe("PENDING_REVIEW");
+  });
+
+  it("submits draft when content is a JSON string", async () => {
+    mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+    mockBlogFindUnique.mockResolvedValue({
+      id: "b1",
+      authorId: "u1",
+      status: "DRAFT",
+      title: "My JSON string blog",
+      content: JSON.stringify({ content: [{ type: "paragraph" }] }),
+      deletedAt: null,
+    } as any);
+    mockBlogUpdate.mockResolvedValue({
+      id: "b1",
+      status: "PENDING_REVIEW",
+    } as any);
+
+    const response = await POST(createRequest({ token: "ok" }), {
+      params: Promise.resolve({ id: "b1" }),
+    });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.blog.status).toBe("PENDING_REVIEW");
+  });
 });
