@@ -8,21 +8,17 @@ import {
   Ticket,
   Map,
   AlertCircle,
-  Clock,
-  User,
   Users,
-  ArrowRight,
   Compass,
 } from "lucide-react";
-import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useAuth } from "@/lib/AuthContext";
 const DashboardCharts = dynamic(() => import("@/components/admin/DashboardCharts"), {
   ssr: false,
   loading: () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <div key={i} className="h-64 rounded-2xl bg-muted animate-pulse" />
+      {["chart-1", "chart-2", "chart-3", "chart-4"].map((key) => (
+        <div key={key} className="h-64 rounded-2xl bg-muted animate-pulse" />
       ))}
     </div>
   ),

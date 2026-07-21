@@ -54,6 +54,13 @@ export async function POST(request: NextRequest) {
     };
 
     const errorMessage = error instanceof Error ? error.message : "INTERNAL_ERROR";
+    if (errorMessage.startsWith("COUPON_ERROR:")) {
+      return NextResponse.json(
+        { error: errorMessage.replace("COUPON_ERROR: ", "") },
+        { status: 400 }
+      );
+    }
+
     const mapped = errorMap[errorMessage];
     if (mapped) {
       return NextResponse.json({ error: mapped.message }, { status: mapped.status });

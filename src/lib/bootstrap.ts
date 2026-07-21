@@ -18,6 +18,17 @@ export async function ensureBasicSettings() {
     { key: "jwt_expiry", value: "1h", description: "Access token duration" },
     { key: "refresh_token_expiry", value: "7d", description: "Refresh token duration" },
     { key: "razorpay_mode", value: "TEST", description: "TEST | LIVE" },
+    {
+      key: "cancellation_policy_rules",
+      value: JSON.stringify([
+        { minDays: 30, maxDays: null, refundPercent: 100 },
+        { minDays: 15, maxDays: 29, refundPercent: 75 },
+        { minDays: 7, maxDays: 14, refundPercent: 50 },
+        { minDays: 3, maxDays: 6, refundPercent: 25 },
+        { minDays: 0, maxDays: 2, refundPercent: 0 }
+      ]),
+      description: "JSON array of cancellation tiers (days before departure vs refund %)"
+    },
   ];
 
   const SITE_SETTINGS = [

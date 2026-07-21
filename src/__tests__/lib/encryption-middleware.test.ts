@@ -4,7 +4,6 @@ import { encrypt } from "@/lib/encryption";
 
 describe("Encryption Middleware", () => {
   it("should encrypt sensitive fields on create", async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let registeredMiddleware: any = null;
     const mockClient = {
       $use: (fn: unknown) => {
@@ -36,7 +35,6 @@ describe("Encryption Middleware", () => {
   });
 
   it("should decrypt sensitive fields on read", async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let registeredMiddleware: any = null;
     const mockClient = {
       $use: (fn: unknown) => {

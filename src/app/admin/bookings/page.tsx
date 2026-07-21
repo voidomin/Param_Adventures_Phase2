@@ -13,6 +13,7 @@ import {
   Eye,
   ExternalLink,
   Archive,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { TableSkeleton } from "@/components/admin/TableSkeleton";
@@ -20,19 +21,28 @@ import { ManualVerifyModal } from "@/components/admin/ManualVerifyModal";
 
 
 type BookingStatus = "REQUESTED" | "CONFIRMED" | "CANCELLED";
-type PaymentStatus = "PENDING" | "PAID" | "FAILED" | "REFUND_PENDING" | "REFUNDED";
+type PaymentStatus = "PENDING" | "PARTIALLY_PAID" | "PAID" | "FAILED" | "REFUND_PENDING" | "REFUNDED";
 
 interface Booking {
   id: string;
   participantCount: number;
   totalPrice: number;
+  paidAmount: number;
+  remainingBalance: number;
   bookingStatus: BookingStatus;
   paymentStatus: PaymentStatus;
   createdAt: string;
+  updatedAt: string;
   cancelledAt?: string | null;
   refundPreference?: string | null;
   refundNote?: string | null;
   cancellationReason?: string | null;
+  refundAmount?: number | null;
+  participants?: {
+    id: string;
+    name: string;
+    isCancelled: boolean;
+  }[] | null;
   user: {
     name: string;
     email: string;
@@ -52,6 +62,7 @@ interface Booking {
     amount: number;
     providerPaymentId?: string | null;
     provider: "RAZORPAY" | "MANUAL";
+    createdAt: string;
     fullPayload?: {
       proofUrl?: string | null;
       adminNotes?: string | null;
@@ -69,6 +80,7 @@ const statusStyles: Record<BookingStatus, string> = {
 
 const paymentStyles: Record<PaymentStatus, string> = {
   PENDING: "text-yellow-500",
+  PARTIALLY_PAID: "text-amber-500",
   PAID: "text-green-500",
   FAILED: "text-red-500",
   REFUND_PENDING: "text-amber-400",
@@ -84,11 +96,13 @@ const STATUS_FILTERS: (BookingStatus | "ALL")[] = [
 
 // Module-level utility — no component state needed
 function formatDate(d: string) {
-  return new Date(d).toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+  const date = new Date(d);
+  if (Number.isNaN(date.getTime())) return "—";
+  const day = String(date.getDate()).padStart(2, "0");
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const month = months[date.getMonth()];
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
 }
 
 // Resolve Refund Modal
@@ -101,20 +115,39 @@ function RefundResolveModal({
   onClose: () => void;
   onSuccess: () => void;
 }>) {
-  const [note, setNote] = useState("");
+  const isCoupon = booking.refundPreference === "COUPON";
+  const [note, setNote] = useState(isCoupon ? "AUTO_GENERATE" : "");
+  const [customAmount, setCustomAmount] = useState(
+    String(booking.refundAmount ?? booking.paidAmount)
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const isCoupon = booking.refundPreference === "COUPON";
 
   const handleResolve = async () => {
-    if (!note.trim()) { setError("Please enter a " + (isCoupon ? "coupon code" : "bank UTR number")); return; }
+    if (!note.trim()) { setError("Please enter a bank UTR number"); return; }
+    const amt = Number(customAmount);
+    if (Number.isNaN(amt) || amt < 0) {
+      setError("Please enter a valid non-negative refund amount.");
+      return;
+    }
+    const effectiveCap = booking.refundAmount
+      ? Math.max(Number(booking.paidAmount), Number(booking.refundAmount))
+      : Number(booking.paidAmount);
+
+    if (amt > effectiveCap) {
+      setError(`Refund amount cannot exceed the paid/refund limit of ₹${effectiveCap.toLocaleString()}`);
+      return;
+    }
     setIsSubmitting(true);
     setError(null);
     try {
       const res = await fetch(`/api/admin/bookings/${booking.id}/refund`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refundNote: note }),
+        body: JSON.stringify({
+          refundNote: note,
+          refundAmount: amt,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -136,8 +169,13 @@ function RefundResolveModal({
         <div className="p-6 space-y-4">
           <div className="bg-foreground/5 rounded-xl p-4 space-y-1">
             <p className="text-sm text-foreground">
-              <strong>Amount:</strong> ₹{Number(booking.totalPrice).toLocaleString()}
+              <strong>Amount (Paid):</strong> ₹{Number(booking.paidAmount).toLocaleString()}
             </p>
+            {booking.refundAmount && (
+              <p className="text-sm text-foreground">
+                <strong>Suggested Refund (Canceled):</strong> ₹{Number(booking.refundAmount).toLocaleString()}
+              </p>
+            )}
             <p className="text-sm text-foreground">
               <strong>Preference:</strong>{" "}
               {isCoupon ? "🎟️ Adventure Coupon" : "🏦 Bank Refund"}
@@ -148,19 +186,49 @@ function RefundResolveModal({
               </p>
             )}
           </div>
-          <div className="space-y-1.5">
-            <label htmlFor="refund-note" className="text-sm font-bold text-foreground/60">
-              {isCoupon ? "Coupon Code" : "Bank UTR / Reference"}
-            </label>
-            <input
-              id="refund-note"
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder={isCoupon ? "e.g. PARAM2024TREK" : "e.g. UTR123456789"}
-              className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
-            />
-          </div>
+          
+          {isCoupon ? (
+            <div className="space-y-4">
+              <div className="space-y-1.5 text-left">
+                <label htmlFor="custom-amount" className="text-sm font-bold text-foreground/60">
+                  Voucher Value (Refund Amount)
+                </label>
+                <input
+                  id="custom-amount"
+                  type="number"
+                  step="any"
+                  value={customAmount}
+                  onChange={(e) => {
+                    setCustomAmount(e.target.value);
+                    setError(null);
+                  }}
+                  className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                />
+                <p className="text-[10px] text-foreground/40 leading-relaxed mt-1">
+                  Adjust this value to match custom policy deductions (e.g. for late cancellations). Paid amount was: ₹{Number(booking.paidAmount).toLocaleString("en-IN")}.
+                </p>
+              </div>
+              <div className="p-3 bg-primary/5 border border-primary/20 rounded-xl">
+                <p className="text-xs text-primary leading-relaxed">
+                  🎟️ A Travel Coupon code worth <strong>₹{Number(customAmount || 0).toLocaleString()}</strong> will be automatically generated and emailed to the customer.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-1.5">
+              <label htmlFor="refund-note" className="text-sm font-bold text-foreground/60">
+                Bank UTR / Reference
+              </label>
+              <input
+                id="refund-note"
+                type="text"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="e.g. UTR123456789"
+                className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+              />
+            </div>
+          )}
           {error && <p className="text-red-400 text-sm">{error}</p>}
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-border text-foreground/60 font-bold hover:bg-foreground/5">
@@ -187,12 +255,19 @@ function BookingDetailsModal({
   onClose,
   onApprove,
   onArchive,
+  onCancelSuccess,
 }: Readonly<{
   booking: Booking;
   onClose: () => void;
   onApprove?: () => void;
   onArchive?: () => void;
+  onCancelSuccess?: () => void;
 }>) {
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelPreference, setCancelPreference] = useState<"BANK_REFUND" | "COUPON" | "NO_REFUND">("BANK_REFUND");
+  const [isCancelling, setIsCancelling] = useState(false);
+
   const payments = booking.payments;
   const isCancelled = booking.bookingStatus === "CANCELLED";
   const hasRefund = booking.paymentStatus === "REFUND_PENDING" || booking.paymentStatus === "REFUNDED";
@@ -201,6 +276,101 @@ function BookingDetailsModal({
     navigator.clipboard.writeText(booking.id);
     alert("Booking ID copied to clipboard!");
   };
+
+  if (showCancelConfirm) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+        <div className="bg-card border border-border w-full max-w-md rounded-2xl shadow-2xl overflow-hidden p-6 space-y-4 animate-in fade-in zoom-in-95 duration-200">
+          <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+            ⚠️ Cancel Booking
+          </h3>
+          <p className="text-sm text-foreground/75">
+            Are you sure you want to cancel this booking? This will restore the slot capacity.
+          </p>
+
+          <div className="space-y-3">
+            <div>
+              <label htmlFor="cancel-reason" className="block text-xs font-semibold text-foreground/60 mb-1">
+                Reason for Cancellation
+              </label>
+              <textarea
+                id="cancel-reason"
+                rows={2}
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="e.g. Guest no-show / Late request"
+                className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500 text-foreground"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="refund-preference" className="block text-xs font-semibold text-foreground/60 mb-1">
+                Refund Method
+              </label>
+              <select
+                id="refund-preference"
+                value={cancelPreference}
+                onChange={(e) => setCancelPreference(e.target.value as "BANK_REFUND" | "COUPON" | "NO_REFUND")}
+                className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500 text-foreground"
+              >
+                <option value="BANK_REFUND">Bank Refund</option>
+                <option value="COUPON">Issue Travel Coupon</option>
+                <option value="NO_REFUND">No Refund at all (Admin Decision)</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex gap-3 justify-end pt-2">
+            <button
+              type="button"
+              onClick={() => setShowCancelConfirm(false)}
+              className="px-4 py-2 border border-border rounded-xl text-xs font-bold text-foreground/60 hover:bg-foreground/5 transition-colors"
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              disabled={isCancelling}
+              onClick={async () => {
+                setIsCancelling(true);
+                try {
+                  const activePartIds = (booking.participants || [])
+                    .filter((p) => !p.isCancelled)
+                    .map((p) => p.id);
+
+                  const res = await fetch(`/api/bookings/${booking.id}/cancel-participants`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      participantIds: activePartIds,
+                      reason: cancelReason || "Cancelled by admin",
+                      preference: cancelPreference,
+                    }),
+                  });
+                  if (!res.ok) {
+                    const data = await res.json();
+                    alert(data.error || "Failed to cancel booking.");
+                    return;
+                  }
+                  alert("Booking cancelled successfully!");
+                  if (onCancelSuccess) onCancelSuccess();
+                } catch (err) {
+                  console.error(err);
+                  alert("Failed to cancel booking.");
+                } finally {
+                  setIsCancelling(false);
+                }
+              }}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold disabled:opacity-50 flex items-center gap-1 transition-all"
+            >
+              {isCancelling && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              Confirm Cancellation
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
@@ -304,6 +474,22 @@ function BookingDetailsModal({
                     </span>
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/40">
+                  <div>
+                    <p className="text-xs text-foreground/45">Total Price</p>
+                    <p className="font-bold text-foreground">₹{Number(booking.totalPrice).toLocaleString("en-IN")}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-foreground/45">Paid Amount</p>
+                    <p className="font-bold text-green-500">₹{Number(booking.paidAmount || 0).toLocaleString("en-IN")}</p>
+                  </div>
+                  {Number(booking.remainingBalance) > 0 && (
+                    <div className="col-span-2">
+                      <p className="text-xs text-foreground/45">Remaining Balance</p>
+                      <p className="font-bold text-red-500">₹{Number(booking.remainingBalance).toLocaleString("en-IN")}</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -385,8 +571,14 @@ function BookingDetailsModal({
                           <p className="text-foreground/45 text-xs">Amount</p>
                           <p className="font-bold text-foreground">₹{Number(p.amount).toLocaleString("en-IN")}</p>
                         </div>
+                        <div>
+                          <p className="text-foreground/45 text-xs">Transaction Date</p>
+                          <p className="font-medium text-foreground">
+                            {p.createdAt ? new Date(p.createdAt).toLocaleString("en-IN") : "—"}
+                          </p>
+                        </div>
                         {p.providerPaymentId && (
-                          <div>
+                          <div className="col-span-2">
                             <p className="text-foreground/45 text-xs">Transaction ID / Reference ID</p>
                             <p className="font-mono text-xs text-foreground break-all">{p.providerPaymentId}</p>
                           </div>
@@ -440,7 +632,7 @@ function BookingDetailsModal({
         </div>
 
         {/* Footer Actions */}
-        <div className="p-4 border-t border-border flex flex-wrap gap-3">
+        <div className="p-4 border-t border-border flex flex-wrap gap-3 items-center">
           {onArchive && (
             <button
               type="button"
@@ -448,6 +640,15 @@ function BookingDetailsModal({
               className="px-4 py-2.5 rounded-xl bg-red-500/10 text-red-500 font-bold hover:bg-red-500/20 transition-all text-xs"
             >
               Archive Booking
+            </button>
+          )}
+          {!isCancelled && (
+            <button
+              type="button"
+              onClick={() => setShowCancelConfirm(true)}
+              className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold transition-all text-xs"
+            >
+              Cancel Booking
             </button>
           )}
           {onApprove && booking.bookingStatus === "REQUESTED" && booking.paymentStatus !== "PAID" && (
@@ -463,7 +664,7 @@ function BookingDetailsModal({
             type="button"
             onClick={onClose}
             className={`py-2.5 px-6 rounded-xl border border-border text-foreground/60 font-bold hover:bg-foreground/5 transition-colors text-xs ${
-              booking.bookingStatus !== "REQUESTED" || booking.paymentStatus === "PAID" ? "ml-auto" : ""
+              booking.bookingStatus !== "REQUESTED" || booking.paymentStatus === "PAID" ? "ml-auto" : "ml-auto md:ml-0"
             }`}
           >
             Close
@@ -504,6 +705,10 @@ export default function AdminBookingsPage() {
   const [resolvingBooking, setResolvingBooking] = useState<Booking | null>(null);
   const [activeDetailsBooking, setActiveDetailsBooking] = useState<Booking | null>(null);
 
+  // Pagination and specialized refund filtering states
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 15;
+
   // New filters state
   const [bookingDateStart, setBookingDateStart] = useState("");
   const [bookingDateEnd, setBookingDateEnd] = useState("");
@@ -512,6 +717,11 @@ export default function AdminBookingsPage() {
   const [viewArchived, setViewArchived] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [hideFinishedTrips, setHideFinishedTrips] = useState(true);
+
+  // Reset pagination when any filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, bookingDateStart, bookingDateEnd, slotDateStart, slotDateEnd, viewArchived]);
 
   const fetchBookings = () => {
     const params = new URLSearchParams();
@@ -697,6 +907,22 @@ export default function AdminBookingsPage() {
     );
   });
 
+  // Sort filtered list: bubble up REFUND_PENDING by default
+  const sortedFiltered = [...filtered].sort((a, b) => {
+    const aRefund = a.paymentStatus === "REFUND_PENDING" ? 1 : 0;
+    const bRefund = b.paymentStatus === "REFUND_PENDING" ? 1 : 0;
+    if (aRefund !== bRefund) {
+      return bRefund - aRefund; // REFUND_PENDING comes first
+    }
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+
+  const totalPages = Math.ceil(sortedFiltered.length / itemsPerPage);
+  const paginated = sortedFiltered.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   const statusIcon = (s: BookingStatus) => {
     if (s === "CONFIRMED") return <CheckCircle2 className="w-3.5 h-3.5" />;
     if (s === "CANCELLED") return <XCircle className="w-3.5 h-3.5" />;
@@ -736,7 +962,7 @@ export default function AdminBookingsPage() {
       <div className="space-y-4">
         {/* Mobile View: Card List */}
         <div className="block md:hidden space-y-4">
-          {filtered.map((b) => {
+          {paginated.map((b) => {
             const confMode = getConfirmationMode(b);
             
             return (
@@ -765,6 +991,11 @@ export default function AdminBookingsPage() {
                     <p className="text-xs font-medium text-foreground/75">
                       {formatDate(b.createdAt)}
                     </p>
+                    {new Date(b.updatedAt).getTime() - new Date(b.createdAt).getTime() > 60000 && (
+                      <p className="text-[10px] font-semibold text-primary mt-1">
+                        Upd: {formatDate(b.updatedAt)}
+                      </p>
+                    )}
                   </div>
                 </button>
 
@@ -787,9 +1018,55 @@ export default function AdminBookingsPage() {
                   </div>
                   <div>
                     <p className="text-foreground/40">Pax & Price</p>
-                    <p className="font-medium text-foreground">
-                      {b.participantCount} Pax · ₹{Number(b.totalPrice).toLocaleString("en-IN")}
-                    </p>
+                    <div className="font-medium text-foreground text-xs flex flex-col gap-0.5 mt-0.5">
+                      <div>
+                        {(() => {
+                          const cancelledCount = b.participants ? b.participants.filter(p => p.isCancelled).length : 0;
+                          if (cancelledCount > 0) {
+                            const totalCount = b.participants ? b.participants.length : b.participantCount;
+                            const activeCount = totalCount - cancelledCount;
+                            const isPending = b.paymentStatus === "REFUND_PENDING";
+                            return (
+                              <span className="text-foreground font-semibold">
+                                {activeCount} Active ({cancelledCount} {isPending ? "Refund Asked" : "Refunded"})
+                              </span>
+                            );
+                          }
+                          return <span>{b.participantCount} Pax</span>;
+                        })()}
+                        {" · "}
+                        {(() => {
+                          const total = Number(b.totalPrice);
+                          const paid = Number(b.paidAmount);
+                          const pendingPayment = b.payments.find(p => p.status === "PENDING");
+                          const pendingAmt = pendingPayment ? Number(pendingPayment.amount) : 0;
+
+                          if (b.paymentStatus === "PARTIALLY_PAID") {
+                            return (
+                              <span>
+                                Paid: ₹{paid.toLocaleString("en-IN")}
+                                {pendingAmt > 0 && ` / Pending: ₹${pendingAmt.toLocaleString("en-IN")}`}
+                                {` (of ₹${total.toLocaleString("en-IN")})`}
+                              </span>
+                            );
+                          }
+                          if (b.paymentStatus === "PENDING") {
+                            return (
+                              <span>
+                                {pendingAmt > 0 ? `Pending: ₹${pendingAmt.toLocaleString("en-IN")}` : "Unpaid"}
+                                {` (Total: ₹${total.toLocaleString("en-IN")})`}
+                              </span>
+                            );
+                          }
+                          return (
+                            <span>
+                              ₹{total.toLocaleString("en-IN")}
+                              {b.paymentStatus === "PAID" && " (Fully Paid)"}
+                            </span>
+                          );
+                        })()}
+                      </div>
+                    </div>
                   </div>
                   <div>
                     <p className="text-foreground/40">Status</p>
@@ -831,7 +1108,11 @@ export default function AdminBookingsPage() {
                   </button>
                   {b.bookingStatus === "REQUESTED" && b.paymentStatus !== "PAID" && (
                     <button
-                      onClick={() => setSelectedBooking({ id: b.id, amount: Number(b.totalPrice) })}
+                      onClick={() => {
+                        const pending = b.payments.find((p) => p.status === "PENDING");
+                        const amt = pending ? Number(pending.amount) : Number(b.remainingBalance);
+                        setSelectedBooking({ id: b.id, amount: amt });
+                      }}
                       className="flex-2 py-2 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity flex items-center justify-center gap-1.5 text-xs"
                     >
                       <CheckCircle2 className="w-3.5 h-3.5" />
@@ -879,7 +1160,7 @@ export default function AdminBookingsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filtered.map((b) => {
+                {paginated.map((b) => {
                   const confMode = getConfirmationMode(b);
                   return (
                     <tr
@@ -916,10 +1197,71 @@ export default function AdminBookingsPage() {
                         </div>
                       </td>
                       <td className="px-5 py-4 text-sm text-foreground/70">
-                        {b.participantCount}
+                        {(() => {
+                          const cancelledCount = b.participants ? b.participants.filter(p => p.isCancelled).length : 0;
+                          if (cancelledCount > 0) {
+                            const totalCount = b.participants ? b.participants.length : b.participantCount;
+                            const activeCount = totalCount - cancelledCount;
+                            const isPending = b.paymentStatus === "REFUND_PENDING";
+                            return (
+                              <div className="flex flex-col">
+                                <span className="font-semibold">{activeCount} Active</span>
+                                <span className={`text-[10px] font-medium ${isPending ? "text-red-400" : "text-foreground/40"}`}>
+                                  {cancelledCount} {isPending ? "Refund Asked" : "Refunded"}
+                                </span>
+                              </div>
+                            );
+                          }
+                          return <span>{b.participantCount} Pax</span>;
+                        })()}
                       </td>
                       <td className="px-5 py-4 text-sm font-semibold text-foreground">
-                        ₹{Number(b.totalPrice).toLocaleString("en-IN")}
+                        {(() => {
+                          const total = Number(b.totalPrice);
+                          const paid = Number(b.paidAmount);
+                          const pendingPayment = b.payments.find(p => p.status === "PENDING");
+                          const pendingAmt = pendingPayment ? Number(pendingPayment.amount) : 0;
+
+                          if (b.paymentStatus === "PARTIALLY_PAID") {
+                            return (
+                              <div className="flex flex-col text-xs">
+                                <span className="text-green-500 font-bold">Paid: ₹{paid.toLocaleString("en-IN")}</span>
+                                {pendingAmt > 0 && (
+                                  <span className="text-yellow-500 font-bold">Pending: ₹{pendingAmt.toLocaleString("en-IN")}</span>
+                                )}
+                                <span className="text-[10px] text-foreground/45 font-normal">Total: ₹{total.toLocaleString("en-IN")}</span>
+                              </div>
+                            );
+                          }
+                          if (b.paymentStatus === "PENDING") {
+                            return (
+                              <div className="flex flex-col text-xs">
+                                {pendingAmt > 0 ? (
+                                  <span className="text-yellow-500 font-bold">Pending: ₹{pendingAmt.toLocaleString("en-IN")}</span>
+                                ) : (
+                                  <span className="text-foreground/50 font-bold">Unpaid</span>
+                                )}
+                                <span className="text-[10px] text-foreground/45 font-normal">Total: ₹{total.toLocaleString("en-IN")}</span>
+                              </div>
+                            );
+                          }
+                          if (b.paymentStatus === "PAID") {
+                            return (
+                              <div className="flex flex-col text-xs">
+                                <span className="text-green-500 font-bold">₹{total.toLocaleString("en-IN")}</span>
+                                <span className="text-[10px] text-green-500/60 font-medium">Fully Paid</span>
+                              </div>
+                            );
+                          }
+                          return (
+                            <div className="flex flex-col text-xs">
+                              <span>₹{total.toLocaleString("en-IN")}</span>
+                              {paid > 0 && (
+                                <span className="text-[10px] text-green-500 font-medium">Paid: ₹{paid.toLocaleString("en-IN")}</span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="px-5 py-4">
                         <div className="flex flex-col gap-1">
@@ -947,7 +1289,16 @@ export default function AdminBookingsPage() {
                         </div>
                       </td>
                       <td className="px-5 py-4 text-xs text-foreground/50 whitespace-nowrap">
-                        {formatDate(b.createdAt)}
+                        <div>
+                          <p className="text-foreground/70" title="Creation Date">
+                            Booked: {formatDate(b.createdAt)}
+                          </p>
+                          {new Date(b.updatedAt).getTime() - new Date(b.createdAt).getTime() > 60000 && (
+                            <p className="text-[10px] text-primary mt-0.5" title="Last update/payment active date">
+                              Updated: {formatDate(b.updatedAt)}
+                            </p>
+                          )}
+                        </div>
                       </td>
                       <td className="px-5 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
@@ -961,7 +1312,11 @@ export default function AdminBookingsPage() {
                           </button>
                           {b.bookingStatus === "REQUESTED" && b.paymentStatus !== "PAID" && (
                             <button
-                              onClick={() => setSelectedBooking({ id: b.id, amount: Number(b.totalPrice) })}
+                              onClick={() => {
+                                const pending = b.payments.find((p) => p.status === "PENDING");
+                                const amt = pending ? Number(pending.amount) : Number(b.remainingBalance);
+                                setSelectedBooking({ id: b.id, amount: amt });
+                              }}
                               className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all flex items-center gap-1.5 text-xs font-bold"
                               title="Approve Manual Payment"
                             >
@@ -986,6 +1341,64 @@ export default function AdminBookingsPage() {
             </table>
           </div>
         </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-border pt-6 mt-4">
+            <span className="text-xs text-foreground/50">
+              Showing {Math.min(sortedFiltered.length, (currentPage - 1) * itemsPerPage + 1)} to{" "}
+              {Math.min(sortedFiltered.length, currentPage * itemsPerPage)} of {sortedFiltered.length} bookings
+            </span>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                className="px-3.5 py-2 rounded-xl border border-border bg-card text-xs font-bold uppercase tracking-wider text-foreground/70 hover:bg-foreground/5 disabled:opacity-40 disabled:hover:bg-card cursor-pointer"
+              >
+                Previous
+              </button>
+              
+              {/* Page Numbers */}
+              {Array.from({ length: totalPages }).map((_, index) => {
+                const pageNumber = index + 1;
+                const isNearCurrent = Math.abs(pageNumber - currentPage) <= 1;
+                const isEndPage = pageNumber === 1 || pageNumber === totalPages;
+                
+                if (!isNearCurrent && !isEndPage) {
+                  if (pageNumber === 2 || pageNumber === totalPages - 1) {
+                    return <span key={`ellipsis-${pageNumber}`} className="text-xs text-foreground/30 px-1">...</span>;
+                  }
+                  return null;
+                }
+
+                return (
+                  <button
+                    key={`page-${pageNumber}`}
+                    type="button"
+                    onClick={() => setCurrentPage(pageNumber)}
+                    className={`w-9 h-9 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      currentPage === pageNumber
+                        ? "bg-primary text-primary-foreground font-black shadow-md shadow-primary/10"
+                        : "border border-border bg-card text-foreground/70 hover:bg-foreground/5"
+                    }`}
+                  >
+                    {pageNumber}
+                  </button>
+                );
+              })}
+
+              <button
+                type="button"
+                disabled={currentPage === totalPages}
+                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                className="px-3.5 py-2 rounded-xl border border-border bg-card text-xs font-bold uppercase tracking-wider text-foreground/70 hover:bg-foreground/5 disabled:opacity-40 disabled:hover:bg-card cursor-pointer"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -1002,26 +1415,50 @@ export default function AdminBookingsPage() {
             Manage trip reservations, approve manual uploads, and view payment reports.
           </p>
         </div>
-        <button
-          onClick={handleExport}
-          disabled={isExporting}
-          className="w-full sm:w-auto px-5 py-2.5 bg-primary text-primary-foreground font-black text-xs uppercase tracking-widest rounded-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-50 h-11 cursor-pointer"
-        >
-          {isExporting ? (
-            <>
-              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              Exporting...
-            </>
-          ) : (
-            <>
-              <Download className="w-4 h-4" />
-              Export Paid Manifest (XLSX)
-            </>
-          )}
-        </button>
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <Link
+            href="/admin/refunds"
+            className="w-full sm:w-auto px-4 py-2.5 bg-amber-500/10 border border-amber-500/25 hover:bg-amber-500 text-amber-600 hover:text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 h-11"
+          >
+            Bank Refunds
+          </Link>
+          <Link
+            href="/admin/coupons"
+            className="w-full sm:w-auto px-4 py-2.5 bg-blue-500/10 border border-blue-500/25 hover:bg-blue-500 text-blue-600 hover:text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 h-11"
+          >
+            Travel Coupons
+          </Link>
+          <Link
+            href="/admin/bookings/pending"
+            className={`w-full sm:w-auto px-4 py-2.5 font-bold text-xs uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 h-11 border ${
+              pendingRefunds.length > 0
+                ? "bg-yellow-500/10 border-yellow-500/25 hover:bg-yellow-500 text-yellow-600 hover:text-white"
+                : "bg-foreground/5 border-border/50 text-foreground/40 hover:bg-foreground/10"
+            }`}
+          >
+            Pending Refunds ({pendingRefunds.length})
+          </Link>
+          <button
+            onClick={handleExport}
+            disabled={isExporting}
+            className="w-full sm:w-auto px-5 py-2.5 bg-primary text-primary-foreground font-black text-xs uppercase tracking-widest rounded-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-50 h-11 cursor-pointer"
+          >
+            {isExporting ? (
+              <>
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Exporting...
+              </>
+            ) : (
+              <>
+                <Download className="w-4 h-4" />
+                Export Manifest
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Active vs Archived Tabs */}
@@ -1075,6 +1512,8 @@ export default function AdminBookingsPage() {
           <p className="text-2xl font-bold mt-1 text-foreground">{bookings.length}</p>
         </div>
       </div>
+
+
 
       {/* Filters Bar */}
       <div className="flex flex-col gap-4 bg-foreground/[0.01] border border-border/60 rounded-2xl p-4 mb-6">
@@ -1135,7 +1574,16 @@ export default function AdminBookingsPage() {
                 value={bookingDateStart}
                 onChange={(e) => {
                   setIsLoading(true);
-                  setBookingDateStart(e.target.value);
+                  const val = e.target.value;
+                  if (val) {
+                    const parts = val.split("-");
+                    if (parts[0] && parts[0].length > 4) {
+                      parts[0] = parts[0].slice(0, 4);
+                      setBookingDateStart(parts.join("-"));
+                      return;
+                    }
+                  }
+                  setBookingDateStart(val);
                 }}
                 className="mt-1.5 w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all [color-scheme:dark]"
               />
@@ -1150,7 +1598,16 @@ export default function AdminBookingsPage() {
                 value={bookingDateEnd}
                 onChange={(e) => {
                   setIsLoading(true);
-                  setBookingDateEnd(e.target.value);
+                  const val = e.target.value;
+                  if (val) {
+                    const parts = val.split("-");
+                    if (parts[0] && parts[0].length > 4) {
+                      parts[0] = parts[0].slice(0, 4);
+                      setBookingDateEnd(parts.join("-"));
+                      return;
+                    }
+                  }
+                  setBookingDateEnd(val);
                 }}
                 className="mt-1.5 w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all [color-scheme:dark]"
               />
@@ -1165,7 +1622,16 @@ export default function AdminBookingsPage() {
                 value={slotDateStart}
                 onChange={(e) => {
                   setIsLoading(true);
-                  setSlotDateStart(e.target.value);
+                  const val = e.target.value;
+                  if (val) {
+                    const parts = val.split("-");
+                    if (parts[0] && parts[0].length > 4) {
+                      parts[0] = parts[0].slice(0, 4);
+                      setSlotDateStart(parts.join("-"));
+                      return;
+                    }
+                  }
+                  setSlotDateStart(val);
                 }}
                 className="mt-1.5 w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all [color-scheme:dark]"
               />
@@ -1182,7 +1648,16 @@ export default function AdminBookingsPage() {
                     value={slotDateEnd}
                     onChange={(e) => {
                       setIsLoading(true);
-                      setSlotDateEnd(e.target.value);
+                      const val = e.target.value;
+                      if (val) {
+                        const parts = val.split("-");
+                        if (parts[0] && parts[0].length > 4) {
+                          parts[0] = parts[0].slice(0, 4);
+                          setSlotDateEnd(parts.join("-"));
+                          return;
+                        }
+                      }
+                      setSlotDateEnd(val);
                     }}
                     className="mt-1.5 w-full bg-background border border-border rounded-xl px-3 py-2 text-sm text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all [color-scheme:dark]"
                   />
@@ -1211,55 +1686,7 @@ export default function AdminBookingsPage() {
 
       {bookingsContent}
 
-      {/* ─── Cancellations Section ───────────────────────── */}
-      {pendingRefunds.length > 0 && (
-        <div className="mt-12 pt-8 border-t border-border">
-          <div className="mb-6">
-            <h2 className="text-2xl font-heading font-bold text-foreground flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-              {" Pending Refunds "}
-              <span className="ml-2 text-sm font-normal bg-amber-400/10 text-amber-400 border border-amber-400/20 px-2.5 py-0.5 rounded-full">
-                {pendingRefunds.length}
-              </span>
-            </h2>
-            <p className="text-foreground/50 mt-1 text-sm">
-              Users are waiting for a coupon code or bank refund. Resolve each one manually.
-            </p>
-          </div>
-          <div className="grid gap-4">
-            {pendingRefunds.map((b) => (
-              <div key={b.id} className="bg-card border border-amber-500/20 rounded-xl p-5 flex flex-col md:flex-row gap-4 items-start md:items-center">
-                <div className="flex-1 space-y-1">
-                  <p className="font-bold text-foreground">{b.user.name}{" "}
-                    <span className="text-foreground/40 font-normal text-sm">&lt;{b.user.email}&gt;</span>
-                  </p>
-                  <p className="text-sm text-foreground/60">{b.experience.title}{b.slot ? ` · ${formatDate(b.slot.date)}` : ""}</p>
-                  <p className="text-sm">₹{Number(b.totalPrice).toLocaleString("en-IN")} · {b.participantCount} pax</p>
-                  {b.cancellationReason && (
-                    <p className="text-xs text-foreground/40">Reason: {b.cancellationReason}</p>
-                  )}
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className={`text-sm font-bold px-3 py-1 rounded-full border ${
-                    b.refundPreference === "COUPON"
-                      ? "bg-primary/10 text-primary border-primary/20"
-                      : "bg-blue-500/10 text-blue-400 border-blue-500/20"
-                  }`}>
-                    {b.refundPreference === "COUPON" ? "🎟️ Coupon" : "🏦 Bank Refund"}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setResolvingBooking(b)}
-                    className="px-4 py-2 bg-primary text-primary-foreground font-bold text-sm rounded-xl hover:opacity-90 transition-opacity"
-                  >
-                    Resolve →
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+
 
       {selectedBooking && (
         <ManualVerifyModal
@@ -1288,11 +1715,17 @@ export default function AdminBookingsPage() {
           onClose={() => setActiveDetailsBooking(null)}
           onApprove={() => {
             setActiveDetailsBooking(null);
-            setSelectedBooking({ id: activeDetailsBooking.id, amount: Number(activeDetailsBooking.totalPrice) });
+            const pending = activeDetailsBooking.payments.find((p) => p.status === "PENDING");
+            const amt = pending ? Number(pending.amount) : Number(activeDetailsBooking.remainingBalance);
+            setSelectedBooking({ id: activeDetailsBooking.id, amount: amt });
           }}
           onArchive={() => {
             setActiveDetailsBooking(null);
             handleArchiveBooking(activeDetailsBooking.id);
+          }}
+          onCancelSuccess={() => {
+            setActiveDetailsBooking(null);
+            fetchBookings();
           }}
         />
       )}

@@ -25,12 +25,18 @@ const blogReviewSchema = z.object({
 export async function POST(request: NextRequest, { params }: Params) {
   const { id } = await params;
 
-  const auth = await authorizeRequest(request, "blog:moderate");
+  const auth = await authorizeRequest(request, ["blog:moderate", "media:upload"]);
   if (!auth.authorized) return auth.response;
 
   const blog = await prisma.blog.findUnique({ where: { id } });
   if (!blog || blog.deletedAt) {
     return NextResponse.json({ error: "Blog not found." }, { status: 404 });
+  }
+  if (blog.authorId === auth.userId) {
+    return NextResponse.json(
+      { error: "You cannot approve or reject your own blog." },
+      { status: 400 }
+    );
   }
   if (blog.status !== "PENDING_REVIEW") {
     return NextResponse.json(

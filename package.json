@@ -5,16 +5,16 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
+    "start": "npx prisma migrate deploy && next start",
     "lint": "eslint src",
     "test": "vitest",
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
-    "postinstall": "prisma generate",
-    "db:push": "prisma db push",
-    "db:sync:schema": "prisma db push",
-    "db:migrate:deploy": "prisma migrate deploy",
-    "db:studio": "prisma studio",
+    "postinstall": "npx prisma generate",
+    "db:push": "npx prisma db push",
+    "db:sync:schema": "npx prisma db push",
+    "db:migrate:deploy": "npx prisma migrate deploy",
+    "db:studio": "npx prisma studio",
     "seed": "node prisma/seed.mjs",
     "email": "email dev -d src/lib/email/templates"
   },
@@ -98,7 +98,8 @@
     "@react-email/components": {
       "lodash": "^4.17.23"
     },
-    "axios": "^1.16.0",
+    "axios": "^1.17.1",
+    "postcss": "^8.5.10",
     "fast-uri": "^3.1.2",
     "fast-xml-builder": "^1.1.9",
     "form-data": "^4.0.6",

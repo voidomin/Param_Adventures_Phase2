@@ -34,7 +34,7 @@ describe("GET /api/manager/trips", () => {
       authorized: true,
       userId: "m1",
     } as any);
-    mockFindMany.mockResolvedValue([{ id: "s1" }] as any);
+    mockFindMany.mockResolvedValue([{ id: "s1", bookings: [] }] as any);
 
     const response = await GET({} as NextRequest);
     const data = await response.json();

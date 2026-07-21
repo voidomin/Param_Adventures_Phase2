@@ -15,7 +15,10 @@ export class ZohoAPIProvider implements EmailProvider {
   private readonly baseUrl: string;
 
   constructor(config: ZohoAPIConfig) {
-    this.apiKey = config.apiKey;
+    let key = config.apiKey || "";
+    // Automatically strip any "zoho-enczapikey" prefix (case-insensitive) and spaces
+    key = key.replace(/^zoho-enczapikey\s+/i, "").trim();
+    this.apiKey = key;
     const region = config.region || "in";
     this.baseUrl = `https://api.zeptomail.${region}/v1.1/email`;
   }
@@ -26,6 +29,19 @@ export class ZohoAPIProvider implements EmailProvider {
       controller.abort();
     }, 10000); // 10 seconds timeout
 
+    let fromAddress = "booking@paramadventures.in";
+    let fromName = "Param Adventures";
+
+    if (options.from) {
+      const match = /^(?:"?([^"]*)"?\s)?(?:<(.+)>|(.+))$/.exec(options.from);
+      if (match) {
+        fromName = (match[1] || "").trim() || "Param Adventures";
+        fromAddress = (match[2] || match[3] || "").trim();
+      } else {
+        fromAddress = options.from.trim();
+      }
+    }
+
     try {
       const response = await fetch(this.baseUrl, {
         method: "POST",
@@ -35,8 +51,8 @@ export class ZohoAPIProvider implements EmailProvider {
           "authorization": `Zoho-enczapikey ${this.apiKey}`,
         },
         body: JSON.stringify({
-          from: { address: options.from || "booking@paramadventures.in", name: "Param Adventures" }, // Fallback if from not given
-          to: [{ customer_details: { email_address: options.to } }],
+          from: { address: fromAddress, name: fromName },
+          to: [{ email_address: { address: options.to } }],
           subject: options.subject,
           htmlbody: options.html,
         }),

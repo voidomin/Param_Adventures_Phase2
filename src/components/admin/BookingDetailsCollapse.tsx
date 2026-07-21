@@ -11,6 +11,14 @@ import {
   Tag
 } from "lucide-react";
 
+export interface SelectedAmenity {
+  groupId: string;
+  groupName: string;
+  optionId: string;
+  optionName: string;
+  price: number;
+}
+
 export interface BookingParticipant {
   id: string;
   isPrimary: boolean;
@@ -19,6 +27,7 @@ export interface BookingParticipant {
   phoneNumber: string | null;
   gender: string | null;
   age: number | null;
+  dateOfBirth?: string | Date | null;
   bloodGroup: string | null;
   emergencyContactName: string | null;
   emergencyContactNumber: string | null;
@@ -26,12 +35,19 @@ export interface BookingParticipant {
   pickupPoint: string | null;
   dropPoint: string | null;
   attended?: boolean;
+  selectedAmenities?: SelectedAmenity[];
+  isCancelled?: boolean;
+  cancelledAt?: string | Date | null;
 }
 
 export interface BookingDetails {
   id: string;
   participantCount: number;
   totalPrice?: number | string | object;
+  paidAmount?: number | string;
+  remainingBalance?: number | string;
+  paymentType?: string;
+  paymentStatus?: string;
   bookingStatus?: string;
   createdAt?: string;
   user: {
@@ -43,11 +59,29 @@ export interface BookingDetails {
   participants: BookingParticipant[];
 }
 
+function formatDate(d: string | Date | null | undefined) {
+  if (!d) return "—";
+  const date = new Date(d);
+  if (Number.isNaN(date.getTime())) return "—";
+  const day = String(date.getDate()).padStart(2, "0");
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const month = months[date.getMonth()];
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
 interface BookingDetailsCollapseProps {
   readonly booking: BookingDetails;
 }
 
 export default function BookingDetailsCollapse({ booking }: BookingDetailsCollapseProps) {
+  let paymentStatusBadgeClasses = "bg-foreground/5 text-foreground/40 border-border";
+  if (booking.paymentStatus === "PAID") {
+    paymentStatusBadgeClasses = "bg-green-500/10 text-green-500 border-green-500/20";
+  } else if (booking.paymentStatus === "PARTIALLY_PAID") {
+    paymentStatusBadgeClasses = "bg-amber-500/10 text-amber-500 border-amber-500/20";
+  }
+
   return (
     <div className="space-y-6">
       {/* Lead Booker Info */}
@@ -72,19 +106,47 @@ export default function BookingDetailsCollapse({ booking }: BookingDetailsCollap
               <Phone className="w-3.5 h-3.5 shrink-0 text-foreground/30" /> {booking.user.phoneNumber ?? "—"}
             </p>
           </div>
-          <div className="flex gap-4">
-            {booking.bookingStatus && (
+          <div>
+            <p className="text-xs text-foreground/50 font-medium">Booking Status</p>
+            <span className="inline-block px-2.5 py-0.5 text-xs font-bold bg-green-500/10 text-green-500 border border-green-500/20 rounded-full mt-1">
+              {booking.bookingStatus || "—"}
+            </span>
+          </div>
+          <div className="flex gap-6 flex-wrap md:col-span-2 border-t border-border/40 pt-3 mt-2">
+            {booking.totalPrice !== undefined && (
               <div>
-                <p className="text-xs text-foreground/50 font-medium">Booking Status</p>
-                <span className="inline-block px-2.5 py-0.5 text-xs font-bold bg-green-500/10 text-green-500 border border-green-500/20 rounded-full mt-1">
-                  {booking.bookingStatus}
+                <p className="text-xs text-foreground/50 font-medium">Total Package Cost</p>
+                <p className="font-bold text-foreground mt-0.5">₹{Number(booking.totalPrice).toLocaleString("en-IN")}</p>
+              </div>
+            )}
+            {booking.paidAmount !== undefined && (
+              <div>
+                <p className="text-xs text-foreground/50 font-medium">Paid Amount</p>
+                <p className="font-bold text-green-500 mt-0.5">₹{Number(booking.paidAmount).toLocaleString("en-IN")}</p>
+              </div>
+            )}
+            {booking.remainingBalance !== undefined && (
+              <div>
+                <p className="text-xs text-foreground/50 font-medium">Remaining Balance</p>
+                <p className={`font-bold mt-0.5 ${Number(booking.remainingBalance) > 0.01 ? "text-red-400" : "text-foreground/40"}`}>
+                  ₹{Number(booking.remainingBalance).toLocaleString("en-IN")}
+                </p>
+              </div>
+            )}
+            {booking.paymentType && (
+              <div>
+                <p className="text-xs text-foreground/50 font-medium">Payment Mode</p>
+                <span className="inline-block px-2 py-0.5 text-[10px] font-bold bg-muted text-foreground/75 border border-border rounded mt-1">
+                  {booking.paymentType === "ADVANCE" ? "Advance Payment" : "Full Payment"}
                 </span>
               </div>
             )}
-            {booking.totalPrice && (
+            {booking.paymentStatus && (
               <div>
-                <p className="text-xs text-foreground/50 font-medium">Total Price Paid</p>
-                <p className="font-bold text-foreground mt-0.5">₹{Number(booking.totalPrice).toLocaleString("en-IN")}</p>
+                <p className="text-xs text-foreground/50 font-medium">Payment Status</p>
+                <span className={`inline-block px-2 py-0.5 text-[10px] font-bold rounded border mt-1 ${paymentStatusBadgeClasses}`}>
+                  {booking.paymentStatus === "PARTIALLY_PAID" ? "Partially Paid" : booking.paymentStatus}
+                </span>
               </div>
             )}
           </div>
@@ -106,21 +168,31 @@ export default function BookingDetailsCollapse({ booking }: BookingDetailsCollap
             {booking.participants.map((p, index) => (
               <div
                 key={p.id}
-                className="border border-border rounded-xl overflow-hidden bg-card/60 shadow-xs"
+                className={`border border-border rounded-xl overflow-hidden shadow-xs ${
+                  p.isCancelled ? "bg-red-500/[0.02] border-red-500/10 opacity-60" : "bg-card/60"
+                }`}
               >
                 {/* Header of Guest Card */}
                 <div className="px-4 py-2 bg-foreground/[0.01] border-b border-border flex items-center justify-between">
                   <span className="font-bold text-sm text-foreground flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
-                      {index + 1}
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center font-bold text-xs ${
+                      p.isCancelled ? "bg-red-500/10 text-red-500" : "bg-primary/10 text-primary"
+                    }`}>
+                      {p.isCancelled ? "✕" : index + 1}
                     </span>
-                    {" Guest Profile"}
+                    <span className={p.isCancelled ? "line-through text-foreground/50" : ""}>
+                      Guest Profile
+                    </span>
                   </span>
-                  {p.isPrimary && (
+                  {p.isCancelled ? (
+                    <span className="text-[10px] font-black uppercase text-red-500 border border-red-500/20 bg-red-500/10 px-1.5 py-0.5 rounded-md">
+                      Cancelled
+                    </span>
+                  ) : p.isPrimary ? (
                     <span className="text-[10px] font-black uppercase text-primary border border-primary/20 bg-primary/10 px-1.5 py-0.5 rounded-md">
                       Primary Booker
                     </span>
-                  )}
+                  ) : null}
                 </div>
 
                 {/* Guest Information */}
@@ -144,6 +216,12 @@ export default function BookingDetailsCollapse({ booking }: BookingDetailsCollap
                       </p>
                     </div>
                     <div>
+                      <p className="text-[10px] text-foreground/50 uppercase font-bold tracking-wider">Date of Birth</p>
+                      <p className="font-semibold text-xs text-foreground/80 mt-0.5">
+                        {p.dateOfBirth ? formatDate(p.dateOfBirth) : "—"}
+                      </p>
+                    </div>
+                    <div>
                       <p className="text-[10px] text-foreground/50 uppercase font-bold tracking-wider">Age / Gender</p>
                       <p className="font-semibold text-xs text-foreground/80 mt-0.5">
                         {p.age !== null && p.age !== undefined ? `${p.age} yrs` : "—"} / {p.gender ?? "—"}
@@ -164,6 +242,20 @@ export default function BookingDetailsCollapse({ booking }: BookingDetailsCollap
                       }`}>
                         {p.attended ? "Yes" : "No"}
                       </span>
+                    </div>
+                    <div>
+                      <p className="text-[10px] text-foreground/50 uppercase font-bold tracking-wider">Selected Stays / Add-ons</p>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {p.selectedAmenities && Array.isArray(p.selectedAmenities) && p.selectedAmenities.length > 0 ? (
+                          p.selectedAmenities.map((amenity) => (
+                            <span key={amenity.optionId} className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded border border-primary/20 whitespace-nowrap">
+                              {amenity.optionName} (₹{amenity.price})
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-xs text-foreground/40 italic">None</span>
+                        )}
+                      </div>
                     </div>
                   </div>
 

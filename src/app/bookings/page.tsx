@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Clock, MapPin, IndianRupee, Loader2, X, AlertTriangle, MessageCircle } from "lucide-react";
 import SaveButton from "@/components/experiences/SaveButton";
+import { type RefundBreakdown } from "@/lib/refund-engine";
 
 type TabStatus = "saved" | "pending" | "upcoming" | "past" | "cancelled";
 
@@ -28,6 +29,8 @@ interface BookingItem {
   paymentStatus: string;
   participantCount: number;
   totalPrice: string;
+  paidAmount: string;
+  remainingBalance: string;
   cancelledAt?: string | null;
   refundPreference?: string | null;
   refundNote?: string | null;
@@ -60,6 +63,76 @@ interface BookingsData {
   cancelled: BookingItem[];
 }
 
+interface RefundPreviewPanelProps {
+  previewData: RefundBreakdown | null;
+  isPreviewLoading: boolean;
+  preference: "COUPON" | "BANK_REFUND";
+  errorMessage?: string | null;
+}
+
+function RefundPreviewPanel({
+  previewData,
+  isPreviewLoading,
+  preference,
+  errorMessage,
+}: Readonly<RefundPreviewPanelProps>) {
+  if (isPreviewLoading) {
+    return (
+      <div className="flex items-center gap-2 text-xs text-foreground/50 py-2">
+        <Loader2 className="w-4 h-4 animate-spin text-primary" /> Calculating eligible refund details...
+      </div>
+    );
+  }
+
+  if (!previewData) {
+    return (
+      <div className="text-xs text-red-400">
+        {errorMessage || "Failed to load breakdown. Using policy defaults on submit."}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2 text-sm">
+      <div className="flex justify-between">
+        <span className="text-foreground/60">Trip Cost (Base Fare):</span>
+        <span className="font-bold text-foreground">₹{previewData.baseFare.toLocaleString("en-IN")}</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-foreground/60">
+          {preference === "COUPON" ? "GST Component (Refunded as Coupon):" : "GST Component (Non-Refundable):"}
+        </span>
+        <span className="font-bold text-foreground">₹{previewData.gst.toLocaleString("en-IN")}</span>
+      </div>
+      <div className="flex justify-between">
+        <span className="text-foreground/60">
+          {preference === "COUPON" ? "Convenience Fee (Refunded as Coupon):" : "Convenience Fee (Non-Refundable):"}
+        </span>
+        <span className="font-bold text-foreground">₹{previewData.convenienceFee.toLocaleString("en-IN")}</span>
+      </div>
+      <div className="flex justify-between text-red-400">
+        <span>Cancellation Charges ({previewData.cancellationPercent}%):</span>
+        <span className="font-bold">-₹{previewData.cancellationCharges.toLocaleString("en-IN")}</span>
+      </div>
+      
+      <div className="border-t border-border/50 pt-2 flex justify-between font-black text-base">
+        <span className="text-foreground">Net Refund Amount:</span>
+        <span className="text-green-500">₹{previewData.finalRefundAmount.toLocaleString("en-IN")}</span>
+      </div>
+      
+      <p className="text-[10px] text-foreground/45 leading-normal pt-1 italic">
+        {preference === "COUPON"
+          ? "* GST and Convenience Fee are fully refunded in the form of a travel coupon."
+          : "* GST and Convenience Fee are non-refundable for guest-initiated bank refund cancellations."}
+      </p>
+
+      <div className="mt-4 p-3 bg-primary/10 border border-primary/20 rounded-xl text-xs text-primary font-bold text-center animate-in fade-in duration-200">
+        Confirming: You will receive <strong>₹{previewData.finalRefundAmount.toLocaleString("en-IN")}</strong> {preference === "COUPON" ? "as a Travel Coupon" : "via Bank Transfer"}.
+      </div>
+    </div>
+  );
+}
+
 // Cancel Confirmation Modal
 function CancelModal({
   booking,
@@ -74,6 +147,31 @@ function CancelModal({
   const [reason, setReason] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [previewData, setPreviewData] = useState<RefundBreakdown | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (booking.paymentStatus !== "PAID" && booking.paymentStatus !== "PARTIALLY_PAID") return;
+    const fetchPreview = async () => {
+      setIsPreviewLoading(true);
+      setPreviewError(null);
+      try {
+        const res = await fetch(`/api/bookings/${booking.id}/cancel-preview?preference=${preference}`);
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || "Failed to load refund preview");
+        setPreviewData(json);
+      } catch (err) {
+        console.error(err);
+        setPreviewError(err instanceof Error ? err.message : "Failed to load refund preview");
+        setPreviewData(null);
+      } finally {
+        setIsPreviewLoading(false);
+      }
+    };
+    fetchPreview();
+  }, [booking.id, booking.paymentStatus, preference]);
 
   const handleCancel = async () => {
     setIsSubmitting(true);
@@ -95,9 +193,9 @@ function CancelModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-        <div className="flex justify-between items-center p-6 border-b border-border">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
+      <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl flex flex-col my-auto max-h-[85vh] overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="flex justify-between items-center p-6 border-b border-border flex-shrink-0">
           <div className="flex items-center gap-3">
             <AlertTriangle className="w-5 h-5 text-red-500" />
             <h3 className="text-xl font-heading font-bold text-foreground">Cancel Booking</h3>
@@ -107,21 +205,32 @@ function CancelModal({
           </button>
         </div>
 
-        <div className="p-6 space-y-5">
+        <div className="p-6 space-y-5 overflow-y-auto flex-1">
           {/* Booking summary */}
           <div className="bg-foreground/5 rounded-xl p-4 border border-border">
             <p className="font-bold text-foreground">{booking.experience.title}</p>
             {booking.slot && (
               <p className="text-foreground/50 text-sm mt-1">
-                {new Date(booking.slot.date).toLocaleDateString("en-IN", {
-                  weekday: "long", day: "numeric", month: "long", year: "numeric"
-                })}
+                {formatDate(booking.slot.date)}
               </p>
             )}
             <p className="text-foreground/50 text-sm">
               {booking.participantCount} participant{booking.participantCount > 1 ? "s" : ""} ·{" "}
               ₹{Number(booking.totalPrice).toLocaleString()}
             </p>
+            {booking.participantCount > 1 && (
+              <div className="mt-3 pt-3 border-t border-border/50 flex flex-col gap-2">
+                <p className="text-xs text-foreground/70">
+                  💡 <strong>Need to cancel only some of the guests?</strong> Instead of cancelling the whole booking here, you can select individual guest slots.
+                </p>
+                <Link
+                  href={`/bookings/${booking.id}/success#guests`}
+                  className="text-xs font-bold text-primary hover:underline flex items-center gap-1 self-start"
+                >
+                  Go to Guest List & Cancel Individually &rarr;
+                </Link>
+              </div>
+            )}
           </div>
 
           {/* Policy notice */}
@@ -135,7 +244,7 @@ function CancelModal({
           </div>
 
           {/* Refund preference */}
-          {booking.paymentStatus === "PAID" && (
+          {(booking.paymentStatus === "PAID" || booking.paymentStatus === "PARTIALLY_PAID") && (
             <div className="space-y-2">
               <p className="text-sm font-bold text-foreground/70">Refund Preference</p>
               <div className="grid grid-cols-2 gap-3">
@@ -170,6 +279,19 @@ function CancelModal({
             </div>
           )}
 
+          {/* Refund Breakdown Panel */}
+          {(booking.paymentStatus === "PAID" || booking.paymentStatus === "PARTIALLY_PAID") && (
+            <div className="bg-foreground/5 border border-border/80 rounded-2xl p-5 text-left space-y-3">
+              <span className="text-[10px] font-black text-foreground/45 uppercase tracking-widest block">Refund Breakdown Preview</span>
+              <RefundPreviewPanel
+                previewData={previewData}
+                isPreviewLoading={isPreviewLoading}
+                preference={preference}
+                errorMessage={previewError}
+              />
+            </div>
+          )}
+
           {/* Optional reason */}
           <div className="space-y-1.5">
             <label htmlFor="cancel-reason" className="text-sm font-bold text-foreground/60">
@@ -187,24 +309,258 @@ function CancelModal({
           {error && (
             <p className="text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl p-3">{error}</p>
           )}
+        </div>
 
-          <div className="flex gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 py-2.5 rounded-xl text-foreground/60 font-bold hover:bg-foreground/5 border border-border transition-colors"
-            >
-              Keep Booking
-            </button>
-            <button
-              type="button"
-              disabled={isSubmitting}
-              onClick={handleCancel}
-              className="flex-1 py-2.5 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition-colors disabled:opacity-50 shadow-lg shadow-red-500/20"
-            >
-              {isSubmitting ? "Cancelling…" : "Yes, Cancel"}
-            </button>
+        <div className="flex gap-3 p-6 border-t border-border flex-shrink-0 bg-background">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-2.5 rounded-xl text-foreground/60 font-bold hover:bg-foreground/5 border border-border transition-colors text-sm"
+          >
+            Keep Booking
+          </button>
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={handleCancel}
+            className="flex-1 py-2.5 rounded-xl bg-red-500 text-white font-bold hover:bg-red-600 transition-colors disabled:opacity-50 shadow-lg shadow-red-500/20 text-sm"
+          >
+            {isSubmitting ? "Cancelling…" : "Yes, Cancel"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface PayBalanceModalProps {
+  booking: BookingItem;
+  onClose: () => void;
+  onSuccess: () => void;
+  razorpayKeyId: string;
+}
+
+function PayBalanceModal({
+  booking,
+  onClose,
+  onSuccess,
+  razorpayKeyId,
+}: Readonly<PayBalanceModalProps>) {
+  const [couponCode, setCouponCode] = useState("");
+  const [appliedCoupons, setAppliedCoupons] = useState<{ id: string; code: string; balance: number }[]>([]);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleRemoveCoupon = (couponId: string) => {
+    setAppliedCoupons((prev) => prev.filter((c) => c.id !== couponId));
+  };
+
+  const totalPrice = Number(booking.remainingBalance);
+  const couponDiscount = appliedCoupons.reduce((sum, c) => sum + c.balance, 0);
+  const finalPriceToPay = Math.max(0, totalPrice - couponDiscount);
+
+  const handleApplyCoupon = async () => {
+    setCouponLoading(true);
+    setCouponError(null);
+    try {
+      const remainingToDiscount = totalPrice - couponDiscount;
+      const res = await fetch("/api/coupons/validate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: couponCode,
+          paymentAmount: remainingToDiscount
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to validate coupon.");
+
+      if (appliedCoupons.some(c => c.code.toUpperCase() === couponCode.toUpperCase().trim())) {
+        throw new Error("Coupon already applied.");
+      }
+
+      setAppliedCoupons(prev => [...prev, data.coupon]);
+      setCouponCode("");
+    } catch (err: unknown) {
+      setCouponError(err instanceof Error ? err.message : "Invalid coupon.");
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleProceed = async () => {
+    setIsSubmitting(true);
+    setError(null);
+    try {
+      const isFullyPaidByCoupon = finalPriceToPay <= 0.01;
+      if (!isFullyPaidByCoupon) {
+        const loaded = await loadRazorpayScript();
+        if (!loaded) throw new Error("Failed to load Razorpay script.");
+      }
+
+      const res = await fetch(`/api/bookings/${booking.id}/pay-balance`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          appliedCoupons: appliedCoupons.map(c => c.code)
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to initiate payment.");
+
+      if (data.fullyPaidByCoupon) {
+        alert("Payment Successful (Fully covered by Coupons)!");
+        onSuccess();
+        onClose();
+        return;
+      }
+
+      const { orderId, amount, currency, keyId } = data;
+      const RazorpayCtor = globalThis.window.Razorpay;
+      if (!RazorpayCtor) {
+        throw new Error("Payment gateway is unavailable.");
+      }
+
+      const rzp = new RazorpayCtor({
+        key: keyId || razorpayKeyId || "",
+        amount,
+        currency,
+        order_id: orderId,
+        name: "Param Adventures",
+        description: `Balance - ${booking.experience.title}`,
+        theme: { color: "#D4AF37" },
+        handler: async (response: {
+          razorpay_order_id: string;
+          razorpay_payment_id: string;
+          razorpay_signature: string;
+        }) => {
+          try {
+            const verifyRes = await fetch("/api/bookings/verify", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+                bookingId: booking.id,
+              }),
+            });
+            const verifyData = await verifyRes.json();
+            if (!verifyRes.ok) throw new Error(verifyData.error);
+            alert("Payment Successful!");
+            onSuccess();
+            onClose();
+          } catch (err: unknown) {
+            alert("Payment verification failed: " + (err instanceof Error ? err.message : "unknown error"));
+          }
+        },
+        modal: {
+          ondismiss: () => setIsSubmitting(false),
+        },
+      });
+      rzp.open();
+
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to process payment.");
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+      <div className="bg-card border border-border w-full max-w-md rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div className="flex justify-between items-center p-6 border-b border-border flex-shrink-0">
+          <h3 className="text-xl font-heading font-bold text-foreground">Pay Remaining Balance</h3>
+          <button type="button" onClick={onClose} className="text-foreground/40 hover:text-foreground transition-colors">
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4 overflow-y-auto flex-1">
+          <div className="bg-foreground/5 rounded-xl p-4 space-y-1.5 text-sm text-left">
+            <p className="text-foreground"><strong>Trek:</strong> {booking.experience.title}</p>
+            <p className="text-foreground"><strong>Outstanding Balance:</strong> ₹{totalPrice.toLocaleString("en-IN")}</p>
+            {appliedCoupons.length > 0 && (
+              <p className="text-primary"><strong>Coupon Discount:</strong> - ₹{couponDiscount.toLocaleString("en-IN")}</p>
+            )}
+            <p className="text-foreground border-t border-border pt-1.5 mt-1 text-base"><strong>Net Payable:</strong> <span className="font-black text-primary">₹{finalPriceToPay.toLocaleString("en-IN")}</span></p>
           </div>
+
+          <div className="space-y-3 pt-2">
+            <span className="block text-xs font-black uppercase tracking-wider text-foreground/50 text-left">
+              Apply Travel Vouchers & Coupons
+            </span>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={couponCode}
+                onChange={(e) => {
+                  setCouponCode(e.target.value);
+                  setCouponError(null);
+                }}
+                placeholder="Enter coupon code (e.g. PARAM-XXXXXX)"
+                className="flex-1 bg-background border border-border rounded-xl px-4 py-2 text-xs text-foreground focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-foreground/30 uppercase"
+              />
+              <button
+                type="button"
+                disabled={couponLoading || !couponCode.trim()}
+                onClick={handleApplyCoupon}
+                className="px-4 py-2 bg-foreground text-background dark:bg-foreground dark:text-background rounded-xl font-bold text-xs hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center min-w-[70px]"
+              >
+                {couponLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Apply"}
+              </button>
+            </div>
+            {couponError && (
+              <p className="text-xs text-red-500 text-left font-semibold">{couponError}</p>
+            )}
+
+            {appliedCoupons.length > 0 && (
+              <div className="space-y-1.5 mt-2">
+                {appliedCoupons.map((coupon) => (
+                  <div key={coupon.id} className="flex justify-between items-center bg-primary/5 border border-primary/20 rounded-lg px-3 py-2 text-xs">
+                    <span className="font-bold text-primary flex items-center gap-1">
+                      🎟️ {coupon.code}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-foreground">- ₹{coupon.balance.toLocaleString("en-IN")}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveCoupon(coupon.id)}
+                        className="text-red-500 hover:text-red-700 transition-colors text-[10px] font-bold uppercase tracking-wider"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {error && <p className="text-red-500 text-xs font-semibold text-left">{error}</p>}
+        </div>
+
+        <div className="flex gap-3 p-6 border-t border-border flex-shrink-0 bg-background">
+          <button type="button" onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-border text-foreground/60 font-bold hover:bg-foreground/5 text-sm">
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={handleProceed}
+            className="flex-1 py-2.5 rounded-xl bg-primary text-primary-foreground font-bold hover:opacity-90 transition-opacity disabled:opacity-50 text-sm flex items-center justify-center gap-1.5"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              `Pay ₹${finalPriceToPay.toLocaleString("en-IN")}`
+            )}
+          </button>
         </div>
       </div>
     </div>
@@ -247,12 +603,28 @@ function loadRazorpayScript(): Promise<boolean> {
 }
 
 function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString("en-IN", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return "—";
+  const day = String(date.getDate()).padStart(2, "0");
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const month = months[date.getMonth()];
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+function getPaymentStatusColor(status: string) {
+  if (status === "PAID") return "text-green-500";
+  if (status === "PARTIALLY_PAID") return "text-amber-500";
+  if (status === "REFUND_PENDING") return "text-orange-500";
+  if (status === "REFUNDED") return "text-green-500/80";
+  return "text-foreground/50";
+}
+
+function getPaymentStatusLabel(status: string) {
+  if (status === "PARTIALLY_PAID") return "Partially Paid";
+  if (status === "REFUND_PENDING") return "Refund Pending";
+  if (status === "REFUNDED") return "Refunded";
+  return status;
 }
 
 export default function BookingsPage() {
@@ -269,6 +641,7 @@ export default function BookingsPage() {
   const [dataLoading, setDataLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [cancellingBooking, setCancellingBooking] = useState<BookingItem | null>(null);
+  const [payingBalanceBooking, setPayingBalanceBooking] = useState<BookingItem | null>(null);
   const [razorpayKeyId, setRazorpayKeyId] = useState<string>("");
 
   const fetchData = async () => {
@@ -395,6 +768,8 @@ export default function BookingsPage() {
     rzp.open();
   };
 
+  // handlePayBalance removed as unused, balance payments now handled in PayBalanceModal
+
   const tabs = [
     { id: "saved", label: "Wishlist", count: saved.length },
     { id: "upcoming", label: "Upcoming", count: bookings.upcoming.length },
@@ -419,6 +794,18 @@ export default function BookingsPage() {
             setCancellingBooking(null);
             fetchData();
           }}
+        />
+      )}
+
+      {payingBalanceBooking && (
+        <PayBalanceModal
+          booking={payingBalanceBooking}
+          onClose={() => setPayingBalanceBooking(null)}
+          onSuccess={() => {
+            setPayingBalanceBooking(null);
+            fetchData();
+          }}
+          razorpayKeyId={razorpayKeyId}
         />
       )}
 
@@ -565,9 +952,29 @@ export default function BookingsPage() {
                             ₹{Number(b.totalPrice).toLocaleString()}
                           </span>
                         </div>
-                        <p className="text-sm mb-4">
+                        <p className="text-sm mb-2">
                           Participants: <strong>{b.participantCount}</strong>
                         </p>
+                        <div className="text-xs space-y-1 mb-4 border-t border-border/30 pt-3">
+                          <div className="flex justify-between">
+                            <span className="text-foreground/60">Status:</span>
+                            <span className={`font-bold ${getPaymentStatusColor(b.paymentStatus)}`}>
+                              {getPaymentStatusLabel(b.paymentStatus)}
+                            </span>
+                          </div>
+                          {b.paymentStatus === "PARTIALLY_PAID" && (
+                            <>
+                              <div className="flex justify-between">
+                                <span className="text-foreground/60">Paid:</span>
+                                <span className="font-semibold text-green-500">₹{Number(b.paidAmount).toLocaleString("en-IN")}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-foreground/60">Remaining:</span>
+                                <span className="font-bold text-red-400">₹{Number(b.remainingBalance).toLocaleString("en-IN")}</span>
+                              </div>
+                            </>
+                          )}
+                        </div>
 
                         {/* Cancelled tab: show richer info */}
                         {activeTab === "cancelled" && (
@@ -667,6 +1074,19 @@ export default function BookingsPage() {
                                     <MessageCircle className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
                                     Join WhatsApp Group
                                   </a>
+                                )}
+                                {b.paymentStatus === "PARTIALLY_PAID" && (
+                                  <button
+                                    disabled={processingId === b.id}
+                                    onClick={() => setPayingBalanceBooking(b)}
+                                    className="w-full py-2.5 bg-primary text-primary-foreground font-bold rounded-xl flex items-center justify-center disabled:opacity-50"
+                                  >
+                                    {processingId === b.id ? (
+                                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                    ) : (
+                                      `Pay Remaining Balance (₹${Number(b.remainingBalance).toLocaleString("en-IN")})`
+                                    )}
+                                  </button>
                                 )}
                                 <Link
                                   href={`/bookings/${b.id}/success`}

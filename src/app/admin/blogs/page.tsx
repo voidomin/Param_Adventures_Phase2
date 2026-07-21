@@ -12,9 +12,10 @@ import {
   Search,
   Eye,
   Trash2,
+  Plus,
 } from "lucide-react";
 import { TableSkeleton } from "@/components/admin/TableSkeleton";
-
+import { useAuth } from "@/lib/AuthContext";
 
 interface Blog {
   id: string;
@@ -103,6 +104,7 @@ function RejectModal({
 
 export default function AdminBlogsPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [blogs, setBlogs] = useState<Blog[]>([]);
   const [statusFilter, setStatusFilter] =
     useState<(typeof STATUS_OPTIONS)[number]>("PENDING_REVIEW");
@@ -142,13 +144,38 @@ export default function AdminBlogsPage() {
 
   const handleApprove = async (id: string) => {
     setApprovingId(id);
-    await fetch(`/api/admin/blogs/${id}/review`, {
+    const res = await fetch(`/api/admin/blogs/${id}/review`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "approve" }),
     });
-    setBlogs((prev) => prev.filter((b) => b.id !== id));
+    if (res.ok) {
+      setBlogs((prev) => prev.filter((b) => b.id !== id));
+    } else {
+      const data = await res.json();
+      alert(data.error || "Failed to approve blog.");
+    }
     setApprovingId(null);
+  };
+
+  const handleTogglePublish = async (id: string) => {
+    const res = await fetch(`/api/admin/blogs/${id}/publish`, {
+      method: "POST",
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const updatedStatus = data.blog.status;
+      if (statusFilter !== "ALL" && statusFilter !== updatedStatus) {
+        setBlogs((prev) => prev.filter((b) => b.id !== id));
+      } else {
+        setBlogs((prev) =>
+          prev.map((b) => (b.id === id ? { ...b, status: updatedStatus } : b))
+        );
+      }
+    } else {
+      const d = await res.json();
+      alert(d.error || "Failed to update blog publish status.");
+    }
   };
 
   const handleDelete = async (id: string, title: string) => {
@@ -215,13 +242,22 @@ export default function AdminBlogsPage() {
     <div className="min-h-screen bg-background">
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-heading font-black text-foreground">
-            Blog Moderation
-          </h1>
-          <p className="text-foreground/50 mt-1">
-            Review and approve user-submitted adventure blogs
-          </p>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-heading font-black text-foreground">
+              Blog Moderation
+            </h1>
+            <p className="text-foreground/50 mt-1">
+              Review and approve user-submitted adventure blogs
+            </p>
+          </div>
+          <button
+            onClick={() => router.push("/dashboard/blog/write")}
+            className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity shadow-lg shadow-primary/20 text-sm"
+          >
+            <Plus className="w-4 h-4" />
+            Write Official Blog
+          </button>
         </div>
 
         {/* Controls */}
@@ -309,28 +345,54 @@ export default function AdminBlogsPage() {
                 >
                   <Eye className="w-3.5 h-3.5" /> Preview
                 </a>
-                {blog.status === "PENDING_REVIEW" && (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleApprove(blog.id)}
-                      disabled={approvingId === blog.id}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-bold hover:bg-green-600 transition-colors disabled:opacity-50"
-                    >
-                      {approvingId === blog.id ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <CheckCircle className="w-3.5 h-3.5" />
-                      )}
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => setRejectingBlog(blog.id)}
-                      className="flex items-center gap-1.5 px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-sm font-bold hover:bg-red-500/20 transition-colors"
-                    >
-                      <XCircle className="w-3.5 h-3.5" /> Reject
-                    </button>
-                  </div>
+                
+                {blog.author.id === user?.id ? (
+                  <span className="text-xs text-foreground/40 italic font-medium px-3 py-2 bg-foreground/5 rounded-lg">
+                    Self-authored (Other admin review needed)
+                  </span>
+                ) : (
+                  <>
+                    {blog.status === "PENDING_REVIEW" && (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleApprove(blog.id)}
+                          disabled={approvingId === blog.id}
+                          className="flex items-center gap-1.5 px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-bold hover:bg-green-600 transition-colors disabled:opacity-50"
+                        >
+                          {approvingId === blog.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <CheckCircle className="w-3.5 h-3.5" />
+                          )}
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => setRejectingBlog(blog.id)}
+                          className="flex items-center gap-1.5 px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-sm font-bold hover:bg-red-500/20 transition-colors"
+                        >
+                          <XCircle className="w-3.5 h-3.5" /> Reject
+                        </button>
+                      </div>
+                    )}
+                    {blog.status === "PUBLISHED" && (
+                      <button
+                        onClick={() => handleTogglePublish(blog.id)}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-xl text-sm font-bold hover:bg-amber-500/20 transition-colors"
+                      >
+                        Unpublish
+                      </button>
+                    )}
+                    {blog.status === "DRAFT" && (
+                      <button
+                        onClick={() => handleTogglePublish(blog.id)}
+                        className="flex items-center gap-1.5 px-4 py-2 bg-green-500/10 text-green-500 border border-green-500/20 rounded-xl text-sm font-bold hover:bg-green-500/20 transition-colors"
+                      >
+                        Publish
+                      </button>
+                    )}
+                  </>
                 )}
+
                 <button
                   onClick={() => handleDelete(blog.id, blog.title)}
                   className="flex items-center gap-1.5 px-4 py-2 text-red-500/60 hover:text-red-500 hover:bg-red-500/5 rounded-xl text-sm font-bold transition-colors"

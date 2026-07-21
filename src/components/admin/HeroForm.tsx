@@ -14,6 +14,7 @@ interface HeroSlide {
   ctaLink: string | null;
   isActive: boolean;
   order: number;
+  features?: unknown;
 }
 
 interface HeroFormProps {
@@ -32,6 +33,20 @@ export default function HeroForm({ slide, onClose, onSuccess }: HeroFormProps) {
   const [videoUrl, setVideoUrl] = useState(slide?.videoUrl || "");
   const [ctaLink, setCtaLink] = useState(slide?.ctaLink || "");
   const [isActive, setIsActive] = useState(slide ? slide.isActive : true);
+  const [features, setFeatures] = useState<{ icon: string; text: string }[]>(
+    (() => {
+      if (slide?.features) {
+        try {
+          return typeof slide.features === "string" 
+            ? JSON.parse(slide.features) 
+            : (Array.isArray(slide.features) ? slide.features : []);
+        } catch {
+          return [];
+        }
+      }
+      return [];
+    })()
+  );
 
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -52,6 +67,7 @@ export default function HeroForm({ slide, onClose, onSuccess }: HeroFormProps) {
           videoUrl,
           ctaLink,
           isActive,
+          features: features.filter(f => f.text.trim()),
         }),
       });
 
@@ -214,6 +230,91 @@ export default function HeroForm({ slide, onClose, onSuccess }: HeroFormProps) {
                 className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50"
                 placeholder="e.g. /experiences/everest-base-camp"
               />
+            </div>
+
+            {/* Slide Highlights (Features) */}
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="block text-sm font-medium text-foreground/80">
+                  Key Highlights / Badges (Max 3)
+                </span>
+                {features.length < 3 && (
+                  <button
+                    type="button"
+                    onClick={() => setFeatures([...features, { icon: "MapPin", text: "" }])}
+                    className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
+                  >
+                    + Add Highlight
+                  </button>
+                )}
+              </div>
+              
+              {features.length === 0 ? (
+                <p className="text-xs text-foreground/40 italic">
+                  No custom highlights added. Default highlights will be shown (Pan-India, Verified Guides, Live Support).
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {features.map((feat, idx) => (
+                    <div key={`feat-${idx}`} className="flex items-center gap-3 p-3 bg-foreground/[0.02] border border-border rounded-xl">
+                      <div className="flex-1 grid grid-cols-2 gap-2">
+                        <div>
+                          <label htmlFor={`highlight-icon-${idx}`} className="sr-only">Icon</label>
+                          <select
+                            id={`highlight-icon-${idx}`}
+                            value={feat.icon}
+                            onChange={(e) => {
+                              const next = [...features];
+                              next[idx] = { ...next[idx], icon: e.target.value };
+                              setFeatures(next);
+                            }}
+                            className="w-full bg-background border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground focus:outline-none"
+                          >
+                            <option value="MapPin">📍 Map Pin</option>
+                            <option value="Shield">🛡️ Shield</option>
+                            <option value="Zap">⚡ Zap</option>
+                            <option value="Calendar">📅 Calendar</option>
+                            <option value="Heart">❤️ Heart</option>
+                            <option value="Star">⭐ Star</option>
+                            <option value="Compass">🧭 Compass</option>
+                            <option value="Award">🏆 Award</option>
+                            <option value="CheckCircle">✅ Check Circle</option>
+                            <option value="Clock">🕒 Clock</option>
+                            <option value="Smile">😊 Smile</option>
+                            <option value="Users">👥 Users</option>
+                            <option value="Info">ℹ️ Info</option>
+                            <option value="Flame">🔥 Flame</option>
+                            <option value="Eye">👁️ Eye</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label htmlFor={`highlight-text-${idx}`} className="sr-only">Highlight Text</label>
+                          <input
+                            id={`highlight-text-${idx}`}
+                            type="text"
+                            value={feat.text}
+                            onChange={(e) => {
+                              const next = [...features];
+                              next[idx] = { ...next[idx], text: e.target.value };
+                              setFeatures(next);
+                            }}
+                            placeholder="e.g. Pan-India"
+                            className="w-full bg-background border border-border rounded-lg px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:border-primary/50"
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setFeatures(features.filter((_, i) => i !== idx))}
+                        className="text-red-500 hover:text-red-600 p-1"
+                        title="Remove highlight"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="p-4 rounded-xl border border-border hover:bg-foreground/5 transition-colors flex items-center gap-3">

@@ -1,9 +1,6 @@
-import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { withBuildSafety } from "@/lib/db-utils";
-import { MapPin, CalendarDays, ArrowRight, PenLine } from "lucide-react";
-import Image from "next/image";
-import { format } from "date-fns";
+import BlogListingClient from "@/components/blog/BlogListingClient";
 
 export const revalidate = 60;
 
@@ -13,8 +10,15 @@ export default async function BlogListingPage() {
       prisma.blog.findMany({
         where: { status: "PUBLISHED", deletedAt: null },
         include: {
-          author: { select: { name: true, avatarUrl: true } },
-          experience: { select: { title: true, slug: true, location: true } },
+          author: {
+            select: {
+              id: true,
+              name: true,
+              avatarUrl: true,
+              role: { select: { name: true } },
+            },
+          },
+          experience: { select: { id: true, title: true, slug: true, location: true } },
           coverImage: { select: { originalUrl: true } },
         },
         orderBy: { updatedAt: "desc" },
@@ -23,124 +27,6 @@ export default async function BlogListingPage() {
     [],
   );
 
-  return (
-    <div className="min-h-screen bg-background text-foreground pb-20">
-      {/* Hero */}
-      <div className="relative pt-0 overflow-hidden">
-        <div className="absolute inset-0 bg-linear-to-br from-primary/10 via-background to-background" />
-        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-        <div className="relative max-w-7xl mx-auto px-4 py-32 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-primary/10 border border-primary/20 rounded-full text-primary text-sm font-bold mb-6">
-            <PenLine className="w-3.5 h-3.5" /> Adventure Stories
-          </div>
-          <h1 className="text-4xl md:text-6xl font-heading font-black text-foreground mb-4">
-            Real Stories from
-            <br />
-            <span className="text-primary">Real Adventurers</span>
-          </h1>
-          <p className="text-foreground/60 text-lg max-w-xl mx-auto">
-            Written by travellers who&apos;ve actually been there. Experience
-            the journey through their eyes.
-          </p>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 mt-4">
-        {blogs.length === 0 ? (
-          <div className="text-center py-24 border border-dashed border-border rounded-2xl">
-            <PenLine className="w-12 h-12 text-foreground/20 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-foreground/60 mb-2">
-              No stories yet
-            </h2>
-            <p className="text-foreground/40 text-sm">
-              Be the first to share your adventure after booking a trip.
-            </p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {blogs.map((blog) => {
-              const cover =
-                blog.coverImageUrl ||
-                blog.coverImage?.originalUrl ||
-                `https://picsum.photos/seed/${blog.id}/800/500`;
-
-              return (
-                <Link
-                  key={blog.id}
-                  href={`/blog/${blog.slug}`}
-                  className="group bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300 flex flex-col h-full"
-                >
-                  {/* Cover */}
-                  <div className="relative h-48 overflow-hidden">
-                    <Image
-                      src={cover}
-                      alt={blog.title}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent" />
-                    {blog.experience && (
-                      <div className="absolute bottom-3 left-3">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-black/40 backdrop-blur-sm border border-white/20 rounded-full text-white text-xs font-semibold">
-                          <MapPin className="w-3 h-3" />
-                          {blog.experience.location || blog.experience.title}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Content */}
-                  <div className="p-5 flex flex-col flex-1">
-                    <h2 className="font-heading font-bold text-foreground text-lg line-clamp-2 mb-3 group-hover:text-primary transition-colors">
-                      {blog.title}
-                    </h2>
-
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="relative w-7 h-7 rounded-full overflow-hidden bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">
-                          {blog.author.avatarUrl ? (
-                            <Image
-                              src={blog.author.avatarUrl}
-                              alt={blog.author.name}
-                              fill
-                              className="object-cover"
-                            />
-                          ) : (
-                            blog.author.name[0].toUpperCase()
-                          )}
-                        </div>
-                        <span className="text-sm text-foreground/60 font-medium">
-                          {blog.author.name}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-1 text-xs text-foreground/40">
-                        <CalendarDays className="w-3 h-3" />
-                        {format(new Date(blog.updatedAt), "dd MMM")}
-                      </div>
-                    </div>
-
-                    {blog.experience && (
-                      <div className="mt-auto pt-3 border-t border-border flex items-center justify-between text-xs text-foreground/50">
-                        <span>
-                          About:{" "}
-                          <strong className="text-foreground/70">
-                            {blog.experience.title}
-                          </strong>
-                        </span>
-                        <span className="flex items-center gap-1 text-primary font-semibold">
-                          Read <ArrowRight className="w-3 h-3" />
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  return <BlogListingClient initialBlogs={blogs as unknown as Parameters<typeof BlogListingClient>[0]["initialBlogs"]} />;
 }
 

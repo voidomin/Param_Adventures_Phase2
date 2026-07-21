@@ -39,7 +39,11 @@ export const PLATFORM_KEYS = new Set([
   "smtp_secure",
   "smtp_from",
   "zoho_api_key",
-  "resend_api_key"
+  "resend_api_key",
+  "cancellation_policy_rules",
+  "convenience_fee_percent",
+  "companyEmail",
+  "companyPhone"
 ]);
 
 const MASK_VALUE = "[UNREVEALED]";

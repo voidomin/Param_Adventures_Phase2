@@ -6,6 +6,8 @@ vi.mock("@/lib/db", () => ({
   prisma: {
     user: { findUnique: vi.fn() },
     booking: { findMany: vi.fn() },
+    refundRequest: { findMany: vi.fn() },
+    travelCoupon: { findMany: vi.fn() },
   },
 }));
 
@@ -16,6 +18,8 @@ import { prisma } from "@/lib/db";
 const mockVerifyAccessToken = vi.mocked(verifyAccessToken);
 const mockUserFindUnique = vi.mocked(prisma.user.findUnique);
 const mockBookingFindMany = vi.mocked(prisma.booking.findMany);
+const mockRefundRequestFindMany = vi.mocked((prisma as any).refundRequest.findMany);
+const mockTravelCouponFindMany = vi.mocked((prisma as any).travelCoupon.findMany);
 
 type ReqOpts = { token?: string };
 
@@ -95,6 +99,8 @@ describe("GET /api/user/dashboard", () => {
         slot: null,
       },
     ] as any);
+    mockRefundRequestFindMany.mockResolvedValue([]);
+    mockTravelCouponFindMany.mockResolvedValue([]);
 
     const response = await GET(createRequest({ token: "ok" }));
     const data = await response.json();
@@ -103,6 +109,8 @@ describe("GET /api/user/dashboard", () => {
     expect(data.user.roleName).toBe("USER");
     expect(data.upcomingBookings.map((b: any) => b.id)).toEqual(["b1", "b4"]);
     expect(data.pastBookings.map((b: any) => b.id)).toEqual(["b2", "b3"]);
+    expect(data.refundRequests).toEqual([]);
+    expect(data.coupons).toEqual([]);
     expect(data.stats).toEqual({ total: 4, upcoming: 2, past: 2 });
     expect(mockBookingFindMany).toHaveBeenCalledWith(
       expect.objectContaining({

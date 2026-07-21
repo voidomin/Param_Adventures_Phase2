@@ -26,7 +26,7 @@ export class EmailFactory {
   private async fetchResolvedConfig(overrideConfig?: Record<string, string>): Promise<Record<string, string>> {
     const keys = [
       "email_provider", "smtp_host", "smtp_port", "smtp_user", 
-      "smtp_pass", "smtp_secure", "smtp_from", "zoho_api_key", "resend_api_key"
+      "smtp_pass", "smtp_secure", "smtp_from", "zoho_api_key", "zoho_api_region", "resend_api_key"
     ];
     
     const settings = await prisma.platformSetting.findMany({
@@ -47,8 +47,9 @@ export class EmailFactory {
 
   private initZoho(config: Record<string, string>, from: string) {
     const key = this.scrub(config.zoho_api_key) || process.env.ZOHO_API_KEY || "";
+    const region = (config.zoho_api_region || process.env.ZOHO_API_REGION || "in") as "com" | "in" | "eu" | "com.au";
     if (!key) throw new Error("Zoho API Key is missing.");
-    return { provider: new ZohoAPIProvider({ apiKey: key }), from };
+    return { provider: new ZohoAPIProvider({ apiKey: key, region }), from };
   }
 
   private initSMTP(config: Record<string, string>, from: string) {

@@ -41,7 +41,7 @@ export function decrypt(encryptedText: string): string {
     let decrypted = decipher.update(encrypted, undefined, "utf8");
     decrypted += decipher.final("utf8");
     return decrypted;
-  } catch (error) {
+  } catch {
     // If decryption fails, it's likely legacy plain text or a configuration mismatch.
     // Fall back to the original text rather than crashing.
     return encryptedText;

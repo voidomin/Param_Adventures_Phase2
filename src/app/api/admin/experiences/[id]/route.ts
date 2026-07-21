@@ -59,6 +59,7 @@ const updateExperienceSchema = z.object({
   inclusions: z.any().optional(),
   exclusions: z.any().optional(),
   thingsToCarry: z.any().optional(),
+  thingsToKeepInMind: z.any().optional(),
   faqs: z.any().optional(),
   cancellationPolicy: z.string().optional().nullable(),
   meetingPoint: z.string().optional().nullable(),
@@ -77,6 +78,9 @@ const updateExperienceSchema = z.object({
   meetingTime: z.string().optional().nullable(),
   dropoffTime: z.string().optional().nullable(),
   vibeTags: z.array(z.string().trim()).transform(arr => arr.filter(Boolean)).optional(),
+  allowAdvancePayment: z.boolean().optional(),
+  advancePaymentAmount: z.number().min(0).optional().nullable(),
+  extraAmenities: z.any().optional(),
 });
 
 // PUT /api/admin/experiences/[id]

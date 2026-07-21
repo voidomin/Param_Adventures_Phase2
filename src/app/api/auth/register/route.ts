@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
     const pSettings = await prisma.platformSetting.findMany({
       where: { key: { in: ["session_lifetime_hrs"] } }
     });
-    const sHrs = pSettings.find(s => s.key === "session_lifetime_hrs")?.value || "1";
+    const sHrs = (pSettings.find(s => s.key === "session_lifetime_hrs")?.value || "24").replace(/['"]+/g, "");
     const jExpiryStr = `${sHrs}h`;
     const rExpiryStr = process.env.REFRESH_TOKEN_EXPIRY || "7d";
 

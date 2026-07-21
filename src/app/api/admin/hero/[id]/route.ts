@@ -38,6 +38,11 @@ export async function GET(
 
 import { z } from "zod";
 
+const featureItemSchema = z.object({
+  icon: z.string().min(1, "Icon is required"),
+  text: z.string().min(1, "Text is required"),
+});
+
 const updateHeroSlideSchema = z.object({
   title: z.string().min(1).max(100).optional(),
   subtitle: z.string().optional().nullable(),
@@ -59,6 +64,7 @@ const updateHeroSlideSchema = z.object({
   ctaLink: z.string().optional().nullable(),
   isActive: z.boolean().optional(),
   order: z.number().int().optional(),
+  features: z.array(featureItemSchema).optional().nullable(),
 });
 
 export async function PUT(
@@ -85,7 +91,7 @@ export async function PUT(
         { status: 400 },
       );
     }
-    const { title, subtitle, videoUrl, ctaLink, isActive, order } = parseResult.data;
+    const { title, subtitle, videoUrl, ctaLink, isActive, order, features } = parseResult.data;
 
     const updatedSlide = await prisma.heroSlide.update({
       where: { id },
@@ -96,6 +102,7 @@ export async function PUT(
         ...(ctaLink !== undefined && { ctaLink }),
         ...(isActive !== undefined && { isActive }),
         ...(order !== undefined && { order }),
+        ...(features !== undefined && { features: features ?? [] }),
       },
     });
 

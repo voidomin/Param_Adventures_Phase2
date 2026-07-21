@@ -29,8 +29,11 @@ export async function GET(
           select: { name: true, isPrimary: true, email: true, phoneNumber: true, pickupPoint: true }
         },
         payments: {
-          orderBy: { createdAt: "desc" },
-          take: 1
+          where: { status: "PAID" },
+          orderBy: { createdAt: "asc" }
+        },
+        couponTransactions: {
+          where: { type: "REDEEMED" }
         }
       }
     });
@@ -42,29 +45,43 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Fetch live company details right now for the header (Even though tax rates are frozen, the header usually matches current business address unless historically versioned too, but for now we pull current).
+    // Fetch live company details right now for the header
     const settings = await prisma.platformSetting.findMany({
       where: { key: { in: ['companyName', 'companyAddress', 'gstNumber', 'panNumber', 'stateCode'] } }
     });
     
-    const companyInfo = settings.reduce((acc, current) => {
+    const companyInfo = settings.reduce((acc: Record<string, string>, current: { key: string; value: string }) => {
       acc[current.key] = current.value;
       return acc;
     }, {} as Record<string, string>);
+
+    const couponDiscount = booking.couponTransactions ? booking.couponTransactions.reduce((sum: number, tx: { amount: unknown }) => sum + Number(tx.amount), 0) : 0;
 
     return NextResponse.json({
       booking: {
          id: booking.id,
          date: booking.createdAt,
-         totalPrice: booking.totalPrice,
-         baseFare: booking.baseFare,
+         totalPrice: Number(booking.totalPrice),
+         baseFare: Number(booking.baseFare),
          taxBreakdown: booking.taxBreakdown,
          status: booking.bookingStatus,
          participantCount: booking.participantCount,
+         paymentType: booking.paymentType,
+         paidAmount: Number(booking.paidAmount),
+         remainingBalance: Number(booking.remainingBalance),
+         paymentStatus: booking.paymentStatus,
+         couponDiscount,
       },
       experience: booking.experience,
-      primaryContact: booking.participants.find(p => p.isPrimary) || booking.participants[0],
-      payment: booking.payments[0] || null,
+      primaryContact: booking.participants.find((p: { isPrimary: boolean }) => p.isPrimary) || booking.participants[0],
+      payments: booking.payments.map((p: { id: string; amount: unknown; status: string; providerPaymentId: string | null; createdAt: Date }) => ({
+        id: p.id,
+        amount: Number(p.amount),
+        status: p.status,
+        providerPaymentId: p.providerPaymentId,
+        createdAt: p.createdAt,
+      })),
+      payment: booking.payments.at(-1) || null,
       company: companyInfo
     });
 

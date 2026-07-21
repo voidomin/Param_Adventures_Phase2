@@ -74,6 +74,7 @@ export async function GET(
       inclusions: experience.inclusions,
       exclusions: experience.exclusions,
       thingsToCarry: experience.thingsToCarry,
+      thingsToKeepInMind: experience.thingsToKeepInMind,
       highlights: experience.highlights,
       cancellationPolicy: experience.cancellationPolicy,
       meetingPoint: experience.meetingPoint,

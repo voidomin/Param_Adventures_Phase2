@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Loader2, Send, Save, Mountain, X } from "lucide-react";
+import { Loader2, Send, Save, Mountain, X, Search } from "lucide-react";
 import Image from "next/image";
 // Custom Social SVGs to avoid Lucide deprecation warnings
 const InstagramSVG = () => (
@@ -20,6 +20,9 @@ const YoutubeSVG = () => (
 
 import MediaUploader from "@/components/admin/MediaUploader";
 import { ASPECT_RATIOS } from "@/lib/constants/aspect-ratios";
+import { useAuth } from "@/lib/AuthContext";
+import ReauthModal from "@/components/auth/ReauthModal";
+
 
 // Lazy-load the editor to avoid SSR issues
 const TiptapEditor = dynamic(() => import("@/components/blog/TiptapEditor"), {
@@ -42,6 +45,12 @@ const EMPTY_DOC = { type: "doc", content: [] };
 
 export default function WriteBlogPage() {
   const router = useRouter();
+  const { user } = useAuth();
+  const isAdmin =
+    user?.role === "ADMIN" ||
+    user?.role === "SUPER_ADMIN" ||
+    user?.role === "MEDIA_UPLOADER";
+
   const [experiences, setExperiences] = useState<ConfirmedExperience[]>([]);
   const [isLoadingExp, setIsLoadingExp] = useState(true);
   const [selectedExp, setSelectedExp] = useState("");
@@ -51,6 +60,8 @@ export default function WriteBlogPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [blogId, setBlogId] = useState<string | null>(null);
+  const [isReauthOpen, setIsReauthOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<"SAVE" | "SUBMIT" | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [coverImageUrl, setCoverImageUrl] = useState("");
   const [theme, setTheme] = useState("CLASSIC");
@@ -59,6 +70,10 @@ export default function WriteBlogPage() {
     twitter: "",
     youtube: "",
   });
+  const [metaTitle, setMetaTitle] = useState("");
+  const [metaDescription, setMetaDescription] = useState("");
+  const [metaKeywords, setMetaKeywords] = useState("");
+  const [readingTime, setReadingTime] = useState("");
 
   // Fetch confirmed experiences eligible for blogging
   useEffect(() => {
@@ -78,7 +93,7 @@ export default function WriteBlogPage() {
 
   const handleSaveDraft = async (): Promise<string | null> => {
     setError("");
-    if (!selectedExp) {
+    if (!selectedExp && !isAdmin) {
       setError("Please select an experience first.");
       return null;
     }
@@ -96,15 +111,23 @@ export default function WriteBlogPage() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            experienceId: selectedExp,
+            experienceId: selectedExp || null,
             title,
             coverImageUrl: coverImageUrl || null,
             theme,
             authorSocials: socials,
+            metaTitle: metaTitle || null,
+            metaDescription: metaDescription || null,
+            metaKeywords: metaKeywords || null,
+            readingTime: readingTime ? Number(readingTime) : null,
           }),
         });
         const data = await res.json();
         if (!res.ok) {
+          if (res.status === 401) {
+            setIsReauthOpen(true);
+            return null;
+          }
           setError(data.error || "Failed to create blog.");
           return null;
         }
@@ -122,9 +145,17 @@ export default function WriteBlogPage() {
           coverImageUrl: coverImageUrl || null,
           theme,
           authorSocials: socials,
+          metaTitle: metaTitle || null,
+          metaDescription: metaDescription || null,
+          metaKeywords: metaKeywords || null,
+          readingTime: readingTime ? Number(readingTime) : null,
         }),
       });
       if (!patchRes.ok) {
+        if (patchRes.status === 401) {
+          setIsReauthOpen(true);
+          return null;
+        }
         const patchData = await patchRes.json();
         setError(patchData.error || "Failed to save draft.");
         return null;
@@ -140,6 +171,26 @@ export default function WriteBlogPage() {
     }
   };
 
+  const executeReauthSuccess = () => {
+    setIsReauthOpen(false);
+    if (pendingAction === "SAVE") {
+      handleSaveDraft();
+    } else if (pendingAction === "SUBMIT") {
+      handleSubmit();
+    }
+    setPendingAction(null);
+  };
+
+  const onSaveClick = () => {
+    setPendingAction("SAVE");
+    handleSaveDraft();
+  };
+
+  const onSubmitClick = () => {
+    setPendingAction("SUBMIT");
+    handleSubmit();
+  };
+
   const handleSubmit = async () => {
     // Save draft first — get the blog ID back directly
     const savedBlogId = await handleSaveDraft();
@@ -152,6 +203,10 @@ export default function WriteBlogPage() {
       });
       const data = await res.json();
       if (!res.ok) {
+        if (res.status === 401) {
+          setIsReauthOpen(true);
+          return;
+        }
         setError(data.error || "Failed to submit blog.");
         return;
       }
@@ -173,7 +228,7 @@ export default function WriteBlogPage() {
     );
   }
 
-  if (experiences.length === 0) {
+  if (experiences.length === 0 && !isAdmin) {
     return (
       <div className="min-h-screen bg-background">
         <div className="max-w-2xl mx-auto px-4 pt-32 text-center">
@@ -221,7 +276,7 @@ export default function WriteBlogPage() {
               }}
               className="w-full px-4 py-3 bg-background border border-border rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
             >
-              <option value="">Select an experience…</option>
+              <option value="">{isAdmin ? "General Blog (No Experience)" : "Select an experience…"}</option>
               {experiences.map((exp) => (
                 <option key={exp.id} value={exp.id}>
                   {exp.title} — {exp.location}
@@ -393,6 +448,81 @@ export default function WriteBlogPage() {
             </div>
           </div>
 
+          {/* SEO Settings */}
+          <div className="p-6 border border-border rounded-2xl bg-foreground/[0.02] space-y-4">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="font-bold text-foreground flex items-center gap-2">
+                <Search className="w-4 h-4 text-primary" /> SEO Settings
+              </h3>
+              <div className="flex items-center gap-2 bg-background border border-border px-3 py-1.5 rounded-xl">
+                <input
+                  type="number"
+                  min="1"
+                  value={readingTime}
+                  onChange={(e) => setReadingTime(e.target.value)}
+                  className="w-12 bg-transparent text-center font-bold text-sm text-foreground focus:outline-none"
+                  placeholder="5"
+                />
+                <span className="text-xs text-foreground/50 font-semibold">min read</span>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="seo-meta-title" className="block text-xs font-semibold text-foreground/60 mb-1">
+                  Meta Title
+                </label>
+                <input
+                  id="seo-meta-title"
+                  type="text"
+                  value={metaTitle}
+                  onChange={(e) => setMetaTitle(e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg placeholder:text-foreground/30 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                  placeholder="SEO meta title"
+                  maxLength={120}
+                />
+                <p className="text-[10px] text-foreground/40 text-right mt-1">
+                  {metaTitle.length} characters
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="seo-meta-description" className="block text-xs font-semibold text-foreground/60 mb-1">
+                  Meta Description
+                </label>
+                <textarea
+                  id="seo-meta-description"
+                  rows={3}
+                  value={metaDescription}
+                  onChange={(e) => setMetaDescription(e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg placeholder:text-foreground/30 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                  placeholder="SEO meta description"
+                  maxLength={300}
+                />
+                <p className="text-[10px] text-foreground/40 text-right mt-1">
+                  {metaDescription.length} characters
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="seo-meta-keywords" className="block text-xs font-semibold text-foreground/60 mb-1">
+                  Meta Keywords
+                </label>
+                <input
+                  id="seo-meta-keywords"
+                  type="text"
+                  value={metaKeywords}
+                  onChange={(e) => setMetaKeywords(e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg placeholder:text-foreground/30 focus:outline-none focus:ring-1 focus:ring-primary/50"
+                  placeholder="e.g. personal loan, EMI tips, CIBIL score"
+                />
+                <p className="text-[10px] text-foreground/40 mt-1">
+                  Separate with commas — For search engines
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Error */}
           {error && (
             <p className="text-red-500 text-sm bg-red-500/10 border border-red-500/20 px-4 py-3 rounded-xl">
@@ -403,7 +533,7 @@ export default function WriteBlogPage() {
           {/* Actions */}
           <div className="flex items-center gap-4 pt-2">
             <button
-              onClick={handleSaveDraft}
+              onClick={onSaveClick}
               disabled={isSaving || isSubmitting}
               className="flex items-center gap-2 px-5 py-2.5 border border-border rounded-xl text-foreground/70 font-semibold hover:bg-foreground/5 transition-colors disabled:opacity-50"
             >
@@ -415,7 +545,7 @@ export default function WriteBlogPage() {
               Save Draft
             </button>
             <button
-              onClick={handleSubmit}
+              onClick={onSubmitClick}
               disabled={isSaving || isSubmitting}
               className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-xl font-bold hover:opacity-90 transition-opacity disabled:opacity-50 shadow-lg shadow-primary/25"
             >
@@ -424,7 +554,7 @@ export default function WriteBlogPage() {
               ) : (
                 <Send className="w-4 h-4" />
               )}
-              Submit for Review
+              {isAdmin ? "Submit for Admin Review" : "Submit for Review"}
             </button>
             {savedAt && (
               <p className="text-xs text-foreground/30 ml-auto">
@@ -434,6 +564,15 @@ export default function WriteBlogPage() {
           </div>
         </div>
       </div>
+      <ReauthModal
+        isOpen={isReauthOpen}
+        onClose={() => {
+          setIsReauthOpen(false);
+          setPendingAction(null);
+        }}
+        onSuccess={executeReauthSuccess}
+        email={user?.email || ""}
+      />
     </div>
   );
 }

@@ -56,4 +56,56 @@ describe("sanitizeEditorContent", () => {
     expect(resultUnapproved).not.toContain('position:absolute');
     expect(resultUnapproved).toContain('color:#ff0000');
   });
+
+  it("sanitizes Tiptap JSON objects correctly", () => {
+    const json = {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "text",
+              text: "Hello ",
+            },
+            {
+              type: "text",
+              marks: [
+                {
+                  type: "link",
+                  attrs: {
+                    href: "javascript:alert('xss')",
+                    target: "_blank",
+                  },
+                },
+              ],
+              text: "Link",
+            },
+          ],
+        },
+        {
+          type: "image",
+          attrs: {
+            src: "https://example.com/pic.png",
+            alt: "Safe Pic",
+          },
+        },
+        {
+          type: "image",
+          attrs: {
+            src: "javascript:evil()",
+            alt: "Bad Pic",
+          },
+        },
+      ],
+    };
+
+    const sanitized = sanitizeEditorContent(json);
+
+    expect(sanitized.content[0].content[1].marks[0].attrs.href).toBe("");
+    expect(sanitized.content[0].content[1].marks[0].attrs.target).toBe("_blank");
+    expect(sanitized.content[1].attrs.src).toBe("https://example.com/pic.png");
+    expect(sanitized.content[2].attrs.src).toBe("");
+  });
 });
+

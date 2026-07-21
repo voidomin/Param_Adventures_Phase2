@@ -93,7 +93,7 @@ export default function ExperienceGallery({
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
         {visibleImages.map((url, index) => {
           const isVideo = /\.(mp4|webm)$/i.exec(url);
           const thumbnailUrl = getMediaUrl(

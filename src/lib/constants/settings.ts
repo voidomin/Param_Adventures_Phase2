@@ -31,6 +31,17 @@ export const DEFAULT_PLATFORM_SETTINGS = [
   { key: "razorpay_key_secret", value: "", description: "Razorpay Secret Key" },
   { key: "razorpay_webhook_secret", value: "", description: "Razorpay Webhook Secret" },
   { key: "convenience_fee_percent", value: "2.5", description: "Percentage fee per booking" },
+  {
+    key: "cancellation_policy_rules",
+    value: JSON.stringify([
+      { minDays: 30, maxDays: null, refundPercent: 100 },
+      { minDays: 15, maxDays: 29, refundPercent: 75 },
+      { minDays: 7, maxDays: 14, refundPercent: 50 },
+      { minDays: 3, maxDays: 6, refundPercent: 25 },
+      { minDays: 0, maxDays: 2, refundPercent: 0 }
+    ]),
+    description: "JSON array of cancellation tiers (days before departure vs refund %)"
+  },
 ];
 
 export const DEFAULT_SITE_SETTINGS = [

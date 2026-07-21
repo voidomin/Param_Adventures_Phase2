@@ -7,10 +7,360 @@ import Image from "next/image";
 import Link from "next/link";
 import DownloadInvoiceBtn from "@/components/booking/DownloadInvoiceBtn";
 import DownloadItineraryBtn from "@/components/experiences/DownloadItineraryBtn";
+import EditParticipantsClient from "@/components/booking/EditParticipantsClient";
 
 import { withBuildSafety } from "@/lib/db-utils";
 
 type Props = { params: Promise<{ id: string }> };
+
+interface SelectedAmenity {
+  groupId: string;
+  groupName: string;
+  optionId: string;
+  optionName: string;
+  price: number;
+}
+
+function formatDate(date: Date) {
+  const day = String(date.getDate()).padStart(2, "0");
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const month = months[date.getMonth()];
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+}
+
+function getDates(slotDate: string | Date | null | undefined, durationDays: number) {
+  const startDate = slotDate ? new Date(slotDate) : null;
+  const endDate = startDate ? new Date(startDate) : null;
+  if (endDate) {
+    endDate.setDate(endDate.getDate() + durationDays - 1);
+  }
+  return { startDate, endDate };
+}
+
+function getTaxItems(taxBreakdown: unknown) {
+  return Array.isArray(taxBreakdown)
+    ? (taxBreakdown as unknown as {
+        name: string;
+        percentage: number;
+        amount: number;
+      }[])
+    : [];
+}
+
+interface ParticipantWithAmenities {
+  selectedAmenities?: unknown;
+}
+
+function getAggregatedAmenities(participants: ParticipantWithAmenities[]) {
+  const aggregatedAmenities = new Map<string, { name: string; price: number; count: number }>();
+  participants.forEach((p) => {
+    if (p.selectedAmenities && Array.isArray(p.selectedAmenities)) {
+      const selected = p.selectedAmenities as unknown as SelectedAmenity[];
+      selected.forEach((a) => {
+        const key = a.optionId;
+        const existing = aggregatedAmenities.get(key);
+        if (existing) {
+          existing.count += 1;
+        } else {
+          aggregatedAmenities.set(key, { name: a.optionName, price: a.price, count: 1 });
+        }
+      });
+    }
+  });
+  return aggregatedAmenities;
+}
+
+interface HeaderBannerProps {
+  bookingId: string;
+  paymentStatus: string;
+  providerPaymentId?: string | null;
+}
+
+function HeaderBanner({ bookingId, paymentStatus, providerPaymentId }: Readonly<HeaderBannerProps>) {
+  const isPartiallyPaid = paymentStatus === "PARTIALLY_PAID";
+  const isRefundPending = paymentStatus === "REFUND_PENDING";
+
+  let bannerBgClass = "bg-linear-to-r from-green-900 via-green-800 to-green-900 border-green-800/50";
+  let iconBgClass = "bg-green-500 shadow-[0_0_30px_rgba(34,197,94,0.3)]";
+  let textSubColorClass = "text-green-100/80";
+  let textRefColorClass = "text-green-200/80";
+  let titleText = "BOOKING CONFIRMED!";
+  let badgeText = "Payment Successful";
+
+  if (isPartiallyPaid) {
+    bannerBgClass = "bg-linear-to-r from-amber-950 via-amber-900 to-amber-950 border-amber-800/30";
+    iconBgClass = "bg-amber-600 shadow-[0_0_30px_rgba(217,119,6,0.3)]";
+    textSubColorClass = "text-amber-100/80";
+    textRefColorClass = "text-amber-200/80";
+    titleText = "BOOKING CONFIRMED (ADVANCE)";
+    badgeText = "Advance Paid";
+  } else if (isRefundPending) {
+    bannerBgClass = "bg-linear-to-r from-orange-950 via-orange-900 to-orange-950 border-orange-800/30";
+    iconBgClass = "bg-orange-600 shadow-[0_0_30px_rgba(234,88,12,0.3)]";
+    textSubColorClass = "text-orange-100/80";
+    textRefColorClass = "text-orange-200/80";
+    titleText = "REFUND PENDING";
+    badgeText = "Awaiting Verification";
+  }
+
+  return (
+    <div className={`rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6 shadow-xl border relative overflow-hidden ${bannerBgClass}`}>
+      <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-20 -mt-20" />
+      
+      <div className={`w-16 h-16 shrink-0 rounded-full flex items-center justify-center ${iconBgClass}`}>
+        <CheckCircle2 className="w-10 h-10 text-white" />
+      </div>
+      
+      <div className="flex-1 text-center sm:text-left z-10">
+        <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+          {titleText}
+        </h1>
+        <p className={`font-medium mt-1 uppercase tracking-wider text-sm ${textSubColorClass}`}>
+          Booking ID: {bookingId.split("-")[0].toUpperCase()}
+        </p>
+      </div>
+      
+      <div className="text-center sm:text-right z-10 bg-black/20 px-6 py-4 rounded-xl border border-white/10 backdrop-blur-sm">
+        <p className="font-bold text-white mb-0.5">{badgeText}</p>
+        <p className={`text-sm ${textRefColorClass}`}>
+          Reference: {providerPaymentId || "N/A"}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+interface PaymentConfirmationCardProps {
+  paymentStatus: string;
+  paymentType?: string | null;
+  paidAmount: number;
+  remainingBalance: number;
+  refundAmount?: number | null;
+  participantCount: number;
+  experienceBaseTotal: number;
+  baseFare: number;
+  totalPrice: number;
+  statusBadgeClasses: string;
+  payments: {
+    id: string;
+    status: string;
+    amount: unknown;
+    createdAt: string | Date;
+  }[];
+  taxItems: {
+    name: string;
+    percentage: number;
+    amount: number;
+  }[];
+  aggregatedAmenities: Map<string, { name: string; price: number; count: number }>;
+  couponDiscount?: number;
+}
+
+function PaymentConfirmationCard({
+  paymentStatus,
+  paymentType,
+  paidAmount,
+  remainingBalance,
+  refundAmount,
+  participantCount,
+  experienceBaseTotal,
+  baseFare,
+  totalPrice,
+  statusBadgeClasses,
+  payments,
+  taxItems,
+  aggregatedAmenities,
+  couponDiscount,
+}: Readonly<PaymentConfirmationCardProps>) {
+  return (
+    <div className="bg-card border border-border shadow-sm rounded-2xl overflow-hidden flex flex-col sm:flex-row">
+      <div className="bg-muted/40 p-6 sm:w-1/2 flex flex-col justify-center border-b sm:border-b-0 sm:border-r border-border/50">
+        <h3 className="text-lg font-bold text-foreground mb-4">Payment Confirmation</h3>
+        <div className="text-sm font-bold text-foreground/50 uppercase tracking-wider mb-1">
+          {paymentStatus === "PARTIALLY_PAID" ? "Amount Paid (Advance)" : "Total Paid"}
+        </div>
+        <div className="text-4xl font-black text-foreground">₹{paidAmount.toLocaleString("en-IN")}</div>
+        {paymentStatus === "PARTIALLY_PAID" && (
+          <div className="mt-1 text-xs text-amber-500 font-bold">
+            Remaining Balance: ₹{remainingBalance.toLocaleString("en-IN")}
+          </div>
+        )}
+        {refundAmount && refundAmount > 0 ? (
+          <div className="mt-2 text-xs text-orange-500 font-bold bg-orange-500/10 px-3 py-1.5 rounded-lg border border-orange-500/20 max-w-fit">
+            Pending Refund: ₹{refundAmount.toLocaleString("en-IN")}
+          </div>
+        ) : null}
+        
+        <div className="mt-4 space-y-2 border-t border-border/50 pt-3">
+          <span className="text-[10px] font-black text-foreground/40 uppercase tracking-wider block">Transaction History</span>
+          {payments.filter(p => p.status === "PAID").map((p, idx) => {
+            const isAdvance = idx === 0 && paymentType === "ADVANCE";
+            const pDateObj = new Date(p.createdAt);
+            const pDay = String(pDateObj.getDate()).padStart(2, "0");
+            const pMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            const pMonth = pMonths[pDateObj.getMonth()];
+            const pYear = pDateObj.getFullYear();
+            const pDate = `${pDay}/${pMonth}/${pYear}`;
+            return (
+              <div key={p.id} className="flex justify-between items-center text-xs text-foreground/80 font-medium bg-foreground/3 px-2.5 py-1.5 rounded-lg">
+                <span className="opacity-75">{isAdvance ? "Advance Payment" : `Payment #${idx + 1}`} ({pDate})</span>
+                <span className="font-bold">₹{Number(p.amount).toLocaleString("en-IN")}</span>
+              </div>
+            );
+          })}
+          {payments.filter(p => p.status === "PAID").length === 0 && (
+            <span className="text-xs text-foreground/40 italic">No payments confirmed yet.</span>
+          )}
+        </div>
+      </div>
+      <div className="p-6 sm:w-1/2 space-y-3 text-sm">
+        <div className="flex justify-between items-center py-1">
+          <span className="text-foreground/60 font-bold">Base Fare Breakdown</span>
+        </div>
+        <div className="flex justify-between items-center text-xs text-foreground/70 pl-2">
+          <span>Experience Price ({participantCount} Pax)</span>
+          <span className="font-medium text-foreground">₹{experienceBaseTotal.toLocaleString("en-IN")}</span>
+        </div>
+        {Array.from(aggregatedAmenities.entries()).map(([optionId, item]) => (
+          <div key={`summary-amenity-${optionId}`} className="flex justify-between text-xs text-foreground/70 pl-2">
+            <span>+ {item.name} (₹{item.price.toLocaleString("en-IN")} × {item.count})</span>
+            <span className="font-medium text-foreground">₹{(item.price * item.count).toLocaleString("en-IN")}</span>
+          </div>
+        ))}
+        <div className="flex justify-between items-center py-1 border-t border-border/30 pt-1.5 mt-1">
+          <span className="text-foreground/60 font-semibold">Subtotal (Base Fare)</span>
+          <span className="font-semibold text-foreground">₹{baseFare.toLocaleString("en-IN")}</span>
+        </div>
+        {taxItems.map((tax, idx) => (
+          <div key={`${tax.name}-${idx}`} className="flex justify-between items-center py-1">
+            <span className="text-foreground/60">{tax.name} ({tax.percentage}%)</span>
+            <span className="font-semibold text-foreground">₹{(Number(tax.amount) || 0).toLocaleString("en-IN")}</span>
+          </div>
+        ))}
+        {taxItems.length === 0 && (
+           <div className="flex justify-between items-center py-1">
+            <span className="text-foreground/60">Taxes & Fees</span>
+            <span className="font-semibold text-foreground">₹{(totalPrice - baseFare).toLocaleString("en-IN")}</span>
+          </div>
+        )}
+        <div className="flex justify-between items-center py-1 border-t border-border/30 pt-1.5">
+          <span className="text-foreground font-bold">Total Cost</span>
+          <span className="font-bold text-foreground text-base">₹{totalPrice.toLocaleString("en-IN")}</span>
+        </div>
+        {couponDiscount !== undefined && couponDiscount > 0 && (
+          <>
+            <div className="flex justify-between items-center py-1 text-orange-500 font-bold">
+              <span>Coupon Applied</span>
+              <span>-₹{couponDiscount.toLocaleString("en-IN")}</span>
+            </div>
+            <div className="flex justify-between items-center py-1 border-t border-border/30 pt-1.5 text-foreground font-black text-sm">
+              <span>Net Price</span>
+              <span>₹{(totalPrice - couponDiscount).toLocaleString("en-IN")}</span>
+            </div>
+          </>
+        )}
+        <div className="border-t border-border/50 my-1"></div>
+        <div className="flex justify-between items-center py-1">
+          <span className="text-foreground/60">Payment Mode</span>
+          <span className="font-bold text-foreground flex items-center gap-1.5 bg-muted/50 px-2.5 py-1 rounded-md">
+            <CreditCard className="w-3.5 h-3.5 text-primary" />
+            {paymentType === "ADVANCE" ? "Advance Payment" : "Full Payment"}
+          </span>
+        </div>
+        <div className="flex justify-between items-center py-1">
+          <span className="text-foreground/60">Status</span>
+          <span className={`font-bold px-2.5 py-1 rounded-md uppercase text-xs tracking-wider ${statusBadgeClasses}`}>
+            {paymentStatus === "PARTIALLY_PAID" ? "Partially Paid" : paymentStatus}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface AdventureSummaryCardProps {
+  experience: {
+    slug: string;
+    title: string;
+    location: string;
+    difficulty?: string | null;
+    durationDays: number;
+    meetingPoint?: string | null;
+    meetingTime?: string | null;
+  };
+  dateString: string;
+  adventureImage?: string;
+}
+
+function AdventureSummaryCard({
+  experience,
+  dateString,
+  adventureImage,
+}: Readonly<AdventureSummaryCardProps>) {
+  return (
+    <div className="bg-card border border-border shadow-sm rounded-2xl p-6 flex flex-col sm:flex-row gap-6">
+      <Link 
+        href={`/experiences/${experience.slug}`}
+        className="w-full sm:w-48 xl:w-56 aspect-[4/3] sm:aspect-square shrink-0 rounded-xl overflow-hidden relative border border-border/50 group/img hover:border-primary/50 transition-colors"
+        title={`Back to ${experience.title}`}
+      >
+        {adventureImage ? (
+          <Image 
+            src={adventureImage} 
+            alt={experience.title}
+            fill
+            className="object-cover transition-transform duration-500 group-hover/img:scale-105"
+          />
+        ) : (
+          <div className="w-full h-full bg-muted flex items-center justify-center">
+            <Mountain className="w-8 h-8 text-muted-foreground/30" />
+          </div>
+        )}
+        <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 transition-colors flex items-center justify-center">
+           <div className="bg-white/90 text-black px-3 py-1.5 rounded-full text-xs font-bold opacity-0 group-hover/img:opacity-100 transition-opacity shadow-lg">
+              View Trip
+           </div>
+        </div>
+      </Link>
+      <div className="flex-1 space-y-4">
+        <h2 className="text-2xl font-bold tracking-tight text-foreground">
+          Your Adventure Summary
+        </h2>
+        <div className="space-y-2.5 text-sm text-foreground/80">
+          <div className="flex items-start gap-3 border-b border-border/50 pb-2">
+            <MapPin className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold block text-foreground">Destination</span>
+              {experience.title} ({experience.location})
+            </div>
+          </div>
+          <div className="flex items-start gap-3 border-b border-border/50 pb-2">
+            <CalendarDays className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold block text-foreground">Dates & Duration</span>
+              {dateString} • {experience.durationDays} Days / {Math.max(1, experience.durationDays - 1)} Nights
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <Users className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold block text-foreground">Starting Point</span>
+              {experience.meetingPoint ? (
+                <>
+                  {experience.meetingPoint}
+                  {experience.meetingTime && ` • ${experience.meetingTime}`}
+                </>
+              ) : (
+                "To be communicated by Trip Manager"
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default async function BookingSuccessPage({
   params,
@@ -41,8 +391,10 @@ export default async function BookingSuccessPage({
         },
         participants: true,
         payments: {
-          orderBy: { createdAt: "desc" },
-          take: 1,
+          orderBy: { createdAt: "asc" },
+        },
+        couponTransactions: {
+          where: { type: "REDEEMED" },
         },
       },
     }),
@@ -58,22 +410,17 @@ export default async function BookingSuccessPage({
     redirect("/dashboard");
   }
 
-  const { experience, slot, participants, payments } = booking;
-  const payment = payments[0]; // the most recent one
-
-  // Dates
-  const startDate = slot?.date ? new Date(slot.date) : null;
-  const endDate = startDate ? new Date(startDate) : null;
-  if (endDate) {
-    endDate.setDate(endDate.getDate() + experience.durationDays - 1);
+  // Prevent accessing success page for unpaid/failed booking attempts
+  if (booking.paymentStatus === "PENDING" || booking.paymentStatus === "FAILED") {
+    redirect("/dashboard");
   }
 
-  const formatDate = (date: Date) =>
-    date.toLocaleDateString("en-US", {
-      month: "long",
-      day: "numeric",
-      year: "numeric",
-    });
+  const { experience, slot, participants, payments, couponTransactions } = booking;
+  const couponDiscount = couponTransactions ? couponTransactions.reduce((sum: number, tx: { amount: unknown }) => sum + Number(tx.amount), 0) : 0;
+  const payment = payments.at(-1); // the most recent one
+
+  // Dates
+  const { startDate, endDate } = getDates(slot?.date, experience.durationDays);
 
   const dateString =
     startDate && endDate
@@ -81,271 +428,87 @@ export default async function BookingSuccessPage({
       : "Dates TBD";
 
   // Financials
-  // In Phase 2, we might not have a detailed breakdown stored in Booking.
-  // We'll calculate a mock breakdown based on totalPrice for display purposes, 
-  // or just show total if we don't have taxes/fees separated in DB.
-  const totalPaid = Number(booking.totalPrice) || 0;
-  const bookingMeta = booking as typeof booking & {
-    baseFare?: unknown;
-    taxBreakdown?: unknown;
-  };
-  const baseFare =
-    typeof bookingMeta.baseFare === "number"
-      ? bookingMeta.baseFare
-      : totalPaid;
+  const totalPrice = Number(booking.totalPrice) || 0;
+  const paidAmount = Number(booking.paidAmount) || 0;
+  const remainingBalance = Number(booking.remainingBalance) || 0;
+  const baseFare = Number(booking.baseFare) || totalPrice;
 
-  const taxItems = Array.isArray(bookingMeta.taxBreakdown)
-    ? (bookingMeta.taxBreakdown as {
-        name: string;
-        percentage: number;
-        amount: number;
-      }[])
-    : [];
+  const taxItems = getTaxItems(booking.taxBreakdown);
+
+  // Aggregate amenities across participants
+  const aggregatedAmenities = getAggregatedAmenities(participants);
+
+  const experienceBaseTotal = Number(experience.basePrice) * booking.participantCount;
 
   // Leads
-  const trekLeads = slot?.assignments?.map((a) => a.trekLead) || [];
+  const trekLeads = slot?.assignments?.map((a: { trekLead: unknown }) => a.trekLead).filter(Boolean) || [];
+
+  interface TrekLeadInput {
+    id: string;
+    name: string;
+    avatarUrl?: string | null;
+    phoneNumber?: string | null;
+  }
+
+  const trekLeadList = trekLeads as TrekLeadInput[];
 
   const adventureImage = experience.cardImage || experience.coverImage || experience.images?.[0];
+
+  let statusBadgeClasses = "text-foreground/50 bg-muted";
+  if (booking.paymentStatus === "PAID") {
+    statusBadgeClasses = "text-green-500 bg-green-500/10";
+  } else if (booking.paymentStatus === "PARTIALLY_PAID") {
+    statusBadgeClasses = "text-amber-500 bg-amber-500/10";
+  } else if (booking.paymentStatus === "REFUND_PENDING") {
+    statusBadgeClasses = "text-orange-500 bg-orange-500/10";
+  }
 
   return (
     <main className="min-h-screen bg-background/50 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header Banner */}
-        <div className="bg-linear-to-r from-green-900 via-green-800 to-green-900 rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6 shadow-xl border border-green-800/50 relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-20 -mt-20" />
-          
-          <div className="w-16 h-16 shrink-0 bg-green-500 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.3)]">
-            <CheckCircle2 className="w-10 h-10 text-white" />
-          </div>
-          
-          <div className="flex-1 text-center sm:text-left z-10">
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-              BOOKING CONFIRMED!
-            </h1>
-            <p className="text-green-100/80 font-medium mt-1 uppercase tracking-wider text-sm">
-              Booking ID: {booking.id.split("-")[0].toUpperCase()}
-            </p>
-          </div>
-          
-          <div className="text-center sm:text-right z-10 bg-black/20 px-6 py-4 rounded-xl border border-white/10 backdrop-blur-sm">
-            <p className="font-bold text-white mb-0.5">Payment Successful</p>
-            <p className="text-sm text-green-200/80">
-              Reference: {payment?.providerPaymentId || "N/A"}
-            </p>
-          </div>
-        </div>
+        <HeaderBanner
+          bookingId={booking.id}
+          paymentStatus={booking.paymentStatus}
+          providerPaymentId={payment?.providerPaymentId}
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column (Wider) */}
           <div className="lg:col-span-2 space-y-6">
             
             {/* Adventure Summary */}
-            <div className="bg-card border border-border shadow-sm rounded-2xl p-6 flex flex-col sm:flex-row gap-6">
-              <Link 
-                href={`/experiences/${experience.slug}`}
-                className="w-full sm:w-48 xl:w-56 aspect-[4/3] sm:aspect-square shrink-0 rounded-xl overflow-hidden relative border border-border/50 group/img hover:border-primary/50 transition-colors"
-                title={`Back to ${experience.title}`}
-              >
-                {adventureImage ? (
-                  <Image 
-                    src={adventureImage} 
-                    alt={experience.title}
-                    fill
-                    className="object-cover transition-transform duration-500 group-hover/img:scale-105"
-                  />
-                ) : (
-                  <div className="w-full h-full bg-muted flex items-center justify-center">
-                    <Mountain className="w-8 h-8 text-muted-foreground/30" />
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/10 transition-colors flex items-center justify-center">
-                   <div className="bg-white/90 text-black px-3 py-1.5 rounded-full text-xs font-bold opacity-0 group-hover/img:opacity-100 transition-opacity shadow-lg">
-                      View Trip
-                   </div>
-                </div>
-              </Link>
-              <div className="flex-1 space-y-4">
-                <h2 className="text-2xl font-bold tracking-tight text-foreground">
-                  Your Adventure Summary
-                </h2>
-                <div className="space-y-2.5 text-sm text-foreground/80">
-                  <div className="flex items-start gap-3 border-b border-border/50 pb-2">
-                    <MapPin className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-bold block text-foreground">Destination</span>
-                      {experience.title} ({experience.location})
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3 border-b border-border/50 pb-2">
-                    <CalendarDays className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-bold block text-foreground">Dates & Duration</span>
-                      {dateString} • {experience.durationDays} Days / {Math.max(1, experience.durationDays - 1)} Nights
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <Users className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                    <div>
-                      <span className="font-bold block text-foreground">Starting Point</span>
-                      {experience.meetingPoint ? (
-                        <>
-                          {experience.meetingPoint}
-                          {experience.meetingTime && ` • ${experience.meetingTime}`}
-                        </>
-                      ) : (
-                        "To be communicated by Trip Manager"
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <AdventureSummaryCard
+              experience={experience}
+              dateString={dateString}
+              adventureImage={adventureImage}
+            />
 
             {/* Guest Details */}
-            <div className="bg-card border border-border shadow-sm rounded-2xl overflow-hidden">
-              <div className="bg-muted/30 px-6 py-4 border-b border-border/50">
-                <h3 className="text-lg font-bold text-foreground">Guest Details</h3>
-              </div>
-              <div className="p-0">
-                {/* Desktop Table - Hidden on smaller screens */}
-                <div className="hidden xl:block overflow-x-auto">
-                  <table className="w-full text-sm text-left border-collapse">
-                    <thead className="text-[10px] font-black text-foreground/40 uppercase tracking-widest bg-muted/20 border-b border-border/50">
-                      <tr>
-                        <th className="px-6 py-4">Guest</th>
-                        <th className="px-6 py-4">Email Address</th>
-                        <th className="px-6 py-4">Phone Number</th>
-                        <th className="px-6 py-4">Personal Details</th>
-                        <th className="px-6 py-4 whitespace-nowrap">Pickup & Drop</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/50">
-                      {participants.map((p, idx) => (
-                        <tr key={p.id} className="hover:bg-muted/10 transition-colors group">
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${p.isPrimary ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground/40'}`}>
-                                {idx + 1}
-                              </div>
-                              <div className="flex flex-col">
-                                <span className="font-bold text-foreground">{p.name}</span>
-                                {p.isPrimary && (
-                                  <span className="w-fit text-[9px] bg-primary/10 text-primary px-1.5 py-0.5 rounded uppercase font-black tracking-tighter mt-1">Primary Host</span>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-foreground/80 font-medium">
-                            {p.email || "—"}
-                          </td>
-                          <td className="px-6 py-4 text-foreground/80 font-medium">
-                            {p.phoneNumber || "—"}
-                          </td>
-                          <td className="px-6 py-4 text-foreground/70">
-                            <div className="flex flex-wrap gap-x-3 gap-y-1">
-                              <span className="font-medium">Age: {p.age || "—"}</span>
-                              <span className="opacity-40">•</span>
-                              <span className="font-medium">{p.gender || "—"}</span>
-                              <span className="opacity-40">•</span>
-                              <span className="font-medium">Blood: {p.bloodGroup || "—"}</span>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4">
-                             <div className="flex items-center gap-2 text-foreground/80">
-                                <MapPin className="w-4 h-4 text-primary shrink-0" />
-                                <span className="font-medium">{p.pickupPoint || "Pick-up Point"}</span>
-                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Mobile/Tablet Cards - Better for vertical stacking without scroll */}
-                <div className="xl:hidden divide-y divide-border/50">
-                  {participants.map((p, idx) => (
-                    <div key={p.id} className="p-6 space-y-4 hover:bg-muted/5 transition-colors">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${p.isPrimary ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground/40'}`}>
-                            {idx + 1}
-                          </div>
-                          <div>
-                            <span className="font-bold text-lg text-foreground block">{p.name}</span>
-                            {p.isPrimary && (
-                              <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded uppercase font-black tracking-wider">Primary Host</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                        <div className="space-y-1">
-                          <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest block">Contact Information</span>
-                          <div className="text-foreground/80 font-semibold">{p.email || "No email"}</div>
-                          <div className="text-foreground/80 font-semibold">{p.phoneNumber || "No phone"}</div>
-                        </div>
-                        <div className="space-y-1">
-                          <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest block">Personal Details</span>
-                          <div className="text-foreground/70 font-medium">
-                            {p.age ? `Age: ${p.age}` : "Age: —"} • {p.gender || "—"} • Blood: {p.bloodGroup || "—"}
-                          </div>
-                        </div>
-                        <div className="md:col-span-2 pt-2">
-                           <span className="text-[10px] font-black text-foreground/40 uppercase tracking-widest block mb-2">Logistics</span>
-                           <div className="flex items-center gap-2 bg-muted/40 p-3 rounded-xl border border-border/50">
-                              <MapPin className="w-5 h-5 text-primary shrink-0" />
-                              <span className="font-bold text-foreground">{p.pickupPoint || "Assigned by Trip Manager"}</span>
-                           </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <EditParticipantsClient
+              participants={participants}
+              bookingId={booking.id}
+              pickupPoints={experience.pickupPoints}
+              dropPoints={experience.dropPoints}
+            />
 
             {/* Payment Confirmation */}
-            <div className="bg-card border border-border shadow-sm rounded-2xl overflow-hidden flex flex-col sm:flex-row">
-              <div className="bg-muted/40 p-6 sm:w-1/2 flex flex-col justify-center border-b sm:border-b-0 sm:border-r border-border/50">
-                <h3 className="text-lg font-bold text-foreground mb-4">Payment Confirmation</h3>
-                <div className="text-sm font-bold text-foreground/50 uppercase tracking-wider mb-1">Total Paid</div>
-                <div className="text-4xl font-black text-foreground">₹{totalPaid.toLocaleString("en-IN")}</div>
-              </div>
-              <div className="p-6 sm:w-1/2 space-y-3 text-sm">
-                <div className="flex justify-between items-center py-1">
-                  <span className="text-foreground/60">Base Fare</span>
-                  <span className="font-semibold text-foreground">₹{baseFare.toLocaleString("en-IN")}</span>
-                </div>
-                {taxItems.map((tax, idx) => (
-                  <div key={`${tax.name}-${idx}`} className="flex justify-between items-center py-1">
-                    <span className="text-foreground/60">{tax.name} ({tax.percentage}%)</span>
-                    <span className="font-semibold text-foreground">₹{(Number(tax.amount) || 0).toLocaleString("en-IN")}</span>
-                  </div>
-                ))}
-                {taxItems.length === 0 && (
-                   <div className="flex justify-between items-center py-1">
-                    <span className="text-foreground/60">Taxes & Fees</span>
-                    <span className="font-semibold text-foreground">₹{(totalPaid - baseFare).toLocaleString("en-IN")}</span>
-                  </div>
-                )}
-                <div className="border-t border-border/50 my-1"></div>
-                <div className="flex justify-between items-center py-1">
-                  <span className="text-foreground/60">Method</span>
-                  <span className="font-bold text-foreground flex items-center gap-1.5 bg-muted/50 px-2.5 py-1 rounded-md">
-                    <CreditCard className="w-3.5 h-3.5 text-primary" />
-                    {payment?.provider || "Online"}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center py-1">
-                  <span className="text-foreground/60">Status</span>
-                  <span className="font-bold text-green-500 bg-green-500/10 px-2.5 py-1 rounded-md uppercase text-xs tracking-wider">
-                    {payment?.status || booking.paymentStatus}
-                  </span>
-                </div>
-              </div>
-            </div>
+            <PaymentConfirmationCard
+              paymentStatus={booking.paymentStatus}
+              paymentType={booking.paymentType}
+              paidAmount={paidAmount}
+              remainingBalance={remainingBalance}
+              refundAmount={booking.refundAmount ? Number(booking.refundAmount) : 0}
+              participantCount={booking.participantCount}
+              experienceBaseTotal={experienceBaseTotal}
+              baseFare={baseFare}
+              totalPrice={totalPrice}
+              statusBadgeClasses={statusBadgeClasses}
+              payments={payments}
+              taxItems={taxItems}
+              aggregatedAmenities={aggregatedAmenities}
+              couponDiscount={couponDiscount}
+            />
             
           </div>
 
@@ -394,8 +557,8 @@ export default async function BookingSuccessPage({
                 <h3 className="text-base font-bold text-foreground">Your Expedition Team</h3>
               </div>
               <div className="p-5 space-y-5">
-                {trekLeads.length > 0 ? (
-                  trekLeads.map((lead) => (
+                {trekLeadList.length > 0 ? (
+                  trekLeadList.map((lead: TrekLeadInput) => (
                     <div key={lead.id} className="flex items-center gap-4">
                       {lead.avatarUrl ? (
                          <div className="w-12 h-12 rounded-full overflow-hidden shrink-0 border border-border">

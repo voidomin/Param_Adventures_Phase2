@@ -165,7 +165,7 @@ describe("POST /api/admin/bookings/[id]/verify-manual", () => {
         slot: { date: new Date("2026-04-01T00:00:00.000Z") },
       } as any);
 
-    mockTransaction.mockResolvedValue([{ id: "b1", bookingStatus: "CONFIRMED" }] as any);
+    mockTransaction.mockResolvedValue({ id: "b1", bookingStatus: "CONFIRMED" } as any);
 
     const response = await POST(createRequest(validBody), {
       params: Promise.resolve({ id: "b1" }),
@@ -209,7 +209,7 @@ describe("POST /api/admin/bookings/[id]/verify-manual", () => {
         slot: null,
       } as any);
 
-    mockTransaction.mockResolvedValue([{ id: "b1", bookingStatus: "CONFIRMED" }] as any);
+    mockTransaction.mockResolvedValue({ id: "b1", bookingStatus: "CONFIRMED" } as any);
 
     const response = await POST(createRequest(validBody), {
       params: Promise.resolve({ id: "b1" }),
@@ -236,7 +236,7 @@ describe("POST /api/admin/bookings/[id]/verify-manual", () => {
       } as any)
       .mockResolvedValueOnce(null);
 
-    mockTransaction.mockResolvedValue([{ id: "b1", bookingStatus: "CONFIRMED" }] as any);
+    mockTransaction.mockResolvedValue({ id: "b1", bookingStatus: "CONFIRMED" } as any);
 
     const response = await POST(createRequest(validBody), {
       params: Promise.resolve({ id: "b1" }),
@@ -280,7 +280,7 @@ describe("POST /api/admin/bookings/[id]/verify-manual", () => {
       participantCount: 2,
       paymentStatus: "PENDING",
     } as any);
-    mockTransaction.mockResolvedValue([{ id: "b1", bookingStatus: "CONFIRMED" }] as any);
+    mockTransaction.mockResolvedValue({ id: "b1", bookingStatus: "CONFIRMED" } as any);
     mockLogActivity.mockRejectedValueOnce(new Error("audit failed"));
 
     const response = await POST(createRequest(validBody), {

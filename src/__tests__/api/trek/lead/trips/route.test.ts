@@ -28,7 +28,7 @@ describe("GET /api/trek-lead/trips", () => {
 
   it("maps assignments to slot trips", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "t1" } as any);
-    mockFindMany.mockResolvedValue([{ slot: { id: "s1" } }, { slot: { id: "s2" } }] as any);
+    mockFindMany.mockResolvedValue([{ slot: { id: "s1", bookings: [] } }, { slot: { id: "s2", bookings: [] } }] as any);
 
     const response = await GET({} as NextRequest);
     const data = await response.json();

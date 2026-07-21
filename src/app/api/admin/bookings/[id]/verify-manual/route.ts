@@ -83,15 +83,30 @@ export async function POST(
     }
 
     // 3. Update Database (Atomic Transaction)
-    const [updatedBooking] = await prisma.$transaction([
-      prisma.booking.update({
+    const updatedBooking = await prisma.$transaction(async (tx) => {
+      const freshBooking = await tx.booking.findUnique({
+        where: { id: bookingId },
+      });
+
+      if (!freshBooking) {
+        throw new Error("Booking not found");
+      }
+
+      const newPaidAmount = Number(freshBooking.paidAmount) + amountPaid;
+      const remainingBalance = Number(freshBooking.totalPrice) - newPaidAmount;
+      const newPaymentStatus = remainingBalance > 0.01 ? "PARTIALLY_PAID" : "PAID";
+
+      const updated = await tx.booking.update({
         where: { id: bookingId },
         data: {
           bookingStatus: "CONFIRMED",
-          paymentStatus: "PAID",
+          paymentStatus: newPaymentStatus,
+          paidAmount: newPaidAmount,
+          remainingBalance: Math.max(0, remainingBalance),
         },
-      }),
-      prisma.payment.create({
+      });
+
+      await tx.payment.create({
         data: {
           bookingId: bookingId,
           provider: "MANUAL",
@@ -105,32 +120,43 @@ export async function POST(
             verifiedAt: new Date().toISOString(),
           },
         },
-      }),
-      // Decrement slot capacity if it wasn't already decremented
-      // (In this system, capacity is usually decremented upon verification/payment)
-      prisma.slot.update({
-        where: { id: booking.slotId! },
-        data: {
-          remainingCapacity: {
-            decrement: booking.participantCount,
+      });
+
+      // Clean up any pending payment records for this booking
+      await tx.payment.deleteMany({
+        where: { bookingId, status: "PENDING" },
+      });
+
+      if (freshBooking.slotId && freshBooking.bookingStatus !== "CONFIRMED") {
+        await tx.slot.update({
+          where: { id: freshBooking.slotId },
+          data: {
+            remainingCapacity: {
+              decrement: freshBooking.participantCount,
+            },
           },
-        },
-      }),
-      // Cancel any other older pending/requested bookings for this user on the same slot
-      prisma.booking.updateMany({
-        where: {
-          userId: booking.userId,
-          slotId: booking.slotId!,
-          id: { not: bookingId },
-          bookingStatus: "REQUESTED",
-          paymentStatus: "PENDING",
-        },
-        data: {
-          bookingStatus: "CANCELLED",
-          paymentStatus: "FAILED",
-        },
-      }),
-    ]);
+        });
+
+        // Cancel any other older pending/requested bookings for this user on the same slot
+        await tx.booking.updateMany({
+          where: {
+            userId: freshBooking.userId,
+            slotId: freshBooking.slotId,
+            id: { not: bookingId },
+            bookingStatus: "REQUESTED",
+            paymentStatus: "PENDING",
+          },
+          data: {
+            bookingStatus: "CANCELLED",
+            paymentStatus: "FAILED",
+          },
+        });
+      }
+
+      return updated;
+    }, {
+      isolationLevel: "Serializable"
+    });
 
     // 4. Audit Logging
     await logActivity(
@@ -157,8 +183,21 @@ export async function POST(
       booking: updatedBooking,
     });
 
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Manual verification error:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    
+    // Catch unique constraint violation on providerPaymentId
+    const err = error as { code?: string; meta?: { target?: string[] } };
+    if (err.code === "P2002" && err.meta?.target?.includes("providerPaymentId")) {
+      return NextResponse.json({
+        error: "This Transaction ID / Reference has already been registered for another payment. Please verify the Reference ID and try again."
+      }, { status: 400 });
+    }
+
+    return NextResponse.json({
+      error: "Internal server error",
+      details: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    }, { status: 500 });
   }
 }

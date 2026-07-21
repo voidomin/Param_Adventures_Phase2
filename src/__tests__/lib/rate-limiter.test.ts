@@ -56,4 +56,20 @@ describe("RateLimiter", () => {
     expect(limiter.check("ip-1").success).toBe(false);
     expect(limiter.check("ip-2").success).toBe(true);
   });
+
+  it("cleans up expired entries", () => {
+    const limiter = new RateLimiter({ limit: 1, windowMs: 1000 }, manualClock);
+    currentTime = 1000;
+    
+    limiter.check("ip-1");
+    
+    currentTime += 2000;
+    
+    limiter.check("ip-2");
+    
+    (limiter as any).cleanup();
+    
+    expect((limiter as any).cache.has("ip-1")).toBe(false);
+    expect((limiter as any).cache.has("ip-2")).toBe(true);
+  });
 });

@@ -30,6 +30,11 @@ export async function GET(request: NextRequest) {
 
 import { z } from "zod";
 
+const featureItemSchema = z.object({
+  icon: z.string().min(1, "Icon is required"),
+  text: z.string().min(1, "Text is required"),
+});
+
 const heroSlideSchema = z.object({
   title: z.string().min(1, "Title is required").max(100),
   subtitle: z.string().optional().nullable(),
@@ -46,6 +51,7 @@ const heroSlideSchema = z.object({
   ),
   ctaLink: z.string().optional().nullable(),
   isActive: z.boolean().optional(),
+  features: z.array(featureItemSchema).optional().nullable(),
 });
 
 export async function POST(request: NextRequest) {
@@ -68,7 +74,7 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-    const { title, subtitle, videoUrl, ctaLink, isActive } = parseResult.data;
+    const { title, subtitle, videoUrl, ctaLink, isActive, features } = parseResult.data;
 
     // Determine the next order index
     const lastSlide = await prisma.heroSlide.findFirst({
@@ -84,6 +90,7 @@ export async function POST(request: NextRequest) {
         ctaLink,
         isActive: isActive ?? true,
         order,
+        features: features ?? undefined,
       },
     });
 
