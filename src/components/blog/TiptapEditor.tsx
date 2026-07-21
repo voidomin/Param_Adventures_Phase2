@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -84,6 +85,22 @@ export default function TiptapEditor({
       onChange(editor.getJSON());
     },
   });
+
+  useEffect(() => {
+    if (editor && editor.commands && content) {
+      const currentJson = JSON.stringify(editor.getJSON());
+      const propJson = typeof content === "string" ? content : JSON.stringify(content);
+      if (typeof content === "string") {
+        if (editor.getHTML() !== content) {
+          editor.commands.setContent(content, { emitUpdate: false });
+        }
+      } else {
+        if (currentJson !== propJson) {
+          editor.commands.setContent(content, { emitUpdate: false });
+        }
+      }
+    }
+  }, [editor, content]);
 
   if (!editor) return null;
 

@@ -1025,9 +1025,10 @@ export default function AdminBookingsPage() {
                           if (cancelledCount > 0) {
                             const totalCount = b.participants ? b.participants.length : b.participantCount;
                             const activeCount = totalCount - cancelledCount;
+                            const isPending = b.paymentStatus === "REFUND_PENDING";
                             return (
                               <span className="text-foreground font-semibold">
-                                {activeCount} Active ({cancelledCount} Refund Asked)
+                                {activeCount} Active ({cancelledCount} {isPending ? "Refund Asked" : "Refunded"})
                               </span>
                             );
                           }
@@ -1201,10 +1202,13 @@ export default function AdminBookingsPage() {
                           if (cancelledCount > 0) {
                             const totalCount = b.participants ? b.participants.length : b.participantCount;
                             const activeCount = totalCount - cancelledCount;
+                            const isPending = b.paymentStatus === "REFUND_PENDING";
                             return (
                               <div className="flex flex-col">
                                 <span className="font-semibold">{activeCount} Active</span>
-                                <span className="text-[10px] text-red-400 font-medium">{cancelledCount} Refund Asked</span>
+                                <span className={`text-[10px] font-medium ${isPending ? "text-red-400" : "text-foreground/40"}`}>
+                                  {cancelledCount} {isPending ? "Refund Asked" : "Refunded"}
+                                </span>
                               </div>
                             );
                           }
@@ -1424,14 +1428,16 @@ export default function AdminBookingsPage() {
           >
             Travel Coupons
           </Link>
-          {pendingRefunds.length > 0 && (
-            <Link
-              href="/admin/bookings/pending"
-              className="w-full sm:w-auto px-4 py-2.5 bg-yellow-500/10 border border-yellow-500/25 hover:bg-yellow-500 text-yellow-600 hover:text-white font-bold text-xs uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 h-11"
-            >
-              Pending Refunds ({pendingRefunds.length})
-            </Link>
-          )}
+          <Link
+            href="/admin/bookings/pending"
+            className={`w-full sm:w-auto px-4 py-2.5 font-bold text-xs uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 h-11 border ${
+              pendingRefunds.length > 0
+                ? "bg-yellow-500/10 border-yellow-500/25 hover:bg-yellow-500 text-yellow-600 hover:text-white"
+                : "bg-foreground/5 border-border/50 text-foreground/40 hover:bg-foreground/10"
+            }`}
+          >
+            Pending Refunds ({pendingRefunds.length})
+          </Link>
           <button
             onClick={handleExport}
             disabled={isExporting}
