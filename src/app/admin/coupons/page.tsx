@@ -178,11 +178,10 @@ export default function AdminCouponsPage() {
 
     try {
       const res = await fetch(`/api/admin/coupons/${selectedCoupon.id}`, {
-        method: "POST",
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action: "ADJUST",
-          balanceAction: adjAction,
+          balanceAction: adjAction === "NONE" ? undefined : adjAction,
           amount: adjAction === "NONE" ? undefined : Number(adjAmount),
           status: adjStatus || undefined,
           expiryDate: adjExpiry || undefined,
