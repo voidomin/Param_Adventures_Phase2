@@ -299,6 +299,7 @@ model Blog {
   deletedAt       DateTime?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
+  lastPublishedAt DateTime?
   authorSocials   Json?
   coverImageUrl   String?
   theme           String      @default("CLASSIC")

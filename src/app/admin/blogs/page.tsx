@@ -13,6 +13,7 @@ import {
   Eye,
   Trash2,
   Plus,
+  RefreshCw,
 } from "lucide-react";
 import { TableSkeleton } from "@/components/admin/TableSkeleton";
 import { useAuth } from "@/lib/AuthContext";
@@ -23,6 +24,7 @@ interface Blog {
   slug: string;
   status: "DRAFT" | "PENDING_REVIEW" | "PUBLISHED";
   rejectionReason: string | null;
+  lastPublishedAt: string | null;
   updatedAt: string;
   author: { id: string; name: string; email: string; avatarUrl: string | null };
   experience: { id: string; title: string; slug: string } | null;
@@ -317,6 +319,13 @@ export default function AdminBlogsPage() {
                       {getStatusIcon(blog.status)}
                       {blog.status.replace("_", " ")}
                     </span>
+                    {/* Re-submission badge — blog was previously live */}
+                    {blog.status === "PENDING_REVIEW" && blog.lastPublishedAt && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold border bg-orange-500/10 text-orange-400 border-orange-500/20">
+                        <RefreshCw className="w-3 h-3" />
+                        Re-submission
+                      </span>
+                    )}
                     {blog.experience && (
                       <span className="text-xs bg-foreground/5 border border-border px-2.5 py-0.5 rounded-full text-foreground/50">
                         {blog.experience.title}

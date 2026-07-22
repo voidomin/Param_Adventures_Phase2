@@ -182,13 +182,22 @@ export default function UserBlogsPage() {
 
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {blog.status === "PUBLISHED" && (
-                      <Link
-                        href={`/blog/${blog.slug}`}
-                        className="inline-flex items-center gap-1 text-sm text-primary font-bold hover:gap-2 transition-all"
-                      >
-                        <BookOpen className="w-4 h-4" /> View{" "}
-                        <ArrowRight className="w-3 h-3" />
-                      </Link>
+                      <>
+                        <Link
+                          href={`/blog/${blog.slug}`}
+                          className="inline-flex items-center gap-1 text-sm text-primary font-bold hover:gap-2 transition-all"
+                        >
+                          <BookOpen className="w-4 h-4" /> View{" "}
+                          <ArrowRight className="w-3 h-3" />
+                        </Link>
+                        <Link
+                          href={`/dashboard/blog/${blog.id}/edit`}
+                          className="p-2 rounded-lg border border-border text-foreground/60 hover:text-amber-500 hover:border-amber-500/30 transition-colors"
+                          title="Edit & re-submit for review"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </Link>
+                      </>
                     )}
                     {blog.status === "DRAFT" && (
                       <>

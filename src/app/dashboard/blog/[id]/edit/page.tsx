@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import dynamic from "next/dynamic";
-import { Loader2, Send, Save, AlertTriangle, Search } from "lucide-react";
+import { Loader2, Send, Save, AlertTriangle, Search, Globe, Pencil } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import ReauthModal from "@/components/auth/ReauthModal";
 
@@ -183,6 +183,32 @@ export default function EditBlogPage() {
           )}
         </div>
 
+        {/* Published Re-edit Warning Banner */}
+        {blog.status === "PUBLISHED" && (
+          <div className="flex items-start gap-3 mb-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+            <Globe className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold text-amber-500">You are editing a published blog</p>
+              <p className="text-sm text-foreground/60 mt-1">
+                Saving your changes will temporarily unpublish this blog and send it back to admin for re-approval. It will go live again once approved.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Pending Review Lock Banner */}
+        {blog.status === "PENDING_REVIEW" && (
+          <div className="flex items-start gap-3 mb-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+            <AlertTriangle className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold text-blue-400">Awaiting admin review</p>
+              <p className="text-sm text-foreground/60 mt-1">
+                This blog is currently under review and cannot be edited. Please wait for the admin&apos;s decision.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Rejection Banner */}
         {blog.rejectionReason && (
           <div className="flex items-start gap-3 mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
@@ -212,7 +238,8 @@ export default function EditBlogPage() {
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-4 py-3 bg-background border border-border rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+              readOnly={blog.status === "PENDING_REVIEW"}
+              className="w-full px-4 py-3 bg-background border border-border rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 read-only:opacity-50 read-only:cursor-not-allowed"
             />
           </div>
 
@@ -223,7 +250,7 @@ export default function EditBlogPage() {
             >
               Content
             </label>
-            <div id="blog-content-editor">
+            <div id="blog-content-editor" className={blog.status === "PENDING_REVIEW" ? "opacity-50 pointer-events-none" : ""}>
               <TiptapEditor content={content} onChange={setContent} />
             </div>
           </div>
@@ -310,30 +337,40 @@ export default function EditBlogPage() {
           )}
 
           <div className="flex items-center gap-4 pt-2">
-            <button
-              onClick={onSaveClick}
-              disabled={isSaving || blog.status !== "DRAFT"}
-              className="flex items-center gap-2 px-5 py-2.5 border border-border rounded-xl text-foreground/70 font-semibold hover:bg-foreground/5 transition-colors disabled:opacity-50"
-            >
-              {isSaving ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Save className="w-4 h-4" />
-              )}{" "}
-              Save Draft
-            </button>
-            <button
-              onClick={onSubmitClick}
-              disabled={isSaving || isSubmitting || blog.status !== "DRAFT"}
-              className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-xl font-bold hover:opacity-90 transition-opacity disabled:opacity-50 shadow-lg shadow-primary/25"
-            >
-              {isSubmitting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}{" "}
-              Submit for Review
-            </button>
+            {/* Save Draft — only visible for DRAFT blogs */}
+            {blog.status === "DRAFT" && (
+              <button
+                onClick={onSaveClick}
+                disabled={isSaving}
+                className="flex items-center gap-2 px-5 py-2.5 border border-border rounded-xl text-foreground/70 font-semibold hover:bg-foreground/5 transition-colors disabled:opacity-50"
+              >
+                {isSaving ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}{" "}
+                Save Draft
+              </button>
+            )}
+
+            {/* Submit / Re-submit — for DRAFT and PUBLISHED */}
+            {(blog.status === "DRAFT" || blog.status === "PUBLISHED") && (
+              <button
+                onClick={onSubmitClick}
+                disabled={isSaving || isSubmitting}
+                className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-xl font-bold hover:opacity-90 transition-opacity disabled:opacity-50 shadow-lg shadow-primary/25"
+              >
+                {isSubmitting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : blog.status === "PUBLISHED" ? (
+                  <Pencil className="w-4 h-4" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}{" "}
+                {blog.status === "PUBLISHED" ? "Save & Re-submit for Review" : "Submit for Review"}
+              </button>
+            )}
+
             {savedAt && (
               <p className="text-xs text-foreground/30 ml-auto">
                 Saved at {savedAt}

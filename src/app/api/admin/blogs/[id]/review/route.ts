@@ -62,7 +62,7 @@ export async function POST(request: NextRequest, { params }: Params) {
       where: { id },
       data:
         action === "approve"
-          ? { status: "PUBLISHED", rejectionReason: null }
+          ? { status: "PUBLISHED", rejectionReason: null, lastPublishedAt: new Date() }
           : { status: "DRAFT", rejectionReason: rejectionReason?.trim() || "Rejected by admin" },
     });
 

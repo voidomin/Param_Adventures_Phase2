@@ -109,7 +109,7 @@ describe("POST /api/admin/blogs/[id]/review", () => {
     expect(data.blog.status).toBe("PUBLISHED");
     expect(mockBlogUpdate).toHaveBeenCalledWith({
       where: { id: "b1" },
-      data: { status: "PUBLISHED", rejectionReason: null },
+      data: expect.objectContaining({ status: "PUBLISHED", rejectionReason: null, lastPublishedAt: expect.any(Date) }),
     });
     expect(mockRevalidatePath).toHaveBeenCalledWith("/", "layout");
   });
