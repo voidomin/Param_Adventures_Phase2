@@ -19,6 +19,7 @@ function isConnectionError(error: unknown): boolean {
       prismaCode.startsWith("P10") || // P1001, P1002, P1003, P1008, P1017, etc. (Common connection errors)
       prismaCode === "P2024" ||       // Connection pool timeout
       prismaCode === "P2021" ||       // Table does not exist
+      prismaCode === "P2022" ||       // Column does not exist
       prismaCode === "ETIMEDOUT" ||
       prismaCode === "ECONNREFUSED"
     ;
@@ -68,7 +69,7 @@ export async function withBuildSafety<T>(fetcher: () => Promise<T>, fallback: T)
     if (isConnectionError(error)) {
       const errorCode = (error as { code?: string })?.code;
       const errorMsg = error instanceof Error ? error.message : String(error);
-      const logType = errorCode === "P2021" ? "Schema" : "Connection";
+      const logType = (errorCode === "P2021" || errorCode === "P2022") ? "Schema" : "Connection";
       console.warn(`⚠️ Database ${logType} error during build: ${errorMsg}. Using fallback data.`);
       return fallback;
     }
