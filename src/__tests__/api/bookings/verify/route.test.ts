@@ -5,12 +5,14 @@ vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }));
 
-vi.mock("node:crypto", () => {
+vi.mock("node:crypto", async () => {
+  const actual = await vi.importActual<typeof import("node:crypto")>("node:crypto");
   const digest = vi.fn();
   const update = vi.fn(() => ({ digest }));
   const createHmac = vi.fn(() => ({ update }));
   return {
-    default: { createHmac },
+    ...actual,
+    default: { ...actual, createHmac },
     createHmac,
     __mocks: { digest, update, createHmac },
   };

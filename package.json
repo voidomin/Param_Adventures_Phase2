@@ -11,12 +11,14 @@
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
     "postinstall": "npx prisma generate",
+    "prepare": "husky",
     "db:push": "npx prisma db push",
     "db:sync:schema": "npx prisma db push",
     "db:migrate:deploy": "npx prisma migrate deploy",
     "db:studio": "npx prisma studio",
     "seed": "node prisma/seed.mjs",
-    "email": "email dev -d src/lib/email/templates"
+    "email": "email dev -d src/lib/email/templates",
+    "rotate-encryption-key": "node scripts/rotate-encryption-key.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.758.0",
@@ -91,16 +93,21 @@
   "prisma": {
     "seed": "node prisma/seed.mjs"
   },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix"
+    ]
+  },
   "overrides": {
-    "hono": "^4.12.26",
+    "hono": "^4.12.27",
     "lodash": "^4.17.23",
-    "@hono/node-server": "^1.19.14",
+    "@hono/node-server": "^2.0.5",
     "@react-email/components": {
       "lodash": "^4.17.23"
     },
     "axios": "^1.17.1",
     "postcss": "^8.5.10",
-    "fast-uri": "^3.1.2",
+    "fast-uri": "^3.1.4",
     "fast-xml-builder": "^1.1.9",
     "form-data": "^4.0.6",
     "nodemailer": "^9.0.1"
