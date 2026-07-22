@@ -35,7 +35,11 @@ export async function POST(
 
   const updated = await prisma.blog.update({
     where: { id },
-    data: { status: newStatus, rejectionReason: null },
+    data: {
+      status: newStatus,
+      rejectionReason: null,
+      ...(isPublishing ? { lastPublishedAt: new Date() } : {}),
+    },
   });
 
   await logActivity(

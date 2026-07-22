@@ -48,15 +48,17 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   }
   const { blog } = result;
 
-  if (blog.status !== "DRAFT") {
+  if (blog.status !== "DRAFT" && blog.status !== "PUBLISHED") {
     return NextResponse.json(
       {
         error:
-          "Cannot edit a blog that is pending review or published. Wait for admin decision.",
+          "Cannot edit a blog that is pending review. Wait for admin decision.",
       },
       { status: 400 },
     );
   }
+
+  const isResubmission = blog.status === "PUBLISHED";
 
   try {
     const body = await request.json();
@@ -98,6 +100,8 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         ...(metaDescription === undefined ? {} : { metaDescription: metaDescription || null }),
         ...(metaKeywords === undefined ? {} : { metaKeywords: metaKeywords || null }),
         ...(readingTime === undefined ? {} : { readingTime: readingTime || null }),
+        // If editing a published blog, pull it back to pending review automatically
+        ...(isResubmission ? { status: "PENDING_REVIEW", rejectionReason: null } : {}),
       },
     });
 

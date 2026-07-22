@@ -26,9 +26,9 @@ export async function POST(request: NextRequest, { params }: Params) {
   if (blog.authorId !== payload.userId) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
-  if (blog.status !== "DRAFT") {
+  if (blog.status !== "DRAFT" && blog.status !== "PUBLISHED") {
     return NextResponse.json(
-      { error: "Only drafts can be submitted for review." },
+      { error: "Only drafts or published blogs can be submitted for review." },
       { status: 400 },
     );
   }
