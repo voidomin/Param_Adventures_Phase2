@@ -1108,6 +1108,7 @@ export default function AdminBookingsPage() {
                   </button>
                   {b.bookingStatus === "REQUESTED" && b.paymentStatus !== "PAID" && (
                     <button
+                      type="button"
                       onClick={() => {
                         const pending = b.payments.find((p) => p.status === "PENDING");
                         const amt = pending ? Number(pending.amount) : Number(b.remainingBalance);
@@ -1312,6 +1313,7 @@ export default function AdminBookingsPage() {
                           </button>
                           {b.bookingStatus === "REQUESTED" && b.paymentStatus !== "PAID" && (
                             <button
+                              type="button"
                               onClick={() => {
                                 const pending = b.payments.find((p) => p.status === "PENDING");
                                 const amt = pending ? Number(pending.amount) : Number(b.remainingBalance);
@@ -1439,6 +1441,7 @@ export default function AdminBookingsPage() {
             Pending Refunds ({pendingRefunds.length})
           </Link>
           <button
+            type="button"
             onClick={handleExport}
             disabled={isExporting}
             className="w-full sm:w-auto px-5 py-2.5 bg-primary text-primary-foreground font-black text-xs uppercase tracking-widest rounded-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-50 h-11 cursor-pointer"
@@ -1544,6 +1547,7 @@ export default function AdminBookingsPage() {
               <div className="flex gap-1.5">
                 {STATUS_FILTERS.map((s) => (
                   <button
+                    type="button"
                     key={s}
                     onClick={() => {
                       setIsLoading(true);

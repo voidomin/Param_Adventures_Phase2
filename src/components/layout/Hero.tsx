@@ -194,6 +194,7 @@ export default function Hero({
       {activeSlides.length > 1 && (
         <div className="absolute bottom-12 right-8 md:right-16 z-30 flex items-center gap-4">
           <button
+            type="button"
             onClick={goToPrev}
             suppressHydrationWarning
             className="p-3 rounded-full bg-white/5 text-white/50 hover:bg-primary hover:text-white backdrop-blur-md transition-all border border-white/10"
@@ -201,6 +202,7 @@ export default function Hero({
             <ChevronLeft className="w-6 h-6" />
           </button>
           <button
+            type="button"
             onClick={goToNext}
             suppressHydrationWarning
             className="p-3 rounded-full bg-white/5 text-white/50 hover:bg-primary hover:text-white backdrop-blur-md transition-all border border-white/10"
@@ -324,6 +326,7 @@ export default function Hero({
         <div className="absolute bottom-12 left-8 md:left-16 flex items-center gap-4 z-30">
           {activeSlides.map((slide, idx) => (
             <button
+              type="button"
               key={slide.id}
               suppressHydrationWarning
               onClick={() => setCurrentIndex(idx)}

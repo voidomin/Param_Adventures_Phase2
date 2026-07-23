@@ -142,6 +142,7 @@ export default function HeroTab() {
           Upload an image or video to create your first homepage banner.
         </p>
         <button
+          type="button"
           onClick={() => openForm()}
           className="inline-block bg-background border border-border text-foreground px-6 py-2.5 rounded-full font-bold hover:bg-foreground/5 transition-colors"
         >
@@ -210,6 +211,7 @@ export default function HeroTab() {
               <div className="flex items-center gap-2 pt-4 md:pt-0 border-t border-border md:border-none w-full md:w-auto justify-center md:justify-end">
                 <div className="flex flex-col mr-2">
                   <button
+                    type="button"
                     onClick={() => handleMove(slide.id, "up", index)}
                     disabled={index === 0}
                     className="p-1 text-foreground/40 hover:text-foreground disabled:opacity-30 transition-colors"
@@ -217,6 +219,7 @@ export default function HeroTab() {
                     <ArrowUp className="w-4 h-4" />
                   </button>
                   <button
+                    type="button"
                     onClick={() => handleMove(slide.id, "down", index)}
                     disabled={index === slides.length - 1}
                     className="p-1 text-foreground/40 hover:text-foreground disabled:opacity-30 transition-colors"
@@ -226,6 +229,7 @@ export default function HeroTab() {
                 </div>
 
                 <button
+                  type="button"
                   onClick={() => openForm(slide)}
                   className="p-2 bg-primary/10 text-primary hover:bg-primary/20 rounded-lg transition-colors"
                   title="Edit"
@@ -233,6 +237,7 @@ export default function HeroTab() {
                   <Edit2 className="w-5 h-5" />
                 </button>
                 <button
+                  type="button"
                   onClick={() => handleDelete(slide.id, slide.title)}
                   className="p-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-lg transition-colors"
                   title="Delete"
@@ -259,6 +264,7 @@ export default function HeroTab() {
           </p>
         </div>
         <button
+          type="button"
           onClick={() => openForm()}
           className="bg-primary text-primary-foreground px-6 py-2.5 rounded-full font-bold flex items-center gap-2 hover:scale-105 transition-transform shadow-lg shadow-primary/25"
         >

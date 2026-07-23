@@ -353,6 +353,7 @@ export default function AdminCouponsPage() {
                   </td>
                   <td className="px-6 py-5 text-right">
                     <button
+                      type="button"
                       onClick={() => {
                         setSelectedCoupon(coupon);
                         setActionTab("ADJUST");
@@ -390,6 +391,7 @@ export default function AdminCouponsPage() {
           <p className="text-foreground/50 text-sm font-medium">Issue goodwill travel credits, split, merge, or adjust balances.</p>
         </div>
         <button
+          type="button"
           onClick={() => setIsCreateOpen(true)}
           className="flex items-center justify-center gap-2 px-5 py-3 bg-primary text-primary-foreground font-black text-sm uppercase tracking-widest rounded-2xl shadow-lg hover:opacity-90 transition-opacity"
         >
@@ -419,6 +421,7 @@ export default function AdminCouponsPage() {
           <div className="flex flex-wrap items-center gap-1.5 bg-background p-1 border border-border rounded-xl">
             {(["ALL", "ACTIVE", "PARTIALLY_USED", "FULLY_USED", "EXPIRED", "CANCELLED", "BLOCKED"] as const).map((st) => (
               <button
+                type="button"
                 key={st}
                 onClick={() => setFilterStatus(st)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
@@ -549,6 +552,7 @@ export default function AdminCouponsPage() {
             <div className="flex border-b border-border">
               {(["ADJUST", "MERGE", "SPLIT"] as const).map((tab) => (
                 <button
+                  type="button"
                   key={tab}
                   onClick={() => {
                     setActionTab(tab);

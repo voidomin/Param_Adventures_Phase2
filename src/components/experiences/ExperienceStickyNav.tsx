@@ -49,6 +49,7 @@ export default function ExperienceStickyNav({ sections }: Readonly<{ sections: S
       <nav className="flex flex-wrap gap-2 items-center py-1">
         {sections.map((section) => (
           <button
+            type="button"
             key={section.id}
             onClick={() => scrollToSection(section.id)}
             className={`whitespace-nowrap px-3 py-1.5 md:px-4 md:py-2 rounded-full text-xs md:text-sm font-bold transition-all ${

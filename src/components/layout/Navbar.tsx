@@ -102,6 +102,7 @@ export default function Navbar() {
                     )}
                   </Link>
                   <button
+                    type="button"
                     onClick={handleLogout}
                     className="text-foreground/50 hover:text-red-500 transition-colors p-2"
                     title="Logout"
@@ -127,6 +128,7 @@ export default function Navbar() {
             <div className="lg:hidden flex items-center space-x-4">
               <ThemeToggle />
               <button
+                type="button"
                 onClick={() => setIsOpen(!isOpen)}
                 className="text-foreground relative z-[60] p-1"
                 suppressHydrationWarning
@@ -209,6 +211,7 @@ export default function Navbar() {
                   </Link>
                 )}
                 <button
+                  type="button"
                   onClick={handleLogout}
                   className="w-full py-4 rounded-xl text-lg font-bold text-center block"
                   style={{

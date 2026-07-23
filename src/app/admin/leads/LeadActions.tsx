@@ -71,6 +71,7 @@ export default function LeadActions({
         />
         <div className="flex gap-2 justify-end">
           <button
+            type="button"
             onClick={() => setIsEditing(false)}
             className="p-1 hover:bg-foreground/5 rounded-lg text-foreground/50 transition-colors"
             disabled={isLoading}
@@ -78,6 +79,7 @@ export default function LeadActions({
             <X className="w-4 h-4" />
           </button>
           <button
+            type="button"
             onClick={() => handleUpdate(status, notes)}
             className="p-1 hover:bg-primary/10 text-primary rounded-lg transition-colors"
             disabled={isLoading}
@@ -96,6 +98,7 @@ export default function LeadActions({
   return (
     <div className="flex items-center gap-2">
       <button
+        type="button"
         onClick={() => setIsEditing(true)}
         className="p-2 hover:bg-primary/10 text-primary rounded-lg transition-all hover:scale-110 group"
         title="Edit Lead Status/Notes"
@@ -103,6 +106,7 @@ export default function LeadActions({
         <Pencil className="w-4 h-4" />
       </button>
       <button
+        type="button"
         onClick={() => handleUpdate("DISCARDED", notes)}
         className="p-2 hover:bg-red-500/10 text-red-500 rounded-lg transition-all hover:scale-110 group"
         title="Discard Lead"

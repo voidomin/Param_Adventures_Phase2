@@ -187,6 +187,7 @@ export default function SecurityTab(props: Readonly<TabProps>) {
             </div>
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={handleVerifyRazorpay}
                 disabled={isVerifying || isProcessingPayment}
                 className="px-6 py-2.5 bg-foreground/5 text-foreground rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-foreground/10 transition-all flex items-center gap-2 disabled:opacity-50 h-10 min-w-32 justify-center"
@@ -195,6 +196,7 @@ export default function SecurityTab(props: Readonly<TabProps>) {
                 Handshake
               </button>
               <button
+                type="button"
                 onClick={handleLivePaymentTest}
                 disabled={isVerifying || isProcessingPayment}
                 className="px-6 py-2.5 bg-primary text-primary-foreground rounded-xl font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 h-10 min-w-44 justify-center"

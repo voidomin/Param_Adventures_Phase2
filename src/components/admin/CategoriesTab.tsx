@@ -209,6 +209,7 @@ export default function CategoriesTab() {
           </p>
         </div>
         <button
+          type="button"
           onClick={openCreateModal}
           className="bg-primary text-primary-foreground px-6 py-2.5 rounded-full font-bold flex items-center gap-2 hover:scale-105 transition-transform shadow-lg shadow-primary/25"
         >
@@ -288,6 +289,7 @@ export default function CategoriesTab() {
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button
+                            type="button"
                             onClick={() => openEditModal(category)}
                             className="p-2 rounded-lg text-foreground/50 hover:bg-primary/10 hover:text-primary transition-colors"
                             title="Edit Category"
@@ -295,6 +297,7 @@ export default function CategoriesTab() {
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
+                            type="button"
                             onClick={() =>
                               handleDelete(
                                 category.id,
@@ -332,6 +335,7 @@ export default function CategoriesTab() {
                 {editCategory ? "Edit Category" : "Add Category"}
               </h2>
               <button
+                type="button"
                 onClick={() => setIsModalOpen(false)}
                 className="text-slate-400 hover:text-white transition-colors p-1"
               >

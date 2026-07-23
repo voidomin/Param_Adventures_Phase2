@@ -543,6 +543,7 @@ export default function WriteBlogPage() {
           {/* Actions */}
           <div className="flex items-center gap-4 pt-2">
             <button
+              type="button"
               onClick={onSaveClick}
               disabled={isSaving || isSubmitting}
               className="flex items-center gap-2 px-5 py-2.5 border border-border rounded-xl text-foreground/70 font-semibold hover:bg-foreground/5 transition-colors disabled:opacity-50"
@@ -555,6 +556,7 @@ export default function WriteBlogPage() {
               Save Draft
             </button>
             <button
+              type="button"
               onClick={onSubmitClick}
               disabled={isSaving || isSubmitting}
               className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-xl font-bold hover:opacity-90 transition-opacity disabled:opacity-50 shadow-lg shadow-primary/25"

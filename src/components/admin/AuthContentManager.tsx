@@ -95,6 +95,7 @@ export default function AuthContentManager() {
               <label className="text-sm font-bold text-foreground/70 flex justify-between items-center">
                 {def.label}
                 <button
+                  type="button"
                   onClick={() => handleSave(key, settings[key] || def.value)}
                   disabled={isSaving}
                   className="text-xs text-primary hover:underline flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-50"

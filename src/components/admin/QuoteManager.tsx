@@ -66,6 +66,7 @@ export default function QuoteManager() {
           </p>
         </div>
         <button
+          type="button"
           onClick={() => {
             setEditingQuote(null);
             setIsFormOpen(true);
@@ -112,6 +113,7 @@ export default function QuoteManager() {
 
               <div className="absolute inset-0 bg-background/80 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 rounded-2xl">
                 <button
+                  type="button"
                   onClick={() => {
                     setEditingQuote(quote);
                     setIsFormOpen(true);
@@ -121,6 +123,7 @@ export default function QuoteManager() {
                   <Edit2 className="w-4 h-4" />
                 </button>
                 <button
+                  type="button"
                   onClick={() => handleDelete(quote.id)}
                   className="bg-red-500 text-white p-2 rounded-lg shadow-lg shadow-red-500/20 hover:scale-110 transition-transform"
                 >

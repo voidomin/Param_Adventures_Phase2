@@ -70,6 +70,7 @@ function Toggle({
   return (
     <div className="flex flex-col items-center gap-1.5 min-w-[70px]">
       <button
+        type="button"
         onClick={onChange}
         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-background ${ringColor} ${checked ? activeColor : "bg-foreground/15"}`}
         aria-label={`Toggle ${label}`}
@@ -352,6 +353,7 @@ export default function AdminReviewsPage() {
                       <Loader2 className="w-4 h-4 animate-spin text-red-500 mx-auto" />
                     ) : (
                       <button
+                        type="button"
                         onClick={() => handleDelete(review.id, review.user.name)}
                         className="p-2 text-foreground/45 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all cursor-pointer inline-flex items-center justify-center"
                         title="Delete Review"
@@ -449,6 +451,7 @@ export default function AdminReviewsPage() {
           </p>
           <div className="flex gap-2">
             <button
+              type="button"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page === 1}
               className="p-2 rounded-xl border border-border text-foreground/60 hover:border-primary/50 hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
@@ -459,6 +462,7 @@ export default function AdminReviewsPage() {
               {page} / {pagination.totalPages}
             </span>
             <button
+              type="button"
               onClick={() =>
                 setPage((p) => Math.min(pagination.totalPages, p + 1))
               }

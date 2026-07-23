@@ -128,7 +128,8 @@ export default function FinanceTab(props: Readonly<TabProps>) {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button 
+                    <button
+                      type="button" 
                       onClick={() => removeTaxItem(tax.id)}
                       className="p-2 text-foreground/20 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
                     >
@@ -141,7 +142,8 @@ export default function FinanceTab(props: Readonly<TabProps>) {
           </tbody>
         </table>
         <div className="p-4 bg-foreground/5 border-t border-border">
-          <button 
+          <button
+            type="button" 
             onClick={addTaxItem}
             className="w-full py-3 flex items-center justify-center gap-2 text-sm font-bold text-primary hover:bg-primary/5 rounded-xl transition-all border border-dashed border-primary/20"
           >
@@ -197,7 +199,8 @@ export default function FinanceTab(props: Readonly<TabProps>) {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button 
+                      <button
+                        type="button" 
                         onClick={() => removePolicyRule(idx)}
                         className="p-2 text-foreground/20 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
                       >
@@ -210,7 +213,8 @@ export default function FinanceTab(props: Readonly<TabProps>) {
             </tbody>
           </table>
           <div className="p-4 bg-foreground/5 border-t border-border">
-            <button 
+            <button
+              type="button" 
               onClick={addPolicyRule}
               className="w-full py-3 flex items-center justify-center gap-2 text-sm font-bold text-primary hover:bg-primary/5 rounded-xl transition-all border border-dashed border-primary/20"
             >

@@ -201,6 +201,7 @@ export default function AdminTripsPage() {
         </div>
         <div className="flex items-center gap-3">
           <button
+            type="button"
             onClick={openCreateModal}
             className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl font-semibold hover:opacity-90 transition-opacity shadow-lg shadow-primary/25 text-sm cursor-pointer"
           >
@@ -213,6 +214,7 @@ export default function AdminTripsPage() {
       {/* Tabs */}
       <div className="flex border-b border-border mb-6">
         <button
+          type="button"
           onClick={() => setActiveTab("upcoming")}
           className={`px-5 py-3 font-semibold text-sm border-b-2 transition-colors cursor-pointer ${
             activeTab === "upcoming"
@@ -223,6 +225,7 @@ export default function AdminTripsPage() {
           Upcoming Trips
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab("past")}
           className={`px-5 py-3 font-semibold text-sm border-b-2 transition-colors cursor-pointer ${
             activeTab === "past"
@@ -321,6 +324,7 @@ export default function AdminTripsPage() {
                           {trip.manager.name}
                         </span>
                         <button
+                          type="button"
                           onClick={() =>
                             openAssignModal(trip.id, trip.manager?.id)
                           }
@@ -331,6 +335,7 @@ export default function AdminTripsPage() {
                       </div>
                     ) : (
                       <button
+                        type="button"
                         onClick={() => openAssignModal(trip.id)}
                         className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-orange-400 bg-orange-500/10 border border-orange-500/20 rounded-lg hover:bg-orange-500/20 transition-colors w-full"
                       >
@@ -392,6 +397,7 @@ export default function AdminTripsPage() {
                 Assign Trip Manager
               </h2>
               <button
+                type="button"
                 onClick={() => setAssigningSlotId(null)}
                 className="text-slate-400 hover:text-white transition-colors"
               >
@@ -464,6 +470,7 @@ export default function AdminTripsPage() {
                 Create New Trip Slot
               </h2>
               <button
+                type="button"
                 onClick={() => setIsCreateModalOpen(false)}
                 className="text-slate-400 hover:text-white transition-colors"
               >

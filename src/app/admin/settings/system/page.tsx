@@ -180,7 +180,8 @@ export default function SystemSettingsPage() {
             You have reached the Command Center. Only verified Pathfinders with cryptographic clearance may enter this domain.
           </p>
         </div>
-        <button 
+        <button
+          type="button" 
           onClick={() => globalThis.location.href = "/dashboard"}
           className="px-8 py-3 bg-foreground text-background rounded-2xl font-bold hover:scale-105 transition-all"
         >
@@ -215,7 +216,8 @@ export default function SystemSettingsPage() {
           </div>
           
           <div className="flex items-center gap-3">
-             <button 
+             <button
+              type="button" 
               onClick={() => fetchData()}
               disabled={isLoading}
               title="Reset all changes to database values"
@@ -224,7 +226,8 @@ export default function SystemSettingsPage() {
               <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : 'group-hover:rotate-180 transition-transform duration-500'}`} />
               <span className="font-bold text-xs uppercase tracking-widest whitespace-nowrap">Reset</span>
             </button>
-            <button 
+            <button
+              type="button" 
               onClick={handleSave}
               disabled={isSaving}
               className="px-8 py-3 bg-primary text-primary-foreground rounded-2xl font-black hover:scale-105 active:scale-95 transition-all shadow-xl shadow-primary/20 flex items-center gap-2 group"
@@ -244,6 +247,7 @@ export default function SystemSettingsPage() {
                const isActive = activeTab === tab.id;
                return (
                  <button
+                   type="button"
                    key={tab.id}
                    onClick={() => setActiveTab(tab.id)}
                    className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl font-bold transition-all text-sm group ${

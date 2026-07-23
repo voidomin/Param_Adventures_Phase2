@@ -178,6 +178,7 @@ export default function AdminDashboardPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <button
+            type="button"
             onClick={() => router.push("/admin/blogs")}
             className="flex w-full items-center justify-between rounded-xl border border-border bg-card p-4 hover:border-primary/50 transition-colors cursor-pointer text-left shadow-sm"
           >

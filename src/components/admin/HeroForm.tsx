@@ -94,6 +94,7 @@ export default function HeroForm({ slide, onClose, onSuccess }: HeroFormProps) {
             {isEditing ? "Edit Hero Slide" : "Create Hero Slide"}
           </h2>
           <button
+            type="button"
             onClick={onClose}
             className="p-2 text-foreground/50 hover:text-foreground hover:bg-foreground/5 rounded-full transition-colors"
           >

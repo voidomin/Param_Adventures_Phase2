@@ -85,6 +85,7 @@ export default function ShareButton({
 
   return (
     <button
+      type="button"
       onClick={handleShare}
       suppressHydrationWarning
       className={cn(

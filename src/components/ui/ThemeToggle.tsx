@@ -22,6 +22,7 @@ export default function ThemeToggle() {
 
   return (
     <button
+      type="button"
       onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
       className="p-2 md:p-2.5 rounded-full bg-foreground/5 text-foreground/70 hover:bg-primary/10 hover:text-primary transition-all flex items-center justify-center shrink-0"
       aria-label="Toggle Global Theme"

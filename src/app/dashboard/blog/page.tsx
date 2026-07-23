@@ -209,6 +209,7 @@ export default function UserBlogsPage() {
                           <Edit3 className="w-4 h-4" />
                         </Link>
                         <button
+                          type="button"
                           onClick={() => handleDelete(blog.id)}
                           disabled={deletingId === blog.id}
                           className="p-2 rounded-lg border border-border text-foreground/60 hover:text-red-500 hover:border-red-500/30 transition-colors disabled:opacity-40"

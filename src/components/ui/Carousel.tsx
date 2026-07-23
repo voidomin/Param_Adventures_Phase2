@@ -50,6 +50,7 @@ export default function Carousel({
     <div className="relative group">
       {/* Left Arrow */}
       <button
+        type="button"
         onClick={() => scroll("left")}
         disabled={!canScrollLeft}
         aria-label="Scroll Left"
@@ -95,6 +96,7 @@ export default function Carousel({
       {/* Mobile Swipe Hint */}
       {isMounted && isAtStart && canScrollRight && (
         <button
+          type="button"
           onClick={() => {
             scroll("right");
           }}
@@ -107,6 +109,7 @@ export default function Carousel({
 
       {/* Right Arrow */}
       <button
+        type="button"
         onClick={() => scroll("right")}
         disabled={!canScrollRight}
         aria-label="Scroll Right"

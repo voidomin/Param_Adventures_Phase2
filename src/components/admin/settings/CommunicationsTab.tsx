@@ -170,6 +170,7 @@ export default function CommunicationsTab(props: Readonly<TabProps>) {
             />
           </div>
           <button
+            type="button"
             onClick={handleSendTestEmail}
             disabled={testStatus === "sending" || !testEmail}
             className="h-12 px-6 bg-primary text-primary-foreground rounded-2xl font-bold hover:scale-105 active:scale-95 transition-all shadow-lg shadow-primary/20 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 shrink-0"

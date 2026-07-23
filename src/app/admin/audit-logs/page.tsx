@@ -235,6 +235,7 @@ export default function AuditLogsPage() {
 
               <div className="mt-6 pt-6 border-t border-border/50 flex flex-col sm:flex-row gap-3">
                 <button
+                  type="button"
                   disabled={activeDownload !== null && activeDownload !== undefined}
                   onClick={() => handleDownload(category, "json")}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-border bg-card text-foreground hover:bg-foreground/5 hover:border-foreground/20 transition-all font-bold text-xs disabled:opacity-50 cursor-pointer"
@@ -247,6 +248,7 @@ export default function AuditLogsPage() {
                   Export JSON
                 </button>
                 <button
+                  type="button"
                   disabled={activeDownload !== null && activeDownload !== undefined}
                   onClick={() => handleDownload(category, "excel")}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground hover:opacity-95 transition-all font-bold text-xs disabled:opacity-50 cursor-pointer shadow-sm shadow-primary/20"

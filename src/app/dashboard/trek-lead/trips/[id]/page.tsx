@@ -555,6 +555,7 @@ export default function TrekLeadTripDetailPage() {
             <div className="flex flex-wrap gap-3 pt-2 border-t border-border/50">
               {/* Save Attendance */}
               <button
+                type="button"
                 onClick={saveAttendance}
                 disabled={isSavingAttendance}
                 className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl font-semibold text-sm hover:scale-105 transition-transform disabled:opacity-50 shadow-lg shadow-primary/20"
@@ -570,6 +571,7 @@ export default function TrekLeadTripDetailPage() {
               {/* Start Trek */}
               {slot.status === "ACTIVE" && (
                 <button
+                  type="button"
                   onClick={handleStartTrek}
                   disabled={isStartingTrek}
                   className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-500 text-white rounded-xl font-bold text-sm transition-all hover:scale-105 disabled:opacity-50 shadow-lg shadow-green-900/30"
@@ -622,6 +624,7 @@ export default function TrekLeadTripDetailPage() {
             </div>
           )}
           <button
+            type="button"
             onClick={handleEndTrek}
             disabled={isEndingTrek}
             className="flex items-center gap-2 px-6 py-3 bg-orange-600 hover:bg-orange-500 text-white rounded-xl font-bold text-sm transition-all hover:scale-105 disabled:opacity-50 shadow-lg shadow-orange-900/30"

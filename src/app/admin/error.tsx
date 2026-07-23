@@ -27,6 +27,7 @@ export default function AdminError({
         Something went wrong in the admin panel. Your data is safe.
       </p>
       <button
+        type="button"
         onClick={reset}
         className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 font-bold text-primary-foreground hover:opacity-90 transition-opacity"
       >

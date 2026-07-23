@@ -293,6 +293,7 @@ export default function MediaLibraryPage() {
                 {selectedIds.length === 0 && (
                   <div className="absolute inset-0 bg-background/80 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-xs z-20">
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         copyToClipboard(item.originalUrl, item.id);
@@ -307,6 +308,7 @@ export default function MediaLibraryPage() {
                       )}
                     </button>
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         setMergeSourceItem(item);
@@ -317,6 +319,7 @@ export default function MediaLibraryPage() {
                       <GitMerge className="w-5 h-5" />
                     </button>
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleDelete(item.id);
@@ -393,6 +396,7 @@ export default function MediaLibraryPage() {
         <div className="flex gap-1.5 bg-foreground/5 p-1 rounded-xl border border-border/50">
           {(["ALL", "UNUSED", "IMAGE", "VIDEO", "DUPLICATES"] as const).map((t) => (
             <button
+              type="button"
               key={t}
               onClick={() => setFilterType(t)}
               className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all uppercase tracking-wider ${
@@ -418,6 +422,7 @@ export default function MediaLibraryPage() {
             </span>
             <div className="h-4 w-px bg-border" />
             <button
+              type="button"
               onClick={() => {
                 const allFilteredIds = filteredMedia.map(m => m.id);
                 const areAllSelected = allFilteredIds.every(id => selectedIds.includes(id));
@@ -438,12 +443,14 @@ export default function MediaLibraryPage() {
               {filteredMedia.map(m => m.id).every(id => selectedIds.includes(id)) ? "Deselect All" : "Select All"}
             </button>
             <button
+              type="button"
               onClick={handleBulkDelete}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition-all uppercase tracking-wider shadow-lg shadow-red-500/20 cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" /> Delete Selected
             </button>
             <button
+              type="button"
               onClick={() => setSelectedIds([])}
               className="p-2 rounded-xl border border-border hover:bg-foreground/5 text-foreground/60 hover:text-foreground transition-all cursor-pointer"
               title="Clear Selection"
@@ -461,6 +468,7 @@ export default function MediaLibraryPage() {
             <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-foreground/2">
               <h3 className="font-heading font-bold text-lg text-foreground">Merge & Deduplicate Media</h3>
               <button
+                type="button"
                 onClick={() => {
                   setMergeSourceItem(null);
                   setMergeTargetId("");
@@ -589,6 +597,7 @@ export default function MediaLibraryPage() {
 
               <div className="flex gap-3 justify-end pt-4 border-t border-border/50">
                 <button
+                  type="button"
                   onClick={() => {
                     setMergeSourceItem(null);
                     setMergeTargetId("");
@@ -598,6 +607,7 @@ export default function MediaLibraryPage() {
                   Cancel
                 </button>
                 <button
+                  type="button"
                   onClick={handleMerge}
                   disabled={isMerging || !mergeTargetId}
                   className="px-6 py-2.5 bg-primary text-primary-foreground rounded-xl font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 h-10"
