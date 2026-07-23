@@ -5,7 +5,10 @@ import { z } from "zod";
 
 const updateParticipantSchema = z.object({
   name: z.string().min(1, "Name is required").optional(),
-  email: z.string().optional().refine(val => !val || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val), { message: "Invalid email format" }),
+  email: z.string().optional().refine(
+    val => !val || (val.length <= 320 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)),
+    { message: "Invalid email format" },
+  ),
   phoneNumber: z.string().min(1, "Phone number is required").optional().or(z.literal("")),
   gender: z.string().min(1, "Gender is required").optional(),
   dateOfBirth: z.string().min(1, "Date of birth is required").optional(),

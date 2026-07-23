@@ -6,6 +6,21 @@ import { verifyAccessToken } from "@/lib/auth";
 type Params = { params: Promise<{ id: string }> };
 
 /**
+ * Strips HTML-like tags via a linear scan instead of a regex, so runtime is
+ * always O(n) regardless of how the (untrusted, user-authored) input is shaped.
+ */
+function stripTags(input: string): string {
+  let result = "";
+  let inTag = false;
+  for (const ch of input) {
+    if (ch === "<") inTag = true;
+    else if (ch === ">") inTag = false;
+    else if (!inTag) result += ch;
+  }
+  return result;
+}
+
+/**
  * POST /api/user/blogs/[id]/submit — submit a blog for admin review
  * Transitions DRAFT → PENDING_REVIEW
  */
@@ -44,7 +59,7 @@ export async function POST(request: NextRequest, { params }: Params) {
           const parsed = JSON.parse(trimmed);
           hasContent = Array.isArray(parsed?.content) && parsed.content.length > 0;
         } catch {
-          const stripped = trimmed.replace(/<[^>]*>/g, "").trim();
+          const stripped = stripTags(trimmed).trim();
           hasContent = stripped.length > 0;
         }
       } else {

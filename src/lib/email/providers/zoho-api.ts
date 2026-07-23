@@ -33,10 +33,14 @@ export class ZohoAPIProvider implements EmailProvider {
     let fromName = "Param Adventures";
 
     if (options.from) {
-      const match = /^(?:"?([^"]*)"?\s)?(?:<(.+)>|(.+))$/.exec(options.from);
-      if (match) {
-        fromName = (match[1] || "").trim() || "Param Adventures";
-        fromAddress = (match[2] || match[3] || "").trim();
+      // Parse "Name <email>" or "\"Name\" <email>" without a backtracking-prone
+      // regex -- plain index lookups are O(n) regardless of input shape.
+      const angleStart = options.from.indexOf("<");
+      const angleEnd = angleStart === -1 ? -1 : options.from.indexOf(">", angleStart);
+      if (angleStart !== -1 && angleEnd !== -1) {
+        const namePart = options.from.slice(0, angleStart).trim().replace(/^"|"$/g, "");
+        fromName = namePart || "Param Adventures";
+        fromAddress = options.from.slice(angleStart + 1, angleEnd).trim();
       } else {
         fromAddress = options.from.trim();
       }
