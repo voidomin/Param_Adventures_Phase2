@@ -212,6 +212,8 @@ export default function MediaLibraryPage() {
           return (
             <div
               key={item.id}
+              role="button"
+              tabIndex={0}
               className={`group bg-card border rounded-xl overflow-hidden hover:border-foreground/30 transition-all relative flex flex-col cursor-pointer ${
                 isSelected ? "border-primary ring-2 ring-primary/30" : "border-border"
               }`}
@@ -224,19 +226,42 @@ export default function MediaLibraryPage() {
                   );
                 }
               }}
+              onKeyDown={(e) => {
+                if ((e.key === "Enter" || e.key === " ") && selectedIds.length > 0) {
+                  e.preventDefault();
+                  setSelectedIds((prev) =>
+                    prev.includes(item.id)
+                      ? prev.filter((id) => id !== item.id)
+                      : [...prev, item.id]
+                  );
+                }
+              }}
             >
               {/* Select Checkbox Overlay */}
-              <div 
+              <div
+                role="button"
+                tabIndex={0}
                 className={`absolute top-2.5 left-2.5 z-30 transition-opacity duration-200 cursor-pointer ${
                   selectedIds.length > 0 || isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
                 }`}
                 onClick={(e) => {
                   e.stopPropagation();
-                  setSelectedIds((prev) => 
-                    prev.includes(item.id) 
-                      ? prev.filter((id) => id !== item.id) 
+                  setSelectedIds((prev) =>
+                    prev.includes(item.id)
+                      ? prev.filter((id) => id !== item.id)
                       : [...prev, item.id]
                   );
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setSelectedIds((prev) =>
+                      prev.includes(item.id)
+                        ? prev.filter((id) => id !== item.id)
+                        : [...prev, item.id]
+                    );
+                  }
                 }}
               >
                 <div className={`w-5.5 h-5.5 rounded-full border flex items-center justify-center transition-all ${
@@ -350,7 +375,7 @@ export default function MediaLibraryPage() {
                       <span
                         className="bg-primary/10 text-primary text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border border-primary/20 shadow-sm cursor-help"
                         title={item.usages.map((u) => `${u.type}: ${u.name}`).join("\n")}
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={(e) => e.stopPropagation()} // NOSONAR: decorative tooltip badge, click only guards against bubbling to the card's selection toggle -- there is no action for a keyboard user to invoke here
                       >
                         {item.usageCount} {item.usageCount === 1 ? "usage" : "usages"}
                       </span>

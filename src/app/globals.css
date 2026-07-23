@@ -64,6 +64,8 @@
 
 @utility no-scrollbar {
   scrollbar-width: none;
+  /* NOSONAR: Tailwind v4 compiles @utility's `&` into a real .no-scrollbar
+     scope at build time; SonarCloud's CSS parser doesn't know that yet. */
   &::-webkit-scrollbar {
     display: none;
   }

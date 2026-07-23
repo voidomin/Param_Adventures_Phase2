@@ -5,7 +5,7 @@ import * as Sentry from "@sentry/nextjs";
 import { AlertCircle, RefreshCw, Home } from "lucide-react";
 import Link from "next/link";
 
-export default function Error({
+export default function ErrorPage({
   error,
   reset,
 }: Readonly<{

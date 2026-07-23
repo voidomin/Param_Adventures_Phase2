@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { prisma } from "@/lib/db";
 import { CouponStatus, TravelCoupon } from "@prisma/client";
 
@@ -201,7 +202,7 @@ export function generateCouponCode(prefix = "PARAM"): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let random = "";
   for (let i = 0; i < 8; i++) {
-    random += chars.charAt(Math.floor(Math.random() * chars.length));
+    random += chars.charAt(crypto.randomInt(chars.length));
   }
   return `${prefix}-${random}`;
 }
