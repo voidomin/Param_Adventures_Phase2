@@ -1,5 +1,8 @@
 import { encrypt, decrypt } from "./encryption";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type QueryHookArgs = { args: any; query: (args: any) => Promise<any> };
+
 const SENSITIVE_KEYS = new Set([
   "jwt_secret",
   "razorpay_key_secret",
@@ -7,67 +10,102 @@ const SENSITIVE_KEYS = new Set([
   "smtp_pass",
   "zoho_api_key",
   "resend_api_key",
-  "aws_secret_access_key"
+  "aws_secret_access_key",
 ]);
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function encryptIfSensitive(data: any, keyOverride?: string) {
+  if (!data) return;
+  const key = data.key ?? keyOverride;
+  if (key && SENSITIVE_KEYS.has(key) && data.value) {
+    data.value = encrypt(data.value);
+  }
+}
+
+ 
+function decryptResult<T extends { key?: string; value?: string } | null>(result: T): T {
+  if (result && result.key && SENSITIVE_KEYS.has(result.key) && result.value) {
+    result.value = decrypt(result.value);
+  }
+  return result;
+}
+
 /**
- * Registers Prisma middleware to transparently encrypt sensitive setting values
- * on save and decrypt them on read.
+ * Prisma Client Extension that transparently encrypts sensitive PlatformSetting/
+ * SiteSetting values on write and decrypts them on read.
+ *
+ * Replaces the old `$use`-based middleware, which silently stopped running once
+ * Prisma 7 removed the `$use` API (registerEncryptionMiddleware's own guard —
+ * `if (typeof client.$use !== "function") return;` — meant it no-opped on every
+ * request with no error, so encryption at rest was never actually happening).
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function registerEncryptionMiddleware(client: any) {
-  if (typeof client.$use !== "function") {
-    return;
-  }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  client.$use(async (params: any, next: any) => {
-    const isSettingModel = params.model === "PlatformSetting" || params.model === "SiteSetting";
-
-    if (isSettingModel) {
-      // 1. Intercept write actions (create, update, upsert)
-      if (params.action === "create" && params.args?.data) {
-        const data = params.args.data;
-        if (data.key && SENSITIVE_KEYS.has(data.key) && data.value) {
-          data.value = encrypt(data.value);
-        }
-      } else if (params.action === "update" && params.args?.data) {
-        const key = params.args.where?.key;
-        if (key && SENSITIVE_KEYS.has(key) && params.args.data.value) {
-          params.args.data.value = encrypt(params.args.data.value);
-        }
-      } else if (params.action === "upsert" && params.args) {
-        const key = params.args.where?.key || params.args.create?.key;
-        if (key && SENSITIVE_KEYS.has(key)) {
-          if (params.args.create && params.args.create.value) {
-            params.args.create.value = encrypt(params.args.create.value);
-          }
-          if (params.args.update && params.args.update.value) {
-            params.args.update.value = encrypt(params.args.update.value);
-          }
-        }
-      }
-
-      // 2. Execute query
-      const result = await next(params);
-
-      // 3. Intercept read actions and decrypt
-      if (result) {
-        if (Array.isArray(result)) {
-          for (const item of result) {
-            if (item && item.key && SENSITIVE_KEYS.has(item.key) && item.value) {
-              item.value = decrypt(item.value);
-            }
-          }
-        } else if (typeof result === "object") {
-          // For findUnique, findFirst
-          if (result.key && SENSITIVE_KEYS.has(result.key) && result.value) {
-            result.value = decrypt(result.value);
-          }
-        }
-      }
-      return result;
-    }
-
-    return next(params);
+export function withEncryption<T extends { $extends: (...args: any[]) => any }>(client: T) {
+  return client.$extends({
+    name: "encryption",
+    query: {
+      platformSetting: {
+        async create({ args, query }: QueryHookArgs) {
+          encryptIfSensitive(args.data);
+          return query(args);
+        },
+        async update({ args, query }: QueryHookArgs) {
+          encryptIfSensitive(args.data, args.where?.key);
+          return query(args);
+        },
+        async upsert({ args, query }: QueryHookArgs) {
+          encryptIfSensitive(args.create);
+          encryptIfSensitive(args.update, args.where?.key ?? args.create?.key);
+          return query(args);
+        },
+        async findUnique({ args, query }: QueryHookArgs) {
+          return decryptResult(await query(args));
+        },
+        async findUniqueOrThrow({ args, query }: QueryHookArgs) {
+          return decryptResult(await query(args));
+        },
+        async findFirst({ args, query }: QueryHookArgs) {
+          return decryptResult(await query(args));
+        },
+        async findFirstOrThrow({ args, query }: QueryHookArgs) {
+          return decryptResult(await query(args));
+        },
+        async findMany({ args, query }: QueryHookArgs) {
+          const results = await query(args);
+          return results.map(decryptResult);
+        },
+      },
+      siteSetting: {
+        async create({ args, query }: QueryHookArgs) {
+          encryptIfSensitive(args.data);
+          return query(args);
+        },
+        async update({ args, query }: QueryHookArgs) {
+          encryptIfSensitive(args.data, args.where?.key);
+          return query(args);
+        },
+        async upsert({ args, query }: QueryHookArgs) {
+          encryptIfSensitive(args.create);
+          encryptIfSensitive(args.update, args.where?.key ?? args.create?.key);
+          return query(args);
+        },
+        async findUnique({ args, query }: QueryHookArgs) {
+          return decryptResult(await query(args));
+        },
+        async findUniqueOrThrow({ args, query }: QueryHookArgs) {
+          return decryptResult(await query(args));
+        },
+        async findFirst({ args, query }: QueryHookArgs) {
+          return decryptResult(await query(args));
+        },
+        async findFirstOrThrow({ args, query }: QueryHookArgs) {
+          return decryptResult(await query(args));
+        },
+        async findMany({ args, query }: QueryHookArgs) {
+          const results = await query(args);
+          return results.map(decryptResult);
+        },
+      },
+    },
   });
 }

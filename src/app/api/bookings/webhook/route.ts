@@ -160,7 +160,11 @@ export async function POST(request: NextRequest) {
       .update(rawBody)
       .digest("hex");
 
-    if (expectedSignature !== signature) {
+    const signaturesMatch =
+      expectedSignature.length === signature.length &&
+      crypto.timingSafeEqual(Buffer.from(expectedSignature), Buffer.from(signature));
+
+    if (!signaturesMatch) {
       console.warn("[Webhook] Invalid signature received from IP:", request.headers.get("x-forwarded-for"));
       
       try {

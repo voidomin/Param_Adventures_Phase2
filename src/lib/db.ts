@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
-import { registerEncryptionMiddleware } from "./encryption-middleware";
+import { withEncryption } from "./encryption-middleware";
 
 const connectionString = process.env.DATABASE_URL!;
 
@@ -9,8 +9,8 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-function createPrismaClient() {
-  const pool = new pg.Pool({ 
+function createPrismaClient(): PrismaClient {
+  const pool = new pg.Pool({
     connectionString,
     max: 10,
     idleTimeoutMillis: 30000,
@@ -19,8 +19,10 @@ function createPrismaClient() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const adapter = new PrismaPg(pool as any);
   const client = new PrismaClient({ adapter });
-  registerEncryptionMiddleware(client);
-  return client;
+  // withEncryption's extended type is intentionally not propagated here — it
+  // only adds runtime query hooks, and callers throughout the app rely on the
+  // plain PrismaClient type (e.g. `Parameters<typeof prisma.$transaction>`).
+  return withEncryption(client) as unknown as PrismaClient;
 }
 
 // Extend the PrismaClient type to include the new model explicitly
