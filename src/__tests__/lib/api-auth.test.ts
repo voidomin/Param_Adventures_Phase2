@@ -175,4 +175,91 @@ describe("authorizeRequest", () => {
       expect(result.response.status).toBe(500);
     }
   });
+
+  it("handles requiredPermission as an array of strings", async () => {
+    const { authorizeRequest } = await vi.importActual<typeof import("@/lib/api-auth")>("@/lib/api-auth");
+
+    const req = createRequest("Bearer valid-token");
+    mockVerifyAccessToken.mockResolvedValue({ userId: "u1", roleName: "USER", tokenVersion: 1 });
+    mockUserFindUnique.mockResolvedValue({
+      deletedAt: null,
+      status: "ACTIVE",
+      tokenVersion: 1,
+      role: { name: "USER", permissions: [{ permission: { key: "trip:create" } }] },
+    } as any);
+
+    const result = await authorizeRequest(req, ["trip:read", "trip:create"]);
+    expect(result.authorized).toBe(true);
+  });
+});
+
+describe("authorizeSystemRequest", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const createRequest = (authHeader?: string) => {
+    const req = new NextRequest("http://localhost");
+    if (authHeader) {
+      req.headers.set("authorization", authHeader);
+    }
+    return req;
+  };
+
+  it("returns standard authorization failure if authorizeRequest fails", async () => {
+    const { authorizeSystemRequest } = await vi.importActual<typeof import("@/lib/api-auth")>("@/lib/api-auth");
+    const req = createRequest(); // No token
+
+    const result = await authorizeSystemRequest(req);
+    expect(result.authorized).toBe(false);
+    if (!result.authorized) {
+      expect(result.response.status).toBe(401);
+    }
+  });
+
+  it("returns 403 if authorized user email is not in whitelist", async () => {
+    const { authorizeSystemRequest } = await vi.importActual<typeof import("@/lib/api-auth")>("@/lib/api-auth");
+    const req = createRequest("Bearer valid-token");
+
+    mockVerifyAccessToken.mockResolvedValue({ userId: "u1", roleName: "SUPER_ADMIN", tokenVersion: 1 });
+    mockUserFindUnique.mockResolvedValueOnce({
+      deletedAt: null,
+      status: "ACTIVE",
+      tokenVersion: 1,
+      role: { name: "SUPER_ADMIN", permissions: [{ permission: { key: "system:config" } }] },
+    } as any); // authorizeRequest fetch
+
+    mockUserFindUnique.mockResolvedValueOnce({
+      email: "not-whitelisted@domain.com",
+    } as any); // email fetch
+
+    const result = await authorizeSystemRequest(req);
+    expect(result.authorized).toBe(false);
+    if (!result.authorized) {
+      expect(result.response.status).toBe(403);
+    }
+  });
+
+  it("returns authorized payload if user email is in whitelist", async () => {
+    const { authorizeSystemRequest } = await vi.importActual<typeof import("@/lib/api-auth")>("@/lib/api-auth");
+    const req = createRequest("Bearer valid-token");
+
+    mockVerifyAccessToken.mockResolvedValue({ userId: "u1", roleName: "SUPER_ADMIN", tokenVersion: 1 });
+    mockUserFindUnique.mockResolvedValueOnce({
+      deletedAt: null,
+      status: "ACTIVE",
+      tokenVersion: 1,
+      role: { name: "SUPER_ADMIN", permissions: [{ permission: { key: "system:config" } }] },
+    } as any); // authorizeRequest fetch
+
+    mockUserFindUnique.mockResolvedValueOnce({
+      email: "dev@paramadventures.in",
+    } as any); // email fetch
+
+    const result = await authorizeSystemRequest(req);
+    expect(result.authorized).toBe(true);
+    if (result.authorized) {
+      expect(result.userId).toBe("u1");
+    }
+  });
 });

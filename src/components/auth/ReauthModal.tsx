@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, FormEvent } from "react";
 import { Loader2, X, Lock } from "lucide-react";
 
 interface ReauthModalProps {
@@ -15,14 +15,14 @@ export default function ReauthModal({
   onClose,
   onSuccess,
   email,
-}: ReauthModalProps) {
+}: Readonly<ReauthModalProps>) {
   const [password, setPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   if (!isOpen) return null;
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!password.trim()) {
       setError("Please enter your password.");
@@ -80,10 +80,11 @@ export default function ReauthModal({
 
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-semibold text-foreground/50 uppercase tracking-wider mb-2">
+              <label htmlFor="reauth-email" className="block text-xs font-semibold text-foreground/50 uppercase tracking-wider mb-2">
                 Account
               </label>
               <input
+                id="reauth-email"
                 type="text"
                 disabled
                 value={email}

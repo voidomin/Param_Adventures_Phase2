@@ -91,6 +91,64 @@ export default function WriteBlogPage() {
       .finally(() => setIsLoadingExp(false));
   }, [router]);
 
+  const createNewBlog = async (): Promise<string | null> => {
+    const res = await fetch("/api/user/blogs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        experienceId: selectedExp || null,
+        title,
+        coverImageUrl: coverImageUrl || null,
+        theme,
+        authorSocials: socials,
+        metaTitle: metaTitle || null,
+        metaDescription: metaDescription || null,
+        metaKeywords: metaKeywords || null,
+        readingTime: readingTime ? Number(readingTime) : null,
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      if (res.status === 401) {
+        setIsReauthOpen(true);
+        return null;
+      }
+      setError(data.error || "Failed to create blog.");
+      return null;
+    }
+    const newId = data.blog.id;
+    setBlogId(newId);
+    return newId;
+  };
+
+  const updateBlogDraft = async (id: string): Promise<boolean> => {
+    const patchRes = await fetch(`/api/user/blogs/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title,
+        content,
+        coverImageUrl: coverImageUrl || null,
+        theme,
+        authorSocials: socials,
+        metaTitle: metaTitle || null,
+        metaDescription: metaDescription || null,
+        metaKeywords: metaKeywords || null,
+        readingTime: readingTime ? Number(readingTime) : null,
+      }),
+    });
+    if (!patchRes.ok) {
+      if (patchRes.status === 401) {
+        setIsReauthOpen(true);
+        return false;
+      }
+      const patchData = await patchRes.json();
+      setError(patchData.error || "Failed to save draft.");
+      return false;
+    }
+    return true;
+  };
+
   const handleSaveDraft = async (): Promise<string | null> => {
     setError("");
     if (!selectedExp && !isAdmin) {
@@ -106,60 +164,12 @@ export default function WriteBlogPage() {
       let currentBlogId = blogId;
 
       if (currentBlogId === null) {
-        // Create new blog — capture the new ID in a local variable immediately
-        const res = await fetch("/api/user/blogs", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            experienceId: selectedExp || null,
-            title,
-            coverImageUrl: coverImageUrl || null,
-            theme,
-            authorSocials: socials,
-            metaTitle: metaTitle || null,
-            metaDescription: metaDescription || null,
-            metaKeywords: metaKeywords || null,
-            readingTime: readingTime ? Number(readingTime) : null,
-          }),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          if (res.status === 401) {
-            setIsReauthOpen(true);
-            return null;
-          }
-          setError(data.error || "Failed to create blog.");
-          return null;
-        }
-        currentBlogId = data.blog.id;
-        setBlogId(currentBlogId); // update state (async, but local var is already set)
+        currentBlogId = await createNewBlog();
+        if (currentBlogId === null) return null;
       }
 
-      // Always PATCH the blog with the latest content/metadata using the local ID
-      const patchRes = await fetch(`/api/user/blogs/${currentBlogId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          content,
-          coverImageUrl: coverImageUrl || null,
-          theme,
-          authorSocials: socials,
-          metaTitle: metaTitle || null,
-          metaDescription: metaDescription || null,
-          metaKeywords: metaKeywords || null,
-          readingTime: readingTime ? Number(readingTime) : null,
-        }),
-      });
-      if (!patchRes.ok) {
-        if (patchRes.status === 401) {
-          setIsReauthOpen(true);
-          return null;
-        }
-        const patchData = await patchRes.json();
-        setError(patchData.error || "Failed to save draft.");
-        return null;
-      }
+      const patchSuccess = await updateBlogDraft(currentBlogId);
+      if (!patchSuccess) return null;
 
       setSavedAt(new Date().toLocaleTimeString("en-IN"));
       return currentBlogId;
