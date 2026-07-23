@@ -107,5 +107,10 @@ describe("sanitizeEditorContent", () => {
     expect(sanitized.content[1].attrs.src).toBe("https://example.com/pic.png");
     expect(sanitized.content[2].attrs.src).toBe("");
   });
+
+  it("returns the input unchanged if it is not a string or object", () => {
+    expect(sanitizeEditorContent(123)).toBe(123);
+    expect(sanitizeEditorContent(true)).toBe(true);
+  });
 });
 

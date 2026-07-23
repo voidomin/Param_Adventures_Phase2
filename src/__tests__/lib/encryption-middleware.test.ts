@@ -22,7 +22,7 @@ describe("Encryption Middleware (Prisma Client Extension)", () => {
     await extended.__hooks.platformSetting.create({ args, query });
 
     expect(args.data.value).not.toBe("raw-password");
-    expect(args.data.value.split(":").length).toBe(3);
+    expect(args.data.value.split(":")).toHaveLength(3);
     expect(query).toHaveBeenCalledWith(args);
   });
 
@@ -44,7 +44,7 @@ describe("Encryption Middleware (Prisma Client Extension)", () => {
     await extended.__hooks.platformSetting.update({ args, query });
 
     expect(args.data.value).not.toBe("raw-secret");
-    expect(args.data.value.split(":").length).toBe(3);
+    expect(args.data.value.split(":")).toHaveLength(3);
   });
 
   it("decrypts sensitive fields on findUnique", async () => {
@@ -79,6 +79,6 @@ describe("Encryption Middleware (Prisma Client Extension)", () => {
     await extended.__hooks.siteSetting.create({ args, query });
 
     expect(args.data.value).not.toBe("raw-jwt-secret");
-    expect(args.data.value.split(":").length).toBe(3);
+    expect(args.data.value.split(":")).toHaveLength(3);
   });
 });

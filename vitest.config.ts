@@ -31,6 +31,15 @@ export default defineConfig({
         'src/**/*.test.ts',
         'src/**/*.test.tsx',
       ],
+      // Floor, not a target: guards against coverage regressing below where
+      // it actually stands today. Ratchet these up as more tests land —
+      // do not lower them to make a change pass.
+      thresholds: {
+        statements: 40,
+        branches: 32,
+        functions: 28,
+        lines: 40,
+      },
     },
     projects: [
       {
