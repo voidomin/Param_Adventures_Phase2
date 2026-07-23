@@ -26,7 +26,7 @@ describe("ExperienceGallery Component", () => {
   it("renders the primary image grid successfully", () => {
     render(<ExperienceGallery images={sampleImages} mediaSettings={mockMediaSettings} />);
     const images = screen.getAllByRole("img");
-    expect(images.length).toBe(2); // 2 images, 1 video
+    expect(images).toHaveLength(2); // 2 images, 1 video
     expect(images[0]).toHaveAttribute("src", sampleImages[0]);
     
     // Check if video is rendered
@@ -124,7 +124,7 @@ describe("ExperienceGallery Component", () => {
     
     // Initially shows 24 items
     const images = screen.getAllByRole("img");
-    expect(images.length).toBe(24);
+    expect(images).toHaveLength(24);
 
     // "See All 30 Photos" button should be present
     const seeAllBtn = screen.getByText("See All 30 Photos");
@@ -134,7 +134,7 @@ describe("ExperienceGallery Component", () => {
     fireEvent.click(seeAllBtn);
 
     // Should show all 30 now
-    expect(screen.getAllByRole("img").length).toBe(30);
+    expect(screen.getAllByRole("img")).toHaveLength(30);
     
     // Button text changes to "Show Less"
     expect(screen.getByText("Show Less")).toBeInTheDocument();

@@ -7,7 +7,7 @@ describe("Encryption Utility", () => {
     const cipherText = encrypt(plainText);
 
     expect(cipherText).not.toBe(plainText);
-    expect(cipherText.split(":").length).toBe(3);
+    expect(cipherText.split(":")).toHaveLength(3);
 
     const decryptedText = decrypt(cipherText);
     expect(decryptedText).toBe(plainText);

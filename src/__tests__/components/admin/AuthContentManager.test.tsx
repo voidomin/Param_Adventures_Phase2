@@ -90,7 +90,7 @@ describe("AuthContentManager Component", () => {
     });
     
     render(<AuthContentManager />);
-    await waitFor(() => expect(screen.getByText("Global Styles")).toBeInTheDocument());
+    expect(await screen.findByText("Global Styles")).toBeInTheDocument();
 
     // 2. Mock failed save request
     (globalThis.fetch as any).mockResolvedValueOnce({ ok: false });

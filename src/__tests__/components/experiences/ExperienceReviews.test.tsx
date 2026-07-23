@@ -1,4 +1,4 @@
-import { render, screen, act } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, it, expect, vi } from "vitest";
 import ExperienceReviews from "@/components/experiences/ExperienceReviews";
 
@@ -30,12 +30,10 @@ describe("ExperienceReviews", () => {
       return Promise.reject(new Error("Unknown URL"));
     });
 
-    await act(async () => {
-      render(<ExperienceReviews slug="test-slug" />);
-    });
+    render(<ExperienceReviews slug="test-slug" />);
 
     // Check loading goes away and stats appear
-    expect(screen.getByText("Amazing trip!")).toBeInTheDocument();
+    expect(await screen.findByText("Amazing trip!")).toBeInTheDocument();
     expect(screen.getByText("Traveler Reviews")).toBeInTheDocument();
     expect(screen.getByText("Alice")).toBeInTheDocument();
     expect(screen.getByText("Write a Review")).toBeInTheDocument();
