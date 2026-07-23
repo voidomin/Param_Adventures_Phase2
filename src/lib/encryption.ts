@@ -1,15 +1,21 @@
 import crypto from "crypto";
 
-const ENCRYPTION_KEY_RAW = process.env.DB_ENCRYPTION_KEY;
-if (!ENCRYPTION_KEY_RAW) {
-  throw new Error(
-    "DB_ENCRYPTION_KEY environment variable is not set. This key protects sensitive " +
-      "settings (Razorpay secrets, SMTP password, etc.) at rest and must be configured.",
-  );
-}
-const KEY = crypto.createHash("sha256").update(ENCRYPTION_KEY_RAW).digest(); // Always 32 bytes
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 12;
+
+// Resolved lazily (not at module load) so importing this module — e.g. via
+// Next.js's build-time page-data collection — doesn't require the key to be
+// present. It's only required once encrypt/decrypt actually run.
+function getKey(): Buffer {
+  const raw = process.env.DB_ENCRYPTION_KEY;
+  if (!raw) {
+    throw new Error(
+      "DB_ENCRYPTION_KEY environment variable is not set. This key protects sensitive " +
+        "settings (Razorpay secrets, SMTP password, etc.) at rest and must be configured.",
+    );
+  }
+  return crypto.createHash("sha256").update(raw).digest(); // Always 32 bytes
+}
 
 /**
  * Encrypts plain text using AES-256-GCM.
@@ -18,7 +24,7 @@ const IV_LENGTH = 12;
 export function encrypt(text: string): string {
   if (!text) return text;
   const iv = crypto.randomBytes(IV_LENGTH);
-  const cipher = crypto.createCipheriv(ALGORITHM, KEY, iv);
+  const cipher = crypto.createCipheriv(ALGORITHM, getKey(), iv);
   let encrypted = cipher.update(text, "utf8", "hex");
   encrypted += cipher.final("hex");
   const authTag = cipher.getAuthTag().toString("hex");
@@ -42,7 +48,7 @@ export function decrypt(encryptedText: string): string {
     const encrypted = Buffer.from(parts[1], "hex");
     const authTag = Buffer.from(parts[2], "hex");
 
-    const decipher = crypto.createDecipheriv(ALGORITHM, KEY, iv);
+    const decipher = crypto.createDecipheriv(ALGORITHM, getKey(), iv);
     decipher.setAuthTag(authTag);
     let decrypted = decipher.update(encrypted, undefined, "utf8");
     decrypted += decipher.final("utf8");
