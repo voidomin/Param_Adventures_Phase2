@@ -169,11 +169,12 @@ export default function EditBlogPage() {
 
   if (!blog) return null;
 
-  const submitButtonIcon = isSubmitting
-    ? <Loader2 className="w-4 h-4 animate-spin" />
-    : blog.status === "PUBLISHED"
-      ? <Pencil className="w-4 h-4" />
-      : <Send className="w-4 h-4" />;
+  let submitButtonIcon = <Send className="w-4 h-4" />;
+  if (isSubmitting) {
+    submitButtonIcon = <Loader2 className="w-4 h-4 animate-spin" />;
+  } else if (blog.status === "PUBLISHED") {
+    submitButtonIcon = <Pencil className="w-4 h-4" />;
+  }
 
   return (
     <div className="min-h-screen bg-background pb-20">

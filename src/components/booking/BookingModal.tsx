@@ -182,7 +182,7 @@ function validateBasicDetails(p: ParticipantDetails, pErrors: Record<string, str
   }
   if (!p.email.trim()) {
     pErrors.email = "Email ID is required";
-  } else if (p.email.length > 320 || !/\S+@\S+\.\S+/.test(p.email)) {
+  } else if (!/\S{1,64}@\S{1,255}\.\S{1,24}/.test(p.email)) {
     pErrors.email = "Invalid email format";
   }
 }

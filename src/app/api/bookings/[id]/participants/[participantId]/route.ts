@@ -6,7 +6,7 @@ import { z } from "zod";
 const updateParticipantSchema = z.object({
   name: z.string().min(1, "Name is required").optional(),
   email: z.string().optional().refine(
-    val => !val || (val.length <= 320 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)),
+    val => !val || /^[^\s@]{1,64}@[^\s@]{1,255}\.[^\s@]{1,24}$/.test(val),
     { message: "Invalid email format" },
   ),
   phoneNumber: z.string().min(1, "Phone number is required").optional().or(z.literal("")),

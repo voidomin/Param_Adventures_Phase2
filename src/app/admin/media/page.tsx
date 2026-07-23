@@ -47,38 +47,22 @@ function MediaCard({
 }: Readonly<MediaCardProps>) {
   return (
     <div
-      role="button"
-      tabIndex={0}
       className={`group bg-card border rounded-xl overflow-hidden hover:border-foreground/30 transition-all relative flex flex-col cursor-pointer ${
         isSelected ? "border-primary ring-2 ring-primary/30" : "border-border"
       }`}
       onClick={() => {
         if (hasSelection) onToggleSelect(item.id);
       }}
-      onKeyDown={(e) => {
-        if ((e.key === "Enter" || e.key === " ") && hasSelection) {
-          e.preventDefault();
-          onToggleSelect(item.id);
-        }
-      }}
     >
       {/* Select Checkbox Overlay */}
-      <div
-        role="button"
-        tabIndex={0}
-        className={`absolute top-2.5 left-2.5 z-30 transition-opacity duration-200 cursor-pointer ${
+      <button
+        type="button"
+        className={`absolute top-2.5 left-2.5 z-30 transition-opacity duration-200 cursor-pointer bg-transparent border-0 p-0 ${
           hasSelection || isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"
         }`}
         onClick={(e) => {
           e.stopPropagation();
           onToggleSelect(item.id);
-        }}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            e.stopPropagation();
-            onToggleSelect(item.id);
-          }
         }}
       >
         <div className={`w-5.5 h-5.5 rounded-full border flex items-center justify-center transition-all ${
@@ -92,7 +76,7 @@ function MediaCard({
             </svg>
           )}
         </div>
-      </div>
+      </button>
 
       {/* Media Preview Container - Fixed Square Aspect Ratio */}
       <div
@@ -228,6 +212,7 @@ export default function MediaLibraryPage() {
 
   // Multi-selection states
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const handleToggleSelect = (id: string) => setSelectedIds((prev) => toggleId(prev, id));
 
   // Compute filtered media at the top level so it is accessible by both renderGallery and bulk action toolbar
   const filteredMedia = media.filter((item) => {
@@ -412,7 +397,7 @@ export default function MediaLibraryPage() {
               isDuplicate={isDuplicate}
               hasSelection={selectedIds.length > 0}
               copiedId={copiedId}
-              onToggleSelect={(id) => setSelectedIds((prev) => toggleId(prev, id))}
+              onToggleSelect={handleToggleSelect}
               onCopyUrl={copyToClipboard}
               onMergeSource={setMergeSourceItem}
               onDelete={handleDelete}

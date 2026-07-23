@@ -21,6 +21,7 @@ import {
   DashboardLoader, 
   DashboardEmptyState 
 } from "@/components/dashboard/DashboardShared";
+import { formatCellForExport } from "@/lib/utils";
 
 interface VendorContactItem {
   id?: string;
@@ -165,12 +166,7 @@ async function exportTripManifestExcel(
 
     rows.forEach((row: Record<string, unknown>) => {
       Object.keys(row).forEach((key) => {
-        const cellValue = row[key];
-        const valStr = cellValue instanceof Date
-          ? cellValue.toISOString().split("T")[0]
-          : typeof cellValue === "object" && cellValue !== null
-            ? JSON.stringify(cellValue)
-            : String(cellValue ?? "");
+        const valStr = formatCellForExport(row[key]);
         if (valStr.length > maxLens[key]) {
           maxLens[key] = valStr.length;
         }

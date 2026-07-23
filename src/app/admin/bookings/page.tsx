@@ -18,6 +18,7 @@ import {
 import Link from "next/link";
 import { TableSkeleton } from "@/components/admin/TableSkeleton";
 import { ManualVerifyModal } from "@/components/admin/ManualVerifyModal";
+import { formatCellForExport } from "@/lib/utils";
 
 
 type BookingStatus = "REQUESTED" | "CONFIRMED" | "CANCELLED";
@@ -840,12 +841,7 @@ export default function AdminBookingsPage() {
 
       rows.forEach((row: Record<string, unknown>) => {
         Object.keys(row).forEach((key) => {
-          const cellValue = row[key];
-          const valStr = cellValue instanceof Date
-            ? cellValue.toISOString().split("T")[0]
-            : typeof cellValue === "object" && cellValue !== null
-              ? JSON.stringify(cellValue)
-              : String(cellValue ?? "");
+          const valStr = formatCellForExport(row[key]);
           if (valStr.length > maxLens[key]) {
             maxLens[key] = valStr.length;
           }

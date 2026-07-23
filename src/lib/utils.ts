@@ -5,6 +5,25 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * Formats an arbitrary cell value (from an export row) as a display string,
+ * without producing a meaningless "[object Object]" for non-primitive values.
+ */
+export function formatCellForExport(value: unknown, options?: { includeTime?: boolean }): string {
+  if (value === null || value === undefined) {
+    return "";
+  }
+  if (value instanceof Date) {
+    return options?.includeTime
+      ? value.toISOString().replace("T", " ").substring(0, 19)
+      : value.toISOString().split("T")[0];
+  }
+  if (typeof value === "object") {
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
 export function calculateAge(dob: string | Date): number {
   const birthDate = new Date(dob);
   const today = new Date();

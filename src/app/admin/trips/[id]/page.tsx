@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import BookingDetailsCollapse from "@/components/admin/BookingDetailsCollapse";
+import { formatCellForExport } from "@/lib/utils";
 
 interface TrekLead {
   id: string;
@@ -195,12 +196,7 @@ export default function TripManifestPage() {
 
       rows.forEach((row: Record<string, unknown>) => {
         Object.keys(row).forEach((key) => {
-          const cellValue = row[key];
-          const valStr = cellValue instanceof Date
-            ? cellValue.toISOString().split("T")[0]
-            : typeof cellValue === "object" && cellValue !== null
-              ? JSON.stringify(cellValue)
-              : String(cellValue ?? "");
+          const valStr = formatCellForExport(row[key]);
           if (valStr.length > maxLens[key]) {
             maxLens[key] = valStr.length;
           }

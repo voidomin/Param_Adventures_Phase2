@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { useRouter } from "next/navigation";
+import { formatCellForExport } from "@/lib/utils";
 
 interface LogCategory {
   id: string;
@@ -155,12 +156,7 @@ export default function AuditLogsPage() {
         // Auto-fit column widths
         const maxLen = rows.reduce((acc: Record<string, number>, row: Record<string, unknown>) => {
           Object.keys(row).forEach((key) => {
-            const cellValue = row[key];
-            const val = cellValue instanceof Date
-              ? cellValue.toISOString().replace("T", " ").substring(0, 19)
-              : typeof cellValue === "object" && cellValue !== null
-                ? JSON.stringify(cellValue)
-                : String(cellValue ?? "");
+            const val = formatCellForExport(row[key], { includeTime: true });
             acc[key] = Math.max(acc[key] || 10, val.length);
           });
           return acc;
