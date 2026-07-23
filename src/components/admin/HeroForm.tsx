@@ -37,9 +37,12 @@ export default function HeroForm({ slide, onClose, onSuccess }: HeroFormProps) {
     (() => {
       if (slide?.features) {
         try {
-          const parsed = typeof slide.features === "string"
-            ? JSON.parse(slide.features)
-            : (Array.isArray(slide.features) ? slide.features : []);
+          let parsed;
+          if (typeof slide.features === "string") {
+            parsed = JSON.parse(slide.features);
+          } else {
+            parsed = Array.isArray(slide.features) ? slide.features : [];
+          }
           // Backfill an id for features saved before this field existed.
           return parsed.map((feat: { id?: string; icon: string; text: string }) => ({
             id: feat.id ?? `feat-${crypto.randomUUID().slice(0, 6)}`,

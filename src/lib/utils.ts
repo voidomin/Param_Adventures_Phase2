@@ -21,7 +21,8 @@ export function formatCellForExport(value: unknown, options?: { includeTime?: bo
   if (typeof value === "object") {
     return JSON.stringify(value);
   }
-  return String(value);
+  const primitive = value as string | number | boolean | bigint | symbol;
+  return String(primitive);
 }
 
 export function calculateAge(dob: string | Date): number {
