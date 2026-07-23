@@ -18,7 +18,8 @@
     "db:studio": "npx prisma studio",
     "seed": "node prisma/seed.mjs",
     "email": "email dev -d src/lib/email/templates",
-    "rotate-encryption-key": "node scripts/rotate-encryption-key.mjs"
+    "rotate-encryption-key": "node scripts/rotate-encryption-key.mjs",
+    "encrypt-plaintext-settings": "node scripts/encrypt-plaintext-settings.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.758.0",
