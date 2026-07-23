@@ -165,9 +165,12 @@ async function exportTripManifestExcel(
 
     rows.forEach((row: Record<string, unknown>) => {
       Object.keys(row).forEach((key) => {
-        const valStr = row[key] instanceof Date
-          ? row[key].toISOString().split("T")[0]
-          : String(row[key] ?? "");
+        const cellValue = row[key];
+        const valStr = cellValue instanceof Date
+          ? cellValue.toISOString().split("T")[0]
+          : typeof cellValue === "object" && cellValue !== null
+            ? JSON.stringify(cellValue)
+            : String(cellValue ?? "");
         if (valStr.length > maxLens[key]) {
           maxLens[key] = valStr.length;
         }

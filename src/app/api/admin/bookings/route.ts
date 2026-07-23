@@ -96,20 +96,18 @@ export async function GET(request: NextRequest) {
         ...archiveCondition,
         ...(Object.keys(slotDateFilter).length > 0 ? { date: slotDateFilter } : {}),
       };
+    } else if (Object.keys(slotDateFilter).length > 0) {
+      whereClause.slot = {
+        ...activeCondition,
+        date: slotDateFilter,
+      };
     } else {
-      if (Object.keys(slotDateFilter).length > 0) {
-        whereClause.slot = {
-          ...activeCondition,
-          date: slotDateFilter,
-        };
-      } else {
-        whereClause.OR = [
-          { slotId: null },
-          {
-            slot: activeCondition,
-          },
-        ];
-      }
+      whereClause.OR = [
+        { slotId: null },
+        {
+          slot: activeCondition,
+        },
+      ];
     }
 
     const [bookings, total] = await Promise.all([

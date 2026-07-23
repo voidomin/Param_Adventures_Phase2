@@ -117,9 +117,9 @@ export default function WhyParamAdventuresPage() {
       <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {reasons.map((reason, index) => (
-              <div 
-                key={index} 
+            {reasons.map((reason) => (
+              <div
+                key={reason.title}
                 className="group p-8 rounded-[32px] bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1 relative overflow-hidden"
               >
                 <div className="absolute top-0 right-0 w-32 h-32 bg-foreground/[0.02] rounded-bl-full -z-10 group-hover:scale-110 transition-transform duration-500" />

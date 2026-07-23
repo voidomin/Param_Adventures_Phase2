@@ -45,8 +45,8 @@ export const BookingConfirmedEmail = ({
             <Column align="right"><Text style={priceValue}>₹{Number(baseFare).toLocaleString("en-IN")}</Text></Column>
          </Row>
 
-         {taxBreakdown.map((tax, index) => (
-            <Row key={index} style={priceRow}>
+         {taxBreakdown.map((tax) => (
+            <Row key={tax.name} style={priceRow}>
                <Column><Text style={priceLabel}>{tax.name} ({tax.percentage}%)</Text></Column>
                <Column align="right"><Text style={priceValue}>₹{Number(tax.amount).toLocaleString("en-IN")}</Text></Column>
             </Row>

@@ -302,7 +302,7 @@ export default function Hero({
                   {slideFeatures.map((feat: { icon: string; text: string }, idx: number) => {
                     const IconComponent = iconMap[feat.icon] || Info;
                     return (
-                      <React.Fragment key={`feat-${idx}`}>
+                      <React.Fragment key={`${feat.icon}-${feat.text}`}>
                         {idx > 0 && (
                           <div className="w-1 h-1 bg-primary/40 rounded-full hidden md:block" />
                         )}

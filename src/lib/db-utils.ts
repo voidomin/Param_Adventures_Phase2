@@ -1,4 +1,19 @@
 /**
+ * Stringifies a value for diagnostic messages without producing a meaningless
+ * "[object Object]" when the value happens to be non-primitive.
+ */
+function safeStringify(value: unknown): string {
+  if (typeof value === "object" && value !== null) {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return "[unserializable object]";
+    }
+  }
+  return String(value);
+}
+
+/**
  * Recursively inspects an error object to determine if it is a database connection or timeout error.
  */
 function isConnectionError(error: unknown): boolean {
@@ -7,10 +22,10 @@ function isConnectionError(error: unknown): boolean {
   const messages: string[] = [];
   const errObj = error as Record<string, unknown>;
 
-  if (errObj.message) messages.push(String(errObj.message));
-  if (errObj.code) messages.push(String(errObj.code));
-  if (errObj.errorCode) messages.push(String(errObj.errorCode));
-  if (errObj.clientVersion) messages.push(String(errObj.clientVersion));
+  if (errObj.message) messages.push(safeStringify(errObj.message));
+  if (errObj.code) messages.push(safeStringify(errObj.code));
+  if (errObj.errorCode) messages.push(safeStringify(errObj.errorCode));
+  if (errObj.clientVersion) messages.push(safeStringify(errObj.clientVersion));
 
   // Prisma error code
   const prismaCode = errObj.code;
@@ -32,12 +47,7 @@ function isConnectionError(error: unknown): boolean {
   }
 
   // Fallback to serialization check
-  try {
-    const errorString = String(error) + " " + JSON.stringify(error);
-    messages.push(errorString);
-  } catch {
-    messages.push(String(error));
-  }
+  messages.push(safeStringify(error));
 
   const connKeywords = [
     "econnrefused",

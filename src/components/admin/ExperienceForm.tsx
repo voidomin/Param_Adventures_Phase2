@@ -2066,6 +2066,7 @@ export default function ExperienceForm({
                           <label
                             key={policy.id}
                             htmlFor={policy.id}
+                            aria-label={policy.label}
                             className={`p-3 rounded-xl border transition-all flex items-start gap-3 cursor-pointer ${
                               isChecked
                                 ? "bg-primary/5 border-primary/40 ring-1 ring-primary/10"

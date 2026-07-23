@@ -74,6 +74,24 @@ interface BookingDetailsCollapseProps {
   readonly booking: BookingDetails;
 }
 
+function getParticipantStatusBadge(p: BookingParticipant) {
+  if (p.isCancelled) {
+    return (
+      <span className="text-[10px] font-black uppercase text-red-500 border border-red-500/20 bg-red-500/10 px-1.5 py-0.5 rounded-md">
+        Cancelled
+      </span>
+    );
+  }
+  if (p.isPrimary) {
+    return (
+      <span className="text-[10px] font-black uppercase text-primary border border-primary/20 bg-primary/10 px-1.5 py-0.5 rounded-md">
+        Primary Booker
+      </span>
+    );
+  }
+  return null;
+}
+
 export default function BookingDetailsCollapse({ booking }: BookingDetailsCollapseProps) {
   let paymentStatusBadgeClasses = "bg-foreground/5 text-foreground/40 border-border";
   if (booking.paymentStatus === "PAID") {
@@ -184,15 +202,7 @@ export default function BookingDetailsCollapse({ booking }: BookingDetailsCollap
                       Guest Profile
                     </span>
                   </span>
-                  {p.isCancelled ? (
-                    <span className="text-[10px] font-black uppercase text-red-500 border border-red-500/20 bg-red-500/10 px-1.5 py-0.5 rounded-md">
-                      Cancelled
-                    </span>
-                  ) : p.isPrimary ? (
-                    <span className="text-[10px] font-black uppercase text-primary border border-primary/20 bg-primary/10 px-1.5 py-0.5 rounded-md">
-                      Primary Booker
-                    </span>
-                  ) : null}
+                  {getParticipantStatusBadge(p)}
                 </div>
 
                 {/* Guest Information */}
