@@ -183,7 +183,7 @@ describe("BookingModal Smoke Test", () => {
     fireEvent.click(await screen.findByText(/5 left/i));
     fireEvent.click(screen.getByRole("button", { name: /Continue to Details/i }));
     
-    await waitFor(() => screen.getByLabelText(/Phone Number \*/i));
+    await screen.findByLabelText(/Phone Number \*/i);
     fireEvent.change(screen.getByLabelText(/Phone Number \*/i), { target: { value: "1111111111" } });
     fireEvent.change(screen.getByLabelText(/Date of Birth \*/i), { target: { value: "1996-06-09" } });
     
@@ -192,7 +192,7 @@ describe("BookingModal Smoke Test", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Review Booking/i }));
     
-    await waitFor(() => screen.getByText(/Pay ₹/i));
+    await screen.findByText(/Pay ₹/i);
     fireEvent.click(screen.getByText(/Pay ₹/i));
 
     expect(await screen.findByText(/Verification failed/i)).toBeInTheDocument();
@@ -276,7 +276,7 @@ describe("BookingModal Smoke Test", () => {
     fireEvent.click(screen.getByRole("button", { name: /Continue to Details/i }));
 
     // Step 2: Fill required fields (Name + Phone)
-    await waitFor(() => screen.getByLabelText(/Full Name \*/i));
+    await screen.findByLabelText(/Full Name \*/i);
     fireEvent.change(screen.getByLabelText(/Full Name \*/i), { target: { value: "Test User" } });
     fireEvent.change(screen.getByLabelText(/Phone Number \*/i), { target: { value: "1111111111" } });
     fireEvent.change(screen.getByLabelText(/Date of Birth \*/i), { target: { value: "1996-06-09" } });
@@ -285,7 +285,7 @@ describe("BookingModal Smoke Test", () => {
     fireEvent.click(screen.getByRole("button", { name: /Review Booking/i }));
 
     // Step 3: Pay
-    await waitFor(() => screen.getByText(/Pay ₹/i));
+    await screen.findByText(/Pay ₹/i);
     fireEvent.click(screen.getByText(/Pay ₹/i));
 
     // Should show error

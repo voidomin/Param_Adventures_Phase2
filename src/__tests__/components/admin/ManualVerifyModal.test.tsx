@@ -44,7 +44,7 @@ describe("ManualVerifyModal", () => {
     render(<ManualVerifyModal {...mockProps} />);
     const fileInput = screen.getByLabelText(/Click to upload proof/i);
     fireEvent.change(fileInput, { target: { files: [new File([""], "p.png")] } });
-    await waitFor(() => expect(screen.getByText(/Upload Failed/i)).toBeInTheDocument());
+    expect(await screen.findByText(/Upload Failed/i)).toBeInTheDocument();
   });
 
   it("submits the form successfully after file upload", async () => {
@@ -53,7 +53,7 @@ describe("ManualVerifyModal", () => {
     // 1. Upload proof
     const fileInput = screen.getByLabelText(/Click to upload proof/i);
     fireEvent.change(fileInput, { target: { files: [new File(["abc"], "proof.png", { type: "image/png" })] } });
-    await waitFor(() => expect(screen.getByText(/Screenshot Uploaded/i)).toBeInTheDocument(), { timeout: 10000 });
+    expect(await screen.findByText(/Screenshot Uploaded/i, {}, { timeout: 10000 })).toBeInTheDocument();
 
     // 2. Fill form
     fireEvent.change(screen.getByPlaceholderText(/e.g. PAY-123456789/i), { target: { value: "TXN123" } });
@@ -62,7 +62,7 @@ describe("ManualVerifyModal", () => {
     const submitBtn = screen.getByRole("button", { name: /Confirm Payment/i });
     fireEvent.click(submitBtn);
 
-    await waitFor(() => expect(screen.getByText(/Payment Confirmed!/i)).toBeInTheDocument(), { timeout: 10000 });
+    expect(await screen.findByText(/Payment Confirmed!/i, {}, { timeout: 10000 })).toBeInTheDocument();
     await waitFor(() => expect(mockProps.onSuccess).toHaveBeenCalled(), { timeout: 10000 });
   });
 
@@ -79,7 +79,7 @@ describe("ManualVerifyModal", () => {
     // 1. Upload proof
     const fileInput = screen.getByLabelText(/Click to upload proof/i);
     fireEvent.change(fileInput, { target: { files: [new File(["abc"], "proof.png")] } });
-    await waitFor(() => expect(screen.getByText(/Screenshot Uploaded/i)).toBeInTheDocument(), { timeout: 3000 });
+    expect(await screen.findByText(/Screenshot Uploaded/i, {}, { timeout: 3000 })).toBeInTheDocument();
 
     // 2. Fill form
     fireEvent.change(screen.getByPlaceholderText(/e.g. PAY-123456789/i), { target: { value: "TXN123" } });

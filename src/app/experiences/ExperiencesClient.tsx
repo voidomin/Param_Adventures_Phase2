@@ -436,6 +436,7 @@ export default function ExperiencesClient({
             {/* Category Pills with Scroll Arrows */}
             <div className="flex items-center gap-1 w-full min-w-0">
               <button
+                type="button"
                 suppressHydrationWarning
                 onClick={() => scrollCategories("left")}
                 className="hidden sm:flex shrink-0 w-8 h-8 rounded-full bg-foreground/5 hover:bg-foreground/10 items-center justify-center text-foreground/50 hover:text-foreground transition-colors"
@@ -452,6 +453,7 @@ export default function ExperiencesClient({
                   ...categories,
                 ].map((filter) => (
                   <button
+                    type="button"
                     suppressHydrationWarning
                     key={filter.id}
                     onClick={() => setActiveFilter(filter.slug)}
@@ -469,6 +471,7 @@ export default function ExperiencesClient({
                 ))}
               </div>
               <button
+                type="button"
                 suppressHydrationWarning
                 onClick={() => scrollCategories("right")}
                 className="hidden sm:flex shrink-0 w-8 h-8 rounded-full bg-foreground/5 hover:bg-foreground/10 items-center justify-center text-foreground/50 hover:text-foreground transition-colors"
@@ -494,6 +497,7 @@ export default function ExperiencesClient({
               />
               {searchQuery && (
                 <button
+                  type="button"
                   suppressHydrationWarning
                   onClick={() => setSearchQuery("")}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground"
@@ -505,6 +509,7 @@ export default function ExperiencesClient({
 
             {/* Filters Toggle */}
             <button
+              type="button"
               suppressHydrationWarning
               onClick={() => setShowFilters((v) => !v)}
               className={`shrink-0 flex items-center justify-center gap-2 px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all border border-border/50 ${
@@ -525,6 +530,7 @@ export default function ExperiencesClient({
             {/* Sort Button */}
             <div className="relative shrink-0">
               <button
+                type="button"
                 suppressHydrationWarning
                 onClick={() => setShowSortMenu((v) => !v)}
                 className="flex items-center justify-center gap-2 px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap bg-foreground/5 text-foreground/70 hover:bg-foreground/10 transition-all border border-border/50"
@@ -547,6 +553,7 @@ export default function ExperiencesClient({
                   <div className="absolute right-0 mt-2 bg-card border border-border rounded-xl shadow-xl z-50 py-2 min-w-[200px]">
                     {SORT_OPTIONS.map((opt) => (
                       <button
+                        type="button"
                         suppressHydrationWarning
                         key={opt.value}
                         onClick={() => {
@@ -656,6 +663,7 @@ export default function ExperiencesClient({
                       <div className="flex flex-wrap gap-1.5">
                         {DIFFICULTIES.map((diff) => (
                           <button
+                            type="button"
                             suppressHydrationWarning
                             key={diff.value}
                             onClick={() => toggleDifficulty(diff.value)}
@@ -740,6 +748,7 @@ export default function ExperiencesClient({
                   {/* Bottom actions: Availability + Clear */}
                   <div className="flex items-center justify-between gap-3 pt-3 mt-3 border-t border-border/50">
                     <button
+                      type="button"
                       suppressHydrationWarning
                       onClick={() => setHasSlots((v) => !v)}
                       className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold border transition-all ${
@@ -754,6 +763,7 @@ export default function ExperiencesClient({
 
                     {activeFilterCount > 0 && (
                       <button
+                        type="button"
                         suppressHydrationWarning
                         onClick={clearAll}
                         className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold text-red-500 bg-red-500/5 hover:bg-red-500/10 border border-red-500/20 transition-all"
@@ -783,6 +793,7 @@ export default function ExperiencesClient({
               Try adjusting your filters or search query.
             </p>
             <button
+              type="button"
               onClick={clearAll}
               className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground font-bold rounded-full hover:scale-105 transition-transform"
             >

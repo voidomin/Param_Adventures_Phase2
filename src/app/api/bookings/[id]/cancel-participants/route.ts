@@ -5,8 +5,7 @@ import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
 import { z } from "zod";
 import { getRefundPercentage, calculateRefundBreakdown } from "@/lib/refund-engine";
-import { restoreCouponsForBooking, generateCouponCode } from "@/lib/coupon-engine";
-import { sendRefundResolved } from "@/lib/email";
+import { restoreCouponsForBooking } from "@/lib/coupon-engine";
 
 const cancelSchema = z.object({
   participantIds: z.array(z.string()).min(1),

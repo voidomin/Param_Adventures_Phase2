@@ -445,6 +445,7 @@ export default function DownloadInvoiceBtn({ bookingId }: Readonly<{ bookingId: 
 
   return (
     <button
+      type="button"
       onClick={handleDownload}
       disabled={isDownloading}
       className="w-full flex items-center justify-between px-4 py-3 bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors rounded-xl font-semibold border border-transparent"

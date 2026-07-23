@@ -5,7 +5,7 @@ import * as Sentry from "@sentry/nextjs";
 import { AlertCircle, RefreshCw, Home } from "lucide-react";
 import Link from "next/link";
 
-export default function Error({
+export default function ErrorPage({
   error,
   reset,
 }: Readonly<{
@@ -29,6 +29,7 @@ export default function Error({
       </p>
       <div className="flex gap-4">
         <button
+          type="button"
           onClick={reset}
           className="inline-flex items-center gap-2 rounded-xl bg-primary px-6 py-3 font-bold text-primary-foreground hover:opacity-90 transition-opacity"
         >

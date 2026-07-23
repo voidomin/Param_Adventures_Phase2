@@ -526,6 +526,7 @@ export default function DashboardPage() {
 
               {/* Camera Upload Button */}
               <button
+                type="button"
                 onClick={() => avatarInputRef.current?.click()}
                 disabled={isUploadingAvatar}
                 className="absolute -bottom-2 -right-2 w-9 h-9 bg-primary rounded-full border-4 border-background flex items-center justify-center hover:scale-110 transition-transform shadow-lg disabled:opacity-50"

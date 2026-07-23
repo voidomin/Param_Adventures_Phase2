@@ -233,6 +233,7 @@ export default function AdminExperiencesPage() {
 
                 {exp.status === "DRAFT" && (
                   <button
+                    type="button"
                     onClick={() => togglePublishStatus(exp.id, exp.status)}
                     className="flex-1 md:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-green-500/10 text-green-600 hover:bg-green-500/20 rounded-lg transition-colors font-medium border border-green-500/20"
                   >
@@ -241,6 +242,7 @@ export default function AdminExperiencesPage() {
                 )}
                 {exp.status === "PUBLISHED" && (
                   <button
+                    type="button"
                     onClick={() => togglePublishStatus(exp.id, exp.status)}
                     className="flex items-center justify-center gap-2 px-4 py-2 bg-orange-500/10 text-orange-600 hover:bg-orange-500/20 rounded-lg transition-colors font-medium border border-orange-500/20"
                     title="Unpublish to Draft"
@@ -263,6 +265,7 @@ export default function AdminExperiencesPage() {
                   <CalendarDays className="w-4 h-4" /> Slots
                 </Link>
                 <button
+                  type="button"
                   disabled={exp._count.slots > 0}
                   onClick={() =>
                     handleDelete(exp.id, exp.title, exp._count.bookings)

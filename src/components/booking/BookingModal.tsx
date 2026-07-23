@@ -182,7 +182,7 @@ function validateBasicDetails(p: ParticipantDetails, pErrors: Record<string, str
   }
   if (!p.email.trim()) {
     pErrors.email = "Email ID is required";
-  } else if (!/\S+@\S+\.\S+/.test(p.email)) {
+  } else if (!/\S{1,64}@\S{1,255}\.\S{1,24}/.test(p.email)) {
     pErrors.email = "Invalid email format";
   }
 }
@@ -1748,6 +1748,7 @@ export default function BookingModal({
                         </span>
                       </div>
                       <button
+                        type="button"
                         onClick={() => setStep("participants")}
                         className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-black text-lg shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
                       >
@@ -2026,12 +2027,14 @@ export default function BookingModal({
 
             <div className="flex gap-3">
               <button
+                type="button"
                 onClick={() => setStep("participants")}
                 className="flex-1 py-3 border border-border rounded-xl text-foreground hover:bg-foreground/5 font-bold"
               >
                 ← Edit Details
               </button>
               <button
+                type="button"
                 onClick={handleProceedToPay}
                 className="flex-1 py-3 bg-primary text-primary-foreground rounded-xl font-bold hover:bg-primary/90 transition-colors"
               >
@@ -2083,6 +2086,7 @@ export default function BookingModal({
               {errorMsg || "Payment failed."}
             </p>
             <button
+              type="button"
               onClick={() => setStep("summary")}
               className="w-full py-3 bg-primary text-primary-foreground rounded-xl font-bold"
             >

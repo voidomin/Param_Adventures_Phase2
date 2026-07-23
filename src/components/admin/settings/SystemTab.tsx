@@ -93,7 +93,8 @@ export default function SystemTab(props: Readonly<TabProps>) {
               Export all critical platform data (Experiences, Bookings, Settings) as a secure JSON archive. Sensitive credentials will be redacted. 
             </p>
           </div>
-          <button 
+          <button
+            type="button" 
             disabled={isExporting}
             onClick={handleExport}
             className={`px-8 py-4 bg-foreground text-background rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all shadow-xl shadow-black/10 flex items-center gap-2 group ${isExporting ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}`}

@@ -117,6 +117,7 @@ export default function IntegrationsTab({ getVal, updateSetting }: Readonly<TabP
           <div className="flex items-center gap-4">
             {getStatusBadge(isGAEnabled, !!gaId?.startsWith("G-"))}
             <button
+                type="button"
                 onClick={() => updateSetting("PLATFORM", "google_analytics_enabled", isGAEnabled ? "false" : "true")}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
                     isGAEnabled ? 'bg-orange-500' : 'bg-foreground/10'
@@ -164,6 +165,7 @@ export default function IntegrationsTab({ getVal, updateSetting }: Readonly<TabP
           <div className="flex items-center gap-4">
              {getStatusBadge(isPixelEnabled, !!pixelId)}
              <button
+                type="button"
                 onClick={() => updateSetting("PLATFORM", "meta_pixel_enabled", isPixelEnabled ? "false" : "true")}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
                     isPixelEnabled ? 'bg-blue-600' : 'bg-foreground/10'
@@ -199,6 +201,7 @@ export default function IntegrationsTab({ getVal, updateSetting }: Readonly<TabP
           <div className="flex items-center gap-4">
              {getStatusBadge(isClarityEnabled, !!clarityId)}
              <button
+                type="button"
                 onClick={() => updateSetting("PLATFORM", "microsoft_clarity_enabled", isClarityEnabled ? "false" : "true")}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
                     isClarityEnabled ? 'bg-teal-500' : 'bg-foreground/10'
@@ -234,6 +237,7 @@ export default function IntegrationsTab({ getVal, updateSetting }: Readonly<TabP
           <div className="flex items-center gap-4">
              {getStatusBadge(isSentryEnabled, !!getVal("PLATFORM", "sentry_dsn"))}
              <button
+                type="button"
                 onClick={() => updateSetting("PLATFORM", "sentry_enabled", isSentryEnabled ? "false" : "true")}
                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
                     isSentryEnabled ? 'bg-indigo-500' : 'bg-foreground/10'
@@ -283,6 +287,7 @@ export default function IntegrationsTab({ getVal, updateSetting }: Readonly<TabP
                 </p>
               </div>
               <button
+                type="button"
                 onClick={handleVerifySentry}
                 disabled={isVerifying || !isSentryEnabled}
                 className="px-6 py-2.5 bg-foreground text-background rounded-xl font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex items-center gap-2 disabled:opacity-50 disabled:grayscale transition-all duration-300 h-10"

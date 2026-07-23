@@ -150,6 +150,7 @@ export default function StoryTab() {
           milestones, values, and more.
         </p>
         <button
+          type="button"
           onClick={() => openForm()}
           className="inline-block bg-primary text-primary-foreground px-8 py-2.5 rounded-full font-bold hover:scale-105 transition-all shadow-lg shadow-primary/20"
         >
@@ -210,6 +211,7 @@ export default function StoryTab() {
             <div className="flex items-center gap-2 pt-4 sm:pt-0 border-t border-border sm:border-none w-full sm:w-auto justify-center sm:justify-end shrink-0">
               <div className="flex flex-col mr-1">
                 <button
+                  type="button"
                   onClick={() => handleMove(block.id, "up", index)}
                   disabled={index === 0}
                   className="p-0.5 text-foreground/40 hover:text-primary disabled:opacity-30 transition-colors"
@@ -217,6 +219,7 @@ export default function StoryTab() {
                   <ArrowUp className="w-4 h-4" />
                 </button>
                 <button
+                  type="button"
                   onClick={() => handleMove(block.id, "down", index)}
                   disabled={index === blocks.length - 1}
                   className="p-0.5 text-foreground/40 hover:text-primary disabled:opacity-30 transition-colors"
@@ -225,6 +228,7 @@ export default function StoryTab() {
                 </button>
               </div>
               <button
+                type="button"
                 onClick={() => openForm(block)}
                 className="p-2.5 bg-primary/10 text-primary hover:bg-primary/20 rounded-xl transition-all"
                 title="Edit"
@@ -232,6 +236,7 @@ export default function StoryTab() {
                 <Edit2 className="w-4 h-4" />
               </button>
               <button
+                type="button"
                 onClick={() => handleDelete(block.id, block.title)}
                 className="p-2.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-xl transition-all"
                 title="Delete"
@@ -257,6 +262,7 @@ export default function StoryTab() {
           </p>
         </div>
         <button
+          type="button"
           onClick={() => openForm()}
           className="bg-primary text-primary-foreground px-6 py-2.5 rounded-full font-bold flex items-center gap-2 hover:scale-105 transition-all shadow-lg shadow-primary/25 shrink-0"
         >

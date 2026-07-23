@@ -209,6 +209,7 @@ export default function ExperienceReviews({
     if (myReview.status === "guest") {
       return (
         <button
+          type="button"
           onClick={() => {
             const redirect = pathname ?? "/experiences/" + slug;
             router.push("/login?redirect=" + encodeURIComponent(redirect));
@@ -236,6 +237,7 @@ export default function ExperienceReviews({
     if (myReview.status === "reviewed") {
       return (
         <button
+          type="button"
           onClick={openModal}
           className="flex items-center gap-2 px-5 py-2.5 rounded-xl border-2 border-primary text-primary font-bold hover:bg-primary hover:text-primary-foreground transition-all text-sm group"
         >
@@ -247,6 +249,7 @@ export default function ExperienceReviews({
 
     return (
       <button
+        type="button"
         onClick={openModal}
         className="flex items-center gap-2 px-6 py-2.5 rounded-xl border-2 border-primary text-primary font-bold hover:bg-primary hover:text-primary-foreground transition-all text-sm group"
       >

@@ -39,6 +39,7 @@ export default function BookNowButton({
   return (
     <>
       <button
+        type="button"
         onClick={handleClick}
         disabled={isLoading}
         className="w-full py-4 rounded-xl bg-primary text-primary-foreground font-black text-lg hover:scale-[1.02] transition-transform shadow-xl shadow-primary/25 disabled:opacity-50 disabled:scale-100"

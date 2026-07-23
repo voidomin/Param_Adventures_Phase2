@@ -21,18 +21,20 @@ export default function FinanceTab(props: Readonly<TabProps>) {
     updateSetting("PLATFORM", "taxConfig", JSON.stringify(config));
   };
 
-  const [localPolicyRules, setLocalPolicyRules] = useState<{ minDays: number; maxDays: number | null; refundPercent: number }[]>(() => {
+  const [localPolicyRules, setLocalPolicyRules] = useState<{ id: string; minDays: number; maxDays: number | null; refundPercent: number }[]>(() => {
     const raw = getVal("PLATFORM", "cancellation_policy_rules");
     if (!raw) return [];
     try {
       const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
+      if (!Array.isArray(parsed)) return [];
+      // Backfill an id for rules saved before this field existed.
+      return parsed.map((rule) => ({ id: rule.id ?? `policy-${crypto.randomUUID().slice(0, 6)}`, ...rule }));
     } catch {
       return [];
     }
   });
 
-  const savePolicyRules = (rules: { minDays: number; maxDays: number | null; refundPercent: number }[]) => {
+  const savePolicyRules = (rules: { id: string; minDays: number; maxDays: number | null; refundPercent: number }[]) => {
     const sorted = [...rules].sort((a, b) => b.minDays - a.minDays);
     updateSetting("PLATFORM", "cancellation_policy_rules", JSON.stringify(sorted));
   };
@@ -40,21 +42,21 @@ export default function FinanceTab(props: Readonly<TabProps>) {
   const addPolicyRule = () => {
     const newRules = [
       ...localPolicyRules,
-      { minDays: 0, maxDays: null, refundPercent: 0 }
+      { id: `policy-${crypto.randomUUID().slice(0, 6)}`, minDays: 0, maxDays: null, refundPercent: 0 }
     ];
     setLocalPolicyRules(newRules);
     savePolicyRules(newRules);
   };
 
-  const removePolicyRule = (index: number) => {
-    const newRules = localPolicyRules.filter((_, idx) => idx !== index);
+  const removePolicyRule = (id: string) => {
+    const newRules = localPolicyRules.filter((rule) => rule.id !== id);
     setLocalPolicyRules(newRules);
     savePolicyRules(newRules);
   };
 
-  const updatePolicyRule = (index: number, field: "minDays" | "refundPercent", value: number) => {
-    const newRules = localPolicyRules.map((rule, idx) => 
-      idx === index ? { ...rule, [field]: value } : rule
+  const updatePolicyRule = (id: string, field: "minDays" | "refundPercent", value: number) => {
+    const newRules = localPolicyRules.map((rule) =>
+      rule.id === id ? { ...rule, [field]: value } : rule
     );
     setLocalPolicyRules(newRules);
     savePolicyRules(newRules);
@@ -128,7 +130,8 @@ export default function FinanceTab(props: Readonly<TabProps>) {
                     </div>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <button 
+                    <button
+                      type="button" 
                       onClick={() => removeTaxItem(tax.id)}
                       className="p-2 text-foreground/20 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
                     >
@@ -141,7 +144,8 @@ export default function FinanceTab(props: Readonly<TabProps>) {
           </tbody>
         </table>
         <div className="p-4 bg-foreground/5 border-t border-border">
-          <button 
+          <button
+            type="button" 
             onClick={addTaxItem}
             className="w-full py-3 flex items-center justify-center gap-2 text-sm font-bold text-primary hover:bg-primary/5 rounded-xl transition-all border border-dashed border-primary/20"
           >
@@ -172,14 +176,14 @@ export default function FinanceTab(props: Readonly<TabProps>) {
                   <td colSpan={3} className="px-6 py-12 text-center text-sm text-foreground/30 italic">No rules configured. Click add to begin.</td>
                 </tr>
               ) : (
-                localPolicyRules.map((rule, idx) => (
-                  <tr key={`policy-rule-${idx}`} className="group hover:bg-foreground/5 transition-colors">
+                localPolicyRules.map((rule) => (
+                  <tr key={rule.id} className="group hover:bg-foreground/5 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <input 
-                          type="number" 
+                        <input
+                          type="number"
                           value={rule.minDays}
-                          onChange={(e) => updatePolicyRule(idx, "minDays", Number.parseInt(e.target.value) || 0)}
+                          onChange={(e) => updatePolicyRule(rule.id, "minDays", Number.parseInt(e.target.value) || 0)}
                           className="bg-foreground/5 border border-border rounded-lg px-3 py-1.5 w-24 text-center font-bold focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                         />
                         <span className="text-xs text-foreground/50">Days or more before departure</span>
@@ -187,18 +191,19 @@ export default function FinanceTab(props: Readonly<TabProps>) {
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex items-center justify-center gap-2">
-                        <input 
-                          type="number" 
+                        <input
+                          type="number"
                           value={rule.refundPercent}
-                          onChange={(e) => updatePolicyRule(idx, "refundPercent", Number.parseInt(e.target.value) || 0)}
+                          onChange={(e) => updatePolicyRule(rule.id, "refundPercent", Number.parseInt(e.target.value) || 0)}
                           className="bg-foreground/5 border border-border rounded-lg px-3 py-1.5 w-20 text-center font-bold focus:ring-2 focus:ring-primary/20 outline-none transition-all"
                         />
                         <span className="text-xs text-foreground/50">%</span>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button 
-                        onClick={() => removePolicyRule(idx)}
+                      <button
+                        type="button"
+                        onClick={() => removePolicyRule(rule.id)}
                         className="p-2 text-foreground/20 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -210,7 +215,8 @@ export default function FinanceTab(props: Readonly<TabProps>) {
             </tbody>
           </table>
           <div className="p-4 bg-foreground/5 border-t border-border">
-            <button 
+            <button
+              type="button" 
               onClick={addPolicyRule}
               className="w-full py-3 flex items-center justify-center gap-2 text-sm font-bold text-primary hover:bg-primary/5 rounded-xl transition-all border border-dashed border-primary/20"
             >

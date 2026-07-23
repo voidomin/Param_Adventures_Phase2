@@ -752,6 +752,7 @@ export default function ManagerTripDetailPage() {
         <AlertCircle className="w-8 h-8 text-red-400 mx-auto mb-3" />
         <p className="text-red-400 font-medium">{error || "Trip not found"}</p>
         <button
+          type="button"
           onClick={() => router.back()}
           className="mt-4 text-sm text-foreground/60 hover:text-foreground"
         >
@@ -811,6 +812,7 @@ export default function ManagerTripDetailPage() {
             {/* Start Trip button — only show when UPCOMING */}
             {slot.status === "UPCOMING" && (
               <button
+                type="button"
                 onClick={handleStartTrip}
                 disabled={isStarting || slot.assignments.length === 0}
                 title={
@@ -847,6 +849,7 @@ export default function ManagerTripDetailPage() {
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold text-foreground">Trek Leads</h2>
               <button
+                type="button"
                 onClick={() => {
                   setShowLeadModal(true);
                   setLeadAssignError("");
@@ -883,6 +886,7 @@ export default function ManagerTripDetailPage() {
                       </div>
                     </div>
                     <button
+                      type="button"
                       onClick={() => handleRemoveLead(a.trekLead.id)}
                       className="text-foreground/30 hover:text-red-500 transition-colors"
                       title="Remove"
@@ -918,6 +922,7 @@ export default function ManagerTripDetailPage() {
                 <p className="text-xs text-red-400">{whatsAppUrlError}</p>
               )}
               <button
+                type="button"
                 onClick={saveWhatsAppUrl}
                 disabled={isSavingWhatsAppUrl}
                 className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-primary text-primary-foreground rounded-xl hover:scale-105 transition-transform disabled:opacity-50 shadow-lg shadow-primary/20"
@@ -1016,6 +1021,7 @@ export default function ManagerTripDetailPage() {
             <hr className="border-border/50" />
 
             <button
+              type="button"
               onClick={saveContacts}
               disabled={isSavingContacts}
               className="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold bg-primary text-primary-foreground rounded-xl hover:scale-105 transition-transform disabled:opacity-50 shadow-lg shadow-primary/20 cursor-pointer"
@@ -1077,6 +1083,7 @@ export default function ManagerTripDetailPage() {
           )}
 
           <button
+            type="button"
             onClick={handleCompleteTrip}
             disabled={isCompleting}
             className="flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-xl font-bold text-sm transition-all hover:scale-105 disabled:opacity-50 shadow-lg shadow-purple-900/30"
@@ -1110,6 +1117,7 @@ export default function ManagerTripDetailPage() {
             <div className="p-6 border-b border-white/10 flex items-center justify-between">
               <h2 className="text-lg font-bold text-white">Assign Trek Lead</h2>
               <button
+                type="button"
                 onClick={() => setShowLeadModal(false)}
                 className="text-slate-400 hover:text-white"
               >
@@ -1145,12 +1153,14 @@ export default function ManagerTripDetailPage() {
               </div>
               <div className="flex justify-end gap-3">
                 <button
+                  type="button"
                   onClick={() => setShowLeadModal(false)}
                   className="px-5 py-2.5 rounded-xl font-medium text-slate-300 hover:bg-white/10 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
+                  type="button"
                   onClick={handleAssignLead}
                   disabled={!selectedLeadId || isAssigningLead}
                   className="px-5 py-2.5 rounded-xl font-bold bg-primary text-primary-foreground hover:scale-105 transition-transform disabled:opacity-50 flex items-center gap-2"

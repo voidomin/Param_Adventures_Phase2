@@ -818,6 +818,7 @@ export default function BookingsPage() {
         <div className="flex overflow-x-auto hide-scrollbar gap-2 mb-8 border-b border-border pb-2">
           {tabs.map((t) => (
             <button
+              type="button"
               key={t.id}
               onClick={() => setActiveTab(t.id as TabStatus)}
               className={`whitespace-nowrap px-5 py-2.5 rounded-full text-sm font-bold transition-all ${
@@ -1013,6 +1014,7 @@ export default function BookingsPage() {
                               return (
                                 <>
                                   <button
+                                    type="button"
                                     disabled={processingId === b.id}
                                     onClick={() => handlePayPending(b)}
                                     className="w-full py-2.5 bg-primary text-primary-foreground font-bold rounded-xl flex items-center justify-center disabled:opacity-50"
@@ -1077,6 +1079,7 @@ export default function BookingsPage() {
                                 )}
                                 {b.paymentStatus === "PARTIALLY_PAID" && (
                                   <button
+                                    type="button"
                                     disabled={processingId === b.id}
                                     onClick={() => setPayingBalanceBooking(b)}
                                     className="w-full py-2.5 bg-primary text-primary-foreground font-bold rounded-xl flex items-center justify-center disabled:opacity-50"

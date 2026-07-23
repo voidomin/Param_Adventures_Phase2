@@ -20,6 +20,36 @@ const blogUpdateSchema = z.object({
   readingTime: z.number().int().min(1, "Reading time must be at least 1 minute").optional().nullable(),
 });
 
+function buildBlogUpdateData(data: z.infer<typeof blogUpdateSchema>, isResubmission: boolean) {
+  const {
+    title,
+    content,
+    coverImageUrl,
+    authorSocials,
+    theme,
+    metaTitle,
+    metaDescription,
+    metaKeywords,
+    readingTime,
+  } = data;
+
+  const sanitizedContent = content === undefined ? undefined : sanitizeEditorContent(content);
+
+  return {
+    ...(title ? { title: title.trim() } : {}),
+    ...(sanitizedContent === undefined ? {} : { content: sanitizedContent }),
+    ...(coverImageUrl === undefined ? {} : { coverImageUrl: coverImageUrl || null }),
+    ...(authorSocials === undefined ? {} : { authorSocials }),
+    ...(theme === undefined ? {} : { theme }),
+    ...(metaTitle === undefined ? {} : { metaTitle: metaTitle || null }),
+    ...(metaDescription === undefined ? {} : { metaDescription: metaDescription || null }),
+    ...(metaKeywords === undefined ? {} : { metaKeywords: metaKeywords || null }),
+    ...(readingTime === undefined ? {} : { readingTime: readingTime || null }),
+    // If editing a published blog, pull it back to pending review automatically
+    ...(isResubmission ? { status: "PENDING_REVIEW" as const, rejectionReason: null } : {}),
+  };
+}
+
 async function getAuthedBlog(request: NextRequest, id: string) {
   const token = request.cookies.get("accessToken")?.value;
   if (!token) return { error: "Unauthorized", status: 401 };
@@ -71,38 +101,9 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         { status: 400 },
       );
     }
-    const {
-      title,
-      content,
-      coverImageUrl,
-      authorSocials,
-      theme,
-      metaTitle,
-      metaDescription,
-      metaKeywords,
-      readingTime,
-    } = parseResult.data;
-
-    const sanitizedContent =
-      content === undefined ? undefined : sanitizeEditorContent(content);
-
     const updated = await prisma.blog.update({
       where: { id },
-      data: {
-        ...(title ? { title: title.trim() } : {}),
-        ...(sanitizedContent === undefined ? {} : { content: sanitizedContent }),
-        ...(coverImageUrl === undefined
-          ? {}
-          : { coverImageUrl: coverImageUrl || null }),
-        ...(authorSocials === undefined ? {} : { authorSocials }),
-        ...(theme === undefined ? {} : { theme }),
-        ...(metaTitle === undefined ? {} : { metaTitle: metaTitle || null }),
-        ...(metaDescription === undefined ? {} : { metaDescription: metaDescription || null }),
-        ...(metaKeywords === undefined ? {} : { metaKeywords: metaKeywords || null }),
-        ...(readingTime === undefined ? {} : { readingTime: readingTime || null }),
-        // If editing a published blog, pull it back to pending review automatically
-        ...(isResubmission ? { status: "PENDING_REVIEW", rejectionReason: null } : {}),
-      },
+      data: buildBlogUpdateData(parseResult.data, isResubmission),
     });
 
     revalidatePath("/", "layout");

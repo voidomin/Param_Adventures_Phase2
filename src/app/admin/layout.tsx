@@ -183,6 +183,7 @@ export default function AdminLayout({
       <header className="md:hidden h-16 bg-background border-b border-border flex items-center justify-between px-4 fixed top-0 left-0 right-0 z-50">
         <div className="flex items-center gap-3">
           <button
+            type="button"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
             className="p-2 text-foreground/70 hover:bg-foreground/5 rounded-lg transition-colors"
             aria-label={isSidebarOpen ? "Close menu" : "Open menu"}
@@ -208,6 +209,7 @@ export default function AdminLayout({
       {/* Backdrop for mobile */}
       {isSidebarOpen && (
         <button
+          type="button"
           className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm transition-opacity w-full h-full cursor-default border-none outline-none"
           onClick={() => setIsSidebarOpen(false)}
           aria-label="Close sidebar"
@@ -230,6 +232,7 @@ export default function AdminLayout({
             </span>
           </Link>
           <button
+            type="button"
             onClick={() => handleToggleSidebar(true)}
             className="p-1.5 text-foreground/50 hover:text-foreground hover:bg-foreground/5 rounded-lg transition-colors"
             title="Collapse Sidebar"
@@ -307,6 +310,7 @@ export default function AdminLayout({
             </div>
           </div>
           <button
+            type="button"
             onClick={() => logout()}
             className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all w-full text-foreground/70 hover:bg-red-500/10 hover:text-red-500"
           >
@@ -324,6 +328,7 @@ export default function AdminLayout({
       >
         {isSidebarCollapsed && (
           <button
+            type="button"
             onClick={() => handleToggleSidebar(false)}
             className="hidden md:flex fixed top-4 left-4 z-50 p-2 bg-background border border-border text-foreground/70 hover:bg-foreground/5 rounded-xl transition-all shadow-md items-center justify-center animate-in fade-in zoom-in duration-200"
             title="Expand Sidebar"

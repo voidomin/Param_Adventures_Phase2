@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { useRouter } from "next/navigation";
+import { formatCellForExport } from "@/lib/utils";
 
 interface LogCategory {
   id: string;
@@ -155,9 +156,7 @@ export default function AuditLogsPage() {
         // Auto-fit column widths
         const maxLen = rows.reduce((acc: Record<string, number>, row: Record<string, unknown>) => {
           Object.keys(row).forEach((key) => {
-            const val = row[key] instanceof Date
-              ? row[key].toISOString().replace("T", " ").substring(0, 19)
-              : String(row[key] ?? "");
+            const val = formatCellForExport(row[key], { includeTime: true });
             acc[key] = Math.max(acc[key] || 10, val.length);
           });
           return acc;
@@ -235,6 +234,7 @@ export default function AuditLogsPage() {
 
               <div className="mt-6 pt-6 border-t border-border/50 flex flex-col sm:flex-row gap-3">
                 <button
+                  type="button"
                   disabled={activeDownload !== null && activeDownload !== undefined}
                   onClick={() => handleDownload(category, "json")}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-border bg-card text-foreground hover:bg-foreground/5 hover:border-foreground/20 transition-all font-bold text-xs disabled:opacity-50 cursor-pointer"
@@ -247,6 +247,7 @@ export default function AuditLogsPage() {
                   Export JSON
                 </button>
                 <button
+                  type="button"
                   disabled={activeDownload !== null && activeDownload !== undefined}
                   onClick={() => handleDownload(category, "excel")}
                   className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-primary-foreground hover:opacity-95 transition-all font-bold text-xs disabled:opacity-50 cursor-pointer shadow-sm shadow-primary/20"

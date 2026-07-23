@@ -293,6 +293,7 @@ export default function PendingRefundsPage() {
                   </td>
                   <td className="px-6 py-5 text-right">
                     <button
+                      type="button"
                       onClick={() => setResolvingBooking(b)}
                       className="px-4 py-2 bg-primary hover:bg-primary/95 text-primary-foreground font-black text-xs uppercase tracking-widest rounded-xl transition-all shadow-md cursor-pointer"
                     >

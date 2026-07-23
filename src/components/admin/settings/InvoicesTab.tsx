@@ -12,6 +12,7 @@ import {
   AlertCircle
 } from "lucide-react";
 import { SectionTitle } from "./Common";
+import { formatCellForExport } from "@/lib/utils";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { 
@@ -287,9 +288,7 @@ export default function InvoicesTab() {
 
         rows.forEach((row: Record<string, unknown>) => {
           for (const key of Object.keys(row)) {
-            const valStr = row[key] instanceof Date
-              ? row[key].toISOString().split("T")[0]
-              : String(row[key] ?? "");
+            const valStr = formatCellForExport(row[key]);
             if (valStr.length > (maxLens[key] || 0)) {
               maxLens[key] = valStr.length;
             }

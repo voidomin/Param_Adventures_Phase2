@@ -188,6 +188,7 @@ export default function SlotsManagementPage() {
           </p>
         </div>
         <button
+          type="button"
           onClick={openAddModal}
           className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 transition-colors shadow-lg shadow-primary/25"
         >
@@ -210,6 +211,7 @@ export default function SlotsManagementPage() {
             Add a slot to let users book this experience.
           </p>
           <button
+            type="button"
             onClick={openAddModal}
             className="mt-6 px-5 py-2.5 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 transition-colors"
           >
@@ -299,6 +301,7 @@ export default function SlotsManagementPage() {
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
                         <button
+                          type="button"
                           onClick={() => openEditModal(slot)}
                           className="p-1.5 hover:bg-foreground/10 rounded-lg transition-colors text-foreground/50 hover:text-foreground"
                           title="Edit"
@@ -306,6 +309,7 @@ export default function SlotsManagementPage() {
                           <Pencil className="w-4 h-4" />
                         </button>
                         <button
+                          type="button"
                           onClick={() => handleDelete(slot)}
                           className="p-1.5 hover:bg-red-500/10 rounded-lg transition-colors text-foreground/50 hover:text-red-500"
                           title="Delete"
@@ -331,6 +335,7 @@ export default function SlotsManagementPage() {
                 {editingSlot ? "Edit Slot" : "Add New Slot"}
               </h2>
               <button
+                type="button"
                 onClick={() => setIsModalOpen(false)}
                 className="p-1.5 hover:bg-foreground/10 rounded-lg transition-colors text-foreground/50"
               >

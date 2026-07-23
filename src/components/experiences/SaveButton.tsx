@@ -110,6 +110,7 @@ export default function SaveButton({
 
   return (
     <button
+      type="button"
       onClick={toggleSave}
       disabled={isLoading}
       suppressHydrationWarning

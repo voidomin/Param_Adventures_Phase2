@@ -6,6 +6,48 @@ import { verifyAccessToken } from "@/lib/auth";
 type Params = { params: Promise<{ id: string }> };
 
 /**
+ * Strips HTML-like tags via a linear scan instead of a regex, so runtime is
+ * always O(n) regardless of how the (untrusted, user-authored) input is shaped.
+ */
+function stripTags(input: string): string {
+  let result = "";
+  let inTag = false;
+  for (const ch of input) {
+    if (ch === "<") inTag = true;
+    else if (ch === ">") inTag = false;
+    else if (!inTag) result += ch;
+  }
+  return result;
+}
+
+/**
+ * A blog "has content" if its Tiptap JSON doc has at least one content node,
+ * or (for legacy string-stored content) if stripping tags leaves any text.
+ */
+function blogHasContent(contentValue: unknown): boolean {
+  if (!contentValue) return false;
+
+  if (typeof contentValue === "object") {
+    const doc = contentValue as { content?: unknown[] };
+    return Array.isArray(doc?.content) && doc.content.length > 0;
+  }
+
+  if (typeof contentValue !== "string") return false;
+
+  const trimmed = contentValue.trim();
+  if (!trimmed.startsWith("{") || !trimmed.endsWith("}")) {
+    return stripTags(trimmed).trim().length > 0;
+  }
+
+  try {
+    const parsed = JSON.parse(trimmed);
+    return Array.isArray(parsed?.content) && parsed.content.length > 0;
+  } catch {
+    return stripTags(trimmed).trim().length > 0;
+  }
+}
+
+/**
  * POST /api/user/blogs/[id]/submit — submit a blog for admin review
  * Transitions DRAFT → PENDING_REVIEW
  */
@@ -33,31 +75,7 @@ export async function POST(request: NextRequest, { params }: Params) {
     );
   }
 
-  // Validate content is not empty
-  let hasContent = false;
-  const contentValue = blog.content;
-  if (contentValue) {
-    if (typeof contentValue === "string") {
-      const trimmed = contentValue.trim();
-      if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
-        try {
-          const parsed = JSON.parse(trimmed);
-          hasContent = Array.isArray(parsed?.content) && parsed.content.length > 0;
-        } catch {
-          const stripped = trimmed.replace(/<[^>]*>/g, "").trim();
-          hasContent = stripped.length > 0;
-        }
-      } else {
-        const stripped = trimmed.replace(/<[^>]*>/g, "").trim();
-        hasContent = stripped.length > 0;
-      }
-    } else if (typeof contentValue === "object") {
-      const doc = contentValue as { content?: unknown[] };
-      hasContent = Array.isArray(doc?.content) && doc.content.length > 0;
-    }
-  }
-
-  if (!blog.title.trim() || !hasContent) {
+  if (!blog.title.trim() || !blogHasContent(blog.content)) {
     return NextResponse.json(
       {
         error:

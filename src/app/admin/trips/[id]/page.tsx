@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import BookingDetailsCollapse from "@/components/admin/BookingDetailsCollapse";
+import { formatCellForExport } from "@/lib/utils";
 
 interface TrekLead {
   id: string;
@@ -195,9 +196,7 @@ export default function TripManifestPage() {
 
       rows.forEach((row: Record<string, unknown>) => {
         Object.keys(row).forEach((key) => {
-          const valStr = row[key] instanceof Date
-            ? row[key].toISOString().split("T")[0]
-            : String(row[key] ?? "");
+          const valStr = formatCellForExport(row[key]);
           if (valStr.length > maxLens[key]) {
             maxLens[key] = valStr.length;
           }
@@ -589,6 +588,7 @@ export default function TripManifestPage() {
                       </p>
                     </div>
                     <button
+                      type="button"
                       onClick={() => handleRemoveLead(a.trekLead.id)}
                       className="p-1.5 text-foreground/40 hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
                       title="Remove Lead"
@@ -665,6 +665,7 @@ export default function TripManifestPage() {
                 <p className="text-xs text-red-400 font-medium">{whatsAppUrlError}</p>
               )}
               <button
+                type="button"
                 onClick={saveWhatsAppUrl}
                 disabled={isSavingWhatsAppUrl}
                 className="w-full flex items-center justify-center gap-2 py-2.5 bg-foreground border border-border text-background rounded-xl font-bold hover:bg-foreground/90 disabled:opacity-50 transition-colors text-sm"

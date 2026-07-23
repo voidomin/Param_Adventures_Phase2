@@ -188,6 +188,6 @@ describe("CategoryBar Smoke Test", () => {
       expect(screen.queryByText("All Adventures")).toBeInTheDocument();
     });
     fireEvent(globalThis as unknown as Window, new Event('resize'));
-    expect(screen.queryByText("All Adventures")).toBeInTheDocument();
+    expect(screen.getByText("All Adventures")).toBeInTheDocument();
   });
 });

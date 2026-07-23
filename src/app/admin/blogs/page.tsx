@@ -82,12 +82,14 @@ function RejectModal({
         {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
         <div className="flex gap-3 mt-4">
           <button
+            type="button"
             onClick={onClose}
             className="flex-1 py-2.5 border border-border rounded-xl text-foreground/60 hover:bg-foreground/5 transition-colors text-sm font-semibold"
           >
             Cancel
           </button>
           <button
+            type="button"
             onClick={handleReject}
             disabled={isLoading}
             className="flex-1 py-2.5 bg-red-500 text-white rounded-xl font-bold hover:bg-red-600 transition-colors text-sm disabled:opacity-50"
@@ -254,6 +256,7 @@ export default function AdminBlogsPage() {
             </p>
           </div>
           <button
+            type="button"
             onClick={() => router.push("/dashboard/blog/write")}
             className="inline-flex items-center justify-center gap-2 px-5 py-3 bg-primary text-primary-foreground font-bold rounded-xl hover:opacity-90 transition-opacity shadow-lg shadow-primary/20 text-sm"
           >
@@ -267,6 +270,7 @@ export default function AdminBlogsPage() {
           <div className="flex gap-2 flex-wrap">
             {STATUS_OPTIONS.map((s) => (
               <button
+                type="button"
                 key={s}
                 onClick={() => {
                   setIsLoading(true);
@@ -364,6 +368,7 @@ export default function AdminBlogsPage() {
                     {blog.status === "PENDING_REVIEW" && (
                       <div className="flex gap-2">
                         <button
+                          type="button"
                           onClick={() => handleApprove(blog.id)}
                           disabled={approvingId === blog.id}
                           className="flex items-center gap-1.5 px-4 py-2 bg-green-500 text-white rounded-xl text-sm font-bold hover:bg-green-600 transition-colors disabled:opacity-50"
@@ -376,6 +381,7 @@ export default function AdminBlogsPage() {
                           Approve
                         </button>
                         <button
+                          type="button"
                           onClick={() => setRejectingBlog(blog.id)}
                           className="flex items-center gap-1.5 px-4 py-2 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-sm font-bold hover:bg-red-500/20 transition-colors"
                         >
@@ -385,6 +391,7 @@ export default function AdminBlogsPage() {
                     )}
                     {blog.status === "PUBLISHED" && (
                       <button
+                        type="button"
                         onClick={() => handleTogglePublish(blog.id)}
                         className="flex items-center gap-1.5 px-4 py-2 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-xl text-sm font-bold hover:bg-amber-500/20 transition-colors"
                       >
@@ -393,6 +400,7 @@ export default function AdminBlogsPage() {
                     )}
                     {blog.status === "DRAFT" && (
                       <button
+                        type="button"
                         onClick={() => handleTogglePublish(blog.id)}
                         className="flex items-center gap-1.5 px-4 py-2 bg-green-500/10 text-green-500 border border-green-500/20 rounded-xl text-sm font-bold hover:bg-green-500/20 transition-colors"
                       >
@@ -403,6 +411,7 @@ export default function AdminBlogsPage() {
                 )}
 
                 <button
+                  type="button"
                   onClick={() => handleDelete(blog.id, blog.title)}
                   className="flex items-center gap-1.5 px-4 py-2 text-red-500/60 hover:text-red-500 hover:bg-red-500/5 rounded-xl text-sm font-bold transition-colors"
                   title="Delete Blog"

@@ -113,20 +113,16 @@ describe("POST /api/bookings", () => {
     expect(data.error).toContain("Requested slots are no longer available");
   });
 
-  it("returns 409 on OVERBOOKED (race condition)", async () => {
+  it.each([
+    { errorMessage: "OVERBOOKED", expectedStatus: 409, description: "OVERBOOKED (race condition)" },
+    { errorMessage: "PAYMENT_GATEWAY_ERROR", expectedStatus: 502, description: "PAYMENT_GATEWAY_ERROR" },
+    { errorMessage: "Database explosion", expectedStatus: 500, description: "unexpected fatal errors" },
+  ])("returns $expectedStatus on $description", async ({ errorMessage, expectedStatus }) => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
-    mockProcessBooking.mockRejectedValueOnce(new Error("OVERBOOKED"));
+    mockProcessBooking.mockRejectedValueOnce(new Error(errorMessage));
 
     const response = await POST(createRequest(validPayload));
-    expect(response.status).toBe(409);
-  });
-
-  it("returns 502 on PAYMENT_GATEWAY_ERROR", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
-    mockProcessBooking.mockRejectedValueOnce(new Error("PAYMENT_GATEWAY_ERROR"));
-
-    const response = await POST(createRequest(validPayload));
-    expect(response.status).toBe(502);
+    expect(response.status).toBe(expectedStatus);
   });
 
   it("returns 400 on ALREADY_REQUESTED", async () => {
@@ -137,13 +133,5 @@ describe("POST /api/bookings", () => {
     expect(response.status).toBe(400);
     const data = await response.json();
     expect(data.error).toContain("pending booking request");
-  });
-
-  it("returns 500 for unexpected fatal errors", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
-    mockProcessBooking.mockRejectedValueOnce(new Error("Database explosion"));
-
-    const response = await POST(createRequest(validPayload));
-    expect(response.status).toBe(500);
   });
 });

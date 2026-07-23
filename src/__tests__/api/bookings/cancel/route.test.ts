@@ -82,58 +82,26 @@ describe("POST /api/bookings/[id]/cancel", () => {
     expect(response.status).toBe(404);
   });
 
-  it("returns 403 when booking belongs to different user", async () => {
+  it.each([
+    { description: "booking belongs to different user", userId: "u2", bookingStatus: "CONFIRMED", expectedStatus: 403 },
+    { description: "booking already cancelled", userId: "u1", bookingStatus: "CANCELLED", expectedStatus: 409 },
+    { description: "non-cancellable booking state", userId: "u1", bookingStatus: "COMPLETED", expectedStatus: 409 },
+  ])("returns $expectedStatus when $description", async ({ userId, bookingStatus, expectedStatus }) => {
     mockAuthorizeRequest.mockResolvedValue({
       authorized: true,
       userId: "u1",
     } as any);
     mockFindUnique.mockResolvedValue({
       id: "b1",
-      userId: "u2",
-      bookingStatus: "CONFIRMED",
+      userId,
+      bookingStatus,
     } as any);
 
     const response = await POST(createRequest({ preference: "COUPON" }), {
       params: Promise.resolve({ id: "b1" }),
     });
 
-    expect(response.status).toBe(403);
-  });
-
-  it("returns 409 when booking already cancelled", async () => {
-    mockAuthorizeRequest.mockResolvedValue({
-      authorized: true,
-      userId: "u1",
-    } as any);
-    mockFindUnique.mockResolvedValue({
-      id: "b1",
-      userId: "u1",
-      bookingStatus: "CANCELLED",
-    } as any);
-
-    const response = await POST(createRequest({ preference: "COUPON" }), {
-      params: Promise.resolve({ id: "b1" }),
-    });
-
-    expect(response.status).toBe(409);
-  });
-
-  it("returns 409 for non-cancellable booking state", async () => {
-    mockAuthorizeRequest.mockResolvedValue({
-      authorized: true,
-      userId: "u1",
-    } as any);
-    mockFindUnique.mockResolvedValue({
-      id: "b1",
-      userId: "u1",
-      bookingStatus: "COMPLETED",
-    } as any);
-
-    const response = await POST(createRequest({ preference: "COUPON" }), {
-      params: Promise.resolve({ id: "b1" }),
-    });
-
-    expect(response.status).toBe(409);
+    expect(response.status).toBe(expectedStatus);
   });
 
   it("cancels booking and restores slot capacity", async () => {

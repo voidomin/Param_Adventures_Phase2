@@ -18,6 +18,7 @@ import {
 import Link from "next/link";
 import { TableSkeleton } from "@/components/admin/TableSkeleton";
 import { ManualVerifyModal } from "@/components/admin/ManualVerifyModal";
+import { formatCellForExport } from "@/lib/utils";
 
 
 type BookingStatus = "REQUESTED" | "CONFIRMED" | "CANCELLED";
@@ -840,9 +841,7 @@ export default function AdminBookingsPage() {
 
       rows.forEach((row: Record<string, unknown>) => {
         Object.keys(row).forEach((key) => {
-          const valStr = row[key] instanceof Date
-            ? row[key].toISOString().split("T")[0]
-            : String(row[key] ?? "");
+          const valStr = formatCellForExport(row[key]);
           if (valStr.length > maxLens[key]) {
             maxLens[key] = valStr.length;
           }
@@ -1108,6 +1107,7 @@ export default function AdminBookingsPage() {
                   </button>
                   {b.bookingStatus === "REQUESTED" && b.paymentStatus !== "PAID" && (
                     <button
+                      type="button"
                       onClick={() => {
                         const pending = b.payments.find((p) => p.status === "PENDING");
                         const amt = pending ? Number(pending.amount) : Number(b.remainingBalance);
@@ -1312,6 +1312,7 @@ export default function AdminBookingsPage() {
                           </button>
                           {b.bookingStatus === "REQUESTED" && b.paymentStatus !== "PAID" && (
                             <button
+                              type="button"
                               onClick={() => {
                                 const pending = b.payments.find((p) => p.status === "PENDING");
                                 const amt = pending ? Number(pending.amount) : Number(b.remainingBalance);
@@ -1439,6 +1440,7 @@ export default function AdminBookingsPage() {
             Pending Refunds ({pendingRefunds.length})
           </Link>
           <button
+            type="button"
             onClick={handleExport}
             disabled={isExporting}
             className="w-full sm:w-auto px-5 py-2.5 bg-primary text-primary-foreground font-black text-xs uppercase tracking-widest rounded-xl hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-50 h-11 cursor-pointer"
@@ -1544,6 +1546,7 @@ export default function AdminBookingsPage() {
               <div className="flex gap-1.5">
                 {STATUS_FILTERS.map((s) => (
                   <button
+                    type="button"
                     key={s}
                     onClick={() => {
                       setIsLoading(true);

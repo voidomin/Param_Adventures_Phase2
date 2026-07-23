@@ -104,6 +104,7 @@ export function ManualVerifyModal({
         <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-foreground/2">
           <h3 className="font-heading font-bold text-lg text-foreground">Verify Manual Payment</h3>
           <button
+            type="button"
             onClick={onClose}
             className="p-1.5 rounded-lg hover:bg-foreground/5 text-foreground/40 hover:text-foreground transition-colors"
           >

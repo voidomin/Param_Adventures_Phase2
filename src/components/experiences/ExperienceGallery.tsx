@@ -157,6 +157,7 @@ export default function ExperienceGallery({
       {galleryImages.length > INITIAL_VISIBLE_COUNT && (
         <div className="flex justify-center mt-4">
           <button
+            type="button"
             onClick={() => setIsExpanded((prev) => !prev)}
             className="flex items-center gap-2 px-8 py-2.5 rounded-full bg-primary/10 text-primary font-bold hover:bg-primary/20 transition-all border border-primary/20 hover:scale-105"
           >

@@ -108,6 +108,7 @@ export default function StoryBlockForm({
               {isEditing ? "Edit Block" : "New Story Block"}
             </h2>
             <button
+              type="button"
               onClick={onClose}
               className="p-2 hover:bg-foreground/5 rounded-lg transition-colors"
             >

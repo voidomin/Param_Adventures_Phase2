@@ -56,16 +56,17 @@ export default function ShareButton({
 
     // Fallback: Try mailto link for email sharing (good for Outlook/desktop)
     const subject = encodeURIComponent(`Check out this adventure: ${title}`);
-    const body = encodeURIComponent(`${text || `Explore ${title} with Param Adventures.`}\n\nLink: ${shareUrl}`);
+    const shareText = text || `Explore ${title} with Param Adventures.`;
+    const body = encodeURIComponent(`${shareText}\n\nLink: ${shareUrl}`);
     const mailtoUrl = `mailto:?subject=${subject}&body=${body}`;
-    
+
     // Create a temporary link and click it to open the email client
     const a = globalThis.document.createElement("a");
     a.href = mailtoUrl;
     a.style.display = "none";
     globalThis.document.body.appendChild(a);
     a.click();
-    globalThis.document.body.removeChild(a);
+    a.remove();
 
     // Fallback to clipboard copy as well so user has it "just in case"
     try {
@@ -85,6 +86,7 @@ export default function ShareButton({
 
   return (
     <button
+      type="button"
       onClick={handleShare}
       suppressHydrationWarning
       className={cn(

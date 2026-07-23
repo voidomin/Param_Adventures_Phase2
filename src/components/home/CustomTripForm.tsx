@@ -93,6 +93,7 @@ export default function CustomTripForm() {
           perfect adventure.
         </p>
         <button
+          type="button"
           onClick={() => setSuccess(false)}
           className="text-primary font-bold hover:underline"
         >

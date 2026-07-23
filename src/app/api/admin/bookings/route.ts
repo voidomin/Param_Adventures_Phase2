@@ -3,6 +3,58 @@ import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 import { Prisma } from "@prisma/client";
 
+function buildDateRangeFilter(startParam: string | null, endParam: string | null): { gte?: Date; lte?: Date } {
+  const filter: { gte?: Date; lte?: Date } = {};
+  if (startParam) {
+    filter.gte = new Date(startParam);
+  }
+  if (endParam) {
+    const end = new Date(endParam);
+    end.setHours(23, 59, 59, 999);
+    filter.lte = end;
+  }
+  return filter;
+}
+
+/**
+ * Decides whether to scope the query by an explicit slot-date range, the
+ * archived/active slot condition, or (default) active-only bookings including
+ * ones with no slot at all.
+ */
+function buildSlotWhereClause(
+  archived: boolean,
+  slotDateFilter: { gte?: Date; lte?: Date },
+  archiveCondition: Prisma.SlotWhereInput,
+  activeCondition: Prisma.SlotWhereInput,
+): Pick<Prisma.BookingWhereInput, "slot" | "OR"> {
+  const hasSlotDateFilter = Object.keys(slotDateFilter).length > 0;
+
+  if (archived) {
+    return {
+      slot: {
+        ...archiveCondition,
+        ...(hasSlotDateFilter ? { date: slotDateFilter } : {}),
+      },
+    };
+  }
+
+  if (hasSlotDateFilter) {
+    return {
+      slot: {
+        ...activeCondition,
+        date: slotDateFilter,
+      },
+    };
+  }
+
+  return {
+    OR: [
+      { slotId: null },
+      { slot: activeCondition },
+    ],
+  };
+}
+
 /**
  * GET /api/admin/bookings — List all bookings (admin)
  */
@@ -26,25 +78,8 @@ export async function GET(request: NextRequest) {
     const slotDateEnd = searchParams.get("slotDateEnd");
     const archived = searchParams.get("archived") === "true";
 
-    const bookingDateFilter: { gte?: Date; lte?: Date } = {};
-    if (bookingDateStart) {
-      bookingDateFilter.gte = new Date(bookingDateStart);
-    }
-    if (bookingDateEnd) {
-      const end = new Date(bookingDateEnd);
-      end.setHours(23, 59, 59, 999);
-      bookingDateFilter.lte = end;
-    }
-
-    const slotDateFilter: { gte?: Date; lte?: Date } = {};
-    if (slotDateStart) {
-      slotDateFilter.gte = new Date(slotDateStart);
-    }
-    if (slotDateEnd) {
-      const end = new Date(slotDateEnd);
-      end.setHours(23, 59, 59, 999);
-      slotDateFilter.lte = end;
-    }
+    const bookingDateFilter = buildDateRangeFilter(bookingDateStart, bookingDateEnd);
+    const slotDateFilter = buildDateRangeFilter(slotDateStart, slotDateEnd);
 
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -91,26 +126,10 @@ export async function GET(request: NextRequest) {
       whereClause.createdAt = bookingDateFilter;
     }
 
-    if (archived) {
-      whereClause.slot = {
-        ...archiveCondition,
-        ...(Object.keys(slotDateFilter).length > 0 ? { date: slotDateFilter } : {}),
-      };
-    } else {
-      if (Object.keys(slotDateFilter).length > 0) {
-        whereClause.slot = {
-          ...activeCondition,
-          date: slotDateFilter,
-        };
-      } else {
-        whereClause.OR = [
-          { slotId: null },
-          {
-            slot: activeCondition,
-          },
-        ];
-      }
-    }
+    Object.assign(
+      whereClause,
+      buildSlotWhereClause(archived, slotDateFilter, archiveCondition, activeCondition),
+    );
 
     const [bookings, total] = await Promise.all([
       prisma.booking.findMany({

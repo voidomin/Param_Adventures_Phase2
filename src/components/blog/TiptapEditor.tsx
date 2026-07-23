@@ -87,17 +87,15 @@ export default function TiptapEditor({
   });
 
   useEffect(() => {
-    if (editor && editor.commands && content) {
+    if (editor?.commands && content) {
       const currentJson = JSON.stringify(editor.getJSON());
       const propJson = typeof content === "string" ? content : JSON.stringify(content);
       if (typeof content === "string") {
         if (editor.getHTML() !== content) {
           editor.commands.setContent(content, { emitUpdate: false });
         }
-      } else {
-        if (currentJson !== propJson) {
-          editor.commands.setContent(content, { emitUpdate: false });
-        }
+      } else if (currentJson !== propJson) {
+        editor.commands.setContent(content, { emitUpdate: false });
       }
     }
   }, [editor, content]);

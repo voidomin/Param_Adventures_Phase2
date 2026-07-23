@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, SyntheticEvent } from "react";
 import { Loader2, X, Lock } from "lucide-react";
 
 interface ReauthModalProps {
@@ -22,7 +22,7 @@ export default function ReauthModal({
 
   if (!isOpen) return null;
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!password.trim()) {
       setError("Please enter your password.");
@@ -65,6 +65,7 @@ export default function ReauthModal({
             <h3 className="font-heading font-bold text-lg text-foreground">Session Expired</h3>
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="p-1.5 rounded-lg hover:bg-foreground/5 text-foreground/40 hover:text-foreground transition-colors"
           >

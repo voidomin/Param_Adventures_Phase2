@@ -100,6 +100,7 @@ function CustomizationContent() {
           const isActive = tab.id === activeTab;
           return (
             <button
+              type="button"
               key={tab.id}
               onClick={() => handleTabChange(tab.id)}
               className={`flex items-center gap-2 px-6 py-3 border-b-2 font-bold text-sm transition-all whitespace-nowrap cursor-pointer hover:text-foreground/90 ${

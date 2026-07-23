@@ -2,18 +2,23 @@ import { useState, useCallback } from "react";
 import { UploadCloud, Loader2 } from "lucide-react";
 import ImageCropper from "./ImageCropper";
 
+const EXTENSION_MIME_TYPES: Record<string, string> = {
+  mp4: "video/mp4",
+  mov: "video/quicktime",
+  webm: "video/webm",
+  avi: "video/x-msvideo",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  gif: "image/gif",
+  webp: "image/webp",
+};
+
 function getMimeType(file: File | Blob): string {
   if (file.type) return file.type;
   if (file instanceof File) {
     const ext = file.name.split(".").pop()?.toLowerCase();
-    if (ext === "mp4") return "video/mp4";
-    if (ext === "mov") return "video/quicktime";
-    if (ext === "webm") return "video/webm";
-    if (ext === "avi") return "video/x-msvideo";
-    if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
-    if (ext === "png") return "image/png";
-    if (ext === "gif") return "image/gif";
-    if (ext === "webp") return "image/webp";
+    if (ext && ext in EXTENSION_MIME_TYPES) return EXTENSION_MIME_TYPES[ext];
   }
   return "application/octet-stream";
 }

@@ -1,7 +1,5 @@
 "use client";
-import { useCallback } from "react";
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   CreditCard,
   Search,
@@ -199,6 +197,7 @@ export default function AdminRefundRequestsPage() {
                     </td>
                     <td className="px-6 py-5 text-right">
                       <button
+                        type="button"
                         onClick={() => handleOpenReview(refund)}
                         className="px-4 py-2 bg-primary/10 hover:bg-primary text-primary hover:text-primary-foreground font-black text-xs uppercase tracking-widest rounded-xl transition-all border border-primary/25"
                       >
@@ -249,6 +248,7 @@ export default function AdminRefundRequestsPage() {
           <div className="flex flex-wrap items-center gap-1.5 bg-background p-1 border border-border rounded-xl">
             {(["ALL", "REQUESTED", "UNDER_REVIEW", "APPROVED", "PAYMENT_INITIATED", "TRANSFER_COMPLETED"] as const).map((st) => (
               <button
+                type="button"
                 key={st}
                 onClick={() => setFilterStatus(st)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${

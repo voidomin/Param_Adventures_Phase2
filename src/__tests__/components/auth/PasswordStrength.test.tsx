@@ -14,7 +14,7 @@ describe("PasswordStrength", () => {
     expect(screen.getByText("Too short")).toBeInTheDocument();
 
     const bars = container.querySelectorAll(".h-1");
-    expect(bars.length).toBe(5);
+    expect(bars).toHaveLength(5);
     bars.forEach((bar) => {
       expect(bar.className).toContain("bg-white/10");
     });
@@ -25,7 +25,7 @@ describe("PasswordStrength", () => {
     expect(screen.getByText("Excellent")).toBeInTheDocument();
 
     const bars = container.querySelectorAll(".h-1");
-    expect(bars.length).toBe(5);
+    expect(bars).toHaveLength(5);
     bars.forEach((bar) => {
       expect(bar.className).not.toContain("bg-white/10");
     });

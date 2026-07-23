@@ -33,13 +33,18 @@ export default function HeroForm({ slide, onClose, onSuccess }: HeroFormProps) {
   const [videoUrl, setVideoUrl] = useState(slide?.videoUrl || "");
   const [ctaLink, setCtaLink] = useState(slide?.ctaLink || "");
   const [isActive, setIsActive] = useState(slide ? slide.isActive : true);
-  const [features, setFeatures] = useState<{ icon: string; text: string }[]>(
+  const [features, setFeatures] = useState<{ id: string; icon: string; text: string }[]>(
     (() => {
       if (slide?.features) {
         try {
-          return typeof slide.features === "string" 
-            ? JSON.parse(slide.features) 
+          const parsed = typeof slide.features === "string"
+            ? JSON.parse(slide.features)
             : (Array.isArray(slide.features) ? slide.features : []);
+          // Backfill an id for features saved before this field existed.
+          return parsed.map((feat: { id?: string; icon: string; text: string }) => ({
+            id: feat.id ?? `feat-${crypto.randomUUID().slice(0, 6)}`,
+            ...feat,
+          }));
         } catch {
           return [];
         }
@@ -94,6 +99,7 @@ export default function HeroForm({ slide, onClose, onSuccess }: HeroFormProps) {
             {isEditing ? "Edit Hero Slide" : "Create Hero Slide"}
           </h2>
           <button
+            type="button"
             onClick={onClose}
             className="p-2 text-foreground/50 hover:text-foreground hover:bg-foreground/5 rounded-full transition-colors"
           >
@@ -241,7 +247,7 @@ export default function HeroForm({ slide, onClose, onSuccess }: HeroFormProps) {
                 {features.length < 3 && (
                   <button
                     type="button"
-                    onClick={() => setFeatures([...features, { icon: "MapPin", text: "" }])}
+                    onClick={() => setFeatures([...features, { id: `feat-${crypto.randomUUID().slice(0, 6)}`, icon: "MapPin", text: "" }])}
                     className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
                   >
                     + Add Highlight
@@ -256,7 +262,7 @@ export default function HeroForm({ slide, onClose, onSuccess }: HeroFormProps) {
               ) : (
                 <div className="space-y-2">
                   {features.map((feat, idx) => (
-                    <div key={`feat-${idx}`} className="flex items-center gap-3 p-3 bg-foreground/[0.02] border border-border rounded-xl">
+                    <div key={feat.id} className="flex items-center gap-3 p-3 bg-foreground/[0.02] border border-border rounded-xl">
                       <div className="flex-1 grid grid-cols-2 gap-2">
                         <div>
                           <label htmlFor={`highlight-icon-${idx}`} className="sr-only">Icon</label>

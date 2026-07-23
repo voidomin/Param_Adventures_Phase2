@@ -169,6 +169,13 @@ export default function EditBlogPage() {
 
   if (!blog) return null;
 
+  let submitButtonIcon = <Send className="w-4 h-4" />;
+  if (isSubmitting) {
+    submitButtonIcon = <Loader2 className="w-4 h-4 animate-spin" />;
+  } else if (blog.status === "PUBLISHED") {
+    submitButtonIcon = <Pencil className="w-4 h-4" />;
+  }
+
   return (
     <div className="min-h-screen bg-background pb-20">
       <div className="max-w-3xl mx-auto px-4 pt-28">
@@ -340,6 +347,7 @@ export default function EditBlogPage() {
             {/* Save Draft — only visible for DRAFT blogs */}
             {blog.status === "DRAFT" && (
               <button
+                type="button"
                 onClick={onSaveClick}
                 disabled={isSaving}
                 className="flex items-center gap-2 px-5 py-2.5 border border-border rounded-xl text-foreground/70 font-semibold hover:bg-foreground/5 transition-colors disabled:opacity-50"
@@ -356,17 +364,12 @@ export default function EditBlogPage() {
             {/* Submit / Re-submit — for DRAFT and PUBLISHED */}
             {(blog.status === "DRAFT" || blog.status === "PUBLISHED") && (
               <button
+                type="button"
                 onClick={onSubmitClick}
                 disabled={isSaving || isSubmitting}
                 className="flex items-center gap-2 px-6 py-2.5 bg-primary text-primary-foreground rounded-xl font-bold hover:opacity-90 transition-opacity disabled:opacity-50 shadow-lg shadow-primary/25"
               >
-                {isSubmitting ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : blog.status === "PUBLISHED" ? (
-                  <Pencil className="w-4 h-4" />
-                ) : (
-                  <Send className="w-4 h-4" />
-                )}{" "}
+                {submitButtonIcon}{" "}
                 {blog.status === "PUBLISHED" ? "Save & Re-submit for Review" : "Submit for Review"}
               </button>
             )}
