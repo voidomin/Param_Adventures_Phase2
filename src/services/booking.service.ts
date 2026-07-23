@@ -366,7 +366,7 @@ export const BookingService = {
    */
   async confirmPayment(bookingId: string, razorpayOrderId: string, razorpayPaymentId: string, payload: Record<string, unknown>) {
     try {
-      const updatedBooking = await prisma.$transaction(async (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => {
+      const updatedBooking = await runWithRetry(() => prisma.$transaction(async (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => {
         const booking = await tx.booking.findUnique({
           where: { id: bookingId },
           select: { id: true, userId: true, bookingStatus: true, participantCount: true, slotId: true, totalPrice: true, paidAmount: true },
@@ -451,7 +451,7 @@ export const BookingService = {
         return updated;
       }, {
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-      });
+      }));
 
       // Revalidate entire layout to refresh slot capacities
       revalidatePath("/", "layout");

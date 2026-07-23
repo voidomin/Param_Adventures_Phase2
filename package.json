@@ -11,12 +11,15 @@
     "test:watch": "vitest watch",
     "test:coverage": "vitest run --coverage",
     "postinstall": "npx prisma generate",
+    "prepare": "husky",
     "db:push": "npx prisma db push",
     "db:sync:schema": "npx prisma db push",
     "db:migrate:deploy": "npx prisma migrate deploy",
     "db:studio": "npx prisma studio",
     "seed": "node prisma/seed.mjs",
-    "email": "email dev -d src/lib/email/templates"
+    "email": "email dev -d src/lib/email/templates",
+    "rotate-encryption-key": "node scripts/rotate-encryption-key.mjs",
+    "encrypt-plaintext-settings": "node scripts/encrypt-plaintext-settings.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.758.0",
@@ -90,6 +93,11 @@
   },
   "prisma": {
     "seed": "node prisma/seed.mjs"
+  },
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix"
+    ]
   },
   "overrides": {
     "hono": "^4.12.31",

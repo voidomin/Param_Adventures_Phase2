@@ -1,5 +1,9 @@
 import { vi } from 'vitest';
 
+// DB_ENCRYPTION_KEY is required by src/lib/encryption.ts at import time; tests that
+// exercise the real module (rather than a mock) need a value present in process.env.
+process.env.DB_ENCRYPTION_KEY ||= 'test-only-encryption-key-do-not-use-in-prod';
+
 vi.mock('next/headers', () => ({
   headers: () => new Headers(),
   cookies: () => ({ get: vi.fn(), set: vi.fn() }),

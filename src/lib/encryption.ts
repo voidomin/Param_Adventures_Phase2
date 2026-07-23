@@ -1,6 +1,12 @@
 import crypto from "crypto";
 
-const ENCRYPTION_KEY_RAW = process.env.DB_ENCRYPTION_KEY || "default-fallback-key-should-be-changed-in-prod";
+const ENCRYPTION_KEY_RAW = process.env.DB_ENCRYPTION_KEY;
+if (!ENCRYPTION_KEY_RAW) {
+  throw new Error(
+    "DB_ENCRYPTION_KEY environment variable is not set. This key protects sensitive " +
+      "settings (Razorpay secrets, SMTP password, etc.) at rest and must be configured.",
+  );
+}
 const KEY = crypto.createHash("sha256").update(ENCRYPTION_KEY_RAW).digest(); // Always 32 bytes
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 12;

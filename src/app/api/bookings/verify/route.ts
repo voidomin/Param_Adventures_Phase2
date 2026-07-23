@@ -73,7 +73,11 @@ export async function POST(request: NextRequest) {
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest("hex");
 
-    if (expectedSignature !== razorpay_signature) {
+    const signaturesMatch =
+      expectedSignature.length === razorpay_signature.length &&
+      crypto.timingSafeEqual(Buffer.from(expectedSignature), Buffer.from(razorpay_signature));
+
+    if (!signaturesMatch) {
       // Record failure for audit
       await prisma.payment.updateMany({
         where: { providerOrderId: razorpay_order_id },

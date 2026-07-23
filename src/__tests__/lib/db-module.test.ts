@@ -23,10 +23,11 @@ describe("lib/db module", () => {
       this.pool = pool;
     });
     const prismaCtor = vi.fn(function () {
-      return {
+      const instance = {
         user: {},
         savedExperience: {},
       };
+      return Object.assign(instance, { $extends: vi.fn(() => instance) });
     });
 
     vi.doMock("pg", () => ({
@@ -75,7 +76,8 @@ describe("lib/db module", () => {
 
     vi.doMock("@prisma/client", () => ({
       PrismaClient: vi.fn(function () {
-        return { user: {} };
+        const instance = { user: {} };
+        return Object.assign(instance, { $extends: vi.fn(() => instance) });
       }),
     }));
 
