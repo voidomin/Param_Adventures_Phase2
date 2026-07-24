@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { EmailProvider, EmailOptions } from "./base";
+import { maskEmail } from "@/lib/utils";
 
 export interface SMTPConfig {
   host: string;
@@ -47,16 +48,16 @@ export class SMTPProvider implements EmailProvider {
           subject: options.subject,
           html: options.html,
         });
-        console.log(`✅ [SMTP] Email sent to ${options.to} (attempt ${attempt})`);
+        console.log(`✅ [SMTP] Email sent to ${maskEmail(options.to)} (attempt ${attempt})`);
         return;
       } catch (error) {
         const isLastAttempt = attempt === maxRetries;
         if (isLastAttempt) {
-          console.error(`❌ [SMTP] Delivery failed to ${options.to} after ${maxRetries} attempts:`, error);
+          console.error(`❌ [SMTP] Delivery failed to ${maskEmail(options.to)} after ${maxRetries} attempts:`, error);
           throw error;
         }
         const delay = baseDelayMs * Math.pow(2, attempt - 1);
-        console.warn(`⚠️ [SMTP] Attempt ${attempt}/${maxRetries} failed for ${options.to}, retrying in ${delay}ms...`);
+        console.warn(`⚠️ [SMTP] Attempt ${attempt}/${maxRetries} failed for ${maskEmail(options.to)}, retrying in ${delay}ms...`);
         await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }

@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { EmailProvider, EmailOptions } from "./base";
+import { maskEmail } from "@/lib/utils";
 
 export interface ResendConfig {
   apiKey: string;
@@ -37,9 +38,9 @@ export class ResendProvider implements EmailProvider {
         throw new Error(`Resend API error: ${error.message}`);
       }
 
-      console.log(`✅ [Resend] Email sent: ${data?.id} to ${options.to}`);
+      console.log(`✅ [Resend] Email sent: ${data?.id} to ${maskEmail(options.to)}`);
     } catch (error) {
-      console.error(`❌ [Resend] Delivery failed to ${options.to}:`, error);
+      console.error(`❌ [Resend] Delivery failed to ${maskEmail(options.to)}:`, error);
       throw error;
     } finally {
       clearTimeout(timeoutId!);

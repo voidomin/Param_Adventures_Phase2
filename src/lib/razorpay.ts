@@ -20,7 +20,12 @@ export async function getRazorpay() {
   const keySecret = settings.find(s => s.key === "razorpay_key_secret")?.value || process.env.RAZORPAY_KEY_SECRET;
 
   if (!keyId || !keySecret) {
-    if (process.env.NODE_ENV === "production") {
+    // Allowlist, not a denylist: only known-safe local dev/test environments may
+    // silently fall back to a dummy gateway. Anything else (production, staging,
+    // or an unset/misconfigured NODE_ENV) fails loudly instead of quietly taking
+    // "payments" that will never actually charge a customer.
+    const isSafeForDummyFallback = process.env.NODE_ENV === "development" || process.env.NODE_ENV === "test";
+    if (!isSafeForDummyFallback) {
       throw new Error("Razorpay configuration is missing in both database and environment.");
     }
     // Dummy instance for development if nothing is found

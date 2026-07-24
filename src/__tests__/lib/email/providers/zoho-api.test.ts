@@ -87,7 +87,7 @@ describe("ZohoAPIProvider", () => {
 
     await expect(
       provider.send({ to: "user@example.com", subject: "Hi", html: "<p>Hi</p>" }),
-    ).rejects.toThrow("Zoho API delivery timed out to user@example.com");
+    ).rejects.toThrow("Zoho API delivery timed out to us***@example.com");
   });
 
   it("rethrows unexpected network errors as-is", async () => {

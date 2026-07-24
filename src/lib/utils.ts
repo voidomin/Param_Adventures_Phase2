@@ -60,6 +60,20 @@ export async function exportRowsToExcel(
   XLSX.writeFile(workbook, filename);
 }
 
+/**
+ * Masks an email address for logging so operational logs stay useful for
+ * debugging without printing a customer's full address in plaintext.
+ * e.g. "jane.doe@example.com" -> "ja***@example.com"
+ */
+export function maskEmail(email: string): string {
+  const atIndex = email.indexOf("@");
+  if (atIndex <= 0) return "***";
+  const localPart = email.slice(0, atIndex);
+  const domain = email.slice(atIndex);
+  const visibleChars = localPart.slice(0, Math.min(2, localPart.length));
+  return `${visibleChars}***${domain}`;
+}
+
 export function calculateAge(dob: string | Date): number {
   const birthDate = new Date(dob);
   const today = new Date();

@@ -70,6 +70,17 @@ describe("getRazorpay", () => {
     await expect(getRazorpay()).rejects.toThrow("Razorpay configuration is missing in both database and environment.");
   });
 
+  it("throws for an unrecognized NODE_ENV (e.g. a misconfigured staging deploy) rather than silently using a dummy gateway", async () => {
+    mockFindMany.mockResolvedValue([]);
+    vi.stubEnv("RAZORPAY_KEY_ID", "");
+    vi.stubEnv("RAZORPAY_KEY_SECRET", "");
+    vi.stubEnv("NODE_ENV", "staging");
+
+    const { getRazorpay } = await import("@/lib/razorpay");
+
+    await expect(getRazorpay()).rejects.toThrow("Razorpay configuration is missing in both database and environment.");
+  });
+
   it("reuses the cached instance when the key id hasn't changed", async () => {
     mockFindMany.mockResolvedValue([
       { key: "razorpay_key_id", value: "same_key" },

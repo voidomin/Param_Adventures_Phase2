@@ -155,7 +155,7 @@ describe("Email Utilities", () => {
     const spyError = vi.spyOn(console, "error");
 
     await sendWelcomeEmail({ userName: "Bob", userEmail: "bob@test.com" });
-    expect(spyError).toHaveBeenCalledWith(expect.stringContaining("Failed to send email to bob@test.com:"), expect.any(Error));
+    expect(spyError).toHaveBeenCalledWith(expect.stringContaining("Failed to send email to bo***@test.com:"), expect.any(Error));
 
     (process.env as any).NODE_ENV = originalNodeEnv;
   });
