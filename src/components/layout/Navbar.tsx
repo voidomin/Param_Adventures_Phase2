@@ -104,8 +104,9 @@ export default function Navbar() {
                   <button
                     type="button"
                     onClick={handleLogout}
-                    className="text-foreground/50 hover:text-red-500 transition-colors p-2"
+                    className="text-foreground/50 hover:text-red-500 transition-colors min-w-10 min-h-10 flex items-center justify-center"
                     title="Logout"
+                    aria-label="Logout"
                   >
                     <LogOut className="w-4 h-4" />
                   </button>
@@ -130,7 +131,8 @@ export default function Navbar() {
               <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="text-foreground relative z-[60] p-1"
+                className="text-foreground relative z-[60] min-w-10 min-h-10 flex items-center justify-center"
+                aria-label={isOpen ? "Close menu" : "Open menu"}
                 suppressHydrationWarning
               >
                 {isOpen ? (
@@ -151,20 +153,16 @@ export default function Navbar() {
 
       {/* Mobile Nav Overlay — OUTSIDE the nav for proper z-index stacking */}
       {isOpen && (
-        <div
-          className="lg:hidden fixed inset-0 top-16 z-[55] overflow-y-auto"
-          style={{ backgroundColor: "#f8fafc" }}
-        >
+        <div className="lg:hidden fixed inset-0 top-16 z-[55] overflow-y-auto bg-background">
           <div className="flex flex-col p-6 space-y-6">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 onClick={() => setIsOpen(false)}
-                className="text-xl font-heading font-medium flex items-center gap-4 border-b pb-4"
-                style={{ color: "#0f172a", borderColor: "#e2e8f0" }}
+                className="text-xl font-heading font-medium flex items-center gap-4 border-b border-border pb-4 text-foreground"
               >
-                <link.icon className="w-6 h-6" style={{ color: "#ff9933" }} />
+                <link.icon className="w-6 h-6 text-primary" />
                 {link.name}
               </Link>
             ))}
@@ -172,16 +170,13 @@ export default function Navbar() {
             {/* Mobile Auth Section */}
             {user ? (
               <div className="space-y-4">
-                <div
-                  className="flex items-center gap-3 border-b pb-4"
-                  style={{ color: "#0f172a", borderColor: "#e2e8f0" }}
-                >
-                  <User className="w-6 h-6" style={{ color: "#ff9933" }} />
+                <div className="flex items-center gap-3 border-b border-border pb-4 text-foreground">
+                  <User className="w-6 h-6 text-primary" />
                   <div>
                     <p className="text-lg font-heading font-medium">
                       {user.name}
                     </p>
-                    <p className="text-sm" style={{ color: "#64748b" }}>
+                    <p className="text-sm text-foreground/60">
                       {user.role.replaceAll("_", " ")}
                     </p>
                   </div>
@@ -192,8 +187,7 @@ export default function Navbar() {
                   <Link
                     href="/admin"
                     onClick={() => setIsOpen(false)}
-                    className="w-full py-4 text-lg font-bold text-center block"
-                    style={{ color: "#ff9933" }}
+                    className="w-full py-4 text-lg font-bold text-center block text-primary"
                   >
                     Go to Admin Dashboard
                   </Link>
@@ -201,8 +195,7 @@ export default function Navbar() {
                   <Link
                     href="/dashboard"
                     onClick={() => setIsOpen(false)}
-                    className="w-full py-4 text-lg font-bold text-center block relative"
-                    style={{ color: "#ff9933" }}
+                    className="w-full py-4 text-lg font-bold text-center block relative text-primary"
                   >
                     My Dashboard
                     {isProfileIncomplete && (
@@ -213,11 +206,7 @@ export default function Navbar() {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="w-full py-4 rounded-xl text-lg font-bold text-center block"
-                  style={{
-                    backgroundColor: "#ef4444",
-                    color: "#ffffff",
-                  }}
+                  className="w-full py-4 rounded-xl text-lg font-bold text-center block bg-red-500 text-white"
                 >
                   Sign Out
                 </button>
@@ -226,11 +215,7 @@ export default function Navbar() {
               <Link
                 href="/login"
                 onClick={() => setIsOpen(false)}
-                className="w-full py-4 rounded-xl text-lg font-bold text-center block"
-                style={{
-                  backgroundColor: "#ff9933",
-                  color: "#000000",
-                }}
+                className="w-full py-4 rounded-xl text-lg font-bold text-center block bg-primary text-primary-foreground"
               >
                 Sign In to Book
               </Link>

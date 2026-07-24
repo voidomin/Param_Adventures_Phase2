@@ -24,7 +24,7 @@ describe("ExperienceGallery Component", () => {
   });
 
   it("renders the primary image grid successfully", () => {
-    render(<ExperienceGallery images={sampleImages} mediaSettings={mockMediaSettings} />);
+    render(<ExperienceGallery images={sampleImages} mediaSettings={mockMediaSettings} experienceTitle="Test Trek" />);
     const images = screen.getAllByRole("img");
     expect(images).toHaveLength(2); // 2 images, 1 video
     expect(images[0]).toHaveAttribute("src", sampleImages[0]);
@@ -36,12 +36,12 @@ describe("ExperienceGallery Component", () => {
   }, 10000);
 
   it("returns null when provided with an empty array", () => {
-    const { container } = render(<ExperienceGallery images={[]} mediaSettings={mockMediaSettings} />);
+    const { container } = render(<ExperienceGallery images={[]} mediaSettings={mockMediaSettings} experienceTitle="Test Trek" />);
     expect(container.firstChild).toBeNull();
   });
 
   it("opens the fullscreen lightbox modal when an image is clicked", () => {
-    render(<ExperienceGallery images={sampleImages} mediaSettings={mockMediaSettings} />);
+    render(<ExperienceGallery images={sampleImages} mediaSettings={mockMediaSettings} experienceTitle="Test Trek" />);
     
     // Click first image
     const firstImageContainer = screen.getByTestId(`motion-div-gallery-${sampleImages[0]}`);
@@ -52,7 +52,7 @@ describe("ExperienceGallery Component", () => {
   }, 10000);
 
   it("closes the lightbox safely when close button is clicked", async () => {
-    render(<ExperienceGallery images={sampleImages} mediaSettings={mockMediaSettings} />);
+    render(<ExperienceGallery images={sampleImages} mediaSettings={mockMediaSettings} experienceTitle="Test Trek" />);
     
     // Open lightbox
     const firstImageContainer = screen.getByTestId(`motion-div-gallery-${sampleImages[0]}`);
@@ -69,7 +69,7 @@ describe("ExperienceGallery Component", () => {
   }, 10000);
 
   it("navigates next and prev via buttons and loops around", () => {
-    render(<ExperienceGallery images={sampleImages} mediaSettings={mockMediaSettings} />);
+    render(<ExperienceGallery images={sampleImages} mediaSettings={mockMediaSettings} experienceTitle="Test Trek" />);
     
     // Open on first
     fireEvent.click(screen.getByTestId(`motion-div-gallery-${sampleImages[0]}`));
@@ -98,7 +98,7 @@ describe("ExperienceGallery Component", () => {
   }, 10000);
 
   it("responds to keyboard events (ArrowRight, ArrowLeft, Escape)", () => {
-    render(<ExperienceGallery images={sampleImages} mediaSettings={mockMediaSettings} />);
+    render(<ExperienceGallery images={sampleImages} mediaSettings={mockMediaSettings} experienceTitle="Test Trek" />);
     
     // Open on second
     fireEvent.click(screen.getByTestId(`motion-div-gallery-${sampleImages[1]}`));
@@ -120,7 +120,7 @@ describe("ExperienceGallery Component", () => {
   it("shows 'See All' button when images exceed 24 and expands list", () => {
     // Generate array of 30 images
     const manyImages = Array.from({ length: 30 }, (_, i) => `https://example.com/img${i}.jpg`);
-    render(<ExperienceGallery images={manyImages} mediaSettings={mockMediaSettings} />);
+    render(<ExperienceGallery images={manyImages} mediaSettings={mockMediaSettings} experienceTitle="Test Trek" />);
     
     // Initially shows 24 items
     const images = screen.getAllByRole("img");
