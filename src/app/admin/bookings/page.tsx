@@ -276,7 +276,8 @@ function BookingDetailsModal({
           <button
             type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-foreground/5 text-foreground/40 hover:text-foreground transition-colors"
+            aria-label="Close"
+            className="min-w-10 min-h-10 flex items-center justify-center rounded-lg hover:bg-foreground/5 text-foreground/40 hover:text-foreground transition-colors"
           >
             <XCircle className="w-5 h-5" />
           </button>
@@ -964,8 +965,9 @@ export default function AdminBookingsPage() {
                   <button
                     type="button"
                     onClick={() => handleArchiveBooking(b.id)}
-                    className="p-2 rounded-xl bg-red-500/5 text-red-500 hover:bg-red-500/10 transition-colors"
+                    className="min-w-10 min-h-10 flex items-center justify-center rounded-xl bg-red-500/5 text-red-500 hover:bg-red-500/10 transition-colors"
                     title="Archive/Hide Booking"
+                    aria-label="Archive/Hide Booking"
                   >
                     <Archive className="w-3.5 h-3.5" />
                   </button>
@@ -1147,8 +1149,9 @@ export default function AdminBookingsPage() {
                           <button
                             type="button"
                             onClick={() => setActiveDetailsBooking(b)}
-                            className="p-2 rounded-lg bg-foreground/5 text-foreground/50 hover:bg-foreground/10 hover:text-foreground transition-all"
+                            className="min-w-10 min-h-10 flex items-center justify-center rounded-lg bg-foreground/5 text-foreground/50 hover:bg-foreground/10 hover:text-foreground transition-all"
                             title="View Booking Details"
+                            aria-label="View Booking Details"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
@@ -1170,8 +1173,9 @@ export default function AdminBookingsPage() {
                           <button
                             type="button"
                             onClick={() => handleArchiveBooking(b.id)}
-                            className="p-2 rounded-lg bg-red-500/5 text-red-500/60 hover:bg-red-500/10 hover:text-red-500 transition-all"
+                            className="min-w-10 min-h-10 flex items-center justify-center rounded-lg bg-red-500/5 text-red-500/60 hover:bg-red-500/10 hover:text-red-500 transition-all"
                             title="Archive/Hide Booking"
+                            aria-label="Archive/Hide Booking"
                           >
                             <Archive className="w-3.5 h-3.5" />
                           </button>
@@ -1220,7 +1224,7 @@ export default function AdminBookingsPage() {
                     key={`page-${pageNumber}`}
                     type="button"
                     onClick={() => setCurrentPage(pageNumber)}
-                    className={`w-9 h-9 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    className={`w-10 h-10 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                       currentPage === pageNumber
                         ? "bg-primary text-primary-foreground font-black shadow-md shadow-primary/10"
                         : "border border-border bg-card text-foreground/70 hover:bg-foreground/5"

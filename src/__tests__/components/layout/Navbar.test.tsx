@@ -70,7 +70,7 @@ describe("Navbar Smoke Test", () => {
   it("toggles mobile menu", () => {
     render(<Navbar />);
     // Large screens hide the mobile menu button usually, but RTL doesn't care about CSS media queries unless JS-based
-    const menuBtn = screen.getByRole("button", { name: "" }); // lucide-react Menu doesn't have label by default
+    const menuBtn = screen.getByRole("button", { name: "Open menu" });
     // Let's find by class or icon if possible, but easier to just click the button that toggles isOpen
     fireEvent.click(menuBtn);
     
@@ -81,7 +81,7 @@ describe("Navbar Smoke Test", () => {
 
   it("closes mobile menu when auth link is clicked", () => {
     render(<Navbar />);
-    const menuBtn = screen.getByRole("button", { name: "" });
+    const menuBtn = screen.getByRole("button", { name: "Open menu" });
     fireEvent.click(menuBtn); // Open menu
     
     // Unauthenticated: shows "Sign In to Book" link

@@ -1114,9 +1114,10 @@ export default async function ExperienceDetailPage({
 
           {exp.images.length > 0 && (
             <section id="gallery" className="scroll-mt-32">
-              <ExperienceGallery 
-                images={exp.images} 
-                mediaSettings={mediaSettings} 
+              <ExperienceGallery
+                images={exp.images}
+                mediaSettings={mediaSettings}
+                experienceTitle={exp.title}
               />
             </section>
           )}
