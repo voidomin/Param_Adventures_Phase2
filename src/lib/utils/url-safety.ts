@@ -57,6 +57,15 @@ export function isAwsUrl(url: string): boolean {
 }
 
 /**
+ * Whether `url` points at one of the platform's own known media hosts
+ * (Cloudinary or S3/amazonaws.com). Used to keep media-fetching/registration
+ * endpoints from accepting or fetching arbitrary attacker-supplied URLs.
+ */
+export function isAllowedMediaHost(url: string): boolean {
+  return isResCloudinaryUrl(url) || isAwsUrl(url);
+}
+
+/**
  * Safely parses a URL and checks if it belongs to S3 storage (AWS amazonaws.com, local s3 subdomains, or localhost).
  */
 export function isS3Url(url: string): boolean {

@@ -29,6 +29,21 @@ describe("rate-limit-config", () => {
       expect(specificBookingRule).toEqual(bookingsRule);
     });
 
+    it("matches sensitive user account/media endpoints with tighter limits than the general fallback", () => {
+      const passwordRule = findMatchingRule("/api/user/password");
+      expect(passwordRule?.label).toBe("User:PasswordChange");
+      expect(passwordRule?.limit).toBe(5);
+
+      const avatarRule = findMatchingRule("/api/user/avatar");
+      expect(avatarRule?.label).toBe("User:Avatar");
+
+      const presignRule = findMatchingRule("/api/user/media/presign");
+      expect(presignRule?.label).toBe("User:MediaPresign");
+
+      const registerRule = findMatchingRule("/api/user/media/register");
+      expect(registerRule?.label).toBe("User:MediaRegister");
+    });
+
     it("falls back to general api limit for unmatched api routes", () => {
       const generalRule = findMatchingRule("/api/some-new-feature");
       expect(generalRule).toBeDefined();

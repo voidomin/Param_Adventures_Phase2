@@ -10,7 +10,6 @@ vi.mock("@/lib/db", () => ({
     booking: {
       aggregate: vi.fn(),
       count: vi.fn(),
-      findMany: vi.fn(),
     },
     slot: {
       count: vi.fn(),
@@ -29,7 +28,6 @@ vi.mock("@/lib/db", () => ({
       count: vi.fn(),
     },
     user: {
-      findMany: vi.fn(),
       count: vi.fn(),
     },
     experienceReview: {
@@ -38,6 +36,7 @@ vi.mock("@/lib/db", () => ({
     savedExperience: {
       count: vi.fn(),
     },
+    $queryRaw: vi.fn(),
   },
 }));
 
@@ -48,17 +47,16 @@ import { prisma } from "@/lib/db";
 const mockAuthorizeRequest = vi.mocked(authorizeRequest);
 const mockBookingAggregate = vi.mocked(prisma.booking.aggregate);
 const mockBookingCount = vi.mocked(prisma.booking.count);
-const mockBookingFindMany = vi.mocked(prisma.booking.findMany);
 const mockSlotCount = vi.mocked(prisma.slot.count);
 const mockBlogCount = vi.mocked(prisma.blog.count);
 const mockLeadCount = vi.mocked(prisma.customLead.count);
 const mockAuditLogFindMany = vi.mocked(prisma.auditLog.findMany);
 const mockExperienceFindMany = vi.mocked(prisma.experience.findMany);
 const mockExperienceCount = vi.mocked(prisma.experience.count);
-const mockUserFindMany = vi.mocked(prisma.user.findMany);
 const mockUserCount = vi.mocked(prisma.user.count);
 const mockReviewCount = vi.mocked(prisma.experienceReview.count);
 const mockSavedCount = vi.mocked(prisma.savedExperience.count);
+const mockQueryRaw = vi.mocked(prisma.$queryRaw);
 
 const createRequest = () => new NextRequest("http://localhost/api/admin/dashboard");
 
@@ -120,11 +118,15 @@ describe("GET /api/admin/dashboard", () => {
       { id: "a1", action: "BOOKING_CREATED", timestamp: now },
     ] as any);
 
-    mockBookingFindMany.mockResolvedValue([
-      { totalPrice: 1000, createdAt: now },
-      { totalPrice: 2500, createdAt: now },
-      { totalPrice: 3000, createdAt: lastMonth },
-    ] as any);
+    mockQueryRaw
+      .mockResolvedValueOnce([
+        { month: now, revenue: 3500 },
+        { month: lastMonth, revenue: 3000 },
+      ] as any)
+      .mockResolvedValueOnce([
+        { month: now, count: 2 },
+        { month: lastMonth, count: 1 },
+      ] as any);
 
     mockExperienceFindMany.mockResolvedValue([
       {
@@ -137,12 +139,6 @@ describe("GET /api/admin/dashboard", () => {
         title: "Short Title",
         _count: { bookings: 10 },
       },
-    ] as any);
-
-    mockUserFindMany.mockResolvedValue([
-      { createdAt: now },
-      { createdAt: now },
-      { createdAt: lastMonth },
     ] as any);
 
     mockUserCount.mockResolvedValue(100);
@@ -209,9 +205,8 @@ describe("GET /api/admin/dashboard", () => {
     mockBlogCount.mockResolvedValue(0);
     mockLeadCount.mockResolvedValue(0);
     mockAuditLogFindMany.mockResolvedValue([] as any);
-    mockBookingFindMany.mockResolvedValue([] as any);
+    mockQueryRaw.mockResolvedValue([] as any);
     mockExperienceFindMany.mockResolvedValue([] as any);
-    mockUserFindMany.mockResolvedValue([] as any);
     mockUserCount.mockResolvedValue(0);
     mockExperienceCount.mockResolvedValue(0);
     mockReviewCount.mockResolvedValue(0);

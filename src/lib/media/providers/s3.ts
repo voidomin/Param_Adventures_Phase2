@@ -2,6 +2,17 @@ import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { MediaProvider, MediaUploadResult, UploadOptions } from "./base";
 
+/**
+ * Reduces a user-supplied filename to a safe S3 key segment: takes only the
+ * final path component (defeating "../../" traversal) and replaces anything
+ * outside [a-zA-Z0-9._-] with "_", so an attacker-controlled filename can't
+ * escape the "uploads/" prefix or collide with unrelated object keys.
+ */
+function sanitizeFileName(fileName: string): string {
+  const baseName = fileName.split(/[/\\]/).pop() || "file";
+  return baseName.replace(/[^a-zA-Z0-9._-]/g, "_");
+}
+
 export interface S3Config {
   bucket: string;
   region: string;
@@ -59,7 +70,7 @@ export class S3Provider implements MediaProvider {
   }
 
   async getPresignData(fileName: string, contentType: string): Promise<Record<string, unknown>> {
-    const key = `uploads/${Date.now()}-${fileName.replaceAll(/\s+/g, "_")}`;
+    const key = `uploads/${Date.now()}-${sanitizeFileName(fileName)}`;
     const command = new PutObjectCommand({
       Bucket: this.bucket,
       Key: key,

@@ -62,6 +62,28 @@ describe("GET /api/admin/trips", () => {
     );
   });
 
+  it("does not cap the default (upcoming) view", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockFindMany.mockResolvedValue([]);
+
+    await GET({ url: "http://localhost/api/admin/trips" } as NextRequest);
+
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ take: undefined }),
+    );
+  });
+
+  it("caps the historical (?past=true) view at 500 rows", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockFindMany.mockResolvedValue([]);
+
+    await GET({ url: "http://localhost/api/admin/trips?past=true" } as NextRequest);
+
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ take: 500, orderBy: { date: "desc" } }),
+    );
+  });
+
   it("returns 500 on query failure", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
     mockFindMany.mockRejectedValue(new Error("db down"));

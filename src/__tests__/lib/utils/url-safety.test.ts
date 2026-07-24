@@ -4,6 +4,7 @@ import {
   isResCloudinaryUrl,
   isAwsUrl,
   isS3Url,
+  isAllowedMediaHost,
 } from "@/lib/utils/url-safety";
 
 describe("URL Safety Utilities", () => {
@@ -75,6 +76,22 @@ describe("URL Safety Utilities", () => {
 
     it("should return false for malformed URLs", () => {
       expect(isS3Url("not-a-valid-url")).toBe(false);
+    });
+  });
+
+  describe("isAllowedMediaHost", () => {
+    it("should return true for Cloudinary and AWS hosts", () => {
+      expect(isAllowedMediaHost("https://res.cloudinary.com/demo/img.jpg")).toBe(true);
+      expect(isAllowedMediaHost("https://my-bucket.s3.amazonaws.com/file.jpg")).toBe(true);
+    });
+
+    it("should return false for arbitrary external hosts", () => {
+      expect(isAllowedMediaHost("https://evil.example.com/img.jpg")).toBe(false);
+      expect(isAllowedMediaHost("http://169.254.169.254/latest/meta-data/")).toBe(false);
+    });
+
+    it("should return false for malformed URLs", () => {
+      expect(isAllowedMediaHost("not-a-valid-url")).toBe(false);
     });
   });
 });

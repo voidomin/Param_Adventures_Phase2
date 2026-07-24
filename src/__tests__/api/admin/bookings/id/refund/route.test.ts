@@ -24,7 +24,7 @@ vi.mock("@/lib/db", () => {
   mockPrisma.$transaction = vi.fn().mockImplementation(async (callback) => {
     return callback(mockPrisma);
   });
-  return { prisma: mockPrisma };
+  return { prisma: mockPrisma, runWithRetry: vi.fn((fn) => fn()) };
 });
 
 import { POST } from "@/app/api/admin/bookings/[id]/refund/route";
@@ -242,7 +242,7 @@ describe("POST /api/admin/bookings/[id]/refund", () => {
     expect(response.status).toBe(500);
   });
 
-  it("returns 500 when refund email send fails", async () => {
+  it("still reports success when the refund-resolved email fails to send (refund already committed)", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
     mockBookingFindUnique.mockResolvedValue({
       id: "b1",
@@ -261,8 +261,11 @@ describe("POST /api/admin/bookings/[id]/refund", () => {
     const response = await POST(createRequest({ refundNote: "UTR123" }), {
       params: Promise.resolve({ id: "b1" }),
     });
+    const data = await response.json();
 
-    expect(response.status).toBe(500);
+    expect(response.status).toBe(200);
+    expect(data.success).toBe(true);
+    expect(mockBookingUpdate).toHaveBeenCalled();
   });
 
   it("returns 500 on unexpected failure", async () => {

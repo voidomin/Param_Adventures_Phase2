@@ -58,13 +58,18 @@ export async function GET(request: NextRequest) {
     sixMonthsAgo.setDate(1);
     sixMonthsAgo.setHours(0, 0, 0, 0);
 
-    const confirmedBookings = await prisma.booking.findMany({
-      where: {
-        bookingStatus: "CONFIRMED",
-        createdAt: { gte: sixMonthsAgo },
-      },
-      select: { totalPrice: true, createdAt: true },
-    });
+    // Aggregated by the database rather than pulling every matching row into
+    // Node and bucketing in JS -- this scales with month-count (constant),
+    // not with booking/user volume.
+    const revenueRows = await prisma.$queryRaw<{ month: Date; revenue: number }[]>`
+      SELECT date_trunc('month', "createdAt") as month, SUM("totalPrice")::float as revenue
+      FROM "Booking"
+      WHERE "bookingStatus" = 'CONFIRMED' AND "createdAt" >= ${sixMonthsAgo}
+      GROUP BY month
+    `;
+    const revenueByMonthKey = new Map(
+      revenueRows.map((r) => [`${new Date(r.month).getFullYear()}-${new Date(r.month).getMonth()}`, Number(r.revenue)]),
+    );
 
     const revenueByMonth: { month: string; revenue: number }[] = [];
     for (let i = 5; i >= 0; i--) {
@@ -75,17 +80,9 @@ export async function GET(request: NextRequest) {
         month: "short",
         year: "2-digit",
       });
-      const year = d.getFullYear();
-      const month = d.getMonth();
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
 
-      const monthRevenue = confirmedBookings
-        .filter((b) => {
-          const bd = new Date(b.createdAt);
-          return bd.getFullYear() === year && bd.getMonth() === month;
-        })
-        .reduce((sum, b) => sum + Number(b.totalPrice), 0);
-
-      revenueByMonth.push({ month: label, revenue: monthRevenue });
+      revenueByMonth.push({ month: label, revenue: revenueByMonthKey.get(key) ?? 0 });
     }
 
     // ─── Bookings by Status ───────────────────────────────
@@ -123,10 +120,15 @@ export async function GET(request: NextRequest) {
     }));
 
     // ─── User Growth (last 6 months) ─────────────────────
-    const allRecentUsers = await prisma.user.findMany({
-      where: { createdAt: { gte: sixMonthsAgo } },
-      select: { createdAt: true },
-    });
+    const userGrowthRows = await prisma.$queryRaw<{ month: Date; count: bigint }[]>`
+      SELECT date_trunc('month', "createdAt") as month, COUNT(*) as count
+      FROM "User"
+      WHERE "createdAt" >= ${sixMonthsAgo}
+      GROUP BY month
+    `;
+    const userGrowthByMonthKey = new Map(
+      userGrowthRows.map((r) => [`${new Date(r.month).getFullYear()}-${new Date(r.month).getMonth()}`, Number(r.count)]),
+    );
 
     const userGrowth: { month: string; users: number }[] = [];
     for (let i = 5; i >= 0; i--) {
@@ -137,15 +139,9 @@ export async function GET(request: NextRequest) {
         month: "short",
         year: "2-digit",
       });
-      const year = d.getFullYear();
-      const month = d.getMonth();
+      const key = `${d.getFullYear()}-${d.getMonth()}`;
 
-      const count = allRecentUsers.filter((u) => {
-        const ud = new Date(u.createdAt);
-        return ud.getFullYear() === year && ud.getMonth() === month;
-      }).length;
-
-      userGrowth.push({ month: label, users: count });
+      userGrowth.push({ month: label, users: userGrowthByMonthKey.get(key) ?? 0 });
     }
 
     // ─── Total users count ────────────────────────────────

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma, runWithRetry } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
 
@@ -34,45 +34,40 @@ export async function PATCH(
     }
     const { date, capacity } = parseResult.data;
 
-    const slot = await prisma.slot.findUnique({
-      where: { id: slotId },
-      include: {
-        _count: {
-          select: {
-            bookings: { where: { bookingStatus: "CONFIRMED" } },
+    // Read-modify-write on capacity/remainingCapacity must be atomic with
+    // respect to concurrent bookings decrementing remainingCapacity, or an
+    // admin edit here can silently overwrite/revert a simultaneous booking's
+    // capacity decrement. Serializable + retry matches the isolation level
+    // booking.service.ts already uses for the same slot row.
+    const updatedSlot = await runWithRetry(() =>
+      prisma.$transaction(async (tx) => {
+        const slot = await tx.slot.findUnique({ where: { id: slotId } });
+
+        if (slot?.experienceId !== id) {
+          throw new Error("SLOT_NOT_FOUND");
+        }
+
+        const bookedCount = slot.capacity - slot.remainingCapacity;
+
+        if (capacity !== undefined && capacity < bookedCount) {
+          throw new Error(
+            `CAPACITY_ERROR: Cannot reduce capacity below currently booked seats (${bookedCount}).`,
+          );
+        }
+
+        const newCapacity = capacity ?? slot.capacity;
+        const newRemaining = newCapacity - bookedCount;
+
+        return tx.slot.update({
+          where: { id: slotId },
+          data: {
+            ...(date && { date: new Date(date) }),
+            capacity: newCapacity,
+            remainingCapacity: newRemaining,
           },
-        },
-      },
-    });
-
-    if (slot?.experienceId !== id) {
-      return NextResponse.json({ error: "Slot not found" }, { status: 404 });
-    }
-
-    const bookedCount = slot.capacity - slot.remainingCapacity;
-
-    if (capacity !== undefined) {
-      if (capacity < bookedCount) {
-        return NextResponse.json(
-          {
-            error: `Cannot reduce capacity below currently booked seats (${bookedCount}).`,
-          },
-          { status: 400 },
-        );
-      }
-    }
-
-    const newCapacity = capacity ?? slot.capacity;
-    const newRemaining = newCapacity - bookedCount;
-
-    const updatedSlot = await prisma.slot.update({
-      where: { id: slotId },
-      data: {
-        ...(date && { date: new Date(date) }),
-        capacity: newCapacity,
-        remainingCapacity: newRemaining,
-      },
-    });
+        });
+      }, { isolationLevel: "Serializable" }),
+    );
 
     await logActivity(
       "SLOT_UPDATED",
@@ -84,6 +79,16 @@ export async function PATCH(
 
     return NextResponse.json({ slot: updatedSlot });
   } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message === "SLOT_NOT_FOUND") {
+      return NextResponse.json({ error: "Slot not found" }, { status: 404 });
+    }
+    if (message.startsWith("CAPACITY_ERROR: ")) {
+      return NextResponse.json(
+        { error: message.replace("CAPACITY_ERROR: ", "") },
+        { status: 400 },
+      );
+    }
     console.error("Update slot error:", error);
     return NextResponse.json(
       { error: "Failed to update slot" },

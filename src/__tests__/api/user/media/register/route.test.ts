@@ -46,7 +46,7 @@ describe("POST /api/user/media/register", () => {
 
   it("returns 401 when token is missing", async () => {
     const response = await POST(
-      createRequest({ body: { url: "https://x.com/img.jpg", type: "IMAGE" } }),
+      createRequest({ body: { url: "https://res.cloudinary.com/demo/img.jpg", type: "IMAGE" } }),
     );
     const data = await response.json();
 
@@ -60,7 +60,7 @@ describe("POST /api/user/media/register", () => {
     const response = await POST(
       createRequest({
         token: "bad",
-        body: { url: "https://x.com/img.jpg", type: "IMAGE" },
+        body: { url: "https://res.cloudinary.com/demo/img.jpg", type: "IMAGE" },
       }),
     );
     const data = await response.json();
@@ -81,18 +81,31 @@ describe("POST /api/user/media/register", () => {
     expect(data.error).toBe("url must be a valid URL");
   });
 
+  it("returns 400 when the url doesn't point to a platform-managed media host", async () => {
+    mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+
+    const response = await POST(
+      createRequest({ token: "ok", body: { url: "https://evil.example.com/img.jpg", type: "IMAGE" } }),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toBe("url must point to a platform-managed media host");
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
   it("returns existing image when hash duplicate is found", async () => {
     mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
     mockFindFirst.mockResolvedValue({
       id: "img-1",
-      originalUrl: "https://x.com/img.jpg",
+      originalUrl: "https://res.cloudinary.com/demo/img.jpg",
       type: "IMAGE",
     } as any);
 
     const response = await POST(
       createRequest({
         token: "ok",
-        body: { url: "https://x.com/img.jpg", type: "IMAGE", hash: "abc123" },
+        body: { url: "https://res.cloudinary.com/demo/img.jpg", type: "IMAGE", hash: "abc123" },
       }),
     );
     const data = await response.json();
@@ -110,7 +123,7 @@ describe("POST /api/user/media/register", () => {
     const response = await POST(
       createRequest({
         token: "ok",
-        body: { url: "https://x.com/video.mp4", type: "VIDEO", hash: "abc123" },
+        body: { url: "https://res.cloudinary.com/demo/video.mp4", type: "VIDEO", hash: "abc123" },
       }),
     );
     const data = await response.json();
@@ -119,7 +132,7 @@ describe("POST /api/user/media/register", () => {
     expect(data.image.id).toBe("img-new");
     expect(mockCreate).toHaveBeenCalledWith({
       data: {
-        originalUrl: "https://x.com/video.mp4",
+        originalUrl: "https://res.cloudinary.com/demo/video.mp4",
         type: "VIDEO",
         uploadedById: "u1",
         fileHash: "abc123",
@@ -134,7 +147,7 @@ describe("POST /api/user/media/register", () => {
     const response = await POST(
       createRequest({
         token: "ok",
-        body: { url: "https://x.com/img.jpg", type: "IMAGE" },
+        body: { url: "https://res.cloudinary.com/demo/img.jpg", type: "IMAGE" },
       }),
     );
     const data = await response.json();
@@ -144,7 +157,7 @@ describe("POST /api/user/media/register", () => {
     expect(mockFindFirst).not.toHaveBeenCalled();
     expect(mockCreate).toHaveBeenCalledWith({
       data: {
-        originalUrl: "https://x.com/img.jpg",
+        originalUrl: "https://res.cloudinary.com/demo/img.jpg",
         type: "IMAGE",
         uploadedById: "u1",
         fileHash: null,
@@ -159,7 +172,7 @@ describe("POST /api/user/media/register", () => {
     const response = await POST(
       createRequest({
         token: "ok",
-        body: { url: "https://x.com/img.jpg", type: "IMAGE", hash: "abc123" },
+        body: { url: "https://res.cloudinary.com/demo/img.jpg", type: "IMAGE", hash: "abc123" },
       }),
     );
     const data = await response.json();

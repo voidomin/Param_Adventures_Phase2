@@ -72,6 +72,36 @@ export const RATE_LIMIT_RULES: RateLimitRule[] = [
     label: "Leads",
   },
 
+  // ─── 🟠 High — Sensitive Account/Media Endpoints ─────────
+  // Authenticated but previously only covered by the generic 60/min
+  // fallback below -- tightened since each can be abused (password-change
+  // token churn, unlimited signed upload-credential issuance) even though
+  // a valid session is required.
+  {
+    pathPrefix: "/api/user/password",
+    limit: 5,
+    windowMs: 15 * 60 * 1000,
+    label: "User:PasswordChange",
+  },
+  {
+    pathPrefix: "/api/user/avatar",
+    limit: 10,
+    windowMs: 60 * 1000,
+    label: "User:Avatar",
+  },
+  {
+    pathPrefix: "/api/user/media/presign",
+    limit: 10,
+    windowMs: 60 * 1000,
+    label: "User:MediaPresign",
+  },
+  {
+    pathPrefix: "/api/user/media/register",
+    limit: 10,
+    windowMs: 60 * 1000,
+    label: "User:MediaRegister",
+  },
+
   // ─── 🟢 Default — All Other API Routes ───────────────────
   // General fallback for any /api/* route not matched above.
   // 60 requests per minute per IP.

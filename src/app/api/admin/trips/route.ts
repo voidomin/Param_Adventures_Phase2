@@ -17,11 +17,17 @@ export async function GET(request: NextRequest) {
   try {
     const showPast = request.url ? new URL(request.url).searchParams.get("past") === "true" : false;
 
+    // Upcoming trips are naturally self-limiting (bounded by how far ahead
+    // trips get scheduled); the historical ?past=true view has no such
+    // bound and grows for the life of the business, so it gets a safety cap.
+    // This is a cap, not real pagination -- the admin trips list has no
+    // paging UI yet.
     const upcomingSlots = await prisma.slot.findMany({
       where: showPast
         ? { date: { lt: new Date() } }
         : { date: { gte: new Date() } },
       orderBy: { date: showPast ? "desc" : "asc" },
+      take: showPast ? 500 : undefined,
       include: {
         experience: {
           select: {

@@ -4,12 +4,16 @@ import { ExperienceStatus, Difficulty, Prisma } from "@prisma/client";
 
 export const ExperienceRepo = {
   /**
-   * Fetches all experiences with their categories and counts.
+   * Fetches experiences with their categories and counts, newest first.
+   * Capped rather than paginated: the admin list has no pagination UI yet,
+   * so this is a safety net against unbounded growth rather than a full
+   * paging implementation.
    */
-  async findMany() {
+  async findMany(take = 500) {
     return prisma.experience.findMany({
       where: { deletedAt: null },
       orderBy: { createdAt: "desc" },
+      take,
       include: {
         categories: { include: { category: true } },
         _count: {
