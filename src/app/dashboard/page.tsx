@@ -926,6 +926,8 @@ export default function DashboardPage() {
           aspectRatio={ASPECT_RATIOS.AVATAR}
           onCropComplete={handleAvatarUpload}
           onCancel={onCropCancel}
+          cropShape="round"
+          maxOutputDimension={512}
         />
       )}
     </div>

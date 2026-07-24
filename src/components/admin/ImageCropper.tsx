@@ -3,13 +3,18 @@
 import React, { useState, useCallback } from "react";
 import Cropper, { Area } from "react-easy-crop";
 import "react-easy-crop/react-easy-crop.css";
-import { X, Crop, Check } from "lucide-react";
+import { X, Crop, Check, Loader2 } from "lucide-react";
 
 interface ImageCropperProps {
   readonly image: string;
   readonly aspectRatio: number;
   readonly onCropComplete: (croppedImage: Blob) => void;
   readonly onCancel: () => void;
+  /** "round" matches contexts where the result is displayed as a circle (e.g. avatars). */
+  readonly cropShape?: "rect" | "round";
+  /** Caps the longer edge of the exported image so a huge source photo doesn't
+   * produce a needlessly large upload (e.g. a 4000px-wide "avatar"). */
+  readonly maxOutputDimension?: number;
 }
 
 const createImage = (url: string): Promise<HTMLImageElement> =>
@@ -26,6 +31,7 @@ const createImage = (url: string): Promise<HTMLImageElement> =>
 async function getCroppedImg(
   imageSrc: string,
   pixelCrop: Area,
+  maxOutputDimension: number,
 ): Promise<Blob | null> {
   const image = await createImage(imageSrc);
   const canvas = document.createElement("canvas");
@@ -33,8 +39,12 @@ async function getCroppedImg(
 
   if (!ctx) return null;
 
-  canvas.width = pixelCrop.width;
-  canvas.height = pixelCrop.height;
+  const scale = Math.min(1, maxOutputDimension / Math.max(pixelCrop.width, pixelCrop.height));
+  const outputWidth = Math.round(pixelCrop.width * scale);
+  const outputHeight = Math.round(pixelCrop.height * scale);
+
+  canvas.width = outputWidth;
+  canvas.height = outputHeight;
 
   ctx.drawImage(
     image,
@@ -44,8 +54,8 @@ async function getCroppedImg(
     pixelCrop.height,
     0,
     0,
-    pixelCrop.width,
-    pixelCrop.height,
+    outputWidth,
+    outputHeight,
   );
 
   return new Promise((resolve) => {
@@ -64,10 +74,14 @@ export default function ImageCropper({
   aspectRatio,
   onCropComplete,
   onCancel,
+  cropShape = "rect",
+  maxOutputDimension = 1600,
 }: ImageCropperProps) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const onCropChange = useCallback((crop: { x: number; y: number }) => {
     setCrop(crop);
@@ -85,11 +99,19 @@ export default function ImageCropper({
   );
 
   const handleDone = async () => {
-    if (croppedAreaPixels) {
-      const croppedBlob = await getCroppedImg(image, croppedAreaPixels);
-      if (croppedBlob) {
-        onCropComplete(croppedBlob);
+    if (!croppedAreaPixels || isProcessing) return;
+    setIsProcessing(true);
+    setError(null);
+    try {
+      const croppedBlob = await getCroppedImg(image, croppedAreaPixels, maxOutputDimension);
+      if (!croppedBlob) {
+        throw new Error("Could not process the image. Please try a different photo.");
       }
+      onCropComplete(croppedBlob);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to crop the image. Please try again.");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -122,6 +144,7 @@ export default function ImageCropper({
             crop={crop}
             zoom={zoom}
             aspect={aspectRatio}
+            cropShape={cropShape}
             onCropChange={onCropChange}
             onCropComplete={onCropCompleteInternal}
             onZoomChange={onZoomChange}
@@ -146,21 +169,29 @@ export default function ImageCropper({
             />
           </div>
 
+          {error && <p className="text-sm text-red-500">{error}</p>}
+
           <div className="flex justify-end gap-3">
             <button
               type="button"
               onClick={onCancel}
-              className="px-6 py-2.5 rounded-full font-bold text-foreground/70 hover:bg-foreground/10 transition-colors"
+              disabled={isProcessing}
+              className="px-6 py-2.5 rounded-full font-bold text-foreground/70 hover:bg-foreground/10 transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleDone}
-              className="bg-primary text-primary-foreground px-8 py-2.5 rounded-full font-bold flex items-center gap-2 hover:scale-105 transition-transform shadow-lg shadow-primary/25"
+              disabled={isProcessing}
+              className="bg-primary text-primary-foreground px-8 py-2.5 rounded-full font-bold flex items-center gap-2 hover:scale-105 transition-transform shadow-lg shadow-primary/25 disabled:opacity-60 disabled:hover:scale-100"
             >
-              <Check className="w-4 h-4" />
-              Apply Crop
+              {isProcessing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Check className="w-4 h-4" />
+              )}
+              {isProcessing ? "Processing…" : "Apply Crop"}
             </button>
           </div>
         </div>
