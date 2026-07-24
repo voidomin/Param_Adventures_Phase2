@@ -197,6 +197,34 @@ describe("Coupon Engine Unit Tests", () => {
         })
       ).rejects.toThrow("Insufficient coupon balance.");
     });
+
+    it("uses a caller-provided remarks string instead of the default", async () => {
+      const mockTx = {
+        travelCoupon: {
+          findUnique: vi.fn().mockResolvedValue({
+            id: "c1",
+            balance: 1000,
+            originalValue: 1000,
+          }),
+          update: vi.fn(),
+        },
+        couponTransaction: {
+          create: vi.fn(),
+        },
+      };
+
+      await redeemCoupon({
+        couponId: "c1",
+        bookingId: "b1",
+        amount: 400,
+        tx: mockTx as any,
+        remarks: "Redeemed on balance payment for booking b1...",
+      });
+
+      expect(mockTx.couponTransaction.create).toHaveBeenCalledWith({
+        data: expect.objectContaining({ remarks: "Redeemed on balance payment for booking b1..." }),
+      });
+    });
   });
 
   describe("restoreCouponsForBooking", () => {
@@ -259,6 +287,29 @@ describe("Coupon Engine Unit Tests", () => {
       });
 
       expect(result.totalRestored).toBe(400);
+    });
+
+    it("orders redemptions by createdAt ascending for deterministic charge allocation", async () => {
+      const mockFindMany = vi.fn().mockResolvedValue([]);
+      const mockTx = {
+        couponTransaction: {
+          findMany: mockFindMany,
+          create: vi.fn(),
+        },
+        travelCoupon: {
+          update: vi.fn(),
+        },
+      };
+
+      await restoreCouponsForBooking({
+        bookingId: "b1",
+        cancellationCharges: 0,
+        tx: mockTx as any,
+      });
+
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({ orderBy: { createdAt: "asc" } }),
+      );
     });
   });
 

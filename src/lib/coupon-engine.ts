@@ -72,8 +72,9 @@ export async function redeemCoupon(params: {
   bookingId: string;
   amount: number;
   tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+  remarks?: string;
 }): Promise<void> {
-  const { couponId, bookingId, amount, tx } = params;
+  const { couponId, bookingId, amount, tx, remarks } = params;
 
   const coupon = await tx.travelCoupon.findUnique({
     where: { id: couponId },
@@ -105,7 +106,7 @@ export async function redeemCoupon(params: {
       amount,
       previousBalance: currentBalance,
       newBalance,
-      remarks: `Redeemed on booking ${bookingId.substring(0, 8)}...`,
+      remarks: remarks ?? `Redeemed on booking ${bookingId.substring(0, 8)}...`,
     },
   });
 }
@@ -120,7 +121,9 @@ export async function restoreCouponsForBooking(params: {
 }): Promise<{ totalRestored: number }> {
   const { bookingId, cancellationCharges, tx } = params;
 
-  // Find all REDEEMED transactions for this booking
+  // Find all REDEEMED transactions for this booking, oldest first, so cancellation
+  // charges are always allocated in the same deterministic order (first redeemed,
+  // first charged) rather than whatever order the database happens to return them in.
   const redemptions = await tx.couponTransaction.findMany({
     where: {
       bookingId,
@@ -128,6 +131,9 @@ export async function restoreCouponsForBooking(params: {
     },
     include: {
       coupon: true,
+    },
+    orderBy: {
+      createdAt: "asc",
     },
   });
 

@@ -98,11 +98,31 @@ async function processWebhookEvent(eventType: string, eventBody: any, forensicsI
       const orderId = payment.order_id;
 
       if (orderId) {
-        await prisma.payment.updateMany({
+        const paymentRecord = await prisma.payment.findFirst({
           where: { providerOrderId: orderId, status: "PENDING" },
-          data: { status: "FAILED", fullPayload: eventBody }
+          select: { id: true, bookingId: true },
         });
-        
+
+        if (paymentRecord) {
+          await prisma.payment.update({
+            where: { id: paymentRecord.id },
+            data: { status: "FAILED", fullPayload: eventBody },
+          });
+
+          await logActivity(
+            "PAYMENT_WEBHOOK_FAILED",
+            "SYSTEM",
+            "Booking",
+            paymentRecord.bookingId,
+            {
+              event: eventType,
+              razorpay_order_id: orderId,
+              razorpay_payment_id: payment.id,
+              ip: forensicsIp,
+            }
+          );
+        }
+
         console.log(`[Webhook] Payment failure recorded for Order: ${orderId}`);
       }
       break;
