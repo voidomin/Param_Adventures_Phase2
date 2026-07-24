@@ -14,20 +14,7 @@ import {
 import { SectionTitle } from "./Common";
 import { formatCellForExport } from "@/lib/utils";
 import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
-import { 
-  fetchImageAsBase64, 
-  drawInvoiceHeader, 
-  drawInvoiceDetailsAndBilledTo, 
-  drawPaymentAndSummaryBlocks, 
-  drawInvoiceFooter 
-} from "@/components/booking/DownloadInvoiceBtn";
-
-interface JsPDFWithAutoTable extends jsPDF {
-  lastAutoTable: {
-    finalY: number;
-  };
-}
+import { fetchImageAsBase64, drawInvoicePage } from "@/components/booking/DownloadInvoiceBtn";
 
 interface MinimalExperience {
   id: string;
@@ -209,49 +196,12 @@ export default function InvoicesTab() {
           }
           
           const data = await res.json();
-          const { booking, company, experience, primaryContact, payment, payments } = data;
 
           if (i > 0) {
             doc.addPage();
           }
 
-          // Draw invoice onto this page of doc
-          const dividerY = drawInvoiceHeader(doc, logoBase64, company, pageWidth);
-          const { cardHeight, cardY } = drawInvoiceDetailsAndBilledTo(doc, booking, primaryContact, dividerY, pageWidth);
-
-          const tableData = [
-            [
-              "1",
-              `Adventure Package: ${experience.title}\nLocation: ${experience.location}\nGuests: ${booking.participantCount}`,
-              "9985",
-              booking.participantCount.toString(),
-              `Rs ${Number(booking.baseFare).toFixed(2)}`
-            ]
-          ];
-
-          autoTable(doc, {
-            startY: cardY + cardHeight + 6,
-            head: [['S.No', 'Description of Services', 'SAC', 'Qty', 'Taxable Value']],
-            body: tableData,
-            theme: 'grid',
-            headStyles: {
-              fillColor: [15, 118, 110], // Teal-700
-              textColor: [255, 255, 255],
-              fontSize: 9,
-              fontStyle: 'bold'
-            },
-            styles: { fontSize: 8.5, cellPadding: 4 },
-            columnStyles: {
-              0: { cellWidth: 12 },
-              2: { cellWidth: 20 },
-              3: { cellWidth: 15 },
-              4: { cellWidth: 35, halign: 'right' }
-            }
-          });
-
-          const finalY = (doc as unknown as JsPDFWithAutoTable).lastAutoTable?.finalY || 110;
-          const { summaryCardY, summaryCardH } = drawPaymentAndSummaryBlocks(doc, booking, payment, payments, finalY, pageWidth);
-          drawInvoiceFooter(doc, company.companyName, summaryCardY, summaryCardH, pageWidth);
+          drawInvoicePage(doc, data, logoBase64, pageWidth);
         }
 
         const dateStr = new Date().toISOString().split("T")[0];
