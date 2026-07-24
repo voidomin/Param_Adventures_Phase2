@@ -5,7 +5,7 @@ import { Download, Loader2, FileText } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-interface InvoiceData {
+export interface InvoiceData {
   booking: {
     id: string;
     date: string;
@@ -331,6 +331,53 @@ export function drawInvoiceFooter(
   doc.text("Authorized Signatory\n(Computer Generated Invoice)", pageWidth - 14, footerTextY + 32, { align: "right" });
 }
 
+/**
+ * Draws one full invoice (header, details, item table, summary, footer) onto
+ * the current page of `doc`. Shared by the single-invoice download and the
+ * admin bulk-export flow, which calls this once per booking with doc.addPage()
+ * between calls.
+ */
+export function drawInvoicePage(doc: jsPDF, data: InvoiceData, logoBase64: string | null, pageWidth: number) {
+  const { booking, company, experience, primaryContact, payment, payments } = data;
+
+  const dividerY = drawInvoiceHeader(doc, logoBase64, company, pageWidth);
+  const { cardHeight, cardY } = drawInvoiceDetailsAndBilledTo(doc, booking, primaryContact, dividerY, pageWidth);
+
+  const tableData = [
+    [
+      "1",
+      `Adventure Package: ${experience.title}\nLocation: ${experience.location}\nGuests: ${booking.participantCount}`,
+      "9985", // Generic SAC code for tour operator services
+      booking.participantCount.toString(),
+      `Rs ${Number(booking.baseFare).toFixed(2)}`
+    ]
+  ];
+
+  autoTable(doc, {
+    startY: cardY + cardHeight + 6,
+    head: [['S.No', 'Description of Services', 'SAC', 'Qty', 'Taxable Value']],
+    body: tableData,
+    theme: 'grid',
+    headStyles: {
+      fillColor: [15, 118, 110], // Teal-700
+      textColor: [255, 255, 255],
+      fontSize: 9,
+      fontStyle: 'bold'
+    },
+    styles: { fontSize: 8.5, cellPadding: 4 },
+    columnStyles: {
+      0: { cellWidth: 12 },
+      2: { cellWidth: 20 },
+      3: { cellWidth: 15 },
+      4: { cellWidth: 35, halign: 'right' }
+    }
+  });
+
+  const finalY = (doc as unknown as JsPDFWithAutoTable).lastAutoTable?.finalY || 110;
+  const { summaryCardY, summaryCardH } = drawPaymentAndSummaryBlocks(doc, booking, payment, payments, finalY, pageWidth);
+  drawInvoiceFooter(doc, company.companyName, summaryCardY, summaryCardH, pageWidth);
+}
+
 export default function DownloadInvoiceBtn({ bookingId }: Readonly<{ bookingId: string }>) {
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -382,58 +429,13 @@ export default function DownloadInvoiceBtn({ bookingId }: Readonly<{ bookingId: 
       // Fetch logo as base64
       const logoBase64 = await fetchImageAsBase64(`${globalThis.location.origin}/param-logo.png`);
 
-      // 2. Initialize jsPDF
+      // 2. Initialize jsPDF and draw the invoice
       const doc = new jsPDF();
       const pageWidth = doc.internal.pageSize.getWidth();
-      
-      const { booking, company, experience, primaryContact, payment, payments } = data;
-
-      // 3. Header Formatting
-      const dividerY = drawInvoiceHeader(doc, logoBase64, company, pageWidth);
-
-      // 4. Details Section (Two card containers side-by-side)
-      const { cardHeight, cardY } = drawInvoiceDetailsAndBilledTo(doc, booking, primaryContact, dividerY, pageWidth);
-
-      // 5. Table of Items
-      const tableData = [
-        [
-          "1", 
-          `Adventure Package: ${experience.title}\nLocation: ${experience.location}\nGuests: ${booking.participantCount}`, 
-          "9985", // Generic SAC code for tour operator services
-          booking.participantCount.toString(),
-          `Rs ${Number(booking.baseFare).toFixed(2)}`
-        ]
-      ];
-
-      autoTable(doc, {
-        startY: cardY + cardHeight + 6,
-        head: [['S.No', 'Description of Services', 'SAC', 'Qty', 'Taxable Value']],
-        body: tableData,
-        theme: 'grid',
-        headStyles: { 
-          fillColor: [15, 118, 110], // Teal-700
-          textColor: [255, 255, 255],
-          fontSize: 9,
-          fontStyle: 'bold'
-        },
-        styles: { fontSize: 8.5, cellPadding: 4 },
-        columnStyles: {
-          0: { cellWidth: 12 },
-          2: { cellWidth: 20 },
-          3: { cellWidth: 15 },
-          4: { cellWidth: 35, halign: 'right' }
-        }
-      });
-
-      // 6. Summary Block
-      const finalY = (doc as unknown as JsPDFWithAutoTable).lastAutoTable?.finalY || 110;
-      const { summaryCardY, summaryCardH } = drawPaymentAndSummaryBlocks(doc, booking, payment, payments, finalY, pageWidth);
-
-      // 7. Footer details
-      drawInvoiceFooter(doc, company.companyName, summaryCardY, summaryCardH, pageWidth);
+      drawInvoicePage(doc, data, logoBase64, pageWidth);
 
       // Save
-      doc.save(`Invoice_PARAM_${booking.id.split("-")[0].toUpperCase()}.pdf`);
+      doc.save(`Invoice_PARAM_${data.booking.id.split("-")[0].toUpperCase()}.pdf`);
 
     } catch (error) {
       console.error("PDF generation error:", error);
