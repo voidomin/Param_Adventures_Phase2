@@ -109,4 +109,22 @@ describe("S3Provider", () => {
     expect(data.uploadUrl).toBe("https://presigned.example.com/upload?sig=abc");
     expect(data.finalUrl).toMatch(/^https:\/\/param-adventures-media\.s3\.ap-south-1\.amazonaws\.com\/uploads\/\d+-my_photo\.png$/);
   });
+
+  it("strips path traversal and directory components from the filename", async () => {
+    getSignedUrlMock.mockResolvedValue("https://presigned.example.com/upload?sig=abc");
+    const provider = new S3Provider(config);
+
+    const data = await provider.getPresignData("../../etc/passwd", "text/plain");
+
+    expect(data.finalUrl).toMatch(/^https:\/\/param-adventures-media\.s3\.ap-south-1\.amazonaws\.com\/uploads\/\d+-passwd$/);
+  });
+
+  it("replaces unsafe characters while preserving a normal extension", async () => {
+    getSignedUrlMock.mockResolvedValue("https://presigned.example.com/upload?sig=abc");
+    const provider = new S3Provider(config);
+
+    const data = await provider.getPresignData("weird<>:name?.jpg", "image/jpeg");
+
+    expect(data.finalUrl).toMatch(/^https:\/\/param-adventures-media\.s3\.ap-south-1\.amazonaws\.com\/uploads\/\d+-weird___name_\.jpg$/);
+  });
 });

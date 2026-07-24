@@ -4,6 +4,12 @@ import { mediaFactory } from "@/lib/media/factory";
 import { prisma } from "@/lib/db";
 import { createHash } from "node:crypto";
 
+// This route buffers the entire file into server memory (file.arrayBuffer())
+// before hashing/uploading, unlike the presigned-URL chunked-upload path used
+// for large videos. Cap it well below that path's limit so a large/malicious
+// upload here can't exhaust server memory.
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024; // 25MB
+
 /**
  * POST /api/admin/media/upload
  * Accepts multipart/form-data with a "file" field.
@@ -33,6 +39,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: "Only images and videos are supported." },
         { status: 400 },
+      );
+    }
+
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return NextResponse.json(
+        { error: `File is too large. Maximum size is ${MAX_UPLOAD_BYTES / (1024 * 1024)}MB.` },
+        { status: 413 },
       );
     }
 

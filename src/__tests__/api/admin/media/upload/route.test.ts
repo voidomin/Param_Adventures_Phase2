@@ -33,11 +33,13 @@ const mockMediaFactory = vi.mocked(mediaFactory);
 
 type FileLike = {
   type: string;
+  size: number;
   arrayBuffer: () => Promise<ArrayBuffer>;
 };
 
-const makeFile = (type: string, content = "hello"): FileLike => ({
+const makeFile = (type: string, content = "hello", size?: number): FileLike => ({
   type,
+  size: size ?? content.length,
   arrayBuffer: async () => new TextEncoder().encode(content).buffer,
 });
 
@@ -81,6 +83,19 @@ describe("POST /api/admin/media/upload", () => {
 
     expect(response.status).toBe(400);
     expect(data.error).toBe("Only images and videos are supported.");
+  });
+
+  it("returns 413 when the file exceeds the max upload size", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+
+    const response = await POST(
+      createRequest(makeFile("image/jpeg", "big", 26 * 1024 * 1024)),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(413);
+    expect(data.error).toContain("too large");
+    expect(mockFindFirst).not.toHaveBeenCalled();
   });
 
   it("returns deduplicated response when file hash exists", async () => {

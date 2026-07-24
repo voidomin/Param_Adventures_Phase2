@@ -5,8 +5,8 @@ vi.mock("@/lib/api-auth", () => ({
   authorizeRequest: vi.fn(),
 }));
 
-vi.mock("@/lib/db", () => ({
-  prisma: {
+vi.mock("@/lib/db", () => {
+  const mockPrisma = {
     slot: {
       findUnique: vi.fn(),
       update: vi.fn(),
@@ -24,8 +24,9 @@ vi.mock("@/lib/db", () => ({
       count: vi.fn(),
     },
     $transaction: vi.fn(),
-  },
-}));
+  };
+  return { prisma: mockPrisma, runWithRetry: vi.fn((fn) => fn()) };
+});
 
 import {
   DELETE,
@@ -49,6 +50,10 @@ describe("/api/admin/experiences/[id]/slots/[slotId]", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockBookingFindMany.mockResolvedValue([]);
+    mockTransaction.mockImplementation(async (arg: unknown) => {
+      if (typeof arg === "function") return arg(prisma);
+      return arg;
+    });
   });
 
   it("PATCH returns auth response when unauthorized", async () => {

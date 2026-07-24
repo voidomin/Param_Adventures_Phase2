@@ -6,6 +6,8 @@ import { GET } from "@/app/api/proxy-image/route";
 const createRequest = (url: string) =>
   ({ nextUrl: new URL(url) }) as NextRequest;
 
+const ALLOWED_URL = "http://localhost/api/proxy-image?url=" + encodeURIComponent("https://res.cloudinary.com/demo/image.jpg");
+
 describe("GET /api/proxy-image", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -28,7 +30,7 @@ describe("GET /api/proxy-image", () => {
     );
 
     const response = await GET(
-      createRequest("http://localhost/api/proxy-image?url=http://img"),
+      createRequest(ALLOWED_URL),
     );
     const data = await response.json();
 
@@ -48,7 +50,7 @@ describe("GET /api/proxy-image", () => {
     );
 
     const response = await GET(
-      createRequest("http://localhost/api/proxy-image?url=http://img"),
+      createRequest(ALLOWED_URL),
     );
     const data = await response.json();
 
@@ -68,7 +70,7 @@ describe("GET /api/proxy-image", () => {
     );
 
     const response = await GET(
-      createRequest("http://localhost/api/proxy-image?url=http://img"),
+      createRequest(ALLOWED_URL),
     );
     const data = await response.json();
 
@@ -83,11 +85,105 @@ describe("GET /api/proxy-image", () => {
     );
 
     const response = await GET(
-      createRequest("http://localhost/api/proxy-image?url=http://img"),
+      createRequest(ALLOWED_URL),
     );
     const data = await response.json();
 
     expect(response.status).toBe(500);
     expect(data.error).toBe("Failed to proxy image.");
+  });
+
+  it("returns 400 for an invalid url", async () => {
+    const response = await GET(
+      createRequest("http://localhost/api/proxy-image?url=not-a-url"),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toBe("Invalid url param");
+  });
+
+  it("rejects a cloud-metadata SSRF attempt", async () => {
+    const mockFetch = vi.fn();
+    vi.stubGlobal("fetch", mockFetch);
+
+    const response = await GET(
+      createRequest(
+        "http://localhost/api/proxy-image?url=" +
+          encodeURIComponent("http://169.254.169.254/latest/meta-data/"),
+      ),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toBe("URL host is not allowed");
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("rejects an arbitrary external host", async () => {
+    const mockFetch = vi.fn();
+    vi.stubGlobal("fetch", mockFetch);
+
+    const response = await GET(
+      createRequest(
+        "http://localhost/api/proxy-image?url=" + encodeURIComponent("https://evil.example.com/x"),
+      ),
+    );
+
+    expect(response.status).toBe(400);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("rejects a non-http(s) protocol", async () => {
+    const mockFetch = vi.fn();
+    vi.stubGlobal("fetch", mockFetch);
+
+    const response = await GET(
+      createRequest(
+        "http://localhost/api/proxy-image?url=" + encodeURIComponent("file:///etc/passwd"),
+      ),
+    );
+
+    expect(response.status).toBe(400);
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("allows a same-origin url", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        headers: { get: vi.fn().mockReturnValue("image/png") },
+        arrayBuffer: vi.fn().mockResolvedValue(new Uint8Array([1]).buffer),
+      } as unknown),
+    );
+
+    const response = await GET(
+      createRequest(
+        "http://localhost/api/proxy-image?url=" + encodeURIComponent("http://localhost/param-logo.png"),
+      ),
+    );
+
+    expect(response.status).toBe(200);
+  });
+
+  it("allows an S3 host", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        headers: { get: vi.fn().mockReturnValue("image/png") },
+        arrayBuffer: vi.fn().mockResolvedValue(new Uint8Array([1]).buffer),
+      } as unknown),
+    );
+
+    const response = await GET(
+      createRequest(
+        "http://localhost/api/proxy-image?url=" +
+          encodeURIComponent("https://my-bucket.s3.ap-south-1.amazonaws.com/uploads/x.jpg"),
+      ),
+    );
+
+    expect(response.status).toBe(200);
   });
 });

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyAccessToken } from "@/lib/auth";
+import { isAllowedMediaHost } from "@/lib/utils/url-safety";
 import { z } from "zod";
 
 const mediaRegisterSchema = z.object({
@@ -14,7 +15,7 @@ const mediaRegisterSchema = z.object({
       }
     },
     { message: "url must be a valid URL" },
-  ),
+  ).refine(isAllowedMediaHost, { message: "url must point to a platform-managed media host" }),
   type: z.enum(["IMAGE", "VIDEO"]),
   hash: z.string().optional().nullable(),
 });
