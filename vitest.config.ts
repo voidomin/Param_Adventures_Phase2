@@ -35,10 +35,10 @@ export default defineConfig({
       // it actually stands today. Ratchet these up as more tests land —
       // do not lower them to make a change pass.
       thresholds: {
-        statements: 40,
-        branches: 32,
-        functions: 28,
-        lines: 40,
+        statements: 50,
+        branches: 40,
+        functions: 32,
+        lines: 50,
       },
     },
     projects: [
