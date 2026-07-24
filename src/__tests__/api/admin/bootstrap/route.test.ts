@@ -57,6 +57,27 @@ describe("Bootstrap Endpoint", () => {
     expect(data.error).toContain("Unauthorized");
   });
 
+  it("should return 401 when the provided token is a different length than the configured one", async () => {
+    const req = new NextRequest("http://localhost/api/admin/bootstrap", {
+      method: "POST",
+      headers: {
+        "X-Bootstrap-Token": "short"
+      }
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(401);
+  });
+
+  it("should return 401 when no token header is provided at all", async () => {
+    const req = new NextRequest("http://localhost/api/admin/bootstrap", {
+      method: "POST",
+    });
+
+    const res = await POST(req);
+    expect(res.status).toBe(401);
+  });
+
   it("should run seeding successfully when bootstrap token is valid in development", async () => {
     vi.mocked(SystemService.bootstrapDatabase).mockResolvedValue({ seeded: true } as any);
 

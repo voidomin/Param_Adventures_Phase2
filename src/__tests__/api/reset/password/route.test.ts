@@ -31,7 +31,6 @@ describe("POST /api/auth/reset-password", () => {
   });
 
   it("returns 400 for invalid payload", async () => {
-    // FIXME: hardcoded password for testing
     const response = await POST(createRequest({ token: "", password: "123" }));
     const data = await response.json();
 
@@ -43,7 +42,6 @@ describe("POST /api/auth/reset-password", () => {
     mockFindFirst.mockResolvedValue(null);
 
     const response = await POST(
-      // FIXME: hardcoded password for testing
       createRequest({ token: "abc", password: "password123" }),
     );
     const data = await response.json();
@@ -58,7 +56,6 @@ describe("POST /api/auth/reset-password", () => {
     mockUpdate.mockResolvedValue({} as any);
 
     const response = await POST(
-      // FIXME: hardcoded password for testing
       createRequest({ token: "abc", password: "password123" }),
     );
     const data = await response.json();
@@ -76,7 +73,6 @@ describe("POST /api/auth/reset-password", () => {
     mockFindFirst.mockRejectedValue(new Error("db down"));
 
     const response = await POST(
-      // FIXME: hardcoded password for testing
       createRequest({ token: "abc", password: "password123" }),
     );
     const data = await response.json();

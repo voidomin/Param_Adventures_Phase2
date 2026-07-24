@@ -1,4 +1,5 @@
 import { EmailProvider, EmailOptions } from "./base";
+import { maskEmail } from "@/lib/utils";
 
 export interface ZohoAPIConfig {
   apiKey: string;
@@ -68,14 +69,14 @@ export class ZohoAPIProvider implements EmailProvider {
         throw new Error(`Zoho API error: ${JSON.stringify(errData)}`);
       }
 
-      console.log(`✅ [Zoho API] HTTP Delivery successful to ${options.to}`);
+      console.log(`✅ [Zoho API] HTTP Delivery successful to ${maskEmail(options.to)}`);
     } catch (error: unknown) {
       const err = error as Error;
       if (err.name === "AbortError") {
-        console.error(`❌ [Zoho API] Delivery timed out after 10s to ${options.to}`);
-        throw new Error(`Zoho API delivery timed out to ${options.to}`);
+        console.error(`❌ [Zoho API] Delivery timed out after 10s to ${maskEmail(options.to)}`);
+        throw new Error(`Zoho API delivery timed out to ${maskEmail(options.to)}`);
       }
-      console.error(`❌ [Zoho API] Delivery failed to ${options.to}:`, error);
+      console.error(`❌ [Zoho API] Delivery failed to ${maskEmail(options.to)}:`, error);
       throw error;
     } finally {
       clearTimeout(timeoutId);

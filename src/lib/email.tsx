@@ -10,6 +10,7 @@ import AdminInviteEmail from "@/components/emails/AdminInviteEmail";
 import CustomTripAcknowledgmentEmail from "@/components/emails/CustomTripAcknowledgmentEmail";
 import React from "react";
 import { emailFactory } from "./email/factory";
+import { maskEmail } from "@/lib/utils";
 
 // ─── EMAIL TYPES ───────────────────────────────────────
 
@@ -94,7 +95,7 @@ async function sendEmail({
     const { provider, from } = await emailFactory.getProvider();
     await provider.send({ to, subject, html, from });
   } catch (err) {
-    console.error(`❌ Failed to send email to ${to}:`, err);
+    console.error(`❌ Failed to send email to ${maskEmail(to)}:`, err);
     // In production we throw to allow callers to handle/log failure
     if (process.env.NODE_ENV === "production") {
       throw err;

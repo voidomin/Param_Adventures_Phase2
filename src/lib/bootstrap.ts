@@ -1,5 +1,13 @@
+import crypto from "node:crypto";
 import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
+import { maskEmail } from "@/lib/utils";
+
+function isValidBootstrapToken(provided: string, expected: string): boolean {
+  const providedBuf = Buffer.from(provided);
+  const expectedBuf = Buffer.from(expected);
+  return providedBuf.length === expectedBuf.length && crypto.timingSafeEqual(providedBuf, expectedBuf);
+}
 
 export async function ensureBasicSettings() {
   const PLATFORM_SETTINGS = [
@@ -76,13 +84,13 @@ export async function ensureRoles() {
  */
 export async function emergencyAdminRecovery(email: string, password: string, token: string) {
   if (process.env.NODE_ENV === "production") {
-    console.warn(`[BOOTSTRAP] Blocked emergency recovery attempt in production mode for ${email}`);
+    console.warn(`[BOOTSTRAP] Blocked emergency recovery attempt in production mode for ${maskEmail(email)}`);
     return null;
   }
   const bootstrapToken = process.env.BOOTSTRAP_TOKEN;
-  if (!bootstrapToken || token !== bootstrapToken) return null;
+  if (!bootstrapToken || !isValidBootstrapToken(token, bootstrapToken)) return null;
 
-  console.log(`[BOOTSTRAP] Emergency recovery triggered for ${email}`);
+  console.log(`[BOOTSTRAP] Emergency recovery triggered for ${maskEmail(email)}`);
 
   const superAdminRole = await prisma.role.findUnique({
     where: { name: "SUPER_ADMIN" },

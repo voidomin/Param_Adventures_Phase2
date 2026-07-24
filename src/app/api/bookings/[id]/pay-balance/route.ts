@@ -4,8 +4,7 @@ import { authorizeRequest } from "@/lib/api-auth";
 import { getRazorpay } from "@/lib/razorpay";
 import { BookingRepo } from "@/repositories/booking.repo";
 import { logActivity } from "@/lib/audit-logger";
-import { isExpiredIST } from "@/lib/coupon-engine";
-import { CouponStatus } from "@prisma/client";
+import { isExpiredIST, redeemCoupon } from "@/lib/coupon-engine";
 
 interface CouponInput {
   customerId: string;
@@ -115,27 +114,12 @@ export async function POST(
 
         // Apply coupon redemptions
         for (const red of redemptionsList) {
-          const c = await tx.travelCoupon.findUnique({ where: { id: red.couponId } });
-          if (!c) throw new Error("Coupon not found.");
-          const curBal = Number(c.balance);
-          const newBal = Math.max(0, curBal - red.amount);
-          const newStatus = newBal === 0 ? "FULLY_USED" : "PARTIALLY_USED";
-
-          await tx.travelCoupon.update({
-            where: { id: red.couponId },
-            data: { balance: newBal, status: newStatus as CouponStatus },
-          });
-
-          await tx.couponTransaction.create({
-            data: {
-              couponId: red.couponId,
-              bookingId: booking.id,
-              type: "REDEEMED",
-              amount: red.amount,
-              previousBalance: curBal,
-              newBalance: newBal,
-              remarks: `Redeemed on balance payment for booking ${booking.id.substring(0, 8)}...`,
-            },
+          await redeemCoupon({
+            couponId: red.couponId,
+            bookingId: booking.id,
+            amount: red.amount,
+            tx,
+            remarks: `Redeemed on balance payment for booking ${booking.id.substring(0, 8)}...`,
           });
         }
 
