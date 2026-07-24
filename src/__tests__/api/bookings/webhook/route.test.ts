@@ -31,6 +31,7 @@ const mockProcessedWebhookEventFindUnique = vi.fn();
 const mockProcessedWebhookEventCreate = vi.fn();
 const mockTransaction = vi.fn();
 const mockPaymentFindFirst = vi.fn();
+const mockPaymentUpdate = vi.fn();
 
 const dynamicSecret = "test_" + "webhook_" + "sec" + "ret_" + Math.random().toString();
 const bookingTestId = "booking_" + "test_" + "id";
@@ -47,6 +48,7 @@ beforeEach(() => {
   };
   (prisma as any).payment = {
     findFirst: mockPaymentFindFirst,
+    update: mockPaymentUpdate,
   };
   (prisma as any).$transaction = mockTransaction;
   
@@ -224,6 +226,85 @@ describe("POST /api/bookings/webhook", () => {
       payCapturedId,
       capturedEventBody
     );
+  });
+
+  it("marks the payment FAILED and logs an audit entry on payment.failed", async () => {
+    const evtFailedId = "evt_" + "failed_" + "123";
+    const orderFailedId = "order_" + "failed_" + "id";
+    const payFailedId = "pay_" + "failed_" + "id";
+    const bookingFailedId = "booking_" + "failed_" + "id";
+    const paymentRowId = "payment_row_" + "id";
+
+    mockProcessedWebhookEventFindUnique.mockResolvedValue(null);
+    mockPaymentFindFirst.mockResolvedValue({ id: paymentRowId, bookingId: bookingFailedId });
+
+    const failedEventBody = {
+      id: evtFailedId,
+      event: "payment.failed",
+      payload: {
+        payment: {
+          entity: {
+            id: payFailedId,
+            order_id: orderFailedId,
+          },
+        },
+      },
+    };
+
+    const failedRawBody = JSON.stringify(failedEventBody);
+    const failedSignature = createHmac("sha256", secret).update(failedRawBody).digest("hex");
+
+    const req = createRequest(failedRawBody, { "x-razorpay-signature": failedSignature });
+    const res = await POST(req);
+
+    expect(res.status).toBe(200);
+    expect(mockPaymentFindFirst).toHaveBeenCalledWith({
+      where: { providerOrderId: orderFailedId, status: "PENDING" },
+      select: { id: true, bookingId: true },
+    });
+    expect(mockPaymentUpdate).toHaveBeenCalledWith({
+      where: { id: paymentRowId },
+      data: { status: "FAILED", fullPayload: failedEventBody },
+    });
+    expect(mockLogActivity).toHaveBeenCalledWith(
+      "PAYMENT_WEBHOOK_FAILED",
+      "SYSTEM",
+      "Booking",
+      bookingFailedId,
+      expect.objectContaining({
+        event: "payment.failed",
+        razorpay_order_id: orderFailedId,
+        razorpay_payment_id: payFailedId,
+      })
+    );
+  });
+
+  it("does not update or log when no matching PENDING payment is found for payment.failed", async () => {
+    mockProcessedWebhookEventFindUnique.mockResolvedValue(null);
+    mockPaymentFindFirst.mockResolvedValue(null);
+
+    const failedEventBody = {
+      id: "evt_" + "failed_none",
+      event: "payment.failed",
+      payload: {
+        payment: {
+          entity: {
+            id: "pay_" + "failed_none",
+            order_id: "order_" + "failed_none",
+          },
+        },
+      },
+    };
+
+    const failedRawBody = JSON.stringify(failedEventBody);
+    const failedSignature = createHmac("sha256", secret).update(failedRawBody).digest("hex");
+
+    const req = createRequest(failedRawBody, { "x-razorpay-signature": failedSignature });
+    const res = await POST(req);
+
+    expect(res.status).toBe(200);
+    expect(mockPaymentUpdate).not.toHaveBeenCalled();
+    expect(mockLogActivity).not.toHaveBeenCalled();
   });
 });
 

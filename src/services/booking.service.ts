@@ -5,7 +5,7 @@ import { logActivity } from "@/lib/audit-logger";
 import { revalidatePath } from "next/cache";
 import { BookingRepo, BookingPricing } from "@/repositories/booking.repo";
 import { BookingInput } from "@/lib/validators/booking.schema";
-import { isExpiredIST } from "@/lib/coupon-engine";
+import { isExpiredIST, redeemCoupon } from "@/lib/coupon-engine";
 
 interface ExtraAmenityOption {
   id: string;
@@ -172,28 +172,7 @@ export const BookingService = {
 
       // Perform coupon redemptions updates
       for (const red of redemptionsList) {
-        const c = await tx.travelCoupon.findUnique({ where: { id: red.couponId } });
-        if (!c) throw new Error("Coupon not found.");
-        const curBal = Number(c.balance);
-        const newBal = Math.max(0, curBal - red.amount);
-        const newStatus = newBal === 0 ? "FULLY_USED" : "PARTIALLY_USED";
-
-        await tx.travelCoupon.update({
-          where: { id: red.couponId },
-          data: { balance: newBal, status: newStatus },
-        });
-
-        await tx.couponTransaction.create({
-          data: {
-            couponId: red.couponId,
-            bookingId: booking.id,
-            type: "REDEEMED",
-            amount: red.amount,
-            previousBalance: curBal,
-            newBalance: newBal,
-            remarks: `Redeemed on booking ${booking.id.substring(0, 8)}...`,
-          },
-        });
+        await redeemCoupon({ couponId: red.couponId, bookingId: booking.id, amount: red.amount, tx });
       }
 
       // Update booking paid amount with coupons applied

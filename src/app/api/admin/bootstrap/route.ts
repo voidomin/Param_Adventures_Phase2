@@ -1,7 +1,15 @@
+import crypto from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { SystemService } from "@/services/system.service";
 import { authLimiter } from "@/lib/rate-limiter";
+
+function isValidBootstrapToken(provided: string | null, expected: string): boolean {
+  if (!provided) return false;
+  const providedBuf = Buffer.from(provided);
+  const expectedBuf = Buffer.from(expected);
+  return providedBuf.length === expectedBuf.length && crypto.timingSafeEqual(providedBuf, expectedBuf);
+}
 
 export const runtime = "nodejs";
 
@@ -44,7 +52,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!providedToken || providedToken !== bootstrapToken) {
+    if (!isValidBootstrapToken(providedToken, bootstrapToken)) {
       console.warn(`[BOOTSTRAP] Unauthorized attempt from IP: ${ip}`);
       return NextResponse.json(
         { error: "Unauthorized: Invalid or missing X-Bootstrap-Token header" },
