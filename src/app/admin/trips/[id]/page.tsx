@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import BookingDetailsCollapse from "@/components/admin/BookingDetailsCollapse";
-import { formatCellForExport } from "@/lib/utils";
+import { exportRowsToExcel } from "@/lib/utils";
 
 interface TrekLead {
   id: string;
@@ -182,35 +182,10 @@ export default function TripManifestPage() {
         }));
       });
 
-      // Dynamically import xlsx (SheetJS)
-      const XLSX = await import("xlsx");
-      const worksheet = XLSX.utils.json_to_sheet(rows, { cellDates: true, dateNF: "yyyy-mm-dd" });
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Manifest");
-
-      // Auto-fit column widths
-      const maxLens = Object.keys(rows[0]).reduce((acc, key) => {
-        acc[key] = key.length;
-        return acc;
-      }, {} as Record<string, number>);
-
-      rows.forEach((row: Record<string, unknown>) => {
-        Object.keys(row).forEach((key) => {
-          const valStr = formatCellForExport(row[key]);
-          if (valStr.length > maxLens[key]) {
-            maxLens[key] = valStr.length;
-          }
-        });
-      });
-
-      worksheet["!cols"] = Object.keys(maxLens).map((key) => ({
-        wch: Math.max(maxLens[key] + 3, 10),
-      }));
-
       const dateStr = new Date(trip.date).toISOString().split("T")[0];
       const sanitizedTitle = trip.experience.title.replace(/[^a-zA-Z0-9]/g, "_");
       const filename = `${sanitizedTitle}_manifest_${dateStr}.xlsx`;
-      XLSX.writeFile(workbook, filename);
+      await exportRowsToExcel(rows, "Manifest", filename);
     } catch (err) {
       console.error("Export failed:", err);
       alert("Failed to export manifest. Please try again.");
