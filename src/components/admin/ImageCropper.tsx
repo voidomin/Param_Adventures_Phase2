@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback } from "react";
 import Cropper, { Area } from "react-easy-crop";
+import "react-easy-crop/react-easy-crop.css";
 import { X, Crop, Check } from "lucide-react";
 
 interface ImageCropperProps {
