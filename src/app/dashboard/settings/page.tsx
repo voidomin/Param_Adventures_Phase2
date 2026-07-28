@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@/lib/AuthContext";
+import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 import {
   User,
@@ -10,6 +11,9 @@ import {
   CheckCircle2,
   Stethoscope,
   HeartPulse,
+  Download,
+  Trash2,
+  X,
 } from "lucide-react";
 
 const COUNTRY_CODES = [
@@ -26,7 +30,8 @@ function getErrorMessage(err: unknown): string {
 }
 
 export default function SettingsPage() {
-  const { user, mutateUser } = useAuth();
+  const { user, mutateUser, logout } = useAuth();
+  const router = useRouter();
 
   // Profile Identity State
   const [name, setName] = useState("");
@@ -64,6 +69,15 @@ export default function SettingsPage() {
   const [newPassword, setNewPassword] = useState("");
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [passwordMsg, setPasswordMsg] = useState({ type: "", text: "" });
+
+  // Danger Zone State
+  const [isExportingData, setIsExportingData] = useState(false);
+  const [exportMsg, setExportMsg] = useState({ type: "", text: "" });
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deleteMsg, setDeleteMsg] = useState({ type: "", text: "" });
 
   // Initialize state from user object
   useEffect(() => {
@@ -198,6 +212,53 @@ export default function SettingsPage() {
       setPasswordMsg({ type: "error", text: getErrorMessage(err) });
     } finally {
       setIsUpdatingPassword(false);
+    }
+  };
+
+  const handleDataExport = async () => {
+    setIsExportingData(true);
+    setExportMsg({ type: "", text: "" });
+    try {
+      const res = await fetch("/api/user/data-export");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to export data");
+
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `param-adventures-my-data-${new Date().toISOString().split("T")[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err: unknown) {
+      setExportMsg({ type: "error", text: getErrorMessage(err) });
+    } finally {
+      setIsExportingData(false);
+    }
+  };
+
+  const handleDeleteAccount = async (e: React.SyntheticEvent) => {
+    e.preventDefault();
+    setIsDeletingAccount(true);
+    setDeleteMsg({ type: "", text: "" });
+
+    try {
+      const res = await fetch("/api/user/delete-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: deletePassword, confirmation: deleteConfirmText }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to delete account");
+
+      await logout();
+      router.push("/");
+    } catch (err: unknown) {
+      setDeleteMsg({ type: "error", text: getErrorMessage(err) });
+      setIsDeletingAccount(false);
     }
   };
 
@@ -608,8 +669,121 @@ export default function SettingsPage() {
               </button>
             </form>
           </div>
+
+          {/* Danger Zone */}
+          <div className="bg-card rounded-4xl border border-red-500/20 p-8 shadow-sm space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <h2 className="text-xl font-bold font-heading">Danger Zone</h2>
+            </div>
+
+            <div className="space-y-3">
+              <p className="text-sm text-foreground/60">
+                Download a copy of your profile, bookings, reviews, and coupons.
+              </p>
+              <button
+                type="button"
+                onClick={handleDataExport}
+                disabled={isExportingData}
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 border border-border rounded-xl font-bold hover:bg-foreground/5 transition-colors disabled:opacity-50"
+              >
+                <Download className="w-4 h-4" />
+                {isExportingData ? "Preparing…" : "Download My Data"}
+              </button>
+              {exportMsg.text && (
+                <p className="text-sm text-red-500">{exportMsg.text}</p>
+              )}
+            </div>
+
+            <div className="border-t border-border pt-6 space-y-3">
+              <p className="text-sm text-foreground/60">
+                Permanently delete your account. This cannot be undone.
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(true)}
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-red-500/10 text-red-500 rounded-xl font-bold hover:bg-red-500/20 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete My Account
+              </button>
+            </div>
+          </div>
         </div>
       </div>
+
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="bg-card border border-border w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+            <div className="p-6 border-b border-border flex items-center justify-between">
+              <h3 className="text-lg font-bold text-foreground">Delete Account</h3>
+              <button
+                type="button"
+                onClick={() => setShowDeleteModal(false)}
+                aria-label="Close"
+                className="min-w-10 min-h-10 flex items-center justify-center rounded-full hover:bg-foreground/5 text-foreground/50"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleDeleteAccount} className="p-6 space-y-4">
+              <p className="text-sm text-foreground/70">
+                This will permanently anonymize your profile and sign you out
+                everywhere. This cannot be undone.
+              </p>
+              <div>
+                <label htmlFor="deletePassword" className="block text-sm font-bold text-foreground mb-2">
+                  Confirm your password
+                </label>
+                <input
+                  id="deletePassword"
+                  type="password"
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm"
+                />
+              </div>
+              <div>
+                <label htmlFor="deleteConfirmText" className="block text-sm font-bold text-foreground mb-2">
+                  Type DELETE to confirm
+                </label>
+                <input
+                  id="deleteConfirmText"
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm"
+                />
+              </div>
+
+              {deleteMsg.text && (
+                <p className="text-sm text-red-500">{deleteMsg.text}</p>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteModal(false)}
+                  className="flex-1 py-3 rounded-xl border border-border text-foreground/70 font-bold hover:bg-foreground/5"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isDeletingAccount || deleteConfirmText !== "DELETE"}
+                  className="flex-1 py-3 rounded-xl bg-red-500 text-white font-bold hover:opacity-90 disabled:opacity-50"
+                >
+                  {isDeletingAccount ? "Deleting…" : "Delete Account"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

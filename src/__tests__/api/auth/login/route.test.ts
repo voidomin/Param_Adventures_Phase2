@@ -91,6 +91,25 @@ describe("POST /api/auth/login", () => {
     expect(response.status).toBe(403);
   });
 
+  it("returns 403 when the account has been self-deleted (deletedAt set), even if status is still ACTIVE", async () => {
+    mockFindUnique.mockResolvedValue({
+      id: "u1",
+      email: "deleted-u1@deleted.paramadventures.in",
+      name: "Deleted User",
+      password: TEST_HASHED,
+      status: "ACTIVE",
+      deletedAt: new Date(),
+      tokenVersion: 1,
+      role: { name: "CUSTOMER" },
+    } as any);
+
+    const response = await POST(
+      createRequest({ email: "deleted-u1@deleted.paramadventures.in", password: TEST_PASSWORD }),
+    );
+
+    expect(response.status).toBe(403);
+  });
+
   it("returns 401 when password verification fails", async () => {
     mockFindUnique.mockResolvedValue({
       id: "u1",
