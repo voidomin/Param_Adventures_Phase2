@@ -83,6 +83,18 @@ describe("app/login/page", () => {
     expect(screen.getByRole("button", { name: "Sign In" })).toBeInTheDocument();
   });
 
+  it("shows a friendly message when redirected here after an idle logout", () => {
+    mockGet.mockImplementation((key: string) => (key === "reason" ? "idle" : null));
+    render(<LoginPage />);
+    expect(screen.getByText("You were signed out after a period of inactivity.")).toBeInTheDocument();
+  });
+
+  it("shows a friendly message when redirected here after a dead session", () => {
+    mockGet.mockImplementation((key: string) => (key === "reason" ? "session-expired" : null));
+    render(<LoginPage />);
+    expect(screen.getByText("Your session has expired. Please log in again.")).toBeInTheDocument();
+  });
+
   it("logs in and redirects to search redirect param", async () => {
     mockGet.mockReturnValue("/dashboard/settings");
     mockLogin.mockResolvedValue({ id: "1" });

@@ -37,11 +37,11 @@ export default function AdminLayout({
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // Admin sessions carry more risk left unattended than a regular customer
-  // session -- auto sign-out after 15 minutes of no mouse/keyboard activity.
+  // session -- auto sign-out after 45 minutes of no mouse/keyboard activity.
   useIdleLogout(() => {
     if (!user) return;
     logout().then(() => router.push("/login?reason=idle"));
-  });
+  }, 45 * 60 * 1000);
 
   useEffect(() => {
     const saved = localStorage.getItem("admin_sidebar_collapsed");

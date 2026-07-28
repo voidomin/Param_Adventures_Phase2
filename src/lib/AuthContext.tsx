@@ -7,8 +7,11 @@ import {
   useEffect,
   useCallback,
   useMemo,
+  useRef,
   type ReactNode,
 } from "react";
+import { useRouter, usePathname } from "next/navigation";
+import { installSessionWatchdog } from "@/lib/session-watchdog";
 
 // ─── Types ───────────────────────────────────────────────
 
@@ -77,6 +80,10 @@ async function parseAuthResponse(
 export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
+  const pathname = usePathname();
+  const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
 
   // Fetch the current user on mount
   const fetchUser = useCallback(async () => {
@@ -102,6 +109,22 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   useEffect(() => {
     fetchUser();
   }, [fetchUser]);
+
+  // Global safety net: if any API call anywhere in the app comes back
+  // reporting the session is no longer valid (expired/revoked token,
+  // deactivated account), log out cleanly and redirect instead of leaving
+  // the current page showing stale data until the next click surfaces a
+  // raw error.
+  useEffect(() => {
+    const uninstall = installSessionWatchdog(() => {
+      setUser(null);
+      const current = pathnameRef.current;
+      if (current && !current.startsWith("/login")) {
+        router.push(`/login?redirect=${encodeURIComponent(current)}&reason=session-expired`);
+      }
+    });
+    return uninstall;
+  }, [router]);
 
   // ─── Login ───────────────────────────────────────────
   const login = useCallback(

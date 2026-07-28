@@ -26,9 +26,12 @@ function LoginContent() {
   // it was Google-based (retry via loginWithGoogle() with this credential).
   const [needsTwoFactor, setNeedsTwoFactor] = useState(false);
   const [pendingGoogleCredential, setPendingGoogleCredential] = useState<string | null>(null);
-  const [error, setError] = useState(
-    searchParams.get("reason") === "idle" ? "You were signed out after a period of inactivity." : "",
-  );
+  const [error, setError] = useState(() => {
+    const reason = searchParams.get("reason");
+    if (reason === "idle") return "You were signed out after a period of inactivity.";
+    if (reason === "session-expired") return "Your session has expired. Please log in again.";
+    return "";
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastSubmitTime, setLastSubmitTime] = useState(0);
 

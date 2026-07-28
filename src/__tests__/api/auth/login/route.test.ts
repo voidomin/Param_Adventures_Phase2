@@ -172,7 +172,7 @@ describe("POST /api/auth/login", () => {
   });
 
   it("locks the account after reaching the failed-attempt threshold", async () => {
-    mockFindUnique.mockResolvedValue({ ...baseUser, failedLoginAttempts: 4 } as any);
+    mockFindUnique.mockResolvedValue({ ...baseUser, failedLoginAttempts: 9 } as any);
     mockVerifyPassword.mockResolvedValue(false);
 
     const response = await POST(

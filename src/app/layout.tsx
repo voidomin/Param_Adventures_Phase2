@@ -57,6 +57,7 @@ export async function generateMetadata(): Promise<Metadata> {
 import Navbar from "@/components/layout/Navbar";
 import ProfilePromptBanner from "@/components/layout/ProfilePromptBanner";
 import EmailVerificationBanner from "@/components/layout/EmailVerificationBanner";
+import TwoFactorPromptBanner from "@/components/layout/TwoFactorPromptBanner";
 import Footer from "@/components/layout/Footer";
 import MaintenanceGuard from "@/components/layout/MaintenanceGuard";
 import GoogleAnalytics from "@/components/monitoring/GoogleAnalytics";
@@ -109,6 +110,7 @@ export default async function RootLayout({
                   <Navbar />
                   <EmailVerificationBanner />
                   <ProfilePromptBanner />
+                  <TwoFactorPromptBanner />
                   <main className="flex-1 flex flex-col">{children}</main>
                   <Footer 
                     supportEmail={supportEmail} 

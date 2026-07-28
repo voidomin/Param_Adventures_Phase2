@@ -21,7 +21,7 @@ const loginSchema = z.object({
 // above, which an attacker can trivially route around by spreading guesses
 // across many source addresses. This tracks failed attempts against the
 // specific account being targeted instead.
-const LOCKOUT_THRESHOLD = 5;
+const LOCKOUT_THRESHOLD = 10;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
 
 export async function POST(request: NextRequest) {
