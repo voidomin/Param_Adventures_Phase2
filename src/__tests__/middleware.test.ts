@@ -176,5 +176,16 @@ describe("Next.js Middleware (Proxy)", () => {
       const res = proxy(req);
       expect(res.status).toBe(200);
     });
+
+    it("exempts the abandoned-bookings cleanup cron endpoint from CSRF verification", () => {
+      const req = createRequest("http://localhost/api/admin/bookings/cleanup", {
+        method: "POST",
+        headers: {
+          host: "localhost:3000",
+        },
+      });
+      const res = proxy(req);
+      expect(res.status).toBe(200);
+    });
   });
 });
