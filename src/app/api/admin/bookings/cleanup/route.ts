@@ -1,23 +1,34 @@
+import crypto from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
 
+function isValidCronSecret(provided: string | null, expected: string | undefined): boolean {
+  if (!provided || !expected) return false;
+  const providedBuf = Buffer.from(provided);
+  const expectedBuf = Buffer.from(expected);
+  return providedBuf.length === expectedBuf.length && crypto.timingSafeEqual(providedBuf, expectedBuf);
+}
+
 /**
  * POST /api/admin/bookings/cleanup
- * 
- * Target: Cleans up (cancels) bookings that are stuck in REQUESTED/PENDING state
- * for more than 30 minutes, freeing up the blocked capacity slot.
- * 
- * Auth: Requires "booking:moderate" permission, 
+ *
+ * Target: Cancels bookings stuck in REQUESTED/PENDING state for more than
+ * 30 minutes. These never held slot capacity in the first place --
+ * remainingCapacity is only decremented once a booking is CONFIRMED (see
+ * booking.service.ts) -- so this is pure housekeeping, not a capacity
+ * restoration, despite what a stale earlier version of this comment implied.
+ *
+ * Auth: Requires "booking:moderate" permission,
  * OR a valid x-cron-secret header for automated jobs.
  */
 export async function POST(request: NextRequest) {
   const auth = await authorizeRequest(request, "booking:moderate");
-  
+
   if (!auth.authorized) {
     const cronSecret = request.headers.get("x-cron-secret");
-    if (!cronSecret || cronSecret !== process.env.CRON_SECRET) {
+    if (!isValidCronSecret(cronSecret, process.env.CRON_SECRET)) {
        return auth.response;
     }
   }
@@ -59,7 +70,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      message: `Successfully cleaned up and restored capacity for ${restoredCount} abandoned bookings.`,
+      message: `Successfully cancelled ${restoredCount} abandoned booking(s).`,
       count: restoredCount,
     });
   } catch (error) {
