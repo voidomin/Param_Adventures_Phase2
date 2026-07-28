@@ -90,6 +90,18 @@ export const RATE_LIMIT_RULES: RateLimitRule[] = [
     label: "User:Avatar",
   },
   {
+    pathPrefix: "/api/user/delete-account",
+    limit: 5,
+    windowMs: 15 * 60 * 1000,
+    label: "User:DeleteAccount",
+  },
+  {
+    pathPrefix: "/api/user/data-export",
+    limit: 5,
+    windowMs: 15 * 60 * 1000,
+    label: "User:DataExport",
+  },
+  {
     pathPrefix: "/api/user/media/presign",
     limit: 10,
     windowMs: 60 * 1000,

@@ -42,6 +42,13 @@ describe("rate-limit-config", () => {
 
       const registerRule = findMatchingRule("/api/user/media/register");
       expect(registerRule?.label).toBe("User:MediaRegister");
+
+      const deleteAccountRule = findMatchingRule("/api/user/delete-account");
+      expect(deleteAccountRule?.label).toBe("User:DeleteAccount");
+      expect(deleteAccountRule?.limit).toBe(5);
+
+      const dataExportRule = findMatchingRule("/api/user/data-export");
+      expect(dataExportRule?.label).toBe("User:DataExport");
     });
 
     it("falls back to general api limit for unmatched api routes", () => {

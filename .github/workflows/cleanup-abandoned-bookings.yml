@@ -1,0 +1,30 @@
+name: Cleanup Abandoned Bookings
+
+# Cancels bookings stuck in REQUESTED/PENDING for 30+ minutes (abandoned
+# checkouts), via /api/admin/bookings/cleanup. This endpoint already existed
+# and supported cron-secret auth, but nothing was actually calling it.
+on:
+  schedule:
+    - cron: "*/15 * * * *" # every 15 minutes
+  workflow_dispatch:
+
+jobs:
+  cleanup:
+    name: Trigger Cleanup
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call cleanup endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ vars.PROD_APP_URL || 'https://www.paramadventures.in' }}
+        run: |
+          status=$(curl -s -o response.json -w "%{http_code}" -X POST \
+            "$APP_URL/api/admin/bookings/cleanup" \
+            -H "x-cron-secret: $CRON_SECRET")
+          echo "HTTP status: $status"
+          cat response.json
+          if [ "$status" -ge 400 ]; then
+            echo "Cleanup request failed."
+            exit 1
+          fi

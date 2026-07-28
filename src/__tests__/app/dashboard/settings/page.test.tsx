@@ -6,6 +6,7 @@ import SettingsPage from "@/app/dashboard/settings/page";
 const mockFetch = vi.fn();
 const mockMutateUser = vi.fn();
 const mockUseAuth = vi.fn();
+const mockLogout = vi.fn();
 
 vi.stubGlobal("fetch", mockFetch);
 
@@ -35,6 +36,7 @@ describe("app/dashboard/settings/page", () => {
         permissions: [],
       },
       mutateUser: mockMutateUser,
+      logout: mockLogout,
     });
 
     mockFetch.mockResolvedValue({
@@ -101,5 +103,67 @@ describe("app/dashboard/settings/page", () => {
       "/api/user/password",
       expect.anything(),
     );
+  });
+
+  it("downloads data export when 'Download My Data' is clicked", async () => {
+    vi.stubGlobal("URL", {
+      ...URL,
+      createObjectURL: vi.fn(() => "blob:mock"),
+      revokeObjectURL: vi.fn(),
+    });
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ profile: {}, bookings: [] }),
+    });
+
+    render(<SettingsPage />);
+    fireEvent.click(screen.getByRole("button", { name: /Download My Data/i }));
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith("/api/user/data-export");
+    });
+  });
+
+  it("disables the delete-account submit button until DELETE is typed", async () => {
+    render(<SettingsPage />);
+
+    fireEvent.click(screen.getByRole("button", { name: /^Delete My Account$/i }));
+
+    const submitBtn = screen.getByRole("button", { name: /^Delete Account$/i });
+    expect(submitBtn).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText(/Type DELETE to confirm/i), {
+      target: { value: "DELETE" },
+    });
+
+    expect(submitBtn).not.toBeDisabled();
+  });
+
+  it("submits account deletion, logs out, and redirects on success", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ message: "Your account has been deleted." }),
+    });
+
+    render(<SettingsPage />);
+    fireEvent.click(screen.getByRole("button", { name: /^Delete My Account$/i }));
+
+    fireEvent.change(screen.getByLabelText(/Confirm your password/i), {
+      target: { value: "mypassword" },
+    });
+    fireEvent.change(screen.getByLabelText(/Type DELETE to confirm/i), {
+      target: { value: "DELETE" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /^Delete Account$/i }));
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith(
+        "/api/user/delete-account",
+        expect.objectContaining({ method: "POST" }),
+      );
+    });
+    await waitFor(() => {
+      expect(mockLogout).toHaveBeenCalled();
+    });
   });
 });

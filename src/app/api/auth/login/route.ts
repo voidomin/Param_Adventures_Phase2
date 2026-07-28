@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ─── Check account status ────────────────────────────
-    if (user.status !== "ACTIVE") {
+    if (user.deletedAt || user.status !== "ACTIVE") {
       return NextResponse.json(
         { error: "Your account has been suspended." },
         { status: 403 },
