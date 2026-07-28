@@ -4,6 +4,7 @@ import { rateLimit } from "@/lib/rate-limit";
 import type { RateLimitResult } from "@/lib/rate-limit";
 import { findMatchingRule } from "@/lib/rate-limit-config";
 import { isIpAllowed } from "@/lib/ip-allowlist";
+import { prisma } from "@/lib/db";
 
 interface RateLimitResultWrapper {
   response: NextResponse | null;
@@ -134,11 +135,21 @@ function handleRateLimiting(request: NextRequest, pathname: string): RateLimitRe
  * if one is set. Excludes the bootstrap and cron-cleanup endpoints, which
  * are called server-to-server (GitHub Actions, dev bootstrap) from IPs that
  * have nothing to do with staff office/VPN ranges and already carry their
- * own strong auth. An empty/unset ADMIN_IP_ALLOWLIST means no restriction --
- * this is opt-in, not on by default, so it can't accidentally lock out the
- * only admin before it's deliberately configured.
+ * own strong auth. An empty/unset allowlist means no restriction -- this is
+ * opt-in, not on by default, so it can't accidentally lock out the only
+ * admin before it's deliberately configured.
+ *
+ * Reads the "Admin IP Allowlist" admin setting (Settings → Security),
+ * falling back to the ADMIN_IP_ALLOWLIST env var for pre-deploy
+ * bootstrapping. This is a database read on every /admin request -- a
+ * deliberate trade-off for admin-editability without a redeploy; runs on
+ * the Node.js runtime (see `export const config` below) rather than the
+ * default Edge runtime specifically so this Prisma call works at all. If
+ * the read itself fails (e.g. a DB hiccup), fails open (allows the
+ * request) rather than locking out the admin panel over an unrelated
+ * outage -- this feature is opt-in hardening, not the primary auth gate.
  */
-function verifyAdminIpAllowlist(request: NextRequest, pathname: string): NextResponse | null {
+async function verifyAdminIpAllowlist(request: NextRequest, pathname: string): Promise<NextResponse | null> {
   const isAdminPath =
     pathname.startsWith("/admin") ||
     (pathname.startsWith("/api/admin") &&
@@ -148,7 +159,15 @@ function verifyAdminIpAllowlist(request: NextRequest, pathname: string): NextRes
 
   if (!isAdminPath) return null;
 
-  const allowlistRaw = process.env.ADMIN_IP_ALLOWLIST;
+  let allowlistRaw: string | undefined;
+  try {
+    const setting = await prisma.platformSetting.findUnique({ where: { key: "admin_ip_allowlist" } });
+    allowlistRaw = setting?.value || process.env.ADMIN_IP_ALLOWLIST;
+  } catch (error) {
+    console.error("[ADMIN_IP_ALLOWLIST] Failed to read setting, failing open:", error);
+    return null;
+  }
+
   if (!allowlistRaw) return null;
 
   const allowlist = allowlistRaw.split(",").map((e) => e.trim()).filter(Boolean);
@@ -167,14 +186,15 @@ function verifyAdminIpAllowlist(request: NextRequest, pathname: string): NextRes
 }
 
 /**
- * Route protection middleware.
+ * Route protection middleware. Runs on the Node.js runtime (see `config`
+ * below) so verifyAdminIpAllowlist can read PlatformSetting via Prisma.
  */
-export default function proxy(request: NextRequest) {
+export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const method = request.method;
 
   // ─── Admin IP Allowlist ─────────────────────────────────
-  const ipBlock = verifyAdminIpAllowlist(request, pathname);
+  const ipBlock = await verifyAdminIpAllowlist(request, pathname);
   if (ipBlock) {
     return ipBlock;
   }
@@ -290,6 +310,12 @@ export default function proxy(request: NextRequest) {
 }
 
 export const config = {
+  // No `runtime` key here: files named proxy.ts (Next.js 16's renamed
+  // middleware convention) always run on the Node.js runtime already --
+  // declaring it explicitly is a build error, not just redundant. That's
+  // exactly why the admin-IP-allowlist check above can safely use
+  // Prisma/pg, which need real Node APIs unavailable on the legacy Edge
+  // runtime middleware.ts used.
   matcher: [
     // Match all routes except static files and Next.js internals
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)", // NOSONAR: String.raw breaks Turbopack build static analysis

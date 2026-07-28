@@ -1,4 +1,5 @@
 import { OAuth2Client } from "google-auth-library";
+import { prisma } from "@/lib/db";
 
 export interface GoogleProfile {
   googleId: string;
@@ -7,11 +8,16 @@ export interface GoogleProfile {
   name: string;
 }
 
-let cachedClient: OAuth2Client | null = null;
-
-function getClient(): OAuth2Client {
-  cachedClient ??= new OAuth2Client(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID);
-  return cachedClient;
+/**
+ * Resolves the OAuth Client ID from the "Google Sign-In" admin setting
+ * (Settings → Integrations), falling back to NEXT_PUBLIC_GOOGLE_CLIENT_ID
+ * for pre-deploy bootstrapping. Read fresh on every call (no module-level
+ * caching) so an admin rotating the client ID takes effect immediately,
+ * without a redeploy.
+ */
+async function getClientId(): Promise<string | undefined> {
+  const setting = await prisma.platformSetting.findUnique({ where: { key: "google_client_id" } });
+  return setting?.value || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 }
 
 /**
@@ -22,11 +28,12 @@ function getClient(): OAuth2Client {
  * that identically to "bad credentials," not a server error.
  */
 export async function verifyGoogleIdToken(idToken: string): Promise<GoogleProfile | null> {
-  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  const clientId = await getClientId();
   if (!clientId) return null;
 
   try {
-    const ticket = await getClient().verifyIdToken({ idToken, audience: clientId });
+    const client = new OAuth2Client(clientId);
+    const ticket = await client.verifyIdToken({ idToken, audience: clientId });
     const payload = ticket.getPayload();
     if (!payload?.sub || !payload.email) return null;
 

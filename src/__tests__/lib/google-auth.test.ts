@@ -8,15 +8,27 @@ vi.mock("google-auth-library", () => ({
   },
 }));
 
+vi.mock("@/lib/db", () => ({
+  prisma: {
+    platformSetting: {
+      findUnique: vi.fn(),
+    },
+  },
+}));
+
 import { verifyGoogleIdToken } from "@/lib/google-auth";
+import { prisma } from "@/lib/db";
+
+const mockFindUnique = vi.mocked(prisma.platformSetting.findUnique);
 
 describe("verifyGoogleIdToken", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv("NEXT_PUBLIC_GOOGLE_CLIENT_ID", "test-client-id");
+    mockFindUnique.mockResolvedValue(null);
   });
 
-  it("returns the verified profile for a valid token", async () => {
+  it("returns the verified profile for a valid token (env fallback client ID)", async () => {
     mockVerifyIdToken.mockResolvedValue({
       getPayload: () => ({
         sub: "google-123",
@@ -34,6 +46,19 @@ describe("verifyGoogleIdToken", () => {
       emailVerified: true,
       name: "Test User",
     });
+  });
+
+  it("prefers the admin-configured client ID over the env var", async () => {
+    mockFindUnique.mockResolvedValue({ key: "google_client_id", value: "db-client-id" } as any);
+    mockVerifyIdToken.mockResolvedValue({
+      getPayload: () => ({ sub: "google-123", email: "user@example.com", email_verified: true, name: "Test User" }),
+    });
+
+    await verifyGoogleIdToken("some-id-token");
+
+    expect(mockVerifyIdToken).toHaveBeenCalledWith(
+      expect.objectContaining({ audience: "db-client-id" }),
+    );
   });
 
   it("falls back to the email's local part when no name is present", async () => {
@@ -62,7 +87,7 @@ describe("verifyGoogleIdToken", () => {
     expect(profile).toBeNull();
   });
 
-  it("returns null when no client ID is configured", async () => {
+  it("returns null when no client ID is configured anywhere", async () => {
     vi.stubEnv("NEXT_PUBLIC_GOOGLE_CLIENT_ID", "");
     const profile = await verifyGoogleIdToken("some-id-token");
     expect(profile).toBeNull();

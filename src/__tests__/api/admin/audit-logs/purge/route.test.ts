@@ -7,6 +7,9 @@ vi.mock("@/lib/db", () => ({
     auditLog: {
       deleteMany: vi.fn(),
     },
+    platformSetting: {
+      findUnique: vi.fn(),
+    },
   },
 }));
 
@@ -16,6 +19,7 @@ import { prisma } from "@/lib/db";
 
 const mockAuthorizeRequest = vi.mocked(authorizeRequest);
 const mockDeleteMany = vi.mocked(prisma.auditLog.deleteMany);
+const mockFindUnique = vi.mocked(prisma.platformSetting.findUnique);
 
 const createRequest = (headers: Record<string, string> = {}) =>
   new NextRequest("http://localhost/api/admin/audit-logs/purge", {
@@ -28,6 +32,7 @@ describe("POST /api/admin/audit-logs/purge", () => {
     vi.clearAllMocks();
     vi.stubEnv("CRON_SECRET", "test-cron-secret");
     delete process.env.AUDIT_LOG_RETENTION_DAYS;
+    mockFindUnique.mockResolvedValue(null);
   });
 
   it("allows a valid admin session (system:config permission)", async () => {
@@ -86,6 +91,20 @@ describe("POST /api/admin/audit-logs/purge", () => {
     const cutoff = call.where.timestamp.lt as Date;
     const daysAgo = (Date.now() - cutoff.getTime()) / (24 * 60 * 60 * 1000);
     expect(daysAgo).toBeCloseTo(30, 0);
+  });
+
+  it("prefers the admin setting over the env var when both are present", async () => {
+    vi.stubEnv("AUDIT_LOG_RETENTION_DAYS", "30");
+    mockFindUnique.mockResolvedValue({ key: "audit_log_retention_days", value: "90" } as any);
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "admin1" } as any);
+    mockDeleteMany.mockResolvedValue({ count: 2 });
+
+    await POST(createRequest());
+
+    const call = mockDeleteMany.mock.calls[0][0] as any;
+    const cutoff = call.where.timestamp.lt as Date;
+    const daysAgo = (Date.now() - cutoff.getTime()) / (24 * 60 * 60 * 1000);
+    expect(daysAgo).toBeCloseTo(90, 0);
   });
 
   it("returns 500 on unexpected error", async () => {

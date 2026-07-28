@@ -4,13 +4,22 @@ import { NextRequest } from "next/server";
 
 vi.mock("@/lib/audit-logger", () => ({ logActivity: vi.fn() }));
 vi.mock("@/lib/monitoring", () => ({ logError: vi.fn() }));
+vi.mock("@/lib/db", () => ({
+  prisma: {
+    platformSetting: {
+      findUnique: vi.fn(),
+    },
+  },
+}));
 
 import { POST } from "@/app/api/webhooks/email/route";
 import { logActivity } from "@/lib/audit-logger";
 import { logError } from "@/lib/monitoring";
+import { prisma } from "@/lib/db";
 
 const mockLogActivity = vi.mocked(logActivity);
 const mockLogError = vi.mocked(logError);
+const mockFindUnique = vi.mocked(prisma.platformSetting.findUnique);
 
 const SECRET = "whsec_dGVzdC1zZWNyZXQta2V5LWZvci1zaWduaW5n"; // NOSONAR test fixture
 
@@ -42,12 +51,21 @@ describe("POST /api/webhooks/email", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv("RESEND_WEBHOOK_SECRET", SECRET);
+    mockFindUnique.mockResolvedValue(null);
   });
 
-  it("returns 404 when no webhook secret is configured", async () => {
+  it("returns 404 when no webhook secret is configured anywhere", async () => {
     vi.stubEnv("RESEND_WEBHOOK_SECRET", "");
     const response = await POST(createSignedRequest({ type: "email.bounced" }));
     expect(response.status).toBe(404);
+  });
+
+  it("uses the admin-configured secret when present, overriding the env fallback", async () => {
+    vi.stubEnv("RESEND_WEBHOOK_SECRET", "wrong-secret-that-would-fail");
+    mockFindUnique.mockResolvedValue({ key: "resend_webhook_secret", value: SECRET } as any);
+
+    const response = await POST(createSignedRequest({ type: "email.bounced" }));
+    expect(response.status).toBe(200);
   });
 
   it("returns 400 when signature headers are missing", async () => {

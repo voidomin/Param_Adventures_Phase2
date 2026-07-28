@@ -1,12 +1,16 @@
+import { prisma } from "@/lib/db";
+
 /**
- * Cloudflare Turnstile verification. Opt-in: if TURNSTILE_SECRET_KEY isn't
- * configured, this always passes -- the feature has zero effect until
- * someone deliberately wires up a site key + secret key pair, same pattern
- * as the other optional hardening features (Google Sign-In, admin IP
- * allowlist).
+ * Cloudflare Turnstile verification. Opt-in: if no secret key is configured
+ * (admin setting "turnstile_secret_key", falling back to the
+ * TURNSTILE_SECRET_KEY env var for pre-deploy bootstrapping), this always
+ * passes -- the feature has zero effect until someone deliberately wires up
+ * a site key + secret key pair, same pattern as the other optional
+ * hardening features (Google Sign-In, admin IP allowlist).
  */
 export async function verifyTurnstileToken(token: string | undefined, ip: string): Promise<boolean> {
-  const secretKey = process.env.TURNSTILE_SECRET_KEY;
+  const setting = await prisma.platformSetting.findUnique({ where: { key: "turnstile_secret_key" } });
+  const secretKey = setting?.value || process.env.TURNSTILE_SECRET_KEY;
   if (!secretKey) return true;
   if (!token) return false;
 

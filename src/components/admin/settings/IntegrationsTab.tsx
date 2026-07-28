@@ -1,17 +1,19 @@
 "use client";
 
 import React, { useState } from "react";
-import { 
-  Puzzle, 
-  BarChart3, 
-  AlertCircle, 
-  CheckCircle2, 
-  Activity, 
-  ShieldCheck, 
+import {
+  Puzzle,
+  BarChart3,
+  AlertCircle,
+  CheckCircle2,
+  Activity,
+  ShieldCheck,
   Zap,
   Loader2,
   ExternalLink,
-  Handshake
+  Handshake,
+  KeyRound,
+  Bot,
 } from "lucide-react";
 import { SectionTitle, InputGroup, TabProps } from "./Common";
 
@@ -146,6 +148,63 @@ export default function IntegrationsTab({ getVal, updateSetting }: Readonly<TabP
             </a>
           </div>
         </div>
+      </div>
+
+      <div className="h-px bg-border/50" />
+
+      {/* Google Sign-In Section */}
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-red-500/10 text-red-500">
+            <KeyRound className="w-5 h-5" />
+          </div>
+          <div>
+            <h4 className="font-bold text-lg">Google Sign-In</h4>
+            <p className="text-xs text-foreground/50 font-medium">&ldquo;Continue with Google&rdquo; on the login and register pages.</p>
+          </div>
+        </div>
+
+        <InputGroup
+          label="OAuth Client ID"
+          value={getVal("PLATFORM", "google_client_id")}
+          onChange={(v) => updateSetting("PLATFORM", "google_client_id", v)}
+          placeholder="123456789-abc.apps.googleusercontent.com"
+          description="From a Google Cloud 'OAuth 2.0 Client ID' (Web application type). Used both by the browser button and to verify sign-ins server-side. Leave empty to hide the button entirely."
+        />
+      </div>
+
+      <div className="h-px bg-border/50" />
+
+      {/* Turnstile CAPTCHA Section */}
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-orange-600/10 text-orange-600">
+            <Bot className="w-5 h-5" />
+          </div>
+          <div>
+            <h4 className="font-bold text-lg">Cloudflare Turnstile (Bot Protection)</h4>
+            <p className="text-xs text-foreground/50 font-medium">CAPTCHA on registration and the custom trip lead form.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <InputGroup
+            label="Site Key"
+            value={getVal("PLATFORM", "turnstile_site_key")}
+            onChange={(v) => updateSetting("PLATFORM", "turnstile_site_key", v)}
+            placeholder="0x4AAAAAAA..."
+          />
+          <InputGroup
+            label="Secret Key"
+            value={getVal("PLATFORM", "turnstile_secret_key")}
+            onChange={(v) => updateSetting("PLATFORM", "turnstile_secret_key", v)}
+            type="password"
+            placeholder="••••••••••••••••"
+          />
+        </div>
+        <p className="text-[10px] text-foreground/40 pl-2 leading-relaxed">
+          Leave both empty to disable — no CAPTCHA is shown or required.
+        </p>
       </div>
 
       <div className="h-px bg-border/50" />

@@ -222,7 +222,7 @@ export default function SecurityTab(props: Readonly<TabProps>) {
 
       <div className="p-8 bg-foreground/5 rounded-3xl space-y-6 border border-border/50">
         <h4 className="font-bold text-sm text-primary uppercase tracking-widest flex items-center gap-2">
-          <Settings2 className="w-4 h-4" /> 
+          <Settings2 className="w-4 h-4" />
           Identity & Session
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -239,6 +239,20 @@ export default function SecurityTab(props: Readonly<TabProps>) {
              placeholder="e.g. 168 (7 days)"
           />
         </div>
+      </div>
+
+      <div className="p-8 bg-foreground/5 rounded-3xl space-y-6 border border-border/50">
+        <h4 className="font-bold text-sm text-primary uppercase tracking-widest flex items-center gap-2">
+          <Settings2 className="w-4 h-4" />
+          Admin Access Control
+        </h4>
+        <InputGroup
+          label="Admin IP Allowlist"
+          value={getVal("PLATFORM", "admin_ip_allowlist")}
+          onChange={(v: string) => updateSetting("PLATFORM", "admin_ip_allowlist", v)}
+          placeholder="e.g. 203.0.113.4, 198.51.100.0/24"
+          description="Comma-separated IPs or CIDR ranges allowed to reach /admin and /api/admin/*. Leave empty to allow any network — this is opt-in hardening, not on by default. Takes effect immediately, no redeploy needed."
+        />
       </div>
     </div>
   );

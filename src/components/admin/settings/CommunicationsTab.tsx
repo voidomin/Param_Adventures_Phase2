@@ -145,6 +145,16 @@ export default function CommunicationsTab(props: Readonly<TabProps>) {
                 placeholder="Required for Zoho Mail APIs"
               />
             )}
+            {getVal("PLATFORM", "email_provider") === "RESEND" && (
+              <InputGroup
+                label="Webhook Signing Secret"
+                value={getVal("PLATFORM", "resend_webhook_secret")}
+                onChange={(v: string) => updateSetting("PLATFORM", "resend_webhook_secret", v)}
+                type="password"
+                placeholder="whsec_..."
+                description="From the Resend dashboard's Webhooks page, pointed at /api/webhooks/email. Enables bounce/complaint visibility. Leave empty to disable."
+              />
+            )}
           </div>
         )}
       </div>

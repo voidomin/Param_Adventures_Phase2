@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
 import { logActivity } from "@/lib/audit-logger";
 import { logError } from "@/lib/monitoring";
 
@@ -54,11 +55,15 @@ function verifySvixSignature(
  * providers -- see src/lib/email/factory.ts). SMTP/Zoho bounce visibility
  * would need a separate mechanism on that side; out of scope here.
  *
- * Opt-in: no-ops entirely if RESEND_WEBHOOK_SECRET isn't configured, so
- * this has zero effect unless deliberately wired up in the Resend dashboard.
+ * Opt-in: no-ops entirely if the "Webhook Signing Secret" admin setting
+ * (Settings → Communications, falling back to RESEND_WEBHOOK_SECRET for
+ * pre-deploy bootstrapping) isn't configured, so this has zero effect
+ * unless deliberately wired up in both the admin panel and the Resend
+ * dashboard.
  */
 export async function POST(request: NextRequest) {
-  const secret = process.env.RESEND_WEBHOOK_SECRET;
+  const setting = await prisma.platformSetting.findUnique({ where: { key: "resend_webhook_secret" } });
+  const secret = setting?.value || process.env.RESEND_WEBHOOK_SECRET;
   if (!secret) {
     return NextResponse.json({ error: "Webhook not configured." }, { status: 404 });
   }

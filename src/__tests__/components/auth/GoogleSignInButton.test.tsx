@@ -1,5 +1,5 @@
-import { render } from "@testing-library/react";
-import { describe, it, expect, vi, afterEach } from "vitest";
+import { render, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
 
 vi.mock("next/script", () => ({
@@ -10,22 +10,25 @@ vi.mock("next/script", () => ({
 }));
 
 describe("GoogleSignInButton", () => {
-  const originalEnv = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  beforeEach(() => {
+    global.fetch = vi.fn();
+  });
 
   afterEach(() => {
-    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID = originalEnv;
      
     delete (window as any).google;
   });
 
-  it("renders nothing when no client ID is configured", () => {
-    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID = "";
+  it("renders nothing when the public settings endpoint has no client ID", async () => {
+    (global.fetch as any).mockResolvedValue({ json: async () => ({ google_client_id: "" }) });
+
     const { container } = render(<GoogleSignInButton onCredential={vi.fn()} />);
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledWith("/api/settings/public"));
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("initializes Google Identity Services and renders the button once the script loads", () => {
-    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID = "test-client-id";
+  it("initializes Google Identity Services with the fetched client ID once the script loads", async () => {
+    (global.fetch as any).mockResolvedValue({ json: async () => ({ google_client_id: "fetched-client-id" }) });
     const initialize = vi.fn();
     const renderButton = vi.fn();
      
@@ -33,14 +36,16 @@ describe("GoogleSignInButton", () => {
 
     render(<GoogleSignInButton onCredential={vi.fn()} />);
 
-    expect(initialize).toHaveBeenCalledWith(
-      expect.objectContaining({ client_id: "test-client-id" }),
-    );
+    await waitFor(() => {
+      expect(initialize).toHaveBeenCalledWith(
+        expect.objectContaining({ client_id: "fetched-client-id" }),
+      );
+    });
     expect(renderButton).toHaveBeenCalled();
   });
 
-  it("forwards the credential from Google's callback to onCredential", () => {
-    process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID = "test-client-id";
+  it("forwards the credential from Google's callback to onCredential", async () => {
+    (global.fetch as any).mockResolvedValue({ json: async () => ({ google_client_id: "fetched-client-id" }) });
     const onCredential = vi.fn();
     let capturedCallback: ((response: { credential: string }) => void) | undefined;
      
@@ -56,8 +61,17 @@ describe("GoogleSignInButton", () => {
     };
 
     render(<GoogleSignInButton onCredential={onCredential} />);
+    await waitFor(() => expect(capturedCallback).toBeDefined());
     capturedCallback?.({ credential: "id-token-123" });
 
     expect(onCredential).toHaveBeenCalledWith("id-token-123");
+  });
+
+  it("renders nothing if the settings fetch fails", async () => {
+    (global.fetch as any).mockRejectedValue(new Error("network error"));
+
+    const { container } = render(<GoogleSignInButton onCredential={vi.fn()} />);
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    expect(container).toBeEmptyDOMElement();
   });
 });

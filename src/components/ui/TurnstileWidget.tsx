@@ -15,11 +15,25 @@ type TurnstileApi = any;
  * proceeds without a token) if no site key is configured -- CAPTCHA is
  * opt-in, not required, matching the rest of this app's optional-hardening
  * features.
+ *
+ * The site key is fetched from /api/settings/public at runtime (admin-
+ * configurable, Settings → Integrations) rather than read from a build-time
+ * NEXT_PUBLIC_ env var, so rotating it doesn't require a redeploy.
  */
 export default function TurnstileWidget({ onVerify }: TurnstileWidgetProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
-  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+  const [siteKey, setSiteKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/settings/public")
+      .then((res) => res.json())
+      .then((data) => {
+         
+        setSiteKey(data.turnstile_site_key || null);
+      })
+      .catch(() => setSiteKey(null));
+  }, []);
 
   useEffect(() => {
     if (!scriptLoaded || !siteKey || !containerRef.current) return;

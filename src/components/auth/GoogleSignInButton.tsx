@@ -16,11 +16,25 @@ type GoogleAccountsId = any;
  * parent, which owns the actual /api/auth/google exchange -- that way the
  * parent can also retry the same credential with a 2FA code if needed,
  * without this component needing to know about that flow.
+ *
+ * The client ID is fetched from /api/settings/public at runtime (admin-
+ * configurable, Settings → Integrations) rather than read from a build-time
+ * NEXT_PUBLIC_ env var, so rotating it doesn't require a redeploy.
  */
 export default function GoogleSignInButton({ onCredential }: GoogleSignInButtonProps) {
   const buttonRef = useRef<HTMLDivElement>(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
-  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+  const [clientId, setClientId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/settings/public")
+      .then((res) => res.json())
+      .then((data) => {
+         
+        setClientId(data.google_client_id || null);
+      })
+      .catch(() => setClientId(null));
+  }, []);
 
   useEffect(() => {
     if (!scriptLoaded || !clientId || !buttonRef.current) return;
