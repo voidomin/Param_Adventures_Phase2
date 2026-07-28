@@ -6,13 +6,17 @@ import {
   generateRefreshToken,
   parseExpiryToSeconds,
 } from "@/lib/auth";
-import { sendWelcomeEmail } from "@/lib/email";
+import { sendWelcomeEmail, sendVerificationEmail } from "@/lib/email";
 import { z } from "zod";
 import { authLimiter } from "@/lib/rate-limiter";
+import { passwordSchema } from "@/lib/validators/auth.schema";
+import crypto from "node:crypto";
+
+const EMAIL_VERIFICATION_TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000;
 
 const registerSchema = z.object({
   email: z.email({ message: "Invalid email format" }),
-  password: z.string().min(8, { message: "Password must be at least 8 characters" }),
+  password: passwordSchema,
   name: z.string().min(1, { message: "Name is required" }),
 });
 
@@ -76,6 +80,7 @@ export async function POST(request: NextRequest) {
 
     // ─── Create user ─────────────────────────────────────
     const hashedPassword = await hashPassword(password);
+    const emailVerificationToken = crypto.randomBytes(32).toString("hex");
 
     const user = await prisma.user.create({
       data: {
@@ -83,6 +88,8 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         name: name.trim(),
         roleId: defaultRole.id,
+        emailVerificationToken,
+        emailVerificationTokenExpiry: new Date(Date.now() + EMAIL_VERIFICATION_TOKEN_EXPIRY_MS),
       },
       include: { role: true },
     });
@@ -134,6 +141,21 @@ export async function POST(request: NextRequest) {
       userName: user.name,
       userEmail: user.email,
     }).catch((err) => console.error("Welcome email error:", err));
+
+    // Send verification email (fire-and-forget)
+    const siteSettings = await prisma.siteSetting.findMany({ where: { key: "app_url" } });
+    const baseUrl =
+      siteSettings[0]?.value ||
+      process.env.NEXT_PUBLIC_APP_URL ||
+      request.headers.get("origin") ||
+      "https://localhost:3000";
+    const verifyLink = `${baseUrl}/verify-email?token=${emailVerificationToken}`;
+
+    sendVerificationEmail({
+      userName: user.name,
+      userEmail: user.email,
+      verifyLink,
+    }).catch((err) => console.error("Verification email error:", err));
 
     return response;
   } catch (error) {

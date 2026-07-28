@@ -6,13 +6,23 @@ vi.mock("@/services/booking.service", () => ({
   },
 }));
 
+vi.mock("@/lib/db", () => ({
+  prisma: {
+    user: {
+      findUnique: vi.fn(),
+    },
+  },
+}));
+
 import { NextRequest, NextResponse } from "next/server";
 import { POST } from "@/app/api/bookings/route";
 import { authorizeRequest } from "@/lib/api-auth";
 import { BookingService } from "@/services/booking.service";
+import { prisma } from "@/lib/db";
 
 const mockAuthorizeRequest = vi.mocked(authorizeRequest);
 const mockProcessBooking = vi.mocked(BookingService.processBooking);
+const mockUserFindUnique = vi.mocked(prisma.user.findUnique);
 
 const createRequest = (body: unknown) =>
   ({ json: vi.fn().mockResolvedValue(body) }) as unknown as NextRequest;
@@ -58,6 +68,7 @@ describe("POST /api/bookings", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    mockUserFindUnique.mockResolvedValue({ isVerified: true } as any);
   });
 
   afterEach(() => {
@@ -72,6 +83,18 @@ describe("POST /api/bookings", () => {
 
     const response = await POST(createRequest(validPayload));
     expect(response.status).toBe(401);
+  });
+
+  it("returns 403 when the user's email hasn't been verified", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
+    mockUserFindUnique.mockResolvedValue({ isVerified: false } as any);
+
+    const response = await POST(createRequest(validPayload));
+    const data = await response.json();
+
+    expect(response.status).toBe(403);
+    expect(data.error).toContain("verify your email");
+    expect(mockProcessBooking).not.toHaveBeenCalled();
   });
 
   it("returns 400 for validation failure (mismatched participants)", async () => {

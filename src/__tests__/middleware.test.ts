@@ -28,6 +28,7 @@ describe("Next.js Middleware (Proxy)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.NEXT_PUBLIC_APP_URL = "https://example.com";
+    delete process.env.ADMIN_IP_ALLOWLIST;
     vi.mocked(rateLimit).mockReturnValue({
       success: true,
       limit: 100,
@@ -185,6 +186,96 @@ describe("Next.js Middleware (Proxy)", () => {
         },
       });
       const res = proxy(req);
+      expect(res.status).toBe(200);
+    });
+  });
+
+  describe("Admin IP Allowlist", () => {
+    it("allows any network when ADMIN_IP_ALLOWLIST is unset", () => {
+      const req = createRequest("http://localhost/api/admin/bookings", {
+        headers: { "x-forwarded-for": "203.0.113.9" },
+        cookies: { accessToken: "valid-jwt" },
+      });
+      const res = proxy(req);
+      expect(res.status).toBe(200);
+    });
+
+    it("blocks a non-allowlisted IP from an admin API route", () => {
+      process.env.ADMIN_IP_ALLOWLIST = "198.51.100.0/24";
+      const req = createRequest("http://localhost/api/admin/bookings", {
+        headers: { "x-forwarded-for": "203.0.113.9" },
+        cookies: { accessToken: "valid-jwt" },
+      });
+      const res = proxy(req);
+      expect(res.status).toBe(403);
+    });
+
+    it("blocks a non-allowlisted IP from an admin page route", () => {
+      process.env.ADMIN_IP_ALLOWLIST = "198.51.100.0/24";
+      const req = createRequest("http://localhost/admin/dashboard", {
+        headers: { "x-forwarded-for": "203.0.113.9" },
+        cookies: { accessToken: "valid-jwt" },
+      });
+      const res = proxy(req);
+      expect(res.status).toBe(403);
+    });
+
+    it("allows an allowlisted IP through to an admin route", () => {
+      process.env.ADMIN_IP_ALLOWLIST = "198.51.100.0/24";
+      const req = createRequest("http://localhost/api/admin/bookings", {
+        headers: { "x-forwarded-for": "198.51.100.42" },
+        cookies: { accessToken: "valid-jwt" },
+      });
+      const res = proxy(req);
+      expect(res.status).toBe(200);
+    });
+
+    it("still allows the cron cleanup endpoint through regardless of the allowlist", () => {
+      process.env.ADMIN_IP_ALLOWLIST = "198.51.100.0/24";
+      const req = createRequest("http://localhost/api/admin/bookings/cleanup", {
+        method: "POST",
+        headers: { host: "localhost:3000", "x-forwarded-for": "203.0.113.9" },
+      });
+      const res = proxy(req);
+      expect(res.status).toBe(200);
+    });
+
+    it("still allows the bootstrap endpoint through regardless of the allowlist", () => {
+      process.env.ADMIN_IP_ALLOWLIST = "198.51.100.0/24";
+      const req = createRequest("http://localhost/api/admin/bootstrap", {
+        headers: { "x-forwarded-for": "203.0.113.9" },
+      });
+      const res = proxy(req);
+      expect(res.status).toBe(200);
+    });
+
+    it("does not restrict non-admin routes", () => {
+      process.env.ADMIN_IP_ALLOWLIST = "198.51.100.0/24";
+      const req = createRequest("http://localhost/api/experiences", {
+        headers: { "x-forwarded-for": "203.0.113.9" },
+      });
+      const res = proxy(req);
+      expect(res.status).toBe(200);
+    });
+  });
+
+  describe("New Public Auth Routes", () => {
+    it("allows the verify-email page and API route without authentication", () => {
+      const pageRes = proxy(createRequest("http://localhost/verify-email"));
+      expect(pageRes.status).toBe(200);
+
+      const apiRes = proxy(createRequest("http://localhost/api/auth/verify-email", {
+        method: "POST",
+        headers: { host: "localhost:3000", origin: "http://localhost:3000" },
+      }));
+      expect(apiRes.status).toBe(200);
+    });
+
+    it("allows the Google sign-in API route without authentication", () => {
+      const res = proxy(createRequest("http://localhost/api/auth/google", {
+        method: "POST",
+        headers: { host: "localhost:3000", origin: "http://localhost:3000" },
+      }));
       expect(res.status).toBe(200);
     });
   });

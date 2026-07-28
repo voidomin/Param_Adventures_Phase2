@@ -71,6 +71,7 @@ export async function GET(request: NextRequest) {
         emergencyContactNumber: user.emergencyContactNumber,
         emergencyRelationship: user.emergencyRelationship,
         isVerified: user.isVerified,
+        twoFactorEnabled: user.twoFactorEnabled,
         role: user.role.name,
         permissions: user.role.permissions.map((rp) => rp.permission.key),
       },

@@ -33,6 +33,11 @@ export default function ProfilePromptBanner() {
 
   if (isExcludedRoute) return null;
 
+  // Defer to the email-verification prompt first -- showing both at once
+  // would overlap in the same corner of the screen, and verifying email is
+  // the more consequential of the two (it gates booking).
+  if (!user.isVerified) return null;
+
   // We consider the profile incomplete if the phone number is missing or is the default seed placeholder
   const isProfileIncomplete = !user.phoneNumber || user.phoneNumber.includes("0000000000");
 

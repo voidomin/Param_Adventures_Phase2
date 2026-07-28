@@ -55,6 +55,24 @@ export const RATE_LIMIT_RULES: RateLimitRule[] = [
     windowMs: 15 * 60 * 1000,
     label: "Auth:ResetPassword",
   },
+  {
+    pathPrefix: "/api/auth/verify-email",
+    limit: 10,
+    windowMs: 15 * 60 * 1000,
+    label: "Auth:VerifyEmail",
+  },
+  {
+    pathPrefix: "/api/auth/resend-verification",
+    limit: 3,
+    windowMs: 15 * 60 * 1000,
+    label: "Auth:ResendVerification",
+  },
+  {
+    pathPrefix: "/api/auth/google",
+    limit: 10,
+    windowMs: 15 * 60 * 1000,
+    label: "Auth:Google",
+  },
 
   // ─── 🟠 High — Transactional Endpoints ───────────────────
   // These create database records or trigger payments.
@@ -94,6 +112,12 @@ export const RATE_LIMIT_RULES: RateLimitRule[] = [
     limit: 5,
     windowMs: 15 * 60 * 1000,
     label: "User:DeleteAccount",
+  },
+  {
+    pathPrefix: "/api/user/2fa",
+    limit: 10,
+    windowMs: 15 * 60 * 1000,
+    label: "User:TwoFactor",
   },
   {
     pathPrefix: "/api/user/data-export",

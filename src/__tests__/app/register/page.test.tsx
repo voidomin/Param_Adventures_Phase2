@@ -31,7 +31,7 @@ vi.mock("framer-motion", () => ({
 }));
 
 vi.mock("@/lib/AuthContext", () => ({
-  useAuth: () => ({ register: mockRegister }),
+  useAuth: () => ({ register: mockRegister, loginWithGoogle: vi.fn() }),
 }));
 
 vi.mock("@/components/auth/AuthLayout", () => ({
@@ -97,10 +97,10 @@ describe("app/register/page", () => {
       target: { value: "a@example.com" },
     });
     fireEvent.change(screen.getByLabelText("Password"), {
-      target: { value: "password123" },
+      target: { value: "Password123" },
     });
     fireEvent.change(screen.getByLabelText("Confirm Password"), {
-      target: { value: "different123" },
+      target: { value: "Different123" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Create Account" }));
 
@@ -122,17 +122,17 @@ describe("app/register/page", () => {
       target: { value: "a@example.com" },
     });
     fireEvent.change(screen.getByLabelText("Password"), {
-      target: { value: "password123" },
+      target: { value: "Password123" },
     });
     fireEvent.change(screen.getByLabelText("Confirm Password"), {
-      target: { value: "password123" },
+      target: { value: "Password123" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Create Account" }));
 
     await waitFor(() => {
       expect(mockRegister).toHaveBeenCalledWith(
         "a@example.com",
-        "password123",
+        "Password123",
         "A User",
       );
       expect(mockPush).toHaveBeenCalledWith("/");

@@ -3,6 +3,7 @@
 import { useAuth } from "@/lib/AuthContext";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
+import TwoFactorSettings from "@/components/dashboard/TwoFactorSettings";
 import {
   User,
   Lock,
@@ -669,6 +670,8 @@ export default function SettingsPage() {
               </button>
             </form>
           </div>
+
+          <TwoFactorSettings enabled={user.twoFactorEnabled} />
 
           {/* Danger Zone */}
           <div className="bg-card rounded-4xl border border-red-500/20 p-8 shadow-sm space-y-6">

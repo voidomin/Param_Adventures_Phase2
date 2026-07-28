@@ -57,6 +57,13 @@ model User {
   resetToken             String?
   resetTokenExpiry       DateTime?
   tokenVersion           Int                @default(0)
+  failedLoginAttempts    Int                @default(0)
+  lockedUntil            DateTime?
+  emailVerificationToken String?            @unique
+  emailVerificationTokenExpiry DateTime?
+  twoFactorSecret        String?
+  twoFactorEnabled       Boolean            @default(false)
+  twoFactorBackupCodes   String[]           @default([])
   blogs                  Blog[]
   bookings               Booking[]
   reviews                ExperienceReview[]

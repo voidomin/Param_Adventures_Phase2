@@ -33,7 +33,7 @@ vi.mock("framer-motion", () => ({
 }));
 
 vi.mock("@/lib/AuthContext", () => ({
-  useAuth: () => ({ login: mockLogin }),
+  useAuth: () => ({ login: mockLogin, loginWithGoogle: vi.fn() }),
 }));
 
 vi.mock("@/components/auth/AuthLayout", () => ({
@@ -98,9 +98,37 @@ describe("app/login/page", () => {
     fireEvent.click(screen.getByRole("button", { name: "Sign In" }));
 
     await waitFor(() => {
-      expect(mockLogin).toHaveBeenCalledWith("user@example.com", "supersecret");
+      expect(mockLogin).toHaveBeenCalledWith("user@example.com", "supersecret", undefined);
       expect(mockPush).toHaveBeenCalledWith("/dashboard/settings");
     });
+  });
+
+  it("prompts for a two-factor code and retries login with it", async () => {
+    mockLogin.mockResolvedValueOnce({ requiresTwoFactor: true });
+    mockLogin.mockResolvedValueOnce({ id: "1" });
+    mockGet.mockReturnValue(null);
+
+    render(<LoginPage />);
+
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "user@example.com" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "supersecret" } });
+    fireEvent.click(screen.getByRole("button", { name: "Sign In" }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText("Authentication Code")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("Authentication Code"), { target: { value: "123456" } });
+    // The real submit-debounce (2s cooldown) would otherwise swallow this
+    // second click since the test executes far faster than that in practice.
+    const dateSpy = vi.spyOn(Date, "now").mockReturnValue(Date.now() + 3000);
+    fireEvent.click(screen.getByRole("button", { name: "Verify" }));
+
+    await waitFor(() => {
+      expect(mockLogin).toHaveBeenLastCalledWith("user@example.com", "supersecret", "123456");
+      expect(mockPush).toHaveBeenCalledWith("/");
+    });
+    dateSpy.mockRestore();
   });
 
   it("shows error message when login fails", async () => {

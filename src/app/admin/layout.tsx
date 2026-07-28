@@ -6,6 +6,7 @@ import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { SYSTEM_ADMIN_EMAILS } from "@/lib/constants/auth";
+import { useIdleLogout } from "@/hooks/useIdleLogout";
 import {
   Compass,
   LayoutDashboard,
@@ -34,6 +35,13 @@ export default function AdminLayout({
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+  // Admin sessions carry more risk left unattended than a regular customer
+  // session -- auto sign-out after 15 minutes of no mouse/keyboard activity.
+  useIdleLogout(() => {
+    if (!user) return;
+    logout().then(() => router.push("/login?reason=idle"));
+  });
 
   useEffect(() => {
     const saved = localStorage.getItem("admin_sidebar_collapsed");

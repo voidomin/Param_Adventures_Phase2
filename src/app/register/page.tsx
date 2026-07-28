@@ -8,10 +8,11 @@ import { useAuth } from "@/lib/AuthContext";
 import AuthLayout, { itemVariants } from "@/components/auth/AuthLayout";
 import { AuthInput, AuthButton } from "@/components/auth/AuthShared";
 import PasswordStrength from "@/components/auth/PasswordStrength";
+import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register } = useAuth();
+  const { register, loginWithGoogle } = useAuth();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -34,8 +35,13 @@ export default function RegisterPage() {
       return;
     }
 
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+    if (
+      password.length < 8 ||
+      !/[a-z]/.test(password) ||
+      !/[A-Z]/.test(password) ||
+      !/\d/.test(password)
+    ) {
+      setError("Password must be at least 8 characters and include an uppercase letter, a lowercase letter, and a number.");
       return;
     }
 
@@ -51,6 +57,20 @@ export default function RegisterPage() {
       setError(err instanceof Error ? err.message : "Registration failed.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleGoogleCredential = async (credential: string) => {
+    setError("");
+    try {
+      const result = await loginWithGoogle(credential);
+      if ("requiresTwoFactor" in result) {
+        setError("This Google account is linked to a profile with two-factor authentication enabled. Please sign in from the login page instead.");
+        return;
+      }
+      router.push("/");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Google sign-in failed.");
     }
   };
 
@@ -136,6 +156,16 @@ export default function RegisterPage() {
           text="Create Account"
         />
       </form>
+
+      <div className="mt-4 flex items-center gap-3">
+        <div className="h-px flex-1 bg-white/10" />
+        <span className="text-white/30 text-xs uppercase tracking-wider">or</span>
+        <div className="h-px flex-1 bg-white/10" />
+      </div>
+
+      <div className="mt-4">
+        <GoogleSignInButton onCredential={handleGoogleCredential} />
+      </div>
 
       <motion.div
         variants={itemVariants}

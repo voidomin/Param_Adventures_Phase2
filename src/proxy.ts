@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
 import type { RateLimitResult } from "@/lib/rate-limit";
 import { findMatchingRule } from "@/lib/rate-limit-config";
+import { isIpAllowed } from "@/lib/ip-allowlist";
 
 interface RateLimitResultWrapper {
   response: NextResponse | null;
@@ -125,11 +126,53 @@ function handleRateLimiting(request: NextRequest, pathname: string): RateLimitRe
 }
 
 /**
+ * Restricts /admin and /api/admin/* to an operator-configured IP allowlist,
+ * if one is set. Excludes the bootstrap and cron-cleanup endpoints, which
+ * are called server-to-server (GitHub Actions, dev bootstrap) from IPs that
+ * have nothing to do with staff office/VPN ranges and already carry their
+ * own strong auth. An empty/unset ADMIN_IP_ALLOWLIST means no restriction --
+ * this is opt-in, not on by default, so it can't accidentally lock out the
+ * only admin before it's deliberately configured.
+ */
+function verifyAdminIpAllowlist(request: NextRequest, pathname: string): NextResponse | null {
+  const isAdminPath =
+    pathname.startsWith("/admin") ||
+    (pathname.startsWith("/api/admin") &&
+      !pathname.startsWith("/api/admin/bootstrap") &&
+      !pathname.startsWith("/api/admin/bookings/cleanup"));
+
+  if (!isAdminPath) return null;
+
+  const allowlistRaw = process.env.ADMIN_IP_ALLOWLIST;
+  if (!allowlistRaw) return null;
+
+  const allowlist = allowlistRaw.split(",").map((e) => e.trim()).filter(Boolean);
+  if (allowlist.length === 0) return null;
+
+  const forwarded = request.headers.get("x-forwarded-for");
+  const realIp = request.headers.get("x-real-ip");
+  const ip = forwarded?.split(",")[0]?.trim() || realIp || "";
+
+  if (!ip || !isIpAllowed(ip, allowlist)) {
+    console.warn(`[ADMIN_IP_BLOCKED] Denied ${pathname} from ${ip || "unknown"}`);
+    return NextResponse.json({ error: "Access denied from this network." }, { status: 403 });
+  }
+
+  return null;
+}
+
+/**
  * Route protection middleware.
  */
 export default function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const method = request.method;
+
+  // ─── Admin IP Allowlist ─────────────────────────────────
+  const ipBlock = verifyAdminIpAllowlist(request, pathname);
+  if (ipBlock) {
+    return ipBlock;
+  }
 
   // ─── CSRF Protection ───────────────────────────────────
   const csrfBlock = verifyCsrf(request, pathname, method);
@@ -157,8 +200,11 @@ export default function proxy(request: NextRequest) {
     "/api/auth/logout",
     "/api/auth/forgot-password",
     "/api/auth/reset-password",
+    "/api/auth/verify-email",
+    "/api/auth/google",
     "/forgot-password",
     "/reset-password",
+    "/verify-email",
     "/api/categories",
     "/api/experiences",
     "/api/blog",

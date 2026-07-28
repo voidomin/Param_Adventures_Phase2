@@ -6,6 +6,7 @@ import {
   generateRefreshToken,
   parseExpiryToSeconds,
 } from "@/lib/auth";
+import { verifyTwoFactorToken, consumeBackupCode } from "@/lib/two-factor";
 import { z } from "zod";
 import { emergencyAdminRecovery } from "@/lib/bootstrap";
 import { authLimiter } from "@/lib/rate-limiter";
@@ -13,7 +14,15 @@ import { authLimiter } from "@/lib/rate-limiter";
 const loginSchema = z.object({
   email: z.email({ message: "Invalid email format" }),
   password: z.string().min(1, { message: "Password is required" }),
+  totpCode: z.string().optional(),
 });
+
+// Per-account brute-force protection: independent of the IP-based rate limiter
+// above, which an attacker can trivially route around by spreading guesses
+// across many source addresses. This tracks failed attempts against the
+// specific account being targeted instead.
+const LOCKOUT_THRESHOLD = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
 
 export async function POST(request: NextRequest) {
   // 0. Rate Limiting Protection
@@ -28,7 +37,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    
+
     // ─── Validation ──────────────────────────────────────
     const parseResult = loginSchema.safeParse(body);
     if (!parseResult.success) {
@@ -37,7 +46,7 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-    const { email, password } = parseResult.data;
+    const { email, password, totpCode } = parseResult.data;
     const bootstrapToken = request.headers.get("x-bootstrap-token") || "";
 
     // ─── Emergency Recovery (Disabled in Production) ─────
@@ -66,14 +75,75 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ─── Per-account lockout check ───────────────────────
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      return NextResponse.json(
+        { error: "Too many failed attempts. This account is temporarily locked. Please try again later." },
+        { status: 423 },
+      );
+    }
+
     // ─── Verify password ─────────────────────────────────
     const isValid = await verifyPassword(password, user.password);
 
     if (!isValid) {
+      const failedLoginAttempts = user.failedLoginAttempts + 1;
+      const lockingNow = failedLoginAttempts >= LOCKOUT_THRESHOLD;
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          failedLoginAttempts: lockingNow ? 0 : failedLoginAttempts,
+          lockedUntil: lockingNow ? new Date(Date.now() + LOCKOUT_DURATION_MS) : null,
+        },
+      });
+
       return NextResponse.json(
-        { error: "Invalid email or password." },
-        { status: 401 },
+        lockingNow
+          ? { error: "Too many failed attempts. This account is temporarily locked. Please try again later." }
+          : { error: "Invalid email or password." },
+        { status: lockingNow ? 423 : 401 },
       );
+    }
+
+    // ─── Two-factor challenge ─────────────────────────────
+    if (user.twoFactorEnabled) {
+      const isValidTotp = totpCode && user.twoFactorSecret
+        ? verifyTwoFactorToken(user.twoFactorSecret, totpCode)
+        : false;
+
+      let isValidBackupCode = false;
+      let remainingBackupCodes = user.twoFactorBackupCodes;
+      if (!isValidTotp && totpCode) {
+        const result = consumeBackupCode(totpCode, user.twoFactorBackupCodes);
+        isValidBackupCode = result.valid;
+        remainingBackupCodes = result.remainingHashedCodes;
+      }
+
+      if (!totpCode) {
+        return NextResponse.json({ requiresTwoFactor: true }, { status: 200 });
+      }
+
+      if (!isValidTotp && !isValidBackupCode) {
+        return NextResponse.json(
+          { error: "Invalid two-factor authentication code.", requiresTwoFactor: true },
+          { status: 401 },
+        );
+      }
+
+      if (isValidBackupCode) {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { twoFactorBackupCodes: remainingBackupCodes },
+        });
+      }
+    }
+
+    // ─── Successful login: clear any lockout state ───────
+    if (user.failedLoginAttempts > 0 || user.lockedUntil) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { failedLoginAttempts: 0, lockedUntil: null },
+      });
     }
 
     // ─── Generate tokens ─────────────────────────────────
