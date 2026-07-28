@@ -20,7 +20,12 @@ function verifyCsrf(request: NextRequest, pathname: string, method: string): Nex
   }
 
   const isWebhook = pathname.startsWith("/api/bookings/webhook");
-  if (isWebhook) {
+  // Cron-triggered endpoints are called server-to-server (no browser Origin
+  // header to check) and carry their own strong auth -- a timing-safe
+  // x-cron-secret comparison, same security model as the webhook's HMAC
+  // signature check above.
+  const isCronEndpoint = pathname.startsWith("/api/admin/bookings/cleanup");
+  if (isWebhook || isCronEndpoint) {
     return null;
   }
 
@@ -160,6 +165,7 @@ export default function proxy(request: NextRequest) {
     "/blog",
     "/our-story",
     "/api/admin/bootstrap",
+    "/api/admin/bookings/cleanup",
     "/api/bookings/webhook",
     "/api/health",
     "/api/leads",
