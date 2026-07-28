@@ -87,7 +87,7 @@
     "lint-staged": "^16.4.0",
     "react-email": "^5.2.9",
     "tailwindcss": "^4",
-    "typescript": "^5",
+    "typescript": "^7",
     "vitest": "^4.1.1"
   },
   "prisma": {
