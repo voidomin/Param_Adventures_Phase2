@@ -41,7 +41,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string, totpCode?: string) => Promise<LoginResult>;
   loginWithGoogle: (credential: string, totpCode?: string) => Promise<LoginResult>;
-  register: (email: string, password: string, name: string) => Promise<User>;
+  register: (email: string, password: string, name: string, acceptedTerms: boolean, turnstileToken?: string) => Promise<User>;
   logout: () => Promise<void>;
   hasPermission: (key: string) => boolean;
   mutateUser: () => Promise<User | null>;
@@ -167,11 +167,11 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
 
   // ─── Register ────────────────────────────────────────
   const register = useCallback(
-    async (email: string, password: string, name: string) => {
+    async (email: string, password: string, name: string, acceptedTerms: boolean, turnstileToken?: string) => {
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, name }),
+        body: JSON.stringify({ email, password, name, acceptedTerms, turnstileToken }),
       });
 
       if (!res.ok) {

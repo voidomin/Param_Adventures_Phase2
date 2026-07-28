@@ -5,6 +5,7 @@ import { BookingService } from "@/services/booking.service";
 import { logActivity } from "@/lib/audit-logger";
 
 import { webhookLimiter } from "@/lib/rate-limiter";
+import { logError } from "@/lib/monitoring";
 
 /**
  * POST /api/bookings/webhook
@@ -256,6 +257,9 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     console.error("[Webhook] Critical Error:", error);
+    await logError(error instanceof Error ? error : new Error(String(error)), {
+      route: "POST /api/bookings/webhook",
+    });
     // Even on error, we might want to return 200 to Razorpay if it's a "permanent" failure
     // so they stop retrying, but for now 500 is safer for debugging.
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

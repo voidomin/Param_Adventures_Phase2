@@ -58,6 +58,7 @@ import Navbar from "@/components/layout/Navbar";
 import ProfilePromptBanner from "@/components/layout/ProfilePromptBanner";
 import EmailVerificationBanner from "@/components/layout/EmailVerificationBanner";
 import TwoFactorPromptBanner from "@/components/layout/TwoFactorPromptBanner";
+import CookieConsentBanner from "@/components/layout/CookieConsentBanner";
 import Footer from "@/components/layout/Footer";
 import MaintenanceGuard from "@/components/layout/MaintenanceGuard";
 import GoogleAnalytics from "@/components/monitoring/GoogleAnalytics";
@@ -85,6 +86,8 @@ export default async function RootLayout({
   const siteTitle = getSiteVal("site_title", "Param Adventures");
 
   const officeAddress = getSiteVal("office_address", "Kullu, Himachal Pradesh,\nIndia 175131");
+  const companyName = getPlatformVal("companyName", "");
+  const gstNumber = getPlatformVal("gstNumber", "");
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -112,16 +115,19 @@ export default async function RootLayout({
                   <ProfilePromptBanner />
                   <TwoFactorPromptBanner />
                   <main className="flex-1 flex flex-col">{children}</main>
-                  <Footer 
-                    supportEmail={supportEmail} 
-                    supportPhone={supportPhone} 
+                  <Footer
+                    supportEmail={supportEmail}
+                    supportPhone={supportPhone}
                     officeAddress={officeAddress}
                     siteTitle={siteTitle}
+                    companyName={companyName}
+                    gstNumber={gstNumber}
                   />
                 </div>
               </MaintenanceGuard>
             </AuthProvider>
           </div>
+          <CookieConsentBanner />
         </ThemeProvider>
       </body>
     </html>

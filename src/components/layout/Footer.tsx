@@ -10,9 +10,11 @@ interface FooterProps {
   supportPhone?: string;
   officeAddress?: string;
   siteTitle?: string;
+  companyName?: string;
+  gstNumber?: string;
 }
 
-export default function Footer({ supportEmail, supportPhone, officeAddress, siteTitle }: Readonly<FooterProps>) {
+export default function Footer({ supportEmail, supportPhone, officeAddress, siteTitle, companyName, gstNumber }: Readonly<FooterProps>) {
   const pathname = usePathname();
   const brandName = siteTitle || "Param Adventures";
   const brandPrefix = brandName.split(" ")[0].toUpperCase();
@@ -238,6 +240,13 @@ export default function Footer({ supportEmail, supportPhone, officeAddress, site
         <div className="mt-16 pt-8 border-t border-border flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-xs text-foreground/40">
             © {new Date().getFullYear()} {brandName}. All rights reserved.
+            {(companyName || gstNumber) && (
+              <span className="block md:inline md:ml-2 mt-1 md:mt-0">
+                {companyName}
+                {companyName && gstNumber && " · "}
+                {gstNumber && `GSTIN: ${gstNumber}`}
+              </span>
+            )}
           </p>
           <div className="flex items-center gap-2 text-xs text-foreground/40">
             <span>Powered by</span>

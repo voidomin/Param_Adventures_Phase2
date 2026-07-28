@@ -14,6 +14,10 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
+vi.mock("@/lib/monitoring", () => ({
+  logError: vi.fn(),
+}));
+
 import { NextRequest, NextResponse } from "next/server";
 import { POST } from "@/app/api/bookings/route";
 import { authorizeRequest } from "@/lib/api-auth";

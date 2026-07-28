@@ -20,12 +20,16 @@ function verifyCsrf(request: NextRequest, pathname: string, method: string): Nex
     return null;
   }
 
-  const isWebhook = pathname.startsWith("/api/bookings/webhook");
+  const isWebhook =
+    pathname.startsWith("/api/bookings/webhook") ||
+    pathname.startsWith("/api/webhooks/email");
   // Cron-triggered endpoints are called server-to-server (no browser Origin
   // header to check) and carry their own strong auth -- a timing-safe
   // x-cron-secret comparison, same security model as the webhook's HMAC
   // signature check above.
-  const isCronEndpoint = pathname.startsWith("/api/admin/bookings/cleanup");
+  const isCronEndpoint =
+    pathname.startsWith("/api/admin/bookings/cleanup") ||
+    pathname.startsWith("/api/admin/audit-logs/purge");
   if (isWebhook || isCronEndpoint) {
     return null;
   }
@@ -139,7 +143,8 @@ function verifyAdminIpAllowlist(request: NextRequest, pathname: string): NextRes
     pathname.startsWith("/admin") ||
     (pathname.startsWith("/api/admin") &&
       !pathname.startsWith("/api/admin/bootstrap") &&
-      !pathname.startsWith("/api/admin/bookings/cleanup"));
+      !pathname.startsWith("/api/admin/bookings/cleanup") &&
+      !pathname.startsWith("/api/admin/audit-logs/purge"));
 
   if (!isAdminPath) return null;
 
@@ -212,7 +217,9 @@ export default function proxy(request: NextRequest) {
     "/our-story",
     "/api/admin/bootstrap",
     "/api/admin/bookings/cleanup",
+    "/api/admin/audit-logs/purge",
     "/api/bookings/webhook",
+    "/api/webhooks/email",
     "/api/health",
     "/api/leads",
     "/api/quotes",

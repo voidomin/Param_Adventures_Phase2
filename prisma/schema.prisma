@@ -64,6 +64,8 @@ model User {
   twoFactorSecret        String?
   twoFactorEnabled       Boolean            @default(false)
   twoFactorBackupCodes   String[]           @default([])
+  termsVersion           String?
+  acceptedTermsAt        DateTime?
   blogs                  Blog[]
   bookings               Booking[]
   reviews                ExperienceReview[]

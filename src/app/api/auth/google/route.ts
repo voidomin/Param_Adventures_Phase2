@@ -9,6 +9,7 @@ import { verifyGoogleIdToken } from "@/lib/google-auth";
 import { verifyTwoFactorToken, consumeBackupCode } from "@/lib/two-factor";
 import { z } from "zod";
 import { authLimiter } from "@/lib/rate-limiter";
+import { CURRENT_TERMS_VERSION } from "@/lib/constants/terms";
 
 const googleLoginSchema = z.object({
   credential: z.string().min(1, "Missing Google credential"),
@@ -70,6 +71,10 @@ export async function POST(request: NextRequest) {
           return NextResponse.json({ error: "Server configuration error." }, { status: 500 });
         }
 
+        // No interactive checkbox step exists for one-click Google sign-up --
+        // the login/register pages carry a "by continuing you agree to our
+        // Terms & Privacy Policy" disclaimer next to the button instead, so
+        // this still records a specific version at a specific time.
         user = await prisma.user.create({
           data: {
             email: profile.email.toLowerCase().trim(),
@@ -77,6 +82,8 @@ export async function POST(request: NextRequest) {
             googleId: profile.googleId,
             isVerified: profile.emailVerified,
             roleId: defaultRole.id,
+            termsVersion: CURRENT_TERMS_VERSION,
+            acceptedTermsAt: new Date(),
           },
           include: { role: true },
         });

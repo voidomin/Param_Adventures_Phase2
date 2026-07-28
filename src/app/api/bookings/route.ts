@@ -4,6 +4,7 @@ import { bookingSchema } from "@/lib/validators/booking.schema";
 import { BookingService } from "@/services/booking.service";
 import { bookingLimiter } from "@/lib/rate-limiter";
 import { prisma } from "@/lib/db";
+import { logError } from "@/lib/monitoring";
 
 /**
  * POST /api/bookings
@@ -82,6 +83,9 @@ export async function POST(request: NextRequest) {
     }
 
     console.error("[BookingController] Fatal Error:", error);
+    await logError(error instanceof Error ? error : new Error(String(error)), {
+      route: "POST /api/bookings",
+    });
     return NextResponse.json(
       { error: "An unexpected error occurred while creating your booking." },
       { status: 500 },

@@ -18,7 +18,7 @@ const AuthTestComponent = () => {
       <button onClick={() => login("test@example.com", "password").catch(err => {
         document.getElementById("error-msg")!.textContent = err.message;
       })}>Login</button>
-      <button onClick={() => register("test@example.com", "password", "Test User").catch(err => {
+      <button onClick={() => register("test@example.com", "password", "Test User", true).catch(err => {
         document.getElementById("error-msg")!.textContent = err.message;
       })}>Register</button>
       <button onClick={() => logout()}>Logout</button>

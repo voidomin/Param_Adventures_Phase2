@@ -8,10 +8,16 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
+vi.mock("@/lib/turnstile", () => ({
+  verifyTurnstileToken: vi.fn(() => Promise.resolve(true)),
+}));
+
 import { POST } from "@/app/api/leads/route";
 import { prisma } from "@/lib/db";
+import { verifyTurnstileToken } from "@/lib/turnstile";
 
 const mockCreate = vi.mocked(prisma.customLead.create);
+const mockVerifyTurnstileToken = vi.mocked(verifyTurnstileToken);
 
 const createRequest = (body: unknown) =>
   ({ json: vi.fn().mockResolvedValue(body) }) as unknown as Request;
@@ -19,6 +25,7 @@ const createRequest = (body: unknown) =>
 describe("POST /api/leads", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockVerifyTurnstileToken.mockResolvedValue(true);
   });
 
   it("returns 400 on validation failure", async () => {
@@ -44,6 +51,23 @@ describe("POST /api/leads", () => {
     expect(response.status).toBe(201);
     expect(data.success).toBe(true);
     expect(mockCreate).toHaveBeenCalledWith({ data: payload });
+  });
+
+  it("returns 400 when the bot-protection check fails", async () => {
+    mockVerifyTurnstileToken.mockResolvedValue(false);
+    const payload = {
+      name: "Akash",
+      email: "akash@example.com",
+      phone: "9999999999",
+      requirements: "Need a custom corporate trip plan",
+    };
+
+    const response = await POST(createRequest(payload));
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toContain("bot-protection");
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 
   it("returns 500 on unexpected error", async () => {

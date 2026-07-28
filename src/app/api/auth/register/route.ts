@@ -10,6 +10,8 @@ import { sendWelcomeEmail, sendVerificationEmail } from "@/lib/email";
 import { z } from "zod";
 import { authLimiter } from "@/lib/rate-limiter";
 import { passwordSchema } from "@/lib/validators/auth.schema";
+import { CURRENT_TERMS_VERSION } from "@/lib/constants/terms";
+import { verifyTurnstileToken } from "@/lib/turnstile";
 import crypto from "node:crypto";
 
 const EMAIL_VERIFICATION_TOKEN_EXPIRY_MS = 24 * 60 * 60 * 1000;
@@ -18,6 +20,8 @@ const registerSchema = z.object({
   email: z.email({ message: "Invalid email format" }),
   password: passwordSchema,
   name: z.string().min(1, { message: "Name is required" }),
+  acceptedTerms: z.literal(true, { message: "You must accept the Terms & Privacy Policy" }),
+  turnstileToken: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -42,7 +46,11 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-    const { email, password, name } = parseResult.data;
+    const { email, password, name, turnstileToken } = parseResult.data;
+
+    if (!(await verifyTurnstileToken(turnstileToken, ip))) {
+      return NextResponse.json({ error: "Failed bot-protection check. Please try again." }, { status: 400 });
+    }
 
     // ─── Check Registration Status ───────────────────────
     const regSetting = await prisma.platformSetting.findUnique({ where: { key: "registration_enabled" } });
@@ -90,6 +98,8 @@ export async function POST(request: NextRequest) {
         roleId: defaultRole.id,
         emailVerificationToken,
         emailVerificationTokenExpiry: new Date(Date.now() + EMAIL_VERIFICATION_TOKEN_EXPIRY_MS),
+        termsVersion: CURRENT_TERMS_VERSION,
+        acceptedTermsAt: new Date(),
       },
       include: { role: true },
     });

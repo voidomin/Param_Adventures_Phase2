@@ -10,6 +10,7 @@ import { verifyTwoFactorToken, consumeBackupCode } from "@/lib/two-factor";
 import { z } from "zod";
 import { emergencyAdminRecovery } from "@/lib/bootstrap";
 import { authLimiter } from "@/lib/rate-limiter";
+import { logError } from "@/lib/monitoring";
 
 const loginSchema = z.object({
   email: z.email({ message: "Invalid email format" }),
@@ -188,6 +189,9 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (error) {
     console.error("Login error:", error);
+    await logError(error instanceof Error ? error : new Error(String(error)), {
+      route: "POST /api/auth/login",
+    });
     return NextResponse.json(
       { error: "Internal server error." },
       { status: 500 },

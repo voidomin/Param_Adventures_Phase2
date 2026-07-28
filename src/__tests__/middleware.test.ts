@@ -188,6 +188,28 @@ describe("Next.js Middleware (Proxy)", () => {
       const res = proxy(req);
       expect(res.status).toBe(200);
     });
+
+    it("exempts the audit-log purge cron endpoint from CSRF verification", () => {
+      const req = createRequest("http://localhost/api/admin/audit-logs/purge", {
+        method: "POST",
+        headers: {
+          host: "localhost:3000",
+        },
+      });
+      const res = proxy(req);
+      expect(res.status).toBe(200);
+    });
+
+    it("exempts the email delivery webhook from CSRF verification", () => {
+      const req = createRequest("http://localhost/api/webhooks/email", {
+        method: "POST",
+        headers: {
+          host: "localhost:3000",
+        },
+      });
+      const res = proxy(req);
+      expect(res.status).toBe(200);
+    });
   });
 
   describe("Admin IP Allowlist", () => {
@@ -233,6 +255,16 @@ describe("Next.js Middleware (Proxy)", () => {
     it("still allows the cron cleanup endpoint through regardless of the allowlist", () => {
       process.env.ADMIN_IP_ALLOWLIST = "198.51.100.0/24";
       const req = createRequest("http://localhost/api/admin/bookings/cleanup", {
+        method: "POST",
+        headers: { host: "localhost:3000", "x-forwarded-for": "203.0.113.9" },
+      });
+      const res = proxy(req);
+      expect(res.status).toBe(200);
+    });
+
+    it("still allows the audit-log purge endpoint through regardless of the allowlist", () => {
+      process.env.ADMIN_IP_ALLOWLIST = "198.51.100.0/24";
+      const req = createRequest("http://localhost/api/admin/audit-logs/purge", {
         method: "POST",
         headers: { host: "localhost:3000", "x-forwarded-for": "203.0.113.9" },
       });

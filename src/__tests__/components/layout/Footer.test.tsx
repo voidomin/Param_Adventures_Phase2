@@ -22,4 +22,17 @@ describe("Footer Smoke Test", () => {
     const { container } = render(<Footer />);
     expect(container.firstChild).toBeNull();
   });
+
+  it("shows the registered company name and GSTIN when configured", () => {
+    vi.mocked(usePathname).mockReturnValue("/");
+    const { container } = render(<Footer companyName="Param Adventures Pvt Ltd" gstNumber="27AAAAA0000A1Z5" />);
+    expect(container.textContent).toContain("Param Adventures Pvt Ltd");
+    expect(container.textContent).toContain("GSTIN: 27AAAAA0000A1Z5");
+  });
+
+  it("omits the legal-disclosure line entirely when neither is configured", () => {
+    vi.mocked(usePathname).mockReturnValue("/");
+    render(<Footer />);
+    expect(screen.queryByText(/GSTIN:/)).not.toBeInTheDocument();
+  });
 });

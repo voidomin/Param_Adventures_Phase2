@@ -127,6 +127,7 @@ describe("app/register/page", () => {
     fireEvent.change(screen.getByLabelText("Confirm Password"), {
       target: { value: "Password123" },
     });
+    fireEvent.click(screen.getByRole("checkbox"));
     fireEvent.click(screen.getByRole("button", { name: "Create Account" }));
 
     await waitFor(() => {
@@ -134,8 +135,26 @@ describe("app/register/page", () => {
         "a@example.com",
         "Password123",
         "A User",
+        true,
+        "",
       );
       expect(mockPush).toHaveBeenCalledWith("/");
+    });
+  });
+
+  it("blocks submit until the terms checkbox is accepted", async () => {
+    render(<RegisterPage />);
+
+    fireEvent.change(screen.getByLabelText("Full Name"), { target: { value: "A User" } });
+    fireEvent.change(screen.getByLabelText("Email"), { target: { value: "a@example.com" } });
+    fireEvent.change(screen.getByLabelText("Password"), { target: { value: "Password123" } });
+    fireEvent.change(screen.getByLabelText("Confirm Password"), { target: { value: "Password123" } });
+    // Terms checkbox deliberately left unchecked.
+    fireEvent.click(screen.getByRole("button", { name: "Create Account" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("You must accept the Terms & Privacy Policy to continue.")).toBeInTheDocument();
+      expect(mockRegister).not.toHaveBeenCalled();
     });
   });
 });

@@ -30,6 +30,10 @@ vi.mock("@/lib/two-factor", () => ({
   consumeBackupCode: vi.fn(),
 }));
 
+vi.mock("@/lib/monitoring", () => ({
+  logError: vi.fn(),
+}));
+
 import { POST } from "@/app/api/auth/login/route";
 import { prisma } from "@/lib/db";
 import {

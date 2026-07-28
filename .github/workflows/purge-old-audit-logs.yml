@@ -1,0 +1,31 @@
+name: Purge Old Audit Logs
+
+# AuditLog rows had no retention policy -- accumulating forever conflicts
+# with DPDP's purpose-limitation principle. Purges entries older than
+# AUDIT_LOG_RETENTION_DAYS (defaults to 365) via
+# /api/admin/audit-logs/purge, once a day.
+on:
+  schedule:
+    - cron: "0 3 * * *" # daily at 03:00 UTC
+  workflow_dispatch:
+
+jobs:
+  purge:
+    name: Purge Old Audit Logs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call purge endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ vars.PROD_APP_URL || 'https://www.paramadventures.in' }}
+        run: |
+          status=$(curl -s -o response.json -w "%{http_code}" -X POST \
+            "$APP_URL/api/admin/audit-logs/purge" \
+            -H "x-cron-secret: $CRON_SECRET")
+          echo "HTTP status: $status"
+          cat response.json
+          if [ "$status" -ge 400 ]; then
+            echo "Purge request failed."
+            exit 1
+          fi

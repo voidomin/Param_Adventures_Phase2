@@ -209,6 +209,17 @@ function LoginContent() {
 
       <div className="mt-5">
         <GoogleSignInButton onCredential={handleGoogleCredential} />
+        <p className="text-center text-[11px] text-white/30 mt-2.5">
+          By continuing with Google, you agree to our{" "}
+          <Link href="/terms" target="_blank" className="underline hover:text-white/50">
+            Terms
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" target="_blank" className="underline hover:text-white/50">
+            Privacy Policy
+          </Link>
+          .
+        </p>
       </div>
 
       <motion.div variants={itemVariants} className="mt-6 text-center">

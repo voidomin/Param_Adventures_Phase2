@@ -13,6 +13,10 @@ vi.mock("@/lib/email", () => ({
   sendBookingCancellation: vi.fn(),
 }));
 
+vi.mock("@/lib/monitoring", () => ({
+  logError: vi.fn(),
+}));
+
 vi.mock("@/lib/db", () => ({
   prisma: {
     booking: {

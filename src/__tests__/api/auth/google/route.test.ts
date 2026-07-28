@@ -141,6 +141,8 @@ describe("POST /api/auth/google", () => {
           email: "new@example.com",
           googleId: "google-brand-new",
           isVerified: true,
+          termsVersion: expect.any(String),
+          acceptedTermsAt: expect.any(Date),
         }),
       }),
     );
