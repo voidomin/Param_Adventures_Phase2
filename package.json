@@ -85,7 +85,7 @@
     "husky": "^9.1.7",
     "jsdom": "^29.1.1",
     "lint-staged": "^16.4.0",
-    "react-email": "^5.2.9",
+    "react-email": "^6.9.1",
     "tailwindcss": "^4",
     "typescript": "^7",
     "vitest": "^4.1.1"
