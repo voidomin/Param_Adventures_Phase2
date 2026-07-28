@@ -1,6 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { revokeSessionFromToken } from "@/lib/auth";
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const refreshToken = request.cookies.get("refreshToken")?.value;
+  const accessToken = request.cookies.get("accessToken")?.value;
+
+  // Bump tokenVersion so any copy of this user's token (stolen, or just left
+  // signed-in on another device) stops working the moment they log out here,
+  // instead of staying valid until natural expiry.
+  await revokeSessionFromToken(refreshToken || accessToken);
+
   const response = NextResponse.json({ message: "Logged out successfully." });
 
   // Clear both cookies

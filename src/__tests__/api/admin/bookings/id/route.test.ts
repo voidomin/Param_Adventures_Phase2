@@ -55,9 +55,21 @@ describe("DELETE /api/admin/bookings/[id]", () => {
     expect(response.status).toBe(404);
   });
 
+  it("blocks archiving a CONFIRMED booking to avoid leaking held slot capacity", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
+    mockBookingFindUnique.mockResolvedValue({ id: "b1", bookingStatus: "CONFIRMED" } as any);
+
+    const response = await DELETE(createRequest(), {
+      params: Promise.resolve({ id: "b1" }),
+    });
+
+    expect(response.status).toBe(409);
+    expect(mockBookingUpdate).not.toHaveBeenCalled();
+  });
+
   it("soft-deletes booking, logs activity, and returns 200", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
-    mockBookingFindUnique.mockResolvedValue({ id: "b1" } as any);
+    mockBookingFindUnique.mockResolvedValue({ id: "b1", bookingStatus: "CANCELLED" } as any);
 
     const response = await DELETE(createRequest(), {
       params: Promise.resolve({ id: "b1" }),
@@ -83,7 +95,7 @@ describe("DELETE /api/admin/bookings/[id]", () => {
 
   it("returns 500 when database update fails", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
-    mockBookingFindUnique.mockResolvedValue({ id: "b1" } as any);
+    mockBookingFindUnique.mockResolvedValue({ id: "b1", bookingStatus: "CANCELLED" } as any);
     mockBookingUpdate.mockRejectedValueOnce(new Error("db update failed"));
 
     const response = await DELETE(createRequest(), {

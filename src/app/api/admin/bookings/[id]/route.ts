@@ -20,11 +20,22 @@ export async function DELETE(
   try {
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
-      select: { id: true }
+      select: { id: true, bookingStatus: true }
     });
 
     if (!booking) {
       return NextResponse.json({ error: "Booking not found." }, { status: 404 });
+    }
+
+    // A CONFIRMED booking is still holding a seat's worth of slot capacity.
+    // Archiving it here would never return that capacity, silently leaking a
+    // seat -- so route admins through the cancel/refund flow instead, which
+    // already handles restoring capacity correctly.
+    if (booking.bookingStatus === "CONFIRMED") {
+      return NextResponse.json(
+        { error: "This booking is confirmed and holding slot capacity. Cancel and refund it first before archiving." },
+        { status: 409 }
+      );
     }
 
     // Soft-delete by setting deletedAt to current time

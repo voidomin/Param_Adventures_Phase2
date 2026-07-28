@@ -149,6 +149,29 @@ export async function verifyAccessToken(token: string): Promise<TokenPayload | n
 }
 
 /**
+ * Revoke all outstanding sessions for whichever user the given token belongs to,
+ * by bumping their tokenVersion. Used on logout so a copied/stolen token can't
+ * keep working after the user has explicitly signed out. Ignores expiration --
+ * an already-expired token still identifies whose sessions to revoke -- and
+ * silently no-ops on a missing/malformed/unsigned token since there's nothing
+ * to revoke in that case.
+ */
+export async function revokeSessionFromToken(token: string | undefined): Promise<void> {
+  if (!token) return;
+  try {
+    const config = await getAuthConfig();
+    const decoded = jwt.verify(token, config.JWT_SECRET, { ignoreExpiration: true }) as { userId?: string };
+    if (!decoded.userId) return;
+    await prisma.user.update({
+      where: { id: decoded.userId },
+      data: { tokenVersion: { increment: 1 } },
+    });
+  } catch {
+    // Invalid/malformed/unsigned token -- nothing to revoke.
+  }
+}
+
+/**
  * Verify and decode a refresh token.
  * Returns the payload or null if invalid/expired.
  */
