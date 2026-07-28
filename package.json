@@ -113,6 +113,10 @@
     "nodemailer": "^9.0.1",
     "sharp": "^0.35.3",
     "dompurify": "^3.4.12",
-    "find-my-way": "^9.7.0"
+    "find-my-way": "^9.7.0",
+    "@sentry/bundler-plugin-core": {
+      "brace-expansion": "^5.0.8"
+    },
+    "valibot": "^1.4.2"
   }
 }
