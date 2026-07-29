@@ -56,11 +56,16 @@ export default async function ExperiencesPage({
     cdnUrl: dbPlatformSettings.find(s => s.key === "cdn_url")?.value,
   };
 
+  // Capped rather than paginated: ExperiencesClient filters/sorts this
+  // entire set client-side for instant feedback (no round-trip per filter
+  // change), so this is a safety net against unbounded growth rather than a
+  // full paging implementation -- same trade-off as the admin list.
   const experiences = await withBuildSafety(
     () =>
       prisma.experience.findMany({
         where: { status: "PUBLISHED" },
         orderBy: { createdAt: "desc" },
+        take: 300,
         include: {
           categories: {
             include: { category: true },

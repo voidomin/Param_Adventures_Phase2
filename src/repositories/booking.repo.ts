@@ -145,6 +145,7 @@ export const BookingRepo = {
         paymentType: data.paymentType || "FULL",
         paidAmount: 0,
         remainingBalance: pricing.totalPrice,
+        idempotencyKey: data.idempotencyKey || null,
         participants: {
           create: data.participants.map((p: ParticipantInput) => ({
             isPrimary: p.isPrimary || false,
@@ -215,5 +216,31 @@ export const BookingRepo = {
         createdAt: { gte: new Date(Date.now() - 5 * 60 * 1000) } // Last 5 minutes
       }
     });
+  },
+
+  /**
+   * Looks up a still-relevant booking from an earlier call with the same
+   * client-generated idempotency key -- "still relevant" means either still
+   * awaiting payment or already confirmed. A CANCELLED match is deliberately
+   * excluded so a genuine retry after a failed attempt (Razorpay error,
+   * expired slot, etc.) can create a fresh booking under the same key rather
+   * than being stuck replaying a dead one.
+   */
+  async findByIdempotencyKey(tx: Prisma.TransactionClient, userId: string, idempotencyKey: string) {
+    const booking = await tx.booking.findFirst({
+      where: {
+        userId,
+        idempotencyKey,
+        bookingStatus: { in: ["REQUESTED", "CONFIRMED"] },
+      },
+    });
+    if (!booking) return null;
+
+    const payment = await tx.payment.findFirst({
+      where: { bookingId: booking.id },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return { booking, payment };
   }
 };

@@ -10,6 +10,7 @@ vi.mock("@/lib/db", () => ({
       findMany: vi.fn(),
       findUnique: vi.fn(),
       create: vi.fn(),
+      count: vi.fn(),
     },
   },
 }));
@@ -26,11 +27,15 @@ const mockGenerateSlug = vi.mocked(generateSlug);
 const mockFindMany = vi.mocked(prisma.experience.findMany);
 const mockFindUnique = vi.mocked(prisma.experience.findUnique);
 const mockCreate = vi.mocked(prisma.experience.create);
+const mockCount = vi.mocked(prisma.experience.count);
 
 const createRequest = (body?: unknown) =>
   ({
     json: vi.fn().mockResolvedValue(body ?? {}),
   }) as unknown as NextRequest;
+
+const createGetRequest = (url = "http://localhost/api/admin/experiences") =>
+  ({ url }) as unknown as NextRequest;
 
 describe("/api/admin/experiences route", () => {
   beforeEach(() => {
@@ -49,27 +54,56 @@ describe("/api/admin/experiences route", () => {
       expect(response.status).toBe(401);
     });
 
-    it("returns experience list", async () => {
+    it("returns a paginated experience list with default page/limit", async () => {
       mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
       mockFindMany.mockResolvedValue([{ id: "exp-1" }] as any);
+      mockCount.mockResolvedValue(1);
 
-      const response = await GET({} as NextRequest);
+      const response = await GET(createGetRequest());
       const data = await response.json();
 
       expect(response.status).toBe(200);
       expect(data.experiences).toHaveLength(1);
+      expect(data.pagination).toEqual({ total: 1, page: 1, limit: 50, totalPages: 1 });
       expect(mockFindMany).toHaveBeenCalledWith(
         expect.objectContaining({
           orderBy: { createdAt: "desc" },
+          skip: 0,
+          take: 50,
         }),
       );
+    });
+
+    it("honors page/limit query params", async () => {
+      mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+      mockFindMany.mockResolvedValue([] as any);
+      mockCount.mockResolvedValue(120);
+
+      const response = await GET(createGetRequest("http://localhost/api/admin/experiences?page=3&limit=20"));
+      const data = await response.json();
+
+      expect(data.pagination).toEqual({ total: 120, page: 3, limit: 20, totalPages: 6 });
+      expect(mockFindMany).toHaveBeenCalledWith(
+        expect.objectContaining({ skip: 40, take: 20 }),
+      );
+    });
+
+    it("caps limit at 100 even if a larger value is requested", async () => {
+      mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+      mockFindMany.mockResolvedValue([] as any);
+      mockCount.mockResolvedValue(0);
+
+      await GET(createGetRequest("http://localhost/api/admin/experiences?limit=500"));
+
+      expect(mockFindMany).toHaveBeenCalledWith(expect.objectContaining({ take: 100 }));
     });
 
     it("returns 500 on query failure", async () => {
       mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
       mockFindMany.mockRejectedValue(new Error("db down"));
+      mockCount.mockResolvedValue(0);
 
-      const response = await GET({} as NextRequest);
+      const response = await GET(createGetRequest());
 
       expect(response.status).toBe(500);
     });

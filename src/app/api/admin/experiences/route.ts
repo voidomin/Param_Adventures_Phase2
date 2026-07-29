@@ -12,8 +12,15 @@ export async function GET(request: NextRequest) {
   if (!result.authorized) return result.response;
 
   try {
-    const experiences = await ExperienceService.getAllExperiences();
-    return NextResponse.json({ experiences });
+    const { searchParams } = new URL(request.url);
+    const page = Math.max(1, Number(searchParams.get("page") ?? 1));
+    const limit = Math.min(100, Number(searchParams.get("limit") ?? 50));
+
+    const { experiences, total } = await ExperienceService.getAllExperiences({ page, limit });
+    return NextResponse.json({
+      experiences,
+      pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
+    });
   } catch (err: unknown) {
     console.error("Failed to fetch experiences:", err);
     return NextResponse.json({ error: "Failed to fetch experiences" }, { status: 500 });

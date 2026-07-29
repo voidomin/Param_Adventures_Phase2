@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type SVGProps } from "react";
+import { useEffect, useRef, useState, type SVGProps } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import Link from "next/link";
 import Image from "next/image";
@@ -352,6 +352,11 @@ function PayBalanceModal({
   const [couponError, setCouponError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Synchronous guard against a fast double-click, same reasoning as
+  // BookingModal.tsx's handleProceedToPay: setIsSubmitting(true) is an async
+  // state update, so a second click can still fire before the button
+  // visually disables.
+  const isSubmittingRef = useRef(false);
 
   const handleRemoveCoupon = (couponId: string) => {
     setAppliedCoupons((prev) => prev.filter((c) => c.id !== couponId));
@@ -391,6 +396,8 @@ function PayBalanceModal({
   };
 
   const handleProceed = async () => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     setError(null);
     try {
@@ -457,7 +464,10 @@ function PayBalanceModal({
           }
         },
         modal: {
-          ondismiss: () => setIsSubmitting(false),
+          ondismiss: () => {
+            setIsSubmitting(false);
+            isSubmittingRef.current = false;
+          },
         },
       });
       rzp.open();
@@ -465,6 +475,7 @@ function PayBalanceModal({
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to process payment.");
       setIsSubmitting(false);
+      isSubmittingRef.current = false;
     }
   };
 

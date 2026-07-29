@@ -18,6 +18,7 @@ vi.mock("@/repositories/booking.repo", () => ({
   BookingRepo: {
     getTaxConfig: vi.fn(),
     findExistingPendingBooking: vi.fn(),
+    findByIdempotencyKey: vi.fn(),
     findExperienceById: vi.fn(),
     findSlotById: vi.fn(),
     createBooking: vi.fn(),
@@ -276,6 +277,7 @@ describe("BookingService.processBooking", () => {
     vi.mocked(prisma.experience.findUnique).mockResolvedValue({ basePrice: 1000, extraAmenities: null } as any);
     vi.mocked(BookingRepo.getTaxConfig).mockResolvedValue(null);
     vi.mocked(BookingRepo.findExistingPendingBooking).mockResolvedValue(null);
+    vi.mocked(BookingRepo.findByIdempotencyKey).mockResolvedValue(null);
     vi.mocked(BookingRepo.findExperienceById).mockResolvedValue(publishedExperience as any);
     vi.mocked(BookingRepo.findSlotById).mockResolvedValue(futureSlot as any);
     vi.mocked(BookingRepo.createBooking).mockResolvedValue({
@@ -299,6 +301,65 @@ describe("BookingService.processBooking", () => {
         data: expect.objectContaining({ bookingStatus: "CANCELLED" }),
       }),
     );
+  });
+
+  describe("idempotency key replay", () => {
+    it("returns the existing pending booking's order instead of creating a new one", async () => {
+      vi.mocked(BookingRepo.findByIdempotencyKey).mockResolvedValue({
+        booking: { id: "replay-booking", bookingStatus: "REQUESTED", paidAmount: 0 },
+        payment: { providerOrderId: "order_original", amount: 1000, currency: "INR" },
+      } as any);
+      const createOrder = vi.fn();
+      vi.mocked(getRazorpay).mockResolvedValue({ orders: { create: createOrder } } as any);
+
+      const result = await BookingService.processBooking("user-1", {
+        ...validData,
+        idempotencyKey: "key-1",
+      });
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          bookingId: "replay-booking",
+          orderId: "order_original",
+          amount: 100000,
+          currency: "INR",
+        }),
+      );
+      expect(BookingRepo.createBooking).not.toHaveBeenCalled();
+      expect(createOrder).not.toHaveBeenCalled();
+    });
+
+    it("returns fullyPaidByCoupon for a replay of an already-confirmed booking, without re-sending the confirmation email", async () => {
+      vi.mocked(BookingRepo.findByIdempotencyKey).mockResolvedValue({
+        booking: { id: "replay-confirmed", bookingStatus: "CONFIRMED", paidAmount: 1000 },
+        payment: { providerOrderId: "COUPON_REDEMPTION", amount: 1000, currency: "INR" },
+      } as any);
+
+      const result = await BookingService.processBooking("user-1", {
+        ...validData,
+        idempotencyKey: "key-2",
+      });
+
+      expect(result).toEqual({ bookingId: "replay-confirmed", fullyPaidByCoupon: true });
+      expect(BookingRepo.createBooking).not.toHaveBeenCalled();
+    });
+
+    it("creates a fresh booking when the idempotency key only matches a CANCELLED booking", async () => {
+      // findByIdempotencyKey itself excludes CANCELLED matches (see booking.repo.ts),
+      // so a dead prior attempt under the same key looks like "no match" here.
+      vi.mocked(BookingRepo.findByIdempotencyKey).mockResolvedValue(null);
+      vi.mocked(getRazorpay).mockResolvedValue({
+        orders: { create: vi.fn().mockResolvedValue({ id: "order_new" }) },
+      } as any);
+
+      const result = await BookingService.processBooking("user-1", {
+        ...validData,
+        idempotencyKey: "key-3",
+      });
+
+      expect(BookingRepo.createBooking).toHaveBeenCalled();
+      expect(result).toEqual(expect.objectContaining({ orderId: "order_new" }));
+    });
   });
 
   it("throws EXPERIENCE_NOT_AVAILABLE when the experience isn't published", async () => {

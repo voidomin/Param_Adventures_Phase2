@@ -29,6 +29,11 @@ export const bookingSchema = z.object({
   participants: z.array(participantSchema).min(1),
   paymentType: z.enum(["FULL", "ADVANCE"]).optional().default("FULL"),
   appliedCoupons: z.array(z.string()).optional(),
+  // Client-generated once per checkout attempt (see BookingModal.tsx). A
+  // repeat of the same key returns the original booking instead of creating
+  // a duplicate -- covers double-clicks across tabs/network retries that a
+  // synchronous client-side guard alone can't catch.
+  idempotencyKey: z.string().uuid().optional(),
 }).refine(data => data.participants.length === data.participantCount, {
   message: "Participant details must match the participant count.",
   path: ["participants"]

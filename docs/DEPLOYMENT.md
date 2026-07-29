@@ -107,21 +107,26 @@ FORCE_SEED="true" # Set to true only for the first deployment
 
 Render is used for current UAT and Staging environments.
 
-1. **New Web Service**: Connect your GitHub repository.
+**`render.yaml`** at the repo root is a version-controlled Render Blueprint — Render auto-detects it on **New Web Service → Connect a repository**, which pre-fills the build/start commands and health check path below. Only step 5 (secrets) has to be entered by hand in the dashboard; everything else comes from the file, so staging config doesn't silently drift from what's committed.
+
+1. **New Web Service**: Connect your GitHub repository — Render should detect `render.yaml` automatically.
 2. **Build Selection**: Select **Node** as the environment.
-3. **Build Command**: `npm install && npx prisma generate && npm run build`
-4. **Start Command**: `npm start`
-5. **Environment Variables**: Add all variables from the list above.
-6. **Health Check Path**: `/api/health` (Optional, ensure route exists).
+3. **Build Command**: `npm install && npx prisma generate && npm run build` (from `render.yaml`).
+4. **Start Command**: `npm start` (from `render.yaml`).
+5. **Environment Variables**: Add all variables from the list above — these are secrets and are intentionally *not* in `render.yaml`.
+6. **Health Check Path**: `/api/health` (from `render.yaml`).
 
 ---
 
 ## Option B: AWS (Production Target)
 
-1. **App Runner**: Connect the repository to AWS App Runner for automated builds.
-2. **Runtime**: Node.js 22.
-3. **Build Command**: Same as Render.
+**`apprunner.yaml`** at the repo root is the version-controlled App Runner config file, mirroring `render.yaml`'s role for the Render side — App Runner reads it automatically when the source repository is connected, so production's build/run commands live in git instead of only in the AWS console.
+
+1. **App Runner**: Connect the repository to AWS App Runner — it will pick up `apprunner.yaml` automatically for build/run configuration.
+2. **Runtime**: Node.js 22 (from `apprunner.yaml`).
+3. **Build Command**: Same as Render (from `apprunner.yaml`).
 4. **Database**: Provision an **Amazon RDS (PostgreSQL)** instance. Ensure VPC peering or Public Access (if necessary) is configured.
+5. **Environment Variables**: Add all variables from the list above via the App Runner console — same secrets-stay-out-of-git approach as Render.
 
 ---
 

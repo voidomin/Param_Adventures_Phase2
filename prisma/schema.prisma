@@ -215,6 +215,7 @@ model Booking {
   cancelledByUserId  String?
   refundNote         String?
   refundPreference   String?
+  idempotencyKey     String?
   experience         Experience           @relation(fields: [experienceId], references: [id])
   slot               Slot?                @relation(fields: [slotId], references: [id])
   user               User                 @relation(fields: [userId], references: [id])
@@ -231,6 +232,8 @@ model Booking {
   @@index([paymentStatus])
   @@index([createdAt])
   @@index([deletedAt])
+  @@index([bookingStatus, paymentStatus, createdAt])
+  @@index([userId, idempotencyKey])
 }
 
 model Payment {

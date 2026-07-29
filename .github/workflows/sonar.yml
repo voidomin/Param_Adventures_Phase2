@@ -120,6 +120,56 @@ jobs:
       - name: Run typecheck
         run: npx --no-install tsc --noEmit
 
+  migration-check:
+    name: Migration Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      # Applies every migration in prisma/migrations, in order, to a brand-new
+      # database -- the exact same command render.yaml's preDeployCommand runs
+      # against production, but here a broken/out-of-order migration fails the
+      # PR instead of the real deploy.
+      - name: Apply all migrations to a clean database
+        run: npx --no-install prisma migrate deploy
+
+      # Catches drift between schema.prisma and the migration history -- e.g.
+      # someone ran `prisma db push` locally or hand-edited the schema without
+      # generating a migration for it. Compares the database state produced by
+      # replaying every migration (the step above) against schema.prisma;
+      # --exit-code makes a non-empty diff fail the job.
+      - name: Check schema.prisma has no un-migrated changes
+        run: npx --no-install prisma migrate diff --from-config-datasource prisma.config.ts --to-schema prisma/schema.prisma --exit-code
+
   test:
     name: Test Suite
     needs: [lint, security-audit, typecheck]

@@ -23,9 +23,14 @@ export async function GET(request: Request) {
       where.difficulty = difficulty as "EASY" | "MODERATE" | "HARD" | "EXTREME";
     }
 
+    // Capped rather than paginated: the public list page filters/sorts this
+    // entire set client-side for instant feedback (no round-trip per filter
+    // change), so this is a safety net against unbounded growth rather than
+    // a full paging implementation -- same trade-off as the admin list.
     const experiences = await prisma.experience.findMany({
       where,
       orderBy: { createdAt: "desc" },
+      take: 300,
       include: {
         categories: {
           include: { category: true },
