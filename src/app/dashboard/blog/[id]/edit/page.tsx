@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Loader2, Send, Save, AlertTriangle, Search, Globe, Pencil } from "lucide-react";
+import { DashboardFormSkeleton } from "@/components/dashboard/DashboardSkeleton";
 import { useAuth } from "@/lib/AuthContext";
 import ReauthModal from "@/components/auth/ReauthModal";
 
@@ -160,10 +161,8 @@ export default function EditBlogPage() {
 
   if (isLoading)
     return (
-      <div className="min-h-screen bg-background">
-        <div className="flex items-center justify-center min-h-screen">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
+      <div className="min-h-screen bg-background max-w-3xl mx-auto px-4 py-12">
+        <DashboardFormSkeleton />
       </div>
     );
 

@@ -4,6 +4,8 @@ import { useAuth } from "@/lib/AuthContext";
 import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback } from "react";
 import TwoFactorSettings from "@/components/dashboard/TwoFactorSettings";
+import { Modal } from "@/components/ui/Modal";
+import { DashboardFormSkeleton } from "@/components/dashboard/DashboardSkeleton";
 import {
   User,
   Lock,
@@ -106,8 +108,8 @@ export default function SettingsPage() {
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-[60vh] max-w-4xl mx-auto px-4 py-12">
+        <DashboardFormSkeleton />
       </div>
     );
   }
@@ -717,76 +719,72 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <div className="bg-card border border-border w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
-            <div className="p-6 border-b border-border flex items-center justify-between">
-              <h3 className="text-lg font-bold text-foreground">Delete Account</h3>
-              <button
-                type="button"
-                onClick={() => setShowDeleteModal(false)}
-                aria-label="Close"
-                className="min-w-10 min-h-10 flex items-center justify-center rounded-full hover:bg-foreground/5 text-foreground/50"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <form onSubmit={handleDeleteAccount} className="p-6 space-y-4">
-              <p className="text-sm text-foreground/70">
-                This will permanently anonymize your profile and sign you out
-                everywhere. This cannot be undone.
-              </p>
-              <div>
-                <label htmlFor="deletePassword" className="block text-sm font-bold text-foreground mb-2">
-                  Confirm your password
-                </label>
-                <input
-                  id="deletePassword"
-                  type="password"
-                  value={deletePassword}
-                  onChange={(e) => setDeletePassword(e.target.value)}
-                  required
-                  className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm"
-                />
-              </div>
-              <div>
-                <label htmlFor="deleteConfirmText" className="block text-sm font-bold text-foreground mb-2">
-                  Type DELETE to confirm
-                </label>
-                <input
-                  id="deleteConfirmText"
-                  type="text"
-                  value={deleteConfirmText}
-                  onChange={(e) => setDeleteConfirmText(e.target.value)}
-                  required
-                  className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm"
-                />
-              </div>
-
-              {deleteMsg.text && (
-                <p className="text-sm text-red-500">{deleteMsg.text}</p>
-              )}
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowDeleteModal(false)}
-                  className="flex-1 py-3 rounded-xl border border-border text-foreground/70 font-bold hover:bg-foreground/5"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isDeletingAccount || deleteConfirmText !== "DELETE"}
-                  className="flex-1 py-3 rounded-xl bg-red-500 text-white font-bold hover:opacity-90 disabled:opacity-50"
-                >
-                  {isDeletingAccount ? "Deleting…" : "Delete Account"}
-                </button>
-              </div>
-            </form>
-          </div>
+      <Modal open={showDeleteModal} onClose={() => setShowDeleteModal(false)} panelClassName="bg-card border border-border w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+        <div className="p-6 border-b border-border flex items-center justify-between">
+          <h3 className="text-lg font-bold text-foreground">Delete Account</h3>
+          <button
+            type="button"
+            onClick={() => setShowDeleteModal(false)}
+            aria-label="Close"
+            className="min-w-10 min-h-10 flex items-center justify-center rounded-full hover:bg-foreground/5 text-foreground/50"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
-      )}
+        <form onSubmit={handleDeleteAccount} className="p-6 space-y-4">
+          <p className="text-sm text-foreground/70">
+            This will permanently anonymize your profile and sign you out
+            everywhere. This cannot be undone.
+          </p>
+          <div>
+            <label htmlFor="deletePassword" className="block text-sm font-bold text-foreground mb-2">
+              Confirm your password
+            </label>
+            <input
+              id="deletePassword"
+              type="password"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              required
+              className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm"
+            />
+          </div>
+          <div>
+            <label htmlFor="deleteConfirmText" className="block text-sm font-bold text-foreground mb-2">
+              Type DELETE to confirm
+            </label>
+            <input
+              id="deleteConfirmText"
+              type="text"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              required
+              className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm"
+            />
+          </div>
+
+          {deleteMsg.text && (
+            <p className="text-sm text-red-500">{deleteMsg.text}</p>
+          )}
+
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setShowDeleteModal(false)}
+              className="flex-1 py-3 rounded-xl border border-border text-foreground/70 font-bold hover:bg-foreground/5"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isDeletingAccount || deleteConfirmText !== "DELETE"}
+              className="flex-1 py-3 rounded-xl bg-red-500 text-white font-bold hover:opacity-90 disabled:opacity-50"
+            >
+              {isDeletingAccount ? "Deleting…" : "Delete Account"}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 }

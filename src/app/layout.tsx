@@ -65,6 +65,7 @@ import GoogleAnalytics from "@/components/monitoring/GoogleAnalytics";
 import MetaPixel from "@/components/monitoring/MetaPixel";
 import MicrosoftClarity from "@/components/monitoring/MicrosoftClarity";
 import { withBuildSafety } from "@/lib/db-utils";
+import { ToastProvider } from "@/components/ui/Toast";
 
 export default async function RootLayout({
   children,
@@ -108,23 +109,25 @@ export default async function RootLayout({
         >
           <div data-testid="theme-provider">
             <AuthProvider>
-              <MaintenanceGuard isMaintenanceMode={maintenanceMode}>
-                <div className="flex flex-col min-h-screen">
-                  <Navbar />
-                  <EmailVerificationBanner />
-                  <ProfilePromptBanner />
-                  <TwoFactorPromptBanner />
-                  <main className="flex-1 flex flex-col">{children}</main>
-                  <Footer
-                    supportEmail={supportEmail}
-                    supportPhone={supportPhone}
-                    officeAddress={officeAddress}
-                    siteTitle={siteTitle}
-                    companyName={companyName}
-                    gstNumber={gstNumber}
-                  />
-                </div>
-              </MaintenanceGuard>
+              <ToastProvider>
+                <MaintenanceGuard isMaintenanceMode={maintenanceMode}>
+                  <div className="flex flex-col min-h-screen">
+                    <Navbar />
+                    <EmailVerificationBanner />
+                    <ProfilePromptBanner />
+                    <TwoFactorPromptBanner />
+                    <main className="flex-1 flex flex-col">{children}</main>
+                    <Footer
+                      supportEmail={supportEmail}
+                      supportPhone={supportPhone}
+                      officeAddress={officeAddress}
+                      siteTitle={siteTitle}
+                      companyName={companyName}
+                      gstNumber={gstNumber}
+                    />
+                  </div>
+                </MaintenanceGuard>
+              </ToastProvider>
             </AuthProvider>
           </div>
           <CookieConsentBanner />

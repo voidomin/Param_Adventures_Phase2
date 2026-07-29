@@ -7,6 +7,8 @@ import autoTable from "jspdf-autotable";
 import { useAuth } from "@/lib/AuthContext";
 import { getPlainTextFromJSON } from "@/lib/utils/rich-text";
 import { isResCloudinaryUrl, isAwsUrl } from "@/lib/utils/url-safety";
+import { useToast } from "@/components/ui/Toast";
+import { Modal } from "@/components/ui/Modal";
 
 // ─── Constants & Brand Colors ────────────────────────────
 const COLORS = {
@@ -1090,6 +1092,7 @@ export default function DownloadItineraryBtn({
   slug,
   variant = "sidebar",
 }: DownloadItineraryBtnProps) {
+  const toast = useToast();
   const { user } = useAuth();
   const [isGenerating, setIsGenerating] = useState(false);
   const [showLeadModal, setShowLeadModal] = useState(false);
@@ -1137,7 +1140,7 @@ export default function DownloadItineraryBtn({
       doc.save(`${safeName}_Itinerary_Param_Adventures.pdf`);
     } catch (e) {
       console.error("PDF Fail", e);
-      alert("Error generating PDF.");
+      toast.error("Error generating PDF.");
     } finally {
       setIsGenerating(false);
     }
@@ -1209,10 +1212,12 @@ export default function DownloadItineraryBtn({
   ) : null;
 
   const renderModal = () => {
-    if (!showLeadModal) return null;
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-        <div className="bg-card border border-border w-full max-w-md rounded-2xl shadow-2xl overflow-hidden relative animate-in zoom-in-95 duration-200">
+      <Modal
+        open={showLeadModal}
+        onClose={() => setShowLeadModal(false)}
+        panelClassName="bg-card border border-border w-full max-w-md rounded-2xl shadow-2xl overflow-hidden relative animate-in zoom-in-95 duration-200"
+      >
           {/* Header */}
           <div className="p-6 border-b border-border flex items-center justify-between">
             <div>
@@ -1334,8 +1339,7 @@ export default function DownloadItineraryBtn({
               )}
             </button>
           </form>
-        </div>
-      </div>
+      </Modal>
     );
   };
 

@@ -29,7 +29,7 @@ describe("DashboardShared", () => {
     expect(link).toHaveAttribute("href", "/dashboard");
   });
 
-  it("renders loader and empty state", () => {
+  it("renders a content-shaped loading skeleton and the empty state", () => {
     const { container } = render(
       <>
         <DashboardLoader />
@@ -37,7 +37,7 @@ describe("DashboardShared", () => {
       </>,
     );
 
-    expect(container.querySelector(".animate-spin")).toBeInTheDocument();
+    expect(container.querySelector(".animate-pulse")).toBeInTheDocument();
     expect(screen.getByText("No Trips")).toBeInTheDocument();
     expect(screen.getByText("Nothing assigned yet")).toBeInTheDocument();
   });

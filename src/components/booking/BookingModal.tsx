@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
+import { Modal } from "@/components/ui/Modal";
 import {
   X,
   CalendarDays,
@@ -1564,11 +1564,12 @@ export default function BookingModal({
     }
   }
 
-  if (!mounted) return null;
-
-  return createPortal(
-    <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
-      <div className="bg-card border border-border rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+  return (
+    <Modal
+      open={mounted}
+      onClose={onClose}
+      panelClassName="bg-card border border-border rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto"
+    >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-border sticky top-0 bg-card z-10">
           <div>
@@ -2120,8 +2121,6 @@ export default function BookingModal({
             </button>
           </div>
         )}
-      </div>
-    </div>,
-    document.body,
+    </Modal>
   );
 }

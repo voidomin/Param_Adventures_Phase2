@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Download, Loader2, FileText } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { useToast } from "@/components/ui/Toast";
 
 export interface InvoiceData {
   booking: {
@@ -379,6 +380,7 @@ export function drawInvoicePage(doc: jsPDF, data: InvoiceData, logoBase64: strin
 }
 
 export default function DownloadInvoiceBtn({ bookingId }: Readonly<{ bookingId: string }>) {
+  const toast = useToast();
   const [isDownloading, setIsDownloading] = useState(false);
 
   const handleDownload = async () => {
@@ -439,7 +441,7 @@ export default function DownloadInvoiceBtn({ bookingId }: Readonly<{ bookingId: 
 
     } catch (error) {
       console.error("PDF generation error:", error);
-      alert("Failed to generate invoice. Please try again later.");
+      toast.error("Failed to generate invoice. Please try again later.");
     } finally {
       setIsDownloading(false);
     }

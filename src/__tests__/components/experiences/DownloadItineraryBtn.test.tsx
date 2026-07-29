@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import DownloadItineraryBtn from "@/components/experiences/DownloadItineraryBtn";
 import React from "react";
 import jsPDF from "jspdf";
+import { useToast } from "@/components/ui/Toast";
 
 vi.mock("jspdf-autotable", () => ({
   default: vi.fn((doc, options) => {
@@ -10,6 +11,10 @@ vi.mock("jspdf-autotable", () => ({
   }),
 }));
 
+const mockToast = { success: vi.fn(), error: vi.fn() };
+vi.mock("@/components/ui/Toast", () => ({
+  useToast: vi.fn(),
+}));
 
 const mockUseAuth = vi.fn().mockReturnValue({ user: { id: "mock-user-id" } });
 vi.mock("@/lib/AuthContext", () => ({
@@ -30,8 +35,11 @@ describe("DownloadItineraryBtn Smoke Test", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockToast.success.mockClear();
+    mockToast.error.mockClear();
+    vi.mocked(useToast).mockReturnValue(mockToast);
     mockUseAuth.mockReturnValue({ user: { id: "mock-user-id" } });
-    
+
     // @ts-ignore
     mockFetch.mockImplementation((url: string) => {
       if (url.includes("/itinerary-data")) {
@@ -69,8 +77,6 @@ describe("DownloadItineraryBtn Smoke Test", () => {
   });
 
   it("triggers PDF generation with full data", async () => {
-    vi.spyOn(globalThis, "alert").mockImplementation(() => {});
-    
     // Test a very rich data set to hit highlights, description, itchy, etc.
     mockFetch.mockImplementation((url: string) => {
       if (url.includes("/itinerary-data")) {
@@ -173,10 +179,9 @@ describe("DownloadItineraryBtn Smoke Test", () => {
     }, { timeout: 15000 });
   });
 
-  it("shows alert when itinerary-data fetch fails", async () => {
-    const alertSpy = vi.spyOn(globalThis, "alert").mockImplementation(() => {});
+  it("shows a toast when itinerary-data fetch fails", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});
-    
+
     mockFetch.mockImplementation((url: string) => {
       if (url.includes("/itinerary-data")) {
         return Promise.resolve({ ok: false, status: 500 });
@@ -188,10 +193,8 @@ describe("DownloadItineraryBtn Smoke Test", () => {
     fireEvent.click(screen.getByRole("button"));
 
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledWith("Error generating PDF.");
+      expect(mockToast.error).toHaveBeenCalledWith("Error generating PDF.");
     }, { timeout: 15000 });
-
-    alertSpy.mockRestore();
   });
 
   it("renders inline variant with correct text", () => {
@@ -233,7 +236,6 @@ describe("DownloadItineraryBtn Smoke Test", () => {
 
   it("opens the lead generation modal for logged-out users, submits lead, and downloads PDF", async () => {
     mockUseAuth.mockReturnValue({ user: null });
-    vi.spyOn(globalThis, "alert").mockImplementation(() => {});
 
     // Mock successful lead post
     mockFetch.mockImplementation((url: string, init?: RequestInit) => {

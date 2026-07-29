@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { DashboardListSkeleton } from "@/components/dashboard/DashboardSkeleton";
 import {
   PenLine,
   CheckCircle,
@@ -111,11 +112,7 @@ export default function UserBlogsPage() {
           </Link>
         </div>
 
-        {isLoading && (
-          <div className="flex justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          </div>
-        )}
+        {isLoading && <DashboardListSkeleton />}
 
         {!isLoading && blogs.length === 0 && (
           <div className="text-center py-20 border border-dashed border-border rounded-2xl">

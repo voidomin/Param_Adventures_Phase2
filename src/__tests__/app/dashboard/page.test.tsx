@@ -14,11 +14,11 @@ vi.mock("next/navigation", () => ({
 globalThis.fetch = vi.fn();
 
 describe("Dashboard Page", () => {
-  it("renders loading state initially", () => {
+  it("renders a loading skeleton initially", () => {
     (globalThis.fetch as any).mockImplementation(() => new Promise(() => {})); // Never resolves
-    
-    render(<DashboardPage />);
-    expect(screen.getByText(/loading your dashboard/i)).toBeDefined();
+
+    const { container } = render(<DashboardPage />);
+    expect(container.querySelector(".animate-pulse")).toBeInTheDocument();
   });
 
   it("renders error state on fetch failure", async () => {

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { Loader2, Send, Save, Mountain, X, Search } from "lucide-react";
 import Image from "next/image";
+import { DashboardFormSkeleton } from "@/components/dashboard/DashboardSkeleton";
 // Custom Social SVGs to avoid Lucide deprecation warnings
 const InstagramSVG = () => (
   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
@@ -230,10 +231,8 @@ export default function WriteBlogPage() {
 
   if (isLoadingExp) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="flex items-center justify-center min-h-screen">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
+      <div className="min-h-screen bg-background max-w-3xl mx-auto px-4 py-12">
+        <DashboardFormSkeleton />
       </div>
     );
   }
