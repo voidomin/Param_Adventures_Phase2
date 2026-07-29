@@ -3,6 +3,7 @@ import { authorizeRequest } from "@/lib/api-auth";
 import Razorpay from "razorpay";
 import { v2 as cloudinary } from "cloudinary";
 import { S3Client, HeadBucketCommand } from "@aws-sdk/client-s3";
+import { isIpAllowed } from "@/lib/ip-allowlist";
 
 interface VerifyConfig {
   keyId?: string;
@@ -15,6 +16,10 @@ interface VerifyConfig {
   accessKey?: string;
   secretKey?: string;
   endpoint?: string;
+  clientId?: string;
+  allowlist?: string;
+  // Injected server-side from the request -- never trust a client-supplied IP.
+  requesterIp?: string;
 }
 
 /**
@@ -68,6 +73,85 @@ const handlers: Record<string, (config: VerifyConfig) => Promise<unknown>> = {
     await s3Client.send(new HeadBucketCommand({ Bucket: bucket }));
     return { success: true, message: "S3 Bucket accessibility verified!" };
   },
+
+  TURNSTILE: async (config) => {
+    const { secretKey } = config;
+    if (!secretKey) throw new Error("Secret Key is required for Turnstile");
+
+    // Cloudflare's siteverify endpoint doesn't have a dedicated "is this
+    // secret valid" check, but it distinguishes a bad secret from a bad
+    // token in its error codes -- send a deliberately fake token and read
+    // which one Cloudflare complains about.
+    const response = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ secret: secretKey, response: "verification-check-placeholder-token" }),
+    });
+    const data = await response.json();
+    const errorCodes: string[] = data?.["error-codes"] ?? [];
+
+    if (errorCodes.includes("invalid-input-secret") || errorCodes.includes("missing-input-secret")) {
+      throw new Error("Cloudflare rejected this Secret Key. Double-check it in the Turnstile dashboard.");
+    }
+
+    return {
+      success: true,
+      message: "Secret Key accepted by Cloudflare. (Full widget verification happens on the next real form submission.)",
+    };
+  },
+
+  GOOGLE_SIGNIN: async (config) => {
+    const { clientId } = config;
+    if (!clientId) throw new Error("Client ID is required for Google Sign-In");
+
+    if (!/^\d+-[0-9a-zA-Z_]+\.apps\.googleusercontent\.com$/.test(clientId)) {
+      throw new Error("Client ID doesn't match Google's expected format (should end in .apps.googleusercontent.com)");
+    }
+
+    // Google has no public "does this client exist" API, but its own
+    // authorization endpoint distinguishes "invalid_client" (client_id not
+    // found) from other errors (e.g. an unregistered redirect_uri, expected
+    // here since we're using a placeholder) -- read the served page for
+    // that specific signal without ever completing a real sign-in.
+    const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+    authUrl.searchParams.set("client_id", clientId);
+    authUrl.searchParams.set("response_type", "code");
+    authUrl.searchParams.set("scope", "openid");
+    authUrl.searchParams.set("redirect_uri", "https://param-adventures-verification-check.invalid/callback");
+
+    const response = await fetch(authUrl.toString(), { redirect: "manual" });
+    const text = await response.text();
+
+    if (/invalid_client/i.test(text) || /oauth client was not found/i.test(text)) {
+      throw new Error("Google rejected this Client ID (invalid_client). Double-check it in Google Cloud Console.");
+    }
+
+    return {
+      success: true,
+      message: "Client ID recognized by Google. (Full sign-in flow still needs testing the live button.)",
+    };
+  },
+
+  ADMIN_IP_ALLOWLIST: async (config) => {
+    const { allowlist, requesterIp } = config;
+    const entries = (allowlist || "").split(",").map((e) => e.trim()).filter(Boolean);
+
+    if (entries.length === 0) {
+      return {
+        success: true,
+        message: `No allowlist configured — every network can currently reach /admin. Your detected IP is ${requesterIp || "unknown"}.`,
+      };
+    }
+
+    const allowed = !!requesterIp && requesterIp !== "unknown" && isIpAllowed(requesterIp, entries);
+    if (!allowed) {
+      throw new Error(
+        `Your current IP (${requesterIp || "unknown"}) is NOT in this list. Saving it as-is would lock out your own access -- add ${requesterIp || "your IP"} first.`,
+      );
+    }
+
+    return { success: true, message: `Your current IP (${requesterIp}) is allowed. Safe to save.` };
+  },
 };
 
 export async function POST(request: NextRequest) {
@@ -87,7 +171,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unsupported verification type" }, { status: 400 });
     }
 
-    const result = await handler(config);
+    // Never trust a client-supplied IP -- derive it from the request itself,
+    // same extraction used by proxy.ts's admin allowlist check.
+    const forwarded = request.headers.get("x-forwarded-for");
+    const realIp = request.headers.get("x-real-ip");
+    const requesterIp = forwarded?.split(",")[0]?.trim() || realIp || "unknown";
+
+    const result = await handler({ ...config, requesterIp });
     return NextResponse.json(result);
 
   } catch (error: unknown) {

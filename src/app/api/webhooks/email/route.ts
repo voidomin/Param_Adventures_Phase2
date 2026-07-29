@@ -86,6 +86,16 @@ export async function POST(request: NextRequest) {
     const event = JSON.parse(rawBody);
     const eventType = event?.type as string | undefined;
 
+    // Webhooks are push-based -- there's no "ping" API to test connectivity
+    // like Razorpay/Cloudinary/S3 have. Recording that *something* validly-
+    // signed arrived is the only real health signal available, so the admin
+    // UI can show "last event received" instead of a synthetic test button.
+    await prisma.platformSetting.upsert({
+      where: { key: "resend_webhook_last_event_at" },
+      create: { key: "resend_webhook_last_event_at", value: new Date().toISOString() },
+      update: { value: new Date().toISOString() },
+    });
+
     if (eventType && NOTABLE_EVENTS.has(eventType)) {
       const recipient = event?.data?.to?.[0] ?? event?.data?.email ?? "unknown";
       console.warn(`[EmailWebhook] ${eventType} for ${recipient}`);

@@ -8,6 +8,7 @@ vi.mock("@/lib/db", () => ({
   prisma: {
     platformSetting: {
       findUnique: vi.fn(),
+      upsert: vi.fn(),
     },
   },
 }));
@@ -20,6 +21,7 @@ import { prisma } from "@/lib/db";
 const mockLogActivity = vi.mocked(logActivity);
 const mockLogError = vi.mocked(logError);
 const mockFindUnique = vi.mocked(prisma.platformSetting.findUnique);
+const mockUpsert = vi.mocked(prisma.platformSetting.upsert);
 
 const SECRET = "whsec_dGVzdC1zZWNyZXQta2V5LWZvci1zaWduaW5n"; // NOSONAR test fixture
 
@@ -114,6 +116,21 @@ describe("POST /api/webhooks/email", () => {
     expect(response.status).toBe(200);
     expect(mockLogActivity).not.toHaveBeenCalled();
     expect(mockLogError).not.toHaveBeenCalled();
+  });
+
+  it("records the last-received-event timestamp on any validly-signed event, notable or not", async () => {
+    const response = await POST(
+      createSignedRequest({ type: "email.delivered", data: { to: ["user@example.com"] } }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { key: "resend_webhook_last_event_at" },
+        create: expect.objectContaining({ key: "resend_webhook_last_event_at" }),
+        update: expect.any(Object),
+      }),
+    );
   });
 
   it("returns 500 if the body can't be parsed as JSON", async () => {

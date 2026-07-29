@@ -37,8 +37,11 @@ import { POST } from "@/app/api/admin/settings/system/verify/route";
 import { authorizeRequest } from "@/lib/api-auth";
 
 const mockAuthorizeRequest = vi.mocked(authorizeRequest);
-const createRequest = (body: unknown) =>
-  ({ json: vi.fn().mockResolvedValue(body) }) as unknown as NextRequest;
+const createRequest = (body: unknown, headers: Record<string, string> = {}) =>
+  ({
+    json: vi.fn().mockResolvedValue(body),
+    headers: { get: (key: string) => headers[key] ?? null },
+  }) as unknown as NextRequest;
 
 describe("POST /api/admin/settings/system/verify", () => {
   beforeEach(() => {
@@ -139,5 +142,135 @@ describe("POST /api/admin/settings/system/verify", () => {
     );
 
     expect(response.status).toBe(502);
+  });
+
+  describe("TURNSTILE", () => {
+    it("returns 400 when the secret key is missing", async () => {
+      const response = await POST(createRequest({ type: "TURNSTILE", config: {} }));
+      expect(response.status).toBe(400);
+    });
+
+    it("verifies a valid secret key", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({ json: vi.fn().mockResolvedValue({ "error-codes": ["invalid-input-response"] }) }),
+      );
+
+      const response = await POST(createRequest({ type: "TURNSTILE", config: { secretKey: "sk_good" } }));
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      vi.unstubAllGlobals();
+    });
+
+    it("returns 502 when Cloudflare rejects the secret key", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({ json: vi.fn().mockResolvedValue({ "error-codes": ["invalid-input-secret"] }) }),
+      );
+
+      const response = await POST(createRequest({ type: "TURNSTILE", config: { secretKey: "sk_bad" } }));
+
+      expect(response.status).toBe(502);
+      vi.unstubAllGlobals();
+    });
+  });
+
+  describe("GOOGLE_SIGNIN", () => {
+    it("returns 400 when the client ID is missing", async () => {
+      const response = await POST(createRequest({ type: "GOOGLE_SIGNIN", config: {} }));
+      expect(response.status).toBe(400);
+    });
+
+    it("returns 502 when the client ID doesn't match Google's expected format", async () => {
+      const response = await POST(createRequest({ type: "GOOGLE_SIGNIN", config: { clientId: "not-a-real-id" } }));
+      expect(response.status).toBe(502);
+    });
+
+    it("verifies a recognized client ID", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({ text: vi.fn().mockResolvedValue("redirect_uri_mismatch") }),
+      );
+
+      const response = await POST(
+        createRequest({ type: "GOOGLE_SIGNIN", config: { clientId: "123-abc.apps.googleusercontent.com" } }),
+      );
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      vi.unstubAllGlobals();
+    });
+
+    it("returns 502 when Google rejects the client ID", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({ text: vi.fn().mockResolvedValue("Error 401: invalid_client") }),
+      );
+
+      const response = await POST(
+        createRequest({ type: "GOOGLE_SIGNIN", config: { clientId: "123-abc.apps.googleusercontent.com" } }),
+      );
+
+      expect(response.status).toBe(502);
+      vi.unstubAllGlobals();
+    });
+  });
+
+  describe("ADMIN_IP_ALLOWLIST", () => {
+    it("succeeds with a message when no allowlist is configured", async () => {
+      const response = await POST(
+        createRequest({ type: "ADMIN_IP_ALLOWLIST", config: { allowlist: "" } }, { "x-forwarded-for": "1.2.3.4" }),
+      );
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.message).toContain("1.2.3.4");
+    });
+
+    it("succeeds when the requester's IP is in the allowlist", async () => {
+      const response = await POST(
+        createRequest(
+          { type: "ADMIN_IP_ALLOWLIST", config: { allowlist: "1.2.3.4, 5.6.7.8" } },
+          { "x-forwarded-for": "1.2.3.4, 9.9.9.9" },
+        ),
+      );
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+    });
+
+    it("falls back to x-real-ip when x-forwarded-for is absent", async () => {
+      const response = await POST(
+        createRequest({ type: "ADMIN_IP_ALLOWLIST", config: { allowlist: "1.2.3.4" } }, { "x-real-ip": "1.2.3.4" }),
+      );
+
+      expect(response.status).toBe(200);
+    });
+
+    it("returns 502 (self-lockout warning) when the requester's IP is NOT in the allowlist", async () => {
+      const response = await POST(
+        createRequest(
+          { type: "ADMIN_IP_ALLOWLIST", config: { allowlist: "5.6.7.8" } },
+          { "x-forwarded-for": "1.2.3.4" },
+        ),
+      );
+      const data = await response.json();
+
+      expect(response.status).toBe(502);
+      expect(data.error).toContain("lock out");
+    });
+
+    it("treats an unresolvable IP as not allowed when an allowlist is configured", async () => {
+      const response = await POST(createRequest({ type: "ADMIN_IP_ALLOWLIST", config: { allowlist: "5.6.7.8" } }));
+      const data = await response.json();
+
+      expect(response.status).toBe(502);
+      expect(data.error).toContain("unknown");
+    });
   });
 });

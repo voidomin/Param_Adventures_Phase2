@@ -17,12 +17,31 @@ import {
 } from "lucide-react";
 import { SectionTitle, InputGroup, TabProps } from "./Common";
 
+type VerifyState = { type: "success" | "error" | null; message: string };
+
+function VerifyStatusBox({ status }: Readonly<{ status: VerifyState }>) {
+  if (!status.type) return null;
+  return (
+    <div className={`p-4 rounded-xl border flex items-start gap-3 animate-in fade-in slide-in-from-top-1 duration-300 ${
+      status.type === 'success'
+        ? 'bg-green-500/5 border-green-500/20 text-green-600'
+        : 'bg-red-500/5 border-red-500/20 text-red-600'
+    }`}>
+      {status.type === 'success' ? <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" /> : <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />}
+      <p className="text-xs font-bold leading-relaxed">{status.message}</p>
+    </div>
+  );
+}
+
 export default function IntegrationsTab({ getVal, updateSetting }: Readonly<TabProps>) {
   const [isVerifying, setIsVerifying] = useState(false);
-  const [verifyStatus, setVerifyStatus] = useState<{
-    type: 'success' | 'error' | null;
-    message: string;
-  }>({ type: null, message: "" });
+  const [verifyStatus, setVerifyStatus] = useState<VerifyState>({ type: null, message: "" });
+
+  const [isVerifyingGoogle, setIsVerifyingGoogle] = useState(false);
+  const [googleVerifyStatus, setGoogleVerifyStatus] = useState<VerifyState>({ type: null, message: "" });
+
+  const [isVerifyingTurnstile, setIsVerifyingTurnstile] = useState(false);
+  const [turnstileVerifyStatus, setTurnstileVerifyStatus] = useState<VerifyState>({ type: null, message: "" });
 
   const handleVerifySentry = async () => {
     const dsn = getVal("PLATFORM", "sentry_dsn");
@@ -43,9 +62,9 @@ export default function IntegrationsTab({ getVal, updateSetting }: Readonly<TabP
 
       const data = await res.json();
       if (res.ok) {
-        setVerifyStatus({ 
-          type: 'success', 
-          message: "Heartbeat sent! Check your Sentry dashboard for the 'Verification Heartbeat' message." 
+        setVerifyStatus({
+          type: 'success',
+          message: "Heartbeat sent! Check your Sentry dashboard for the 'Verification Heartbeat' message."
         });
       } else {
         setVerifyStatus({ type: 'error', message: data.error || "Verification failed." });
@@ -54,6 +73,64 @@ export default function IntegrationsTab({ getVal, updateSetting }: Readonly<TabP
       setVerifyStatus({ type: 'error', message: "Network error during verification." });
     } finally {
       setIsVerifying(false);
+    }
+  };
+
+  const handleVerifyGoogle = async () => {
+    const clientId = getVal("PLATFORM", "google_client_id")?.trim();
+    if (!clientId) {
+      setGoogleVerifyStatus({ type: 'error', message: "Please enter a Client ID first!" });
+      return;
+    }
+
+    setIsVerifyingGoogle(true);
+    setGoogleVerifyStatus({ type: null, message: "" });
+
+    try {
+      const res = await fetch("/api/admin/settings/system/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "GOOGLE_SIGNIN", config: { clientId } }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setGoogleVerifyStatus({ type: 'success', message: data.message || "Client ID looks good!" });
+      } else {
+        setGoogleVerifyStatus({ type: 'error', message: data.error || "Verification failed." });
+      }
+    } catch {
+      setGoogleVerifyStatus({ type: 'error', message: "Network error during verification." });
+    } finally {
+      setIsVerifyingGoogle(false);
+    }
+  };
+
+  const handleVerifyTurnstile = async () => {
+    const secretKey = getVal("PLATFORM", "turnstile_secret_key")?.trim();
+    if (!secretKey) {
+      setTurnstileVerifyStatus({ type: 'error', message: "Please enter a Secret Key first!" });
+      return;
+    }
+
+    setIsVerifyingTurnstile(true);
+    setTurnstileVerifyStatus({ type: null, message: "" });
+
+    try {
+      const res = await fetch("/api/admin/settings/system/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "TURNSTILE", config: { secretKey } }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setTurnstileVerifyStatus({ type: 'success', message: data.message || "Secret Key accepted!" });
+      } else {
+        setTurnstileVerifyStatus({ type: 'error', message: data.error || "Verification failed." });
+      }
+    } catch {
+      setTurnstileVerifyStatus({ type: 'error', message: "Network error during verification." });
+    } finally {
+      setIsVerifyingTurnstile(false);
     }
   };
 
@@ -171,6 +248,30 @@ export default function IntegrationsTab({ getVal, updateSetting }: Readonly<TabP
           placeholder="123456789-abc.apps.googleusercontent.com"
           description="From a Google Cloud 'OAuth 2.0 Client ID' (Web application type). Used both by the browser button and to verify sign-ins server-side. Leave empty to hide the button entirely."
         />
+
+        <div className="bg-foreground/[0.02] border border-border/50 rounded-2xl p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <p className="text-sm font-bold flex items-center gap-2">
+                <Handshake className="w-4 h-4 text-primary" />
+                Client ID Check
+              </p>
+              <p className="text-xs text-foreground/50 font-medium italic">
+                Confirms the format and that Google recognizes this Client ID. Doesn&apos;t replace testing the live button.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleVerifyGoogle}
+              disabled={isVerifyingGoogle}
+              className="px-6 py-2.5 bg-foreground/5 text-foreground rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-foreground/10 transition-all flex items-center gap-2 disabled:opacity-50 h-10 min-w-32 justify-center"
+            >
+              {isVerifyingGoogle ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Handshake className="w-4 h-4" />}
+              Test Connection
+            </button>
+          </div>
+          <VerifyStatusBox status={googleVerifyStatus} />
+        </div>
       </div>
 
       <div className="h-px bg-border/50" />
@@ -205,6 +306,30 @@ export default function IntegrationsTab({ getVal, updateSetting }: Readonly<TabP
         <p className="text-[10px] text-foreground/40 pl-2 leading-relaxed">
           Leave both empty to disable — no CAPTCHA is shown or required.
         </p>
+
+        <div className="bg-foreground/[0.02] border border-border/50 rounded-2xl p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <p className="text-sm font-bold flex items-center gap-2">
+                <Handshake className="w-4 h-4 text-primary" />
+                Secret Key Check
+              </p>
+              <p className="text-xs text-foreground/50 font-medium italic">
+                Confirms Cloudflare accepts this Secret Key. Full widget verification happens on the next real form submission.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleVerifyTurnstile}
+              disabled={isVerifyingTurnstile}
+              className="px-6 py-2.5 bg-foreground/5 text-foreground rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-foreground/10 transition-all flex items-center gap-2 disabled:opacity-50 h-10 min-w-32 justify-center"
+            >
+              {isVerifyingTurnstile ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Handshake className="w-4 h-4" />}
+              Test Connection
+            </button>
+          </div>
+          <VerifyStatusBox status={turnstileVerifyStatus} />
+        </div>
       </div>
 
       <div className="h-px bg-border/50" />

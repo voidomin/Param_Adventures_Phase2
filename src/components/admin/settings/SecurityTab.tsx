@@ -32,6 +32,38 @@ export default function SecurityTab(props: Readonly<TabProps>) {
     message: string;
   }>({ type: null, message: "" });
 
+  const [isCheckingAccess, setIsCheckingAccess] = useState(false);
+  const [accessCheckStatus, setAccessCheckStatus] = useState<{
+    type: 'success' | 'error' | null;
+    message: string;
+  }>({ type: null, message: "" });
+
+  const handleCheckAdminAccess = async () => {
+    const allowlist = getVal("PLATFORM", "admin_ip_allowlist");
+
+    setIsCheckingAccess(true);
+    setAccessCheckStatus({ type: null, message: "" });
+
+    try {
+      const res = await fetch("/api/admin/settings/system/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "ADMIN_IP_ALLOWLIST", config: { allowlist } }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setAccessCheckStatus({ type: 'success', message: data.message });
+      } else {
+        setAccessCheckStatus({ type: 'error', message: data.error || "Check failed." });
+      }
+    } catch {
+      setAccessCheckStatus({ type: 'error', message: "Network error during check." });
+    } finally {
+      setIsCheckingAccess(false);
+    }
+  };
+
   const handleVerifyRazorpay = async () => {
     const keyId = getVal("PLATFORM", "razorpay_key_id")?.trim();
     const keySecret = getVal("PLATFORM", "razorpay_key_secret")?.trim();
@@ -253,6 +285,40 @@ export default function SecurityTab(props: Readonly<TabProps>) {
           placeholder="e.g. 203.0.113.4, 198.51.100.0/24"
           description="Comma-separated IPs or CIDR ranges allowed to reach /admin and /api/admin/*. Leave empty to allow any network — this is opt-in hardening, not on by default. Takes effect immediately, no redeploy needed."
         />
+
+        <div className="bg-foreground/[0.02] border border-border/50 rounded-2xl p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <p className="text-sm font-bold flex items-center gap-2">
+                <Handshake className="w-4 h-4 text-primary" />
+                Self-Lockout Check
+              </p>
+              <p className="text-xs text-foreground/50 font-medium italic">
+                Confirms your own current network is in this list before you save — saving a list that excludes you would lock you out of the admin panel.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleCheckAdminAccess}
+              disabled={isCheckingAccess}
+              className="px-6 py-2.5 bg-foreground/5 text-foreground rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-foreground/10 transition-all flex items-center gap-2 disabled:opacity-50 h-10 min-w-44 justify-center"
+            >
+              {isCheckingAccess ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Handshake className="w-4 h-4" />}
+              Check My Access
+            </button>
+          </div>
+
+          {accessCheckStatus.type && (
+            <div className={`p-4 rounded-xl border flex items-start gap-3 animate-in fade-in slide-in-from-top-1 duration-300 ${
+              accessCheckStatus.type === 'success'
+                ? 'bg-green-500/5 border-green-500/20 text-green-600'
+                : 'bg-red-500/5 border-red-500/20 text-red-600'
+            }`}>
+              {accessCheckStatus.type === 'success' ? <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" /> : <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />}
+              <p className="text-xs font-bold leading-relaxed">{accessCheckStatus.message}</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
