@@ -3,7 +3,6 @@ import { authorizeRequest } from "@/lib/api-auth";
 import Razorpay from "razorpay";
 import { v2 as cloudinary } from "cloudinary";
 import { S3Client, HeadBucketCommand } from "@aws-sdk/client-s3";
-import { isIpAllowed } from "@/lib/ip-allowlist";
 
 interface VerifyConfig {
   keyId?: string;
@@ -17,9 +16,6 @@ interface VerifyConfig {
   secretKey?: string;
   endpoint?: string;
   clientId?: string;
-  allowlist?: string;
-  // Injected server-side from the request -- never trust a client-supplied IP.
-  requesterIp?: string;
 }
 
 /**
@@ -131,27 +127,6 @@ const handlers: Record<string, (config: VerifyConfig) => Promise<unknown>> = {
       message: "Client ID recognized by Google. (Full sign-in flow still needs testing the live button.)",
     };
   },
-
-  ADMIN_IP_ALLOWLIST: async (config) => {
-    const { allowlist, requesterIp } = config;
-    const entries = (allowlist || "").split(",").map((e) => e.trim()).filter(Boolean);
-
-    if (entries.length === 0) {
-      return {
-        success: true,
-        message: `No allowlist configured — every network can currently reach /admin. Your detected IP is ${requesterIp || "unknown"}.`,
-      };
-    }
-
-    const allowed = !!requesterIp && requesterIp !== "unknown" && isIpAllowed(requesterIp, entries);
-    if (!allowed) {
-      throw new Error(
-        `Your current IP (${requesterIp || "unknown"}) is NOT in this list. Saving it as-is would lock out your own access -- add ${requesterIp || "your IP"} first.`,
-      );
-    }
-
-    return { success: true, message: `Your current IP (${requesterIp}) is allowed. Safe to save.` };
-  },
 };
 
 export async function POST(request: NextRequest) {
@@ -171,13 +146,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unsupported verification type" }, { status: 400 });
     }
 
-    // Never trust a client-supplied IP -- derive it from the request itself,
-    // same extraction used by proxy.ts's admin allowlist check.
-    const forwarded = request.headers.get("x-forwarded-for");
-    const realIp = request.headers.get("x-real-ip");
-    const requesterIp = forwarded?.split(",")[0]?.trim() || realIp || "unknown";
-
-    const result = await handler({ ...config, requesterIp });
+    const result = await handler(config);
     return NextResponse.json(result);
 
   } catch (error: unknown) {
