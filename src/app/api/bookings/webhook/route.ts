@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { BookingService } from "@/services/booking.service";
 import { logActivity } from "@/lib/audit-logger";
@@ -8,19 +9,45 @@ import { webhookLimiter } from "@/lib/rate-limiter";
 import { logError } from "@/lib/monitoring";
 
 /**
+ * Razorpay's webhook payload has many event-specific fields beyond what's
+ * modeled here -- the index signature lets the rest pass through untyped
+ * (and keeps this assignable to BookingService.confirmPayment's
+ * Record<string, unknown> parameter) while still type-checking the fields
+ * this route actually reads.
+ */
+interface RazorpayWebhookPayload {
+  id?: string;
+  event?: string;
+  payload: {
+    // order/payment presence is event-type-dependent (order.paid sends
+    // both; payment.captured/failed send only payment) -- accessed with a
+    // non-null assertion in each switch branch below, one per known event
+    // type, rather than optional-chaining everywhere.
+    order?: { entity: { id: string; receipt?: string | null } };
+    payment?: {
+      entity: {
+        id: string;
+        order_id?: string;
+        notes?: { bookingId?: string; booking_id?: string };
+      };
+    };
+  };
+  [key: string]: unknown;
+}
+
+/**
  * POST /api/bookings/webhook
- * 
+ *
  * Server-to-Server endpoint for Razorpay payment notifications.
  * SECURE: Uses HMAC-SHA256 signature verification and Rate Limiting.
  * PUBLIC: No JWT authentication (Razorpay call).
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- webhook payload structure is dynamic from Razorpay
-async function processWebhookEvent(eventType: string, eventBody: any, forensicsIp: string) {
+async function processWebhookEvent(eventType: string, eventBody: RazorpayWebhookPayload, forensicsIp: string) {
   const { payload } = eventBody;
   switch (eventType) {
     case "order.paid": {
-      const order = payload.order.entity;
-      const payment = payload.payment.entity;
+      const order = payload.order!.entity;
+      const payment = payload.payment!.entity;
       const bookingId = order.receipt; // We use bookingId as receipt during order creation
 
       if (!bookingId) {
@@ -51,7 +78,7 @@ async function processWebhookEvent(eventType: string, eventBody: any, forensicsI
       break;
     }
     case "payment.captured": {
-      const payment = payload.payment.entity;
+      const payment = payload.payment!.entity;
       const orderId = payment.order_id;
       const paymentId = payment.id;
 
@@ -95,7 +122,7 @@ async function processWebhookEvent(eventType: string, eventBody: any, forensicsI
     }
 
     case "payment.failed": {
-      const payment = payload.payment.entity;
+      const payment = payload.payment!.entity;
       const orderId = payment.order_id;
 
       if (orderId) {
@@ -107,7 +134,7 @@ async function processWebhookEvent(eventType: string, eventBody: any, forensicsI
         if (paymentRecord) {
           await prisma.payment.update({
             where: { id: paymentRecord.id },
-            data: { status: "FAILED", fullPayload: eventBody },
+            data: { status: "FAILED", fullPayload: eventBody as unknown as Prisma.InputJsonValue },
           });
 
           await logActivity(
@@ -189,8 +216,7 @@ export async function POST(request: NextRequest) {
       console.warn("[Webhook] Invalid signature received from IP:", request.headers.get("x-forwarded-for"));
       
       try {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let eventBody: any = null;
+        let eventBody: RazorpayWebhookPayload | null = null;
         try {
           eventBody = JSON.parse(rawBody);
         } catch {}
@@ -217,8 +243,8 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Process Event
-    const eventBody = JSON.parse(rawBody);
-    const eventType = eventBody.event;
+    const eventBody: RazorpayWebhookPayload = JSON.parse(rawBody);
+    const eventType = eventBody.event ?? "";
 
     console.log(`[Webhook] Received Razorpay Event: ${eventType}`);
 

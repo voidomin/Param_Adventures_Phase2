@@ -86,11 +86,11 @@ Lowest risk, most visible to end users, no urgency — good candidate for a quie
 
 ---
 
-## Backlog — cheap cleanup, no dedicated release needed
+## Backlog — cheap cleanup, no dedicated release needed ✅ Shipped
 
-- [ ] Remove unused `cmdk` dependency (zero imports found in `src/`).
-- [ ] Pin `xlsx` to a proper npm release instead of a CDN tarball.
-- [ ] Tighten the ~4 non-test `any` usages in `src/lib/auth.ts` and the payment webhook route.
+- [x] Remove unused `cmdk` dependency (zero imports found in `src/`). — **Fixed**: `npm uninstall cmdk` — 25 packages removed, `npm audit --omit=dev --audit-level=high` (the actual CI gate) still reports 0 vulnerabilities afterward.
+- [x] Pin `xlsx` to a proper npm release instead of a CDN tarball. — **Correction, not a fix**: checked the npm registry directly — SheetJS (the `xlsx` maintainer) stopped publishing to npm after `0.18.5` and deliberately ships all newer releases only via their own CDN (a well-known, intentional choice on their part, not a supply-chain gap in this project). There is no newer npm-registry version to pin to; downgrading to `0.18.5` would mean losing ~2 years of upstream fixes for a problem that doesn't actually exist. Separately, `package-lock.json` already has a SHA-512 integrity hash for the exact tarball in use, so `npm ci` already verifies it hasn't been tampered with on every install — the real underlying concern (an unverified/unpinned install) was already covered. **Client decision (2026-07-29): leave as-is.**
+- [x] Tighten the ~4 non-test `any` usages in `src/lib/auth.ts` and the payment webhook route. — **Fixed**: `auth.ts`'s two JWT `expiresIn` casts now use `jsonwebtoken`'s own `StringValue` type (from the `ms` package) instead of `any`. The webhook route's two `any`s (the parsed Razorpay payload, both at the top-level parse and in the signature-failure logging path) are now a real `RazorpayWebhookPayload` interface — modeling the fields this route actually reads (event type, order/payment entities, notes) with an index signature for the many event-specific fields Razorpay sends that aren't read here, keeping it assignable to `BookingService.confirmPayment`'s `Record<string, unknown>` parameter.
 
 ---
 

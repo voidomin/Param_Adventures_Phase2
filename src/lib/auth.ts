@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import type { StringValue } from "ms";
 import { prisma } from "@/lib/db";
 
 // ─── Auth Config Logic ────────────────────────────────────
@@ -84,8 +85,10 @@ export interface RefreshPayload {
 export async function generateAccessToken(userId: string, roleName: string, tokenVersion: number, expiresIn?: string): Promise<string> {
   const config = await getAuthConfig();
   return jwt.sign({ userId, roleName, tokenVersion } satisfies TokenPayload, config.JWT_SECRET, {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expiresIn: (expiresIn || config.JWT_EXPIRY) as any,
+    // JWT_EXPIRY/expiresIn are validated-format strings like "24h"/"7d" (see
+    // parseExpiryToSeconds's regex below) but come from env vars/DB settings
+    // as plain `string`, not jsonwebtoken's StringValue template-literal type.
+    expiresIn: (expiresIn || config.JWT_EXPIRY) as StringValue,
   });
 }
 
@@ -117,8 +120,7 @@ export async function generateRefreshToken(userId: string, tokenVersion: number,
   return jwt.sign(
     { userId, type: "refresh", tokenVersion } satisfies RefreshPayload,
     config.JWT_SECRET,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    { expiresIn: (expiresIn || REFRESH_TOKEN_EXPIRY) as any },
+    { expiresIn: (expiresIn || REFRESH_TOKEN_EXPIRY) as StringValue },
   );
 }
 
