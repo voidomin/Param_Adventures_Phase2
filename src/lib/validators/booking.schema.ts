@@ -3,7 +3,7 @@ import { z } from "zod";
 export const participantSchema = z.object({
   isPrimary: z.boolean().optional(),
   name: z.string().min(1, "Participant name is required"),
-  email: z.string().regex(/^[^@\s]+@[^@\s]+\.[^@\s]+$/, "Invalid email format"),
+  email: z.string().email({ message: "Invalid email format" }),
   phoneNumber: z.string().min(1, "Phone number is required"),
   gender: z.string().min(1, "Gender is required"),
   dateOfBirth: z.string().min(1, "Date of birth is required"),
