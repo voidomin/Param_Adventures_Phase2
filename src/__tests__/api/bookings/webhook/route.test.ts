@@ -22,6 +22,10 @@ vi.mock("@/lib/rate-limiter", () => ({
   },
 }));
 
+vi.mock("@/lib/monitoring", () => ({
+  logError: vi.fn(),
+}));
+
 const mockConfirmPayment = vi.mocked(BookingService.confirmPayment);
 const mockLogActivity = vi.mocked(logActivity);
 

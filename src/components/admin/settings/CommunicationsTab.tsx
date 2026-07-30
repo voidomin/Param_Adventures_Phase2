@@ -145,6 +145,28 @@ export default function CommunicationsTab(props: Readonly<TabProps>) {
                 placeholder="Required for Zoho Mail APIs"
               />
             )}
+            {getVal("PLATFORM", "email_provider") === "RESEND" && (
+              <>
+                <InputGroup
+                  label="Webhook Signing Secret"
+                  value={getVal("PLATFORM", "resend_webhook_secret")}
+                  onChange={(v: string) => updateSetting("PLATFORM", "resend_webhook_secret", v)}
+                  type="password"
+                  placeholder="whsec_..."
+                  description="From the Resend dashboard's Webhooks page, pointed at /api/webhooks/email. Enables bounce/complaint visibility. Leave empty to disable."
+                />
+                {/* Webhooks are push-based -- there's no "test connection" call
+                    we can make like Razorpay/S3/Cloudinary. The only real
+                    health signal is whether Resend has actually sent
+                    something recently, recorded by the webhook route itself. */}
+                <div className="md:col-span-2 flex items-center gap-2 text-xs text-foreground/50 font-medium pl-1">
+                  <span className={`w-2 h-2 rounded-full ${getVal("PLATFORM", "resend_webhook_last_event_at") ? "bg-green-500" : "bg-foreground/20"}`} />
+                  {getVal("PLATFORM", "resend_webhook_last_event_at")
+                    ? `Last webhook event received: ${new Date(getVal("PLATFORM", "resend_webhook_last_event_at")).toLocaleString()}`
+                    : "No webhook events received yet — verification happens automatically once Resend sends its first event."}
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>

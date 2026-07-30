@@ -3,10 +3,11 @@ import { prisma } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
 import { z } from "zod";
 import { authLimiter } from "@/lib/rate-limiter";
+import { passwordSchema } from "@/lib/validators/auth.schema";
 
 const resetPasswordSchema = z.object({
   token: z.string().min(1, "Token is required"),
-  password: z.string().min(8, "Password must be at least 8 characters long"),
+  password: passwordSchema,
 });
 
 export async function POST(request: NextRequest) {

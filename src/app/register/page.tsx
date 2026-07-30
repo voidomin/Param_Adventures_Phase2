@@ -8,15 +8,19 @@ import { useAuth } from "@/lib/AuthContext";
 import AuthLayout, { itemVariants } from "@/components/auth/AuthLayout";
 import { AuthInput, AuthButton } from "@/components/auth/AuthShared";
 import PasswordStrength from "@/components/auth/PasswordStrength";
+import GoogleSignInButton from "@/components/auth/GoogleSignInButton";
+import TurnstileWidget from "@/components/ui/TurnstileWidget";
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register } = useAuth();
+  const { register, loginWithGoogle } = useAuth();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastSubmitTime, setLastSubmitTime] = useState(0);
@@ -34,8 +38,18 @@ export default function RegisterPage() {
       return;
     }
 
-    if (password.length < 8) {
-      setError("Password must be at least 8 characters.");
+    if (
+      password.length < 8 ||
+      !/[a-z]/.test(password) ||
+      !/[A-Z]/.test(password) ||
+      !/\d/.test(password)
+    ) {
+      setError("Password must be at least 8 characters and include an uppercase letter, a lowercase letter, and a number.");
+      return;
+    }
+
+    if (!acceptedTerms) {
+      setError("You must accept the Terms & Privacy Policy to continue.");
       return;
     }
 
@@ -43,7 +57,7 @@ export default function RegisterPage() {
     setIsSubmitting(true);
 
     try {
-      const user = await register(email, password, name);
+      const user = await register(email, password, name, acceptedTerms, turnstileToken);
       if (user) {
         router.push("/");
       }
@@ -51,6 +65,20 @@ export default function RegisterPage() {
       setError(err instanceof Error ? err.message : "Registration failed.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleGoogleCredential = async (credential: string) => {
+    setError("");
+    try {
+      const result = await loginWithGoogle(credential);
+      if ("requiresTwoFactor" in result) {
+        setError("This Google account is linked to a profile with two-factor authentication enabled. Please sign in from the login page instead.");
+        return;
+      }
+      router.push("/");
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Google sign-in failed.");
     }
   };
 
@@ -130,12 +158,56 @@ export default function RegisterPage() {
           </motion.p>
         )}
 
+        <label htmlFor="register-accept-terms" className="flex items-start gap-2.5 text-xs text-white/50 cursor-pointer pt-1">
+          <input
+            id="register-accept-terms"
+            type="checkbox"
+            checked={acceptedTerms}
+            onChange={(e) => setAcceptedTerms(e.target.checked)}
+            className="mt-0.5 accent-amber-500"
+          />
+          <span>
+            I agree to the{" "}
+            <Link href="/terms" target="_blank" className="text-amber-400 hover:text-amber-300 underline">
+              Terms &amp; Conditions
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" target="_blank" className="text-amber-400 hover:text-amber-300 underline">
+              Privacy Policy
+            </Link>
+            .
+          </span>
+        </label>
+
+        <TurnstileWidget onVerify={setTurnstileToken} />
+
         <AuthButton
           isSubmitting={isSubmitting}
           loadingText="Creating account..."
           text="Create Account"
         />
       </form>
+
+      <div className="mt-4 flex items-center gap-3">
+        <div className="h-px flex-1 bg-white/10" />
+        <span className="text-white/30 text-xs uppercase tracking-wider">or</span>
+        <div className="h-px flex-1 bg-white/10" />
+      </div>
+
+      <div className="mt-4">
+        <GoogleSignInButton onCredential={handleGoogleCredential} />
+        <p className="text-center text-[11px] text-white/30 mt-2.5">
+          By continuing with Google, you agree to our{" "}
+          <Link href="/terms" target="_blank" className="underline hover:text-white/50">
+            Terms
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" target="_blank" className="underline hover:text-white/50">
+            Privacy Policy
+          </Link>
+          .
+        </p>
+      </div>
 
       <motion.div
         variants={itemVariants}

@@ -14,7 +14,9 @@ This guide walks you through deploying Param Adventures to a production or stagi
 4. [Sentry Monitoring Setup](#sentry-monitoring-setup)
 5. [Database Setup (PostgreSQL)](#database-setup-postgresql)
 6. [Post-Deploy Verification](#post-deploy-verification)
-7. [Troubleshooting](#troubleshooting)
+7. [Rollback Procedure](#rollback-procedure)
+8. [Backup & Restore](#backup--restore)
+9. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -105,21 +107,26 @@ FORCE_SEED="true" # Set to true only for the first deployment
 
 Render is used for current UAT and Staging environments.
 
-1. **New Web Service**: Connect your GitHub repository.
+**`render.yaml`** at the repo root is a version-controlled Render Blueprint — Render auto-detects it on **New Web Service → Connect a repository**, which pre-fills the build/start commands and health check path below. Only step 5 (secrets) has to be entered by hand in the dashboard; everything else comes from the file, so staging config doesn't silently drift from what's committed.
+
+1. **New Web Service**: Connect your GitHub repository — Render should detect `render.yaml` automatically.
 2. **Build Selection**: Select **Node** as the environment.
-3. **Build Command**: `npm install && npx prisma generate && npm run build`
-4. **Start Command**: `npm start`
-5. **Environment Variables**: Add all variables from the list above.
-6. **Health Check Path**: `/api/health` (Optional, ensure route exists).
+3. **Build Command**: `npm install && npx prisma generate && npm run build` (from `render.yaml`).
+4. **Start Command**: `npm start` (from `render.yaml`).
+5. **Environment Variables**: Add all variables from the list above — these are secrets and are intentionally *not* in `render.yaml`.
+6. **Health Check Path**: `/api/health` (from `render.yaml`).
 
 ---
 
 ## Option B: AWS (Production Target)
 
-1. **App Runner**: Connect the repository to AWS App Runner for automated builds.
-2. **Runtime**: Node.js 22.
-3. **Build Command**: Same as Render.
+**`apprunner.yaml`** at the repo root is the version-controlled App Runner config file, mirroring `render.yaml`'s role for the Render side — App Runner reads it automatically when the source repository is connected, so production's build/run commands live in git instead of only in the AWS console.
+
+1. **App Runner**: Connect the repository to AWS App Runner — it will pick up `apprunner.yaml` automatically for build/run configuration.
+2. **Runtime**: Node.js 22 (from `apprunner.yaml`).
+3. **Build Command**: Same as Render (from `apprunner.yaml`).
 4. **Database**: Provision an **Amazon RDS (PostgreSQL)** instance. Ensure VPC peering or Public Access (if necessary) is configured.
+5. **Environment Variables**: Add all variables from the list above via the App Runner console — same secrets-stay-out-of-git approach as Render.
 
 ---
 
@@ -157,6 +164,61 @@ npx prisma db seed
 | 3 | Command Center    | All tabs (Finance, Security, etc.) are visible. |
 | 4 | Razorpay Modal    | Opens successfully on experience checkout.     |
 | 5 | Sentry Check      | Visit `/api/debug-sentry` to trigger a test error.|
+
+---
+
+## Rollback Procedure
+
+If a deploy goes out and something's broken, don't try to hot-fix forward under pressure — roll back first, then fix calmly.
+
+### Render (staging/UAT)
+
+1. Open the service in the Render dashboard → **Events** tab.
+2. Find the last known-good deploy (the one before the broken one).
+3. Click **⋮** → **Redeploy** on that commit. Render rebuilds and serves it — no code changes needed on your end.
+4. Alternatively, from the **Deploys** tab, click into any prior successful deploy and use **Rollback to this deploy** if shown for your plan tier.
+
+### AWS App Runner (production)
+
+1. Open the App Runner service → **Deployments** tab.
+2. If the previous deployment is still listed, use **Deploy** against that prior image/commit to redeploy it.
+3. If App Runner is tracking a Git branch directly: `git revert <bad-commit-sha>` and push — this is the reliable path since App Runner doesn't have a one-click "previous deploy" button the way Render does.
+
+### Database migrations
+
+**Rolling back code does NOT roll back a migration that already ran.** If the broken deploy included a schema migration:
+
+1. Check whether the migration is additive-only (new nullable columns/tables) — if so, rolling back the code is enough; the extra columns are harmless and can be cleaned up later in a follow-up migration.
+2. If the migration was destructive (dropped/renamed a column, changed a type) and the rolled-back code expects the old schema, you need a **compensating migration** that reverses it — write and apply a new migration, don't hand-edit migration history.
+3. When in doubt, restore from backup instead of trying to hand-reverse a destructive migration under pressure (see Backup & Restore below).
+
+### After rolling back
+
+- Confirm the rollback actually fixed the issue (re-run the Post-Deploy Verification checklist above).
+- Don't delete the bad branch/PR — figure out what broke before retrying.
+
+---
+
+## Backup & Restore
+
+Render's paid Postgres plan takes automated daily backups. That fact alone is not a disaster-recovery plan — **a backup that has never been test-restored is an assumption, not a guarantee.** Run this drill periodically (recommended: after any major schema change, and at least once a quarter).
+
+### Restore drill (do this on a throwaway/staging database, never production)
+
+1. In the Render dashboard, open the Postgres instance → **Backups** tab.
+2. Pick a recent backup and create a **new, separate** database instance from it (Render supports restoring to a new instance — do not restore over the live database).
+3. Point a local `.env` (or a disposable Render preview environment) at the restored instance's connection string.
+4. Run `npx prisma migrate status` against it to confirm the schema is intact and migrations are in the expected state.
+5. Spot-check a few tables (`User`, `Booking`, `Payment`) for row counts and recent data — confirm the backup is actually usable, not just present.
+6. Tear down the throwaway instance once satisfied.
+7. Record the date and outcome of the drill (a line in this file or an internal note is enough) so there's a record it was actually tested.
+
+### If a real restore is ever needed
+
+1. **Stop writes first** — put the app in maintenance mode (`maintenance_mode` platform setting) before touching the database, so nothing writes to the old data while you're restoring.
+2. Follow the same restore-to-new-instance steps above, but once verified, update `DATABASE_URL` on the web service to point at the restored instance (rather than trying to restore in-place).
+3. Run `npx prisma migrate deploy` against the restored instance to catch it up to the current schema if it predates recent migrations.
+4. Verify with the Post-Deploy Verification checklist before taking the app out of maintenance mode.
 
 ---
 

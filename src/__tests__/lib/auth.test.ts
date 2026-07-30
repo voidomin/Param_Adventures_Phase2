@@ -16,6 +16,7 @@ vi.mock("@/lib/db", () => ({
   prisma: {
     user: {
       findUnique: vi.fn(),
+      update: vi.fn(),
     },
     platformSetting: {
       findUnique: vi.fn(),
@@ -25,6 +26,7 @@ vi.mock("@/lib/db", () => ({
 }));
 
 const mockUserFindUnique = vi.mocked(prisma.user.findUnique);
+const mockUserUpdate = vi.mocked(prisma.user.update);
 
 const TEST_PASSWORD_A = "mySecurePassword123"; // NOSONAR
 const TEST_PASSWORD_B = "password456"; // NOSONAR
@@ -174,6 +176,56 @@ describe("Auth Utilities", () => {
       const { verifyRefreshToken } = await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth");
       const decoded = await verifyRefreshToken("bad-token");
       expect(decoded).toBeNull();
+    });
+  });
+
+  describe("revokeSessionFromToken", () => {
+    const userId = "test-user-id";
+
+    it("bumps tokenVersion for the user identified by a valid token", async () => {
+      const { generateRefreshToken, revokeSessionFromToken } = await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth");
+      mockUserUpdate.mockResolvedValue({} as any);
+
+      const token = await generateRefreshToken(userId, 1);
+      await revokeSessionFromToken(token);
+
+      expect(mockUserUpdate).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: { tokenVersion: { increment: 1 } },
+      });
+    });
+
+    it("still revokes an already-expired token, since it should stop working the moment logout happens", async () => {
+      const { generateRefreshToken, revokeSessionFromToken } = await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth");
+      mockUserUpdate.mockResolvedValue({} as any);
+
+      const token = await generateRefreshToken(userId, 1, "-1s");
+      await revokeSessionFromToken(token);
+
+      expect(mockUserUpdate).toHaveBeenCalledWith({
+        where: { id: userId },
+        data: { tokenVersion: { increment: 1 } },
+      });
+    });
+
+    it("does nothing for a missing token", async () => {
+      const { revokeSessionFromToken } = await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth");
+      await revokeSessionFromToken(undefined);
+      expect(mockUserUpdate).not.toHaveBeenCalled();
+    });
+
+    it("does nothing for a malformed/unsigned token", async () => {
+      const { revokeSessionFromToken } = await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth");
+      await revokeSessionFromToken("not-a-real-token");
+      expect(mockUserUpdate).not.toHaveBeenCalled();
+    });
+
+    it("swallows the error if the identified user no longer exists", async () => {
+      const { generateRefreshToken, revokeSessionFromToken } = await vi.importActual<typeof import("@/lib/auth")>("@/lib/auth");
+      mockUserUpdate.mockRejectedValue(new Error("Record not found"));
+
+      const token = await generateRefreshToken(userId, 1);
+      await expect(revokeSessionFromToken(token)).resolves.toBeUndefined();
     });
   });
 });

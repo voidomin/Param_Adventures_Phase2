@@ -1,6 +1,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { ArrowLeft, Mountain } from "lucide-react";
+import { DashboardListSkeleton } from "@/components/dashboard/DashboardSkeleton";
 
 export const STATUS_COLORS: Record<string, string> = {
   UPCOMING: "bg-blue-500/10 text-blue-400 border-blue-500/20",
@@ -34,11 +35,7 @@ export function DashboardNav() {
 }
 
 export function DashboardLoader() {
-  return (
-    <div className="flex justify-center py-20">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary" />
-    </div>
-  );
+  return <DashboardListSkeleton />;
 }
 
 interface EmptyStateProps {

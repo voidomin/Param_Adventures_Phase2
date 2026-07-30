@@ -3,6 +3,8 @@ import { authorizeRequest } from "@/lib/api-auth";
 import { bookingSchema } from "@/lib/validators/booking.schema";
 import { BookingService } from "@/services/booking.service";
 import { bookingLimiter } from "@/lib/rate-limiter";
+import { prisma } from "@/lib/db";
+import { logError } from "@/lib/monitoring";
 
 /**
  * POST /api/bookings
@@ -23,6 +25,20 @@ export async function POST(request: NextRequest) {
 
   const auth = await authorizeRequest(request);
   if (!auth.authorized) return auth.response;
+
+  // Unverified emails can otherwise book immediately with a contact address
+  // nobody has confirmed the user actually owns -- block the highest-value
+  // action (creating a real financial commitment) until they've verified it.
+  const requestingUser = await prisma.user.findUnique({
+    where: { id: auth.userId },
+    select: { isVerified: true },
+  });
+  if (!requestingUser?.isVerified) {
+    return NextResponse.json(
+      { error: "Please verify your email address before booking. Check your inbox for the verification link." },
+      { status: 403 },
+    );
+  }
 
   try {
     const body = await request.json();
@@ -67,6 +83,9 @@ export async function POST(request: NextRequest) {
     }
 
     console.error("[BookingController] Fatal Error:", error);
+    await logError(error instanceof Error ? error : new Error(String(error)), {
+      route: "POST /api/bookings",
+    });
     return NextResponse.json(
       { error: "An unexpected error occurred while creating your booking." },
       { status: 500 },

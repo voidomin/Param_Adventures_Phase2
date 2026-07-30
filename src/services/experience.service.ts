@@ -7,8 +7,8 @@ export const ExperienceService = {
   /**
    * Orchestrates the browsing of experiences.
    */
-  async getAllExperiences() {
-    return ExperienceRepo.findMany();
+  async getAllExperiences(params?: { page?: number; limit?: number }) {
+    return ExperienceRepo.findMany(params);
   },
 
   /**

@@ -6,6 +6,7 @@ import WelcomeEmail from "@/components/emails/WelcomeEmail";
 import RoleAssignedEmail from "@/components/emails/RoleAssignedEmail";
 import TripCompletedEmail from "@/components/emails/TripCompletedEmail";
 import PasswordResetEmail from "@/components/emails/PasswordResetEmail";
+import VerifyEmailEmail from "@/components/emails/VerifyEmailEmail";
 import AdminInviteEmail from "@/components/emails/AdminInviteEmail";
 import CustomTripAcknowledgmentEmail from "@/components/emails/CustomTripAcknowledgmentEmail";
 import React from "react";
@@ -67,6 +68,12 @@ export interface PasswordResetData {
   userName: string;
   userEmail: string;
   resetLink: string;
+}
+
+export interface VerifyEmailData {
+  userName: string;
+  userEmail: string;
+  verifyLink: string;
 }
 
 export interface AdminInviteData {
@@ -233,6 +240,20 @@ export async function sendResetPasswordEmail(data: PasswordResetData) {
     });
   } catch (err) {
     console.error("Email layout error:", err);
+    throw err;
+  }
+}
+
+export async function sendVerificationEmail(data: VerifyEmailData) {
+  try {
+    const html = await render(<VerifyEmailEmail userName={data.userName} verifyLink={data.verifyLink} />);
+    await sendEmail({
+      to: data.userEmail,
+      subject: "Verify your email — Param Adventures 🏔️",
+      html,
+    });
+  } catch (err) {
+    console.error("Email layout error (VerifyEmail):", err);
     throw err;
   }
 }

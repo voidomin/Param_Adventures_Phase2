@@ -155,9 +155,11 @@ describe("BookingRepo helper methods", () => {
     booking: {
       update: vi.fn(),
       delete: vi.fn(),
+      findFirst: vi.fn(),
     },
     payment: {
       create: vi.fn(),
+      findFirst: vi.fn(),
     },
   } as any;
 
@@ -221,6 +223,40 @@ describe("BookingRepo helper methods", () => {
         currency: "INR",
         status: "PENDING",
       },
+    });
+  });
+
+  describe("findByIdempotencyKey", () => {
+    it("returns null when no matching booking exists", async () => {
+      mockTx.booking.findFirst.mockResolvedValue(null);
+
+      const result = await BookingRepo.findByIdempotencyKey(mockTx, "user-1", "key-1");
+
+      expect(mockTx.booking.findFirst).toHaveBeenCalledWith({
+        where: {
+          userId: "user-1",
+          idempotencyKey: "key-1",
+          bookingStatus: { in: ["REQUESTED", "CONFIRMED"] },
+        },
+      });
+      expect(mockTx.payment.findFirst).not.toHaveBeenCalled();
+      expect(result).toBeNull();
+    });
+
+    it("returns the booking together with its most recent payment", async () => {
+      mockTx.booking.findFirst.mockResolvedValue({ id: "bk-1", bookingStatus: "REQUESTED" });
+      mockTx.payment.findFirst.mockResolvedValue({ id: "pay-1", providerOrderId: "order_1" });
+
+      const result = await BookingRepo.findByIdempotencyKey(mockTx, "user-1", "key-1");
+
+      expect(mockTx.payment.findFirst).toHaveBeenCalledWith({
+        where: { bookingId: "bk-1" },
+        orderBy: { createdAt: "desc" },
+      });
+      expect(result).toEqual({
+        booking: { id: "bk-1", bookingStatus: "REQUESTED" },
+        payment: { id: "pay-1", providerOrderId: "order_1" },
+      });
     });
   });
 });

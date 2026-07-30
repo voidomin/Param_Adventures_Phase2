@@ -6,14 +6,80 @@ import {
   generateRefreshToken,
   parseExpiryToSeconds,
 } from "@/lib/auth";
+import { verifyTwoFactorToken, consumeBackupCode } from "@/lib/two-factor";
 import { z } from "zod";
 import { emergencyAdminRecovery } from "@/lib/bootstrap";
 import { authLimiter } from "@/lib/rate-limiter";
+import { logError } from "@/lib/monitoring";
 
 const loginSchema = z.object({
   email: z.email({ message: "Invalid email format" }),
   password: z.string().min(1, { message: "Password is required" }),
+  totpCode: z.string().optional(),
 });
+
+// Per-account brute-force protection: independent of the IP-based rate limiter
+// above, which an attacker can trivially route around by spreading guesses
+// across many source addresses. This tracks failed attempts against the
+// specific account being targeted instead.
+const LOCKOUT_THRESHOLD = 10;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
+
+async function handleFailedLogin(userId: string, failedAttempts: number) {
+  const failedLoginAttempts = failedAttempts + 1;
+  const lockingNow = failedLoginAttempts >= LOCKOUT_THRESHOLD;
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      failedLoginAttempts: lockingNow ? 0 : failedLoginAttempts,
+      lockedUntil: lockingNow ? new Date(Date.now() + LOCKOUT_DURATION_MS) : null,
+    },
+  });
+
+  return NextResponse.json(
+    lockingNow
+      ? { error: "Too many failed attempts. This account is temporarily locked. Please try again later." }
+      : { error: "Invalid email or password." },
+    { status: lockingNow ? 423 : 401 },
+  );
+}
+
+async function verifyLoginTwoFactor(
+  user: { id: string; twoFactorEnabled: boolean; twoFactorSecret: string | null; twoFactorBackupCodes: string[] },
+  totpCode?: string,
+) {
+  if (!user.twoFactorEnabled) return { ok: true };
+  if (!totpCode) return { ok: false, response: NextResponse.json({ requiresTwoFactor: true }, { status: 200 }) };
+
+  const isValidTotp = user.twoFactorSecret ? verifyTwoFactorToken(user.twoFactorSecret, totpCode) : false;
+  let isValidBackupCode = false;
+  let remainingBackupCodes = user.twoFactorBackupCodes;
+
+  if (!isValidTotp) {
+    const result = consumeBackupCode(totpCode, user.twoFactorBackupCodes);
+    isValidBackupCode = result.valid;
+    remainingBackupCodes = result.remainingHashedCodes;
+  }
+
+  if (!isValidTotp && !isValidBackupCode) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { error: "Invalid two-factor authentication code.", requiresTwoFactor: true },
+        { status: 401 },
+      ),
+    };
+  }
+
+  if (isValidBackupCode) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { twoFactorBackupCodes: remainingBackupCodes },
+    });
+  }
+
+  return { ok: true };
+}
 
 export async function POST(request: NextRequest) {
   // 0. Rate Limiting Protection
@@ -28,7 +94,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    
+
     // ─── Validation ──────────────────────────────────────
     const parseResult = loginSchema.safeParse(body);
     if (!parseResult.success) {
@@ -37,7 +103,7 @@ export async function POST(request: NextRequest) {
         { status: 400 },
       );
     }
-    const { email, password } = parseResult.data;
+    const { email, password, totpCode } = parseResult.data;
     const bootstrapToken = request.headers.get("x-bootstrap-token") || "";
 
     // ─── Emergency Recovery (Disabled in Production) ─────
@@ -66,14 +132,32 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ─── Per-account lockout check ───────────────────────
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      return NextResponse.json(
+        { error: "Too many failed attempts. This account is temporarily locked. Please try again later." },
+        { status: 423 },
+      );
+    }
+
     // ─── Verify password ─────────────────────────────────
     const isValid = await verifyPassword(password, user.password);
-
     if (!isValid) {
-      return NextResponse.json(
-        { error: "Invalid email or password." },
-        { status: 401 },
-      );
+      return handleFailedLogin(user.id, user.failedLoginAttempts);
+    }
+
+    // ─── Two-factor challenge ─────────────────────────────
+    const twoFactorRes = await verifyLoginTwoFactor(user, totpCode);
+    if (!twoFactorRes.ok) {
+      return twoFactorRes.response!;
+    }
+
+    // ─── Successful login: clear any lockout state ───────
+    if (user.failedLoginAttempts > 0 || user.lockedUntil) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { failedLoginAttempts: 0, lockedUntil: null },
+      });
     }
 
     // ─── Generate tokens ─────────────────────────────────
@@ -118,6 +202,9 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (error) {
     console.error("Login error:", error);
+    await logError(error instanceof Error ? error : new Error(String(error)), {
+      route: "POST /api/auth/login",
+    });
     return NextResponse.json(
       { error: "Internal server error." },
       { status: 500 },

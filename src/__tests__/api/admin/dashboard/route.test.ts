@@ -92,9 +92,8 @@ describe("GET /api/admin/dashboard", () => {
   });
 
   it("returns dashboard payload with computed metrics and charts", async () => {
-    const now = new Date();
-    const lastMonth = new Date(now);
-    lastMonth.setMonth(now.getMonth() - 1);
+    const now = new Date(2026, 6, 15);
+    const lastMonth = new Date(2026, 5, 15);
 
     mockAuthorizeRequest.mockResolvedValue({
       authorized: true,

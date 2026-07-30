@@ -222,7 +222,7 @@ export default function SecurityTab(props: Readonly<TabProps>) {
 
       <div className="p-8 bg-foreground/5 rounded-3xl space-y-6 border border-border/50">
         <h4 className="font-bold text-sm text-primary uppercase tracking-widest flex items-center gap-2">
-          <Settings2 className="w-4 h-4" /> 
+          <Settings2 className="w-4 h-4" />
           Identity & Session
         </h4>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

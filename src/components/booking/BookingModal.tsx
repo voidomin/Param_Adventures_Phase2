@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { createPortal } from "react-dom";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
+import { Modal } from "@/components/ui/Modal";
 import {
   X,
   CalendarDays,
@@ -1141,6 +1141,19 @@ export default function BookingModal({
 
   const [participants, setParticipants] = useState(1);
   const [step, setStep] = useState<Step>("slots");
+  // Synchronous guard against a fast double-click: setStep("processing") is
+  // an async state update, so a second click can still fire before the
+  // button unmounts. This ref flips true on the very first line of the
+  // handler -- before any await -- so the second invocation bails out
+  // immediately, no re-render required. idempotencyKeyRef is sent to the
+  // server as a second line of defense (multi-tab clicks, network-level
+  // retries) that a same-tab ref guard can't catch. It's generated once and
+  // reused for every retry in this modal session; that's safe because the
+  // server only treats it as a replay while the booking it produced is still
+  // pending or confirmed -- a retry after a real failure (booking ends up
+  // CANCELLED) is free to create a fresh booking under the same key.
+  const isSubmittingRef = useRef(false);
+  const idempotencyKeyRef = useRef<string | null>(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [partInfo, setPartInfo] = useState<ParticipantDetails[]>([]);
   const [includeMyself, setIncludeMyself] = useState(!!user);
@@ -1450,11 +1463,17 @@ export default function BookingModal({
   const payableAmount = paymentType === "ADVANCE" ? (Number(experienceDetail?.advancePaymentAmount ?? 0) * participants) : finalPriceToPay;
 
   async function handleProceedToPay() {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+    if (!idempotencyKeyRef.current) {
+      idempotencyKeyRef.current = crypto.randomUUID();
+    }
+
     setStep("processing");
     setErrorMsg("");
 
     const isFullyPaidByCoupon = paymentType === "FULL" && payableAmount <= 0.01;
-    
+
     if (!isFullyPaidByCoupon) {
       const scriptLoaded = await loadRazorpayScript();
       if (!scriptLoaded) {
@@ -1462,6 +1481,7 @@ export default function BookingModal({
           "Failed to load payment gateway. Please check your internet connection.",
         );
         setStep("error");
+        isSubmittingRef.current = false;
         return;
       }
     }
@@ -1482,6 +1502,7 @@ export default function BookingModal({
           })),
           paymentType,
           appliedCoupons: appliedCoupons.map((c) => c.code),
+          idempotencyKey: idempotencyKeyRef.current,
         }),
       });
       const bookData = await bookRes.json();
@@ -1525,24 +1546,30 @@ export default function BookingModal({
                 : "Payment verification failed.",
             );
             setStep("error");
+            isSubmittingRef.current = false;
           }
         },
         modal: {
-          ondismiss: () => setStep("summary"),
+          ondismiss: () => {
+            setStep("summary");
+            isSubmittingRef.current = false;
+          },
         },
       });
       rzp.open();
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : "Something went wrong.");
       setStep("error");
+      isSubmittingRef.current = false;
     }
   }
 
-  if (!mounted) return null;
-
-  return createPortal(
-    <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
-      <div className="bg-card border border-border rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
+  return (
+    <Modal
+      open={mounted}
+      onClose={onClose}
+      panelClassName="bg-card border border-border rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto"
+    >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-border sticky top-0 bg-card z-10">
           <div>
@@ -2094,8 +2121,6 @@ export default function BookingModal({
             </button>
           </div>
         )}
-      </div>
-    </div>,
-    document.body,
+    </Modal>
   );
 }

@@ -143,6 +143,16 @@ export default function SystemTab(props: Readonly<TabProps>) {
           />
         </div>
       </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-border/20 pt-8">
+        <InputGroup
+          label="Audit Log Retention (Days)"
+          value={getVal("PLATFORM", "audit_log_retention_days")}
+          onChange={(v: string) => updateSetting("PLATFORM", "audit_log_retention_days", v)}
+          placeholder="365"
+          description="AuditLog rows older than this are purged nightly. Leave empty to use the default (365 days)."
+        />
+      </div>
     </div>
   );
 }

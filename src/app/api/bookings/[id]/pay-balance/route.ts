@@ -3,6 +3,7 @@ import { prisma, runWithRetry } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 import { getRazorpay } from "@/lib/razorpay";
 import { BookingRepo } from "@/repositories/booking.repo";
+import { logError } from "@/lib/monitoring";
 import { logActivity } from "@/lib/audit-logger";
 import { isExpiredIST, redeemCoupon } from "@/lib/coupon-engine";
 
@@ -242,6 +243,9 @@ export async function POST(
     if (msg.startsWith("COUPON_ERROR:")) {
       return NextResponse.json({ error: msg.replace("COUPON_ERROR: ", "") }, { status: 400 });
     }
+    await logError(error instanceof Error ? error : new Error(String(error)), {
+      route: "POST /api/bookings/[id]/pay-balance",
+    });
     return NextResponse.json(
       { error: "Failed to initiate balance payment." },
       { status: 500 }

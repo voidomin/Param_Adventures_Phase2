@@ -32,12 +32,22 @@ export async function GET() {
     const getVal = (key: string, fallback: string) => 
       settingsData.find(s => s.key === key)?.value || fallback;
 
+    const [googleClientIdSetting, turnstileSiteKeySetting] = await Promise.all([
+      prisma.platformSetting.findUnique({ where: { key: "google_client_id" } }),
+      prisma.platformSetting.findUnique({ where: { key: "turnstile_site_key" } }),
+    ]);
+
     const config = {
       site_title: getVal("site_title", "Param Adventures"),
       support_email: getVal("support_email", "info@paramadventures.in"),
       support_phone: getVal("support_phone", "+91 98765 43210"),
       maintenance_mode: (await prisma.platformSetting.findUnique({ where: { key: "maintenance_mode" } }))?.value === "true",
       taxConfig: (await prisma.platformSetting.findUnique({ where: { key: "taxConfig" } }))?.value ?? null,
+      // Public by design (not secret) -- these are the client-side halves of
+      // Google Sign-In / Turnstile, needed by browser buttons at runtime so
+      // an admin can rotate them without a redeploy.
+      google_client_id: googleClientIdSetting?.value || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "",
+      turnstile_site_key: turnstileSiteKeySetting?.value || process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "",
       branding: {} as Record<string, string>
     };
 

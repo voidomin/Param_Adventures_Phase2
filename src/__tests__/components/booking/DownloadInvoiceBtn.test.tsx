@@ -4,9 +4,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import DownloadInvoiceBtn from "@/components/booking/DownloadInvoiceBtn";
 import autoTable from "jspdf-autotable";
 import jsPDF from "jspdf";
+import { useToast } from "@/components/ui/Toast";
 
 vi.mock("jspdf-autotable", () => ({
   default: vi.fn(),
+}));
+
+const mockToast = { success: vi.fn(), error: vi.fn() };
+vi.mock("@/components/ui/Toast", () => ({
+  useToast: vi.fn(),
 }));
 
 describe("DownloadInvoiceBtn", () => {
@@ -46,11 +52,13 @@ describe("DownloadInvoiceBtn", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockToast.success.mockClear();
+    mockToast.error.mockClear();
+    vi.mocked(useToast).mockReturnValue(mockToast);
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
       json: async () => basePayload,
     } as Response);
-    vi.spyOn(globalThis, "alert").mockImplementation(() => {});
     vi.spyOn(console, "error").mockImplementation(() => {});
   });
 
@@ -77,7 +85,7 @@ describe("DownloadInvoiceBtn", () => {
     });
 
     expect(screen.getByRole("button", { name: /download tax invoice/i })).toBeEnabled();
-    expect(globalThis.alert).not.toHaveBeenCalled();
+    expect(mockToast.error).not.toHaveBeenCalled();
   });
 
   it("uses fallback values when optional company/contact/payment fields are missing", async () => {
@@ -106,17 +114,17 @@ describe("DownloadInvoiceBtn", () => {
       expect(jsPDF.prototype.save).toHaveBeenCalledWith("Invoice_PARAM_ABC.pdf");
     });
 
-    expect(globalThis.alert).not.toHaveBeenCalled();
+    expect(mockToast.error).not.toHaveBeenCalled();
   });
 
-  it("shows alert when invoice fetch fails", async () => {
+  it("shows a toast when invoice fetch fails", async () => {
     (globalThis.fetch as any).mockResolvedValueOnce({ ok: false });
 
     render(<DownloadInvoiceBtn bookingId="bad-booking" />);
     fireEvent.click(screen.getByRole("button", { name: /download tax invoice/i }));
 
     await waitFor(() => {
-      expect(globalThis.alert).toHaveBeenCalledWith(
+      expect(mockToast.error).toHaveBeenCalledWith(
         "Failed to generate invoice. Please try again later.",
       );
     });

@@ -1,9 +1,16 @@
 import React from 'react';
 import Script from 'next/script';
+import { cookies } from 'next/headers';
 import { prisma } from '@/lib/db';
 import { withBuildSafety } from '@/lib/db-utils';
+import { COOKIE_CONSENT_COOKIE, COOKIE_CONSENT_ACCEPTED } from '@/lib/cookie-consent';
 
 export default async function MetaPixel() {
+  const cookieStore = await cookies();
+  if (cookieStore.get(COOKIE_CONSENT_COOKIE)?.value !== COOKIE_CONSENT_ACCEPTED) {
+    return null;
+  }
+
   const pixelIdSetting = await withBuildSafety(() =>
     prisma.platformSetting.findUnique({
       where: { key: 'meta_pixel_id' },

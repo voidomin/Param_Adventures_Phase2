@@ -3,6 +3,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { AuthProvider, useAuth } from "@/lib/AuthContext";
 import React from "react";
 
+const mockPush = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush }),
+  usePathname: () => "/dashboard/settings",
+}));
+
 // Mock child component for testing the hook
 const AuthTestComponent = () => {
   const { user, login, register, logout } = useAuth();
@@ -12,7 +18,7 @@ const AuthTestComponent = () => {
       <button onClick={() => login("test@example.com", "password").catch(err => {
         document.getElementById("error-msg")!.textContent = err.message;
       })}>Login</button>
-      <button onClick={() => register("test@example.com", "password", "Test User").catch(err => {
+      <button onClick={() => register("test@example.com", "password", "Test User", true).catch(err => {
         document.getElementById("error-msg")!.textContent = err.message;
       })}>Register</button>
       <button onClick={() => logout()}>Logout</button>
@@ -31,12 +37,19 @@ const mockResponse = (ok: boolean, data: any, status = 200) => ({
   },
   json: async () => data,
   text: async () => JSON.stringify(data),
+  clone() {
+    return this;
+  },
 });
 
 describe("AuthContext", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+
   afterEach(cleanup);
   beforeEach(() => {
-    vi.stubGlobal("fetch", vi.fn());
+    mockPush.mockClear();
+    fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
     // Mock document.cookie
     Object.defineProperty(document, "cookie", {
       writable: true,
@@ -180,6 +193,40 @@ describe("AuthContext", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("state")).toHaveTextContent("guest");
+    });
+  });
+
+  it("auto-logs-out and redirects when any API call reports a dead session", async () => {
+    // 1. Initial fetch (admin)
+    (globalThis.fetch as any).mockResolvedValueOnce(mockResponse(true, {
+      user: { id: "1", email: "test@example.com", role: "admin", permissions: [] },
+    }));
+
+    render(
+      <AuthProvider>
+        <AuthTestComponent />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("state")).toHaveTextContent("admin");
+    });
+
+    // Some unrelated component elsewhere in the app makes an ordinary API
+    // call that comes back reporting the session is no longer valid. Note:
+    // configuring the queued response via `fetchMock` (captured before
+    // AuthProvider wrapped window.fetch), not `globalThis.fetch` directly --
+    // that now points at the watchdog's wrapper, not the underlying mock.
+    fetchMock.mockResolvedValueOnce(
+      mockResponse(false, { error: "Invalid or expired token." }, 401),
+    );
+    await fetch("/api/bookings");
+
+    await waitFor(() => {
+      expect(screen.getByTestId("state")).toHaveTextContent("guest");
+      expect(mockPush).toHaveBeenCalledWith(
+        expect.stringContaining("reason=session-expired"),
+      );
     });
   });
 });

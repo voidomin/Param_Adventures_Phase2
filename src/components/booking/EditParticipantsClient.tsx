@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { MapPin, User, X, AlertTriangle, Edit2, ShieldAlert, CheckCircle2, Loader2 } from "lucide-react";
+import { Modal } from "@/components/ui/Modal";
 
 interface SelectedAmenity {
   groupId: string;
@@ -600,13 +601,18 @@ export default function EditParticipantsClient({
       )}
 
       {/* SUCCESS CONFIRMATION MODAL */}
-      {isCancelSuccess && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-md p-4 animate-in fade-in duration-200">
-          <div className="bg-card border border-border w-full max-w-md rounded-3xl shadow-2xl overflow-hidden p-6 text-center space-y-5 animate-in zoom-in-95 duration-200">
+      <Modal
+        open={isCancelSuccess}
+        onClose={() => {
+          setIsCancelSuccess(false);
+          window.location.reload();
+        }}
+        panelClassName="bg-card border border-border w-full max-w-md rounded-3xl shadow-2xl overflow-hidden p-6 text-center space-y-5 animate-in zoom-in-95 duration-200"
+      >
             <div className="w-16 h-16 bg-green-500/10 border border-green-500/20 text-green-500 rounded-full flex items-center justify-center mx-auto shadow-[0_0_30px_rgba(34,197,94,0.15)]">
               <CheckCircle2 className="w-8 h-8" />
             </div>
-            
+
             <div className="space-y-2 text-center">
               <h3 className="text-xl font-bold text-foreground">Cancellation Processed</h3>
               <p className="text-sm text-foreground/60 leading-relaxed">
@@ -632,9 +638,7 @@ export default function EditParticipantsClient({
             >
               Done
             </button>
-          </div>
-        </div>
-      )}
+      </Modal>
     </div>
   );
 }
@@ -714,8 +718,11 @@ function EditGuestModal({
   onSave,
 }: Readonly<EditGuestModalProps>) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-200">
+    <Modal
+      open
+      onClose={onClose}
+      panelClassName="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-200"
+    >
         <div className="flex justify-between items-center p-6 border-b border-border">
           <div className="flex items-center gap-3">
             <User className="w-5 h-5 text-primary" />
@@ -897,8 +904,7 @@ function EditGuestModal({
             {isEditSubmitting ? "Saving…" : "Save Changes"}
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -934,8 +940,11 @@ function CancelGuestModal({
   isAllCancelled,
 }: Readonly<CancelGuestModalProps>) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-card border border-border w-full max-w-md rounded-2xl shadow-2xl flex flex-col my-auto max-h-[85vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+    <Modal
+      open
+      onClose={onClose}
+      panelClassName="bg-card border border-border w-full max-w-md rounded-2xl shadow-2xl flex flex-col my-auto max-h-[85vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200"
+    >
         <div className="flex justify-between items-center p-6 border-b border-border flex-shrink-0">
           <div className="flex items-center gap-3">
             <AlertTriangle className="w-5 h-5 text-red-500" />
@@ -1095,8 +1104,7 @@ function CancelGuestModal({
             {isCancelSubmitting ? "Processing…" : "Cancel Slots"}
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 

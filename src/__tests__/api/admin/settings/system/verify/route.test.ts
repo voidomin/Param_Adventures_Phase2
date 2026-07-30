@@ -140,4 +140,80 @@ describe("POST /api/admin/settings/system/verify", () => {
 
     expect(response.status).toBe(502);
   });
+
+  describe("TURNSTILE", () => {
+    it("returns 400 when the secret key is missing", async () => {
+      const response = await POST(createRequest({ type: "TURNSTILE", config: {} }));
+      expect(response.status).toBe(400);
+    });
+
+    it("verifies a valid secret key", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({ json: vi.fn().mockResolvedValue({ "error-codes": ["invalid-input-response"] }) }),
+      );
+
+      const response = await POST(createRequest({ type: "TURNSTILE", config: { secretKey: "sk_good" } }));
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      vi.unstubAllGlobals();
+    });
+
+    it("returns 502 when Cloudflare rejects the secret key", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({ json: vi.fn().mockResolvedValue({ "error-codes": ["invalid-input-secret"] }) }),
+      );
+
+      const response = await POST(createRequest({ type: "TURNSTILE", config: { secretKey: "sk_bad" } }));
+
+      expect(response.status).toBe(502);
+      vi.unstubAllGlobals();
+    });
+  });
+
+  describe("GOOGLE_SIGNIN", () => {
+    it("returns 400 when the client ID is missing", async () => {
+      const response = await POST(createRequest({ type: "GOOGLE_SIGNIN", config: {} }));
+      expect(response.status).toBe(400);
+    });
+
+    it("returns 502 when the client ID doesn't match Google's expected format", async () => {
+      const response = await POST(createRequest({ type: "GOOGLE_SIGNIN", config: { clientId: "not-a-real-id" } }));
+      expect(response.status).toBe(502);
+    });
+
+    it("verifies a recognized client ID", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({ text: vi.fn().mockResolvedValue("redirect_uri_mismatch") }),
+      );
+
+      const response = await POST(
+        createRequest({ type: "GOOGLE_SIGNIN", config: { clientId: "123-abc.apps.googleusercontent.com" } }),
+      );
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      vi.unstubAllGlobals();
+    });
+
+    it("returns 502 when Google rejects the client ID", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({ text: vi.fn().mockResolvedValue("Error 401: invalid_client") }),
+      );
+
+      const response = await POST(
+        createRequest({ type: "GOOGLE_SIGNIN", config: { clientId: "123-abc.apps.googleusercontent.com" } }),
+      );
+
+      expect(response.status).toBe(502);
+      vi.unstubAllGlobals();
+    });
+  });
+
 });

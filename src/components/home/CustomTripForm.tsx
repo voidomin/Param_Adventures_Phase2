@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { z } from "zod";
+import TurnstileWidget from "@/components/ui/TurnstileWidget";
 
 const customTripFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -26,6 +27,7 @@ export default function CustomTripForm() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
   const [supportPhone, setSupportPhone] = useState("+91 98765 43210");
+  const [turnstileToken, setTurnstileToken] = useState("");
 
   useEffect(() => {
     fetch("/api/settings/public")
@@ -62,7 +64,7 @@ export default function CustomTripForm() {
     fetch("/api/leads", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
+      body: JSON.stringify({ ...data, turnstileToken }),
     })
       .then(async (res) => {
         const resData = await res.json();
@@ -203,6 +205,8 @@ export default function CustomTripForm() {
               />
             </div>
           </div>
+
+          <TurnstileWidget onVerify={setTurnstileToken} />
 
           <button
             type="submit"

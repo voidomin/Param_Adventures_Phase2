@@ -5,6 +5,7 @@ import { logActivity } from "@/lib/audit-logger";
 import { sendBookingCancellation } from "@/lib/email";
 import { z } from "zod";
 import { getRefundPercentage, calculateRefundBreakdown } from "@/lib/refund-engine";
+import { logError } from "@/lib/monitoring";
 
 const cancelSchema = z.object({
   reason: z.string().optional().or(z.literal("")),
@@ -148,6 +149,9 @@ export async function POST(
     return NextResponse.json({ success: true });
   } catch (error: unknown) {
     console.error("Booking cancellation error:", error);
+    await logError(error instanceof Error ? error : new Error(String(error)), {
+      route: "POST /api/bookings/[id]/cancel",
+    });
     return NextResponse.json(
       { error: "Failed to cancel booking." },
       { status: 500 }

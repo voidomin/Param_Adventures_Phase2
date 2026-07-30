@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useState, type SVGProps } from "react";
+import { useEffect, useRef, useState, type SVGProps } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import Link from "next/link";
 import Image from "next/image";
 import { Clock, MapPin, IndianRupee, Loader2, X, AlertTriangle, MessageCircle } from "lucide-react";
 import SaveButton from "@/components/experiences/SaveButton";
 import { type RefundBreakdown } from "@/lib/refund-engine";
+import { useToast } from "@/components/ui/Toast";
+import { Modal } from "@/components/ui/Modal";
 
 type TabStatus = "saved" | "pending" | "upcoming" | "past" | "cancelled";
 
@@ -193,8 +195,11 @@ function CancelModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
-      <div className="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl flex flex-col my-auto max-h-[85vh] overflow-hidden animate-in fade-in zoom-in duration-200">
+    <Modal
+      open
+      onClose={onClose}
+      panelClassName="bg-card border border-border w-full max-w-lg rounded-2xl shadow-2xl flex flex-col my-auto max-h-[85vh] overflow-hidden animate-in fade-in zoom-in duration-200"
+    >
         <div className="flex justify-between items-center p-6 border-b border-border flex-shrink-0">
           <div className="flex items-center gap-3">
             <AlertTriangle className="w-5 h-5 text-red-500" />
@@ -328,8 +333,7 @@ function CancelModal({
             {isSubmitting ? "Cancelling…" : "Yes, Cancel"}
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -346,12 +350,18 @@ function PayBalanceModal({
   onSuccess,
   razorpayKeyId,
 }: Readonly<PayBalanceModalProps>) {
+  const toast = useToast();
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupons, setAppliedCoupons] = useState<{ id: string; code: string; balance: number }[]>([]);
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Synchronous guard against a fast double-click, same reasoning as
+  // BookingModal.tsx's handleProceedToPay: setIsSubmitting(true) is an async
+  // state update, so a second click can still fire before the button
+  // visually disables.
+  const isSubmittingRef = useRef(false);
 
   const handleRemoveCoupon = (couponId: string) => {
     setAppliedCoupons((prev) => prev.filter((c) => c.id !== couponId));
@@ -391,6 +401,8 @@ function PayBalanceModal({
   };
 
   const handleProceed = async () => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     setError(null);
     try {
@@ -411,7 +423,7 @@ function PayBalanceModal({
       if (!res.ok) throw new Error(data.error || "Failed to initiate payment.");
 
       if (data.fullyPaidByCoupon) {
-        alert("Payment Successful (Fully covered by Coupons)!");
+        toast.success("Payment successful! Fully covered by coupons.");
         onSuccess();
         onClose();
         return;
@@ -449,15 +461,18 @@ function PayBalanceModal({
             });
             const verifyData = await verifyRes.json();
             if (!verifyRes.ok) throw new Error(verifyData.error);
-            alert("Payment Successful!");
+            toast.success("Payment successful!");
             onSuccess();
             onClose();
           } catch (err: unknown) {
-            alert("Payment verification failed: " + (err instanceof Error ? err.message : "unknown error"));
+            toast.error("Payment verification failed: " + (err instanceof Error ? err.message : "unknown error"));
           }
         },
         modal: {
-          ondismiss: () => setIsSubmitting(false),
+          ondismiss: () => {
+            setIsSubmitting(false);
+            isSubmittingRef.current = false;
+          },
         },
       });
       rzp.open();
@@ -465,12 +480,16 @@ function PayBalanceModal({
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to process payment.");
       setIsSubmitting(false);
+      isSubmittingRef.current = false;
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="bg-card border border-border w-full max-w-md rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in duration-200">
+    <Modal
+      open
+      onClose={onClose}
+      panelClassName="bg-card border border-border w-full max-w-md rounded-2xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in fade-in zoom-in duration-200"
+    >
         <div className="flex justify-between items-center p-6 border-b border-border flex-shrink-0">
           <h3 className="text-xl font-heading font-bold text-foreground">Pay Remaining Balance</h3>
           <button type="button" onClick={onClose} className="text-foreground/40 hover:text-foreground transition-colors">
@@ -562,8 +581,7 @@ function PayBalanceModal({
             )}
           </button>
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -628,6 +646,7 @@ function getPaymentStatusLabel(status: string) {
 }
 
 export default function BookingsPage() {
+  const toast = useToast();
   const { user, isLoading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<TabStatus>("upcoming");
 
@@ -705,14 +724,14 @@ export default function BookingsPage() {
   const handlePayPending = async (booking: BookingItem) => {
     const payment = booking.payments.find((p) => p.providerOrderId);
     if (!payment?.providerOrderId) {
-      alert("No valid Razorpay order ID found for this booking.");
+      toast.error("No valid Razorpay order ID found for this booking.");
       return;
     }
 
     setProcessingId(booking.id);
     const scriptLoaded = await loadRazorpayScript();
     if (!scriptLoaded) {
-      alert("Failed to load payment gateway.");
+      toast.error("Failed to load payment gateway.");
       setProcessingId(null);
       return;
     }
@@ -721,7 +740,7 @@ export default function BookingsPage() {
 
     const RazorpayCtor = globalThis.window.Razorpay;
     if (!RazorpayCtor) {
-      alert("Payment gateway is unavailable.");
+      toast.error("Payment gateway is unavailable.");
       setProcessingId(null);
       return;
     }
@@ -752,11 +771,12 @@ export default function BookingsPage() {
           const verifyData = await verifyRes.json();
           if (!verifyRes.ok) throw new Error(verifyData.error);
 
-          alert("Payment Successful!");
-          globalThis.location.reload();
+          toast.success("Payment successful!");
+          // Brief delay so the toast is actually visible before the reload wipes the page.
+          setTimeout(() => globalThis.location.reload(), 600);
         } catch (err: unknown) {
           const message = err instanceof Error ? err.message : "Unknown error";
-          alert("Payment verification failed: " + message);
+          toast.error("Payment verification failed: " + message);
         } finally {
           setProcessingId(null);
         }

@@ -19,12 +19,16 @@ function verifyCsrf(request: NextRequest, pathname: string, method: string): Nex
     return null;
   }
 
-  const isWebhook = pathname.startsWith("/api/bookings/webhook");
+  const isWebhook =
+    pathname.startsWith("/api/bookings/webhook") ||
+    pathname.startsWith("/api/webhooks/email");
   // Cron-triggered endpoints are called server-to-server (no browser Origin
   // header to check) and carry their own strong auth -- a timing-safe
   // x-cron-secret comparison, same security model as the webhook's HMAC
   // signature check above.
-  const isCronEndpoint = pathname.startsWith("/api/admin/bookings/cleanup");
+  const isCronEndpoint =
+    pathname.startsWith("/api/admin/bookings/cleanup") ||
+    pathname.startsWith("/api/admin/audit-logs/purge");
   if (isWebhook || isCronEndpoint) {
     return null;
   }
@@ -127,7 +131,7 @@ function handleRateLimiting(request: NextRequest, pathname: string): RateLimitRe
 /**
  * Route protection middleware.
  */
-export default function proxy(request: NextRequest) {
+export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const method = request.method;
 
@@ -157,8 +161,11 @@ export default function proxy(request: NextRequest) {
     "/api/auth/logout",
     "/api/auth/forgot-password",
     "/api/auth/reset-password",
+    "/api/auth/verify-email",
+    "/api/auth/google",
     "/forgot-password",
     "/reset-password",
+    "/verify-email",
     "/api/categories",
     "/api/experiences",
     "/api/blog",
@@ -166,7 +173,9 @@ export default function proxy(request: NextRequest) {
     "/our-story",
     "/api/admin/bootstrap",
     "/api/admin/bookings/cleanup",
+    "/api/admin/audit-logs/purge",
     "/api/bookings/webhook",
+    "/api/webhooks/email",
     "/api/health",
     "/api/leads",
     "/api/quotes",

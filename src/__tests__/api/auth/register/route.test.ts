@@ -14,6 +14,9 @@ vi.mock("@/lib/db", () => ({
       findUnique: vi.fn(),
       findMany: vi.fn(),
     },
+    siteSetting: {
+      findMany: vi.fn(),
+    },
   },
 }));
 vi.mock("@/lib/auth", () => ({
@@ -24,6 +27,10 @@ vi.mock("@/lib/auth", () => ({
 }));
 vi.mock("@/lib/email", () => ({
   sendWelcomeEmail: vi.fn(() => Promise.resolve()),
+  sendVerificationEmail: vi.fn(() => Promise.resolve()),
+}));
+vi.mock("@/lib/turnstile", () => ({
+  verifyTurnstileToken: vi.fn(() => Promise.resolve(true)),
 }));
 
 import { POST } from "@/app/api/auth/register/route";
@@ -33,7 +40,8 @@ import {
   generateAccessToken,
   generateRefreshToken,
 } from "@/lib/auth";
-import { sendWelcomeEmail } from "@/lib/email";
+import { sendWelcomeEmail, sendVerificationEmail } from "@/lib/email";
+import { verifyTurnstileToken } from "@/lib/turnstile";
 
 const mockUserFindUnique = vi.mocked(prisma.user.findUnique);
 const mockUserCreate = vi.mocked(prisma.user.create);
@@ -42,8 +50,11 @@ const mockHashPassword = vi.mocked(hashPassword);
 const mockGenerateAccessToken = vi.mocked(generateAccessToken);
 const mockGenerateRefreshToken = vi.mocked(generateRefreshToken);
 const mockSendWelcomeEmail = vi.mocked(sendWelcomeEmail);
+const mockSendVerificationEmail = vi.mocked(sendVerificationEmail);
 const mockPlatformSettingFindUnique = vi.mocked(prisma.platformSetting.findUnique);
 const mockPlatformSettingFindMany = vi.mocked(prisma.platformSetting.findMany);
+const mockSiteSettingFindMany = vi.mocked(prisma.siteSetting.findMany);
+const mockVerifyTurnstileToken = vi.mocked(verifyTurnstileToken);
 
 const createRequest = (body: unknown) =>
   new NextRequest("http://localhost/api/auth/register", {
@@ -59,6 +70,8 @@ describe("POST /api/auth/register", () => {
       { key: "jwt_expiry", value: "1h" },
       { key: "refresh_token_expiry", value: "7d" },
     ] as any);
+    mockSiteSettingFindMany.mockResolvedValue([{ key: "app_url", value: "https://example.com" }] as any);
+    mockVerifyTurnstileToken.mockResolvedValue(true);
   });
 
   it("returns 400 for invalid payload", async () => {
@@ -69,11 +82,21 @@ describe("POST /api/auth/register", () => {
     expect(response.status).toBe(400);
   });
 
+  it("returns 400 when terms are not accepted", async () => {
+    const response = await POST(
+      createRequest({ email: "user@example.com", password: "Password1", name: "User", acceptedTerms: false }),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toContain("Terms");
+  });
+
   it("returns 409 when user already exists", async () => {
     mockUserFindUnique.mockResolvedValue({ id: "u1" } as any);
 
     const response = await POST(
-      createRequest({ email: "user@example.com", password: "password1", name: "User" }),
+      createRequest({ email: "user@example.com", password: "Password1", name: "User", acceptedTerms: true }),
     );
 
     expect(response.status).toBe(409);
@@ -84,7 +107,7 @@ describe("POST /api/auth/register", () => {
     mockRoleFindUnique.mockResolvedValue(null);
 
     const response = await POST(
-      createRequest({ email: "user@example.com", password: "password1", name: "User" }),
+      createRequest({ email: "user@example.com", password: "Password1", name: "User", acceptedTerms: true }),
     );
 
     expect(response.status).toBe(500);
@@ -105,7 +128,7 @@ describe("POST /api/auth/register", () => {
     mockGenerateRefreshToken.mockResolvedValue("refresh-1" as any);
 
     const response = await POST(
-      createRequest({ email: "USER@EXAMPLE.COM", password: "password1", name: "  User  " }),
+      createRequest({ email: "USER@EXAMPLE.COM", password: "Password1", name: "  User  ", acceptedTerms: true }),
     );
     const data = await response.json();
 
@@ -119,6 +142,10 @@ describe("POST /api/auth/register", () => {
           name: "User",
           password: "hashed-1",
           roleId: "r1",
+          emailVerificationToken: expect.any(String),
+          emailVerificationTokenExpiry: expect.any(Date),
+          termsVersion: expect.any(String),
+          acceptedTermsAt: expect.any(Date),
         }),
       }),
     );
@@ -126,15 +153,36 @@ describe("POST /api/auth/register", () => {
       userName: "User",
       userEmail: "user@example.com",
     });
+    expect(mockSendVerificationEmail).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userName: "User",
+        userEmail: "user@example.com",
+        verifyLink: expect.stringContaining("https://example.com/verify-email?token="),
+      }),
+    );
     expect(response.headers.get("set-cookie")).toContain("accessToken=");
     expect(response.headers.get("set-cookie")).toContain("refreshToken=");
+  });
+
+  it("returns 400 when the bot-protection check fails", async () => {
+    mockUserFindUnique.mockResolvedValue(null);
+    mockVerifyTurnstileToken.mockResolvedValue(false);
+
+    const response = await POST(
+      createRequest({ email: "user@example.com", password: "Password1", name: "User", acceptedTerms: true }),
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toContain("bot-protection");
+    expect(mockUserCreate).not.toHaveBeenCalled();
   });
 
   it("returns 500 on unexpected error", async () => {
     mockUserFindUnique.mockRejectedValue(new Error("db down"));
 
     const response = await POST(
-      createRequest({ email: "user@example.com", password: "password1", name: "User" }),
+      createRequest({ email: "user@example.com", password: "Password1", name: "User", acceptedTerms: true }),
     );
 
     expect(response.status).toBe(500);

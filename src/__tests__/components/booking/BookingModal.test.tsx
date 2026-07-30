@@ -170,6 +170,36 @@ describe("BookingModal Smoke Test", () => {
     }, { timeout: 5000 });
   });
 
+  it("sends an idempotencyKey with the booking request and ignores a rapid second click", async () => {
+    render(<BookingModal {...defaultProps} />);
+
+    fireEvent.click(await screen.findByText(/5 left/i));
+    fireEvent.click(screen.getByRole("button", { name: /Continue to Details/i }));
+
+    await screen.findByLabelText(/Phone Number \*/i);
+    fireEvent.change(screen.getByLabelText(/Phone Number \*/i), { target: { value: "1111111111" } });
+    fireEvent.change(screen.getByLabelText(/Date of Birth \*/i), { target: { value: "1996-06-09" } });
+    fireEvent.change(screen.getByLabelText(/Pickup Location \*/i), { target: { value: "Point A" } });
+    fireEvent.change(screen.getByLabelText(/Drop-off Location \*/i), { target: { value: "Point B" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /Review Booking/i }));
+
+    const payBtn = await screen.findByText(/Pay ₹/i);
+    // Two rapid clicks before the button unmounts into the "processing" step.
+    fireEvent.click(payBtn);
+    fireEvent.click(payBtn);
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/bookings/book-123/success");
+    }, { timeout: 5000 });
+
+    const bookingCalls = mockFetch.mock.calls.filter(([url]) => url === "/api/bookings");
+    expect(bookingCalls).toHaveLength(1);
+
+    const body = JSON.parse(bookingCalls[0][1].body);
+    expect(body.idempotencyKey).toMatch(/^test-uuid-\d+$/);
+  });
+
   it("handles payment verification failure", async () => {
     mockFetch.mockImplementation((url: string) => {
       if (url === "/api/settings/public") return Promise.resolve({ ok: true, json: () => Promise.resolve({ taxConfig: JSON.stringify([]) }) });

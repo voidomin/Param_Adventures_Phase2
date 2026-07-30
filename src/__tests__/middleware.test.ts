@@ -38,7 +38,7 @@ describe("Next.js Middleware (Proxy)", () => {
   });
 
   describe("Rate Limiting", () => {
-    it("returns 429 when rate limit checks fail", () => {
+    it("returns 429 when rate limit checks fail", async () => {
       vi.mocked(findMatchingRule).mockReturnValue({
         pathPrefix: "/api/auth/login",
         limit: 5,
@@ -59,7 +59,7 @@ describe("Next.js Middleware (Proxy)", () => {
           origin: "http://localhost",
         }
       });
-      const res = proxy(req);
+      const res = await proxy(req);
 
       expect(res.status).toBe(429);
       expect(res.headers.get("Retry-After")).toBeDefined();
@@ -67,55 +67,55 @@ describe("Next.js Middleware (Proxy)", () => {
   });
 
   describe("Public Routes Routing", () => {
-    it("allows public page routes without authentication", () => {
+    it("allows public page routes without authentication", async () => {
       const publicPaths = ["/", "/experiences", "/about", "/login", "/register", "/privacy", "/terms", "/refunds", "/why-param-adventures"];
       for (const path of publicPaths) {
         const req = createRequest(`http://localhost${path}`);
-        const res = proxy(req);
+        const res = await proxy(req);
         expect(res.status).toBe(200); 
       }
     });
 
-    it("allows public experience detail paths", () => {
+    it("allows public experience detail paths", async () => {
       const req = createRequest("http://localhost/experiences/everest-base-camp");
-      const res = proxy(req);
+      const res = await proxy(req);
       expect(res.status).toBe(200);
     });
   });
 
   describe("Protected Routes Routing", () => {
-    it("redirects page requests to /login if accessToken is missing", () => {
+    it("redirects page requests to /login if accessToken is missing", async () => {
       const req = createRequest("http://localhost/admin/dashboard");
-      const res = proxy(req);
+      const res = await proxy(req);
 
       expect(res.status).toBe(307); // Temporary redirect
       expect(res.headers.get("location")).toBe("http://localhost/login?redirect=%2Fadmin%2Fdashboard");
     });
 
-    it("returns 401 for API requests if accessToken is missing", () => {
+    it("returns 401 for API requests if accessToken is missing", async () => {
       const req = createRequest("http://localhost/api/admin/bookings");
-      const res = proxy(req);
+      const res = await proxy(req);
 
       expect(res.status).toBe(401);
     });
 
-    it("allows protected route access when accessToken is present", () => {
+    it("allows protected route access when accessToken is present", async () => {
       const req = createRequest("http://localhost/admin/dashboard", {
         cookies: { accessToken: "valid-jwt" },
       });
-      const res = proxy(req);
+      const res = await proxy(req);
       expect(res.status).toBe(200);
     });
   });
 
   describe("CSRF Protection", () => {
-    it("allows GET requests to api without CSRF check", () => {
+    it("allows GET requests to api without CSRF check", async () => {
       const req = createRequest("http://localhost/api/experiences");
-      const res = proxy(req);
+      const res = await proxy(req);
       expect(res.status).toBe(200);
     });
 
-    it("allows state-changing requests when Host header matches Referer host", () => {
+    it("allows state-changing requests when Host header matches Referer host", async () => {
       const req = createRequest("http://localhost/api/bookings", {
         method: "POST",
         headers: {
@@ -124,11 +124,11 @@ describe("Next.js Middleware (Proxy)", () => {
         },
         cookies: { accessToken: "valid-token" },
       });
-      const res = proxy(req);
+      const res = await proxy(req);
       expect(res.status).toBe(200);
     });
 
-    it("allows state-changing requests when Origin matches APP_URL host", () => {
+    it("allows state-changing requests when Origin matches APP_URL host", async () => {
       const req = createRequest("http://localhost/api/bookings", {
         method: "POST",
         headers: {
@@ -137,11 +137,11 @@ describe("Next.js Middleware (Proxy)", () => {
         },
         cookies: { accessToken: "valid-token" },
       });
-      const res = proxy(req);
+      const res = await proxy(req);
       expect(res.status).toBe(200);
     });
 
-    it("blocks state-changing requests if Origin and Referer are mismatched", () => {
+    it("blocks state-changing requests if Origin and Referer are mismatched", async () => {
       const req = createRequest("http://localhost/api/bookings", {
         method: "POST",
         headers: {
@@ -150,11 +150,11 @@ describe("Next.js Middleware (Proxy)", () => {
         },
         cookies: { accessToken: "valid-token" },
       });
-      const res = proxy(req);
+      const res = await proxy(req);
       expect(res.status).toBe(403);
     });
 
-    it("blocks state-changing requests if Origin and Referer are missing", () => {
+    it("blocks state-changing requests if Origin and Referer are missing", async () => {
       const req = createRequest("http://localhost/api/bookings", {
         method: "POST",
         headers: {
@@ -162,29 +162,42 @@ describe("Next.js Middleware (Proxy)", () => {
         },
         cookies: { accessToken: "valid-token" },
       });
-      const res = proxy(req);
+      const res = await proxy(req);
       expect(res.status).toBe(403);
     });
 
-    it("exempts Razorpay webhook endpoint from CSRF verification", () => {
-      const req = createRequest("http://localhost/api/bookings/webhook", {
+    it.each([
+      ["Razorpay webhook", "http://localhost/api/bookings/webhook"],
+      ["abandoned-bookings cleanup cron", "http://localhost/api/admin/bookings/cleanup"],
+      ["audit-log purge cron", "http://localhost/api/admin/audit-logs/purge"],
+      ["email delivery webhook", "http://localhost/api/webhooks/email"],
+    ])("exempts %s endpoint from CSRF verification", async (_, url) => {
+      const req = createRequest(url, {
         method: "POST",
-        headers: {
-          host: "localhost:3000",
-        },
+        headers: { host: "localhost:3000" },
       });
-      const res = proxy(req);
+      const res = await proxy(req);
       expect(res.status).toBe(200);
     });
+  });
 
-    it("exempts the abandoned-bookings cleanup cron endpoint from CSRF verification", () => {
-      const req = createRequest("http://localhost/api/admin/bookings/cleanup", {
+  describe("New Public Auth Routes", () => {
+    it("allows the verify-email page and API route without authentication", async () => {
+      const pageRes = await proxy(createRequest("http://localhost/verify-email"));
+      expect(pageRes.status).toBe(200);
+
+      const apiRes = await proxy(createRequest("http://localhost/api/auth/verify-email", {
         method: "POST",
-        headers: {
-          host: "localhost:3000",
-        },
-      });
-      const res = proxy(req);
+        headers: { host: "localhost:3000", origin: "http://localhost:3000" },
+      }));
+      expect(apiRes.status).toBe(200);
+    });
+
+    it("allows the Google sign-in API route without authentication", async () => {
+      const res = await proxy(createRequest("http://localhost/api/auth/google", {
+        method: "POST",
+        headers: { host: "localhost:3000", origin: "http://localhost:3000" },
+      }));
       expect(res.status).toBe(200);
     });
   });

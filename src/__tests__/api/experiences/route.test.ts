@@ -31,6 +31,7 @@ describe("GET /api/experiences", () => {
     expect(mockFindMany).toHaveBeenCalledWith({
       where: { status: "PUBLISHED" },
       orderBy: { createdAt: "desc" },
+      take: 300,
       include: {
         categories: {
           include: { category: true },

@@ -49,6 +49,15 @@ describe("rate-limit-config", () => {
 
       const dataExportRule = findMatchingRule("/api/user/data-export");
       expect(dataExportRule?.label).toBe("User:DataExport");
+
+      const twoFactorRule = findMatchingRule("/api/user/2fa/setup");
+      expect(twoFactorRule?.label).toBe("User:TwoFactor");
+    });
+
+    it("matches the new account-security auth endpoints", () => {
+      expect(findMatchingRule("/api/auth/verify-email")?.label).toBe("Auth:VerifyEmail");
+      expect(findMatchingRule("/api/auth/resend-verification")?.label).toBe("Auth:ResendVerification");
+      expect(findMatchingRule("/api/auth/google")?.label).toBe("Auth:Google");
     });
 
     it("falls back to general api limit for unmatched api routes", () => {

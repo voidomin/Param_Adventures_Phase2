@@ -7,6 +7,7 @@ vi.mock("@/lib/razorpay", () => ({ getRazorpay: vi.fn() }));
 vi.mock("@/repositories/booking.repo", () => ({
   BookingRepo: { getRazorpayKeyId: vi.fn() },
 }));
+vi.mock("@/lib/monitoring", () => ({ logError: vi.fn() }));
 vi.mock("@/lib/db", () => {
   const mockPrisma = {
     booking: { findUnique: vi.fn(), update: vi.fn() },

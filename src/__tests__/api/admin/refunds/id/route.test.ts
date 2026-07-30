@@ -5,6 +5,7 @@ vi.mock("@/lib/api-auth", () => ({ authorizeRequest: vi.fn() }));
 vi.mock("@/lib/audit-logger", () => ({ logActivity: vi.fn() }));
 vi.mock("@/lib/email", () => ({ sendRefundResolved: vi.fn() }));
 vi.mock("@/lib/coupon-engine", () => ({ generateCouponCode: vi.fn(() => "PARAM-TESTCODE") }));
+vi.mock("@/lib/monitoring", () => ({ logError: vi.fn() }));
 vi.mock("@/lib/db", () => {
   const mockPrisma = {
     refundRequest: {

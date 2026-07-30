@@ -42,7 +42,7 @@ describe("POST /api/auth/reset-password", () => {
     mockFindFirst.mockResolvedValue(null);
 
     const response = await POST(
-      createRequest({ token: "abc", password: "password123" }),
+      createRequest({ token: "abc", password: "Password123" }),
     );
     const data = await response.json();
 
@@ -56,7 +56,7 @@ describe("POST /api/auth/reset-password", () => {
     mockUpdate.mockResolvedValue({} as any);
 
     const response = await POST(
-      createRequest({ token: "abc", password: "password123" }),
+      createRequest({ token: "abc", password: "Password123" }),
     );
     const data = await response.json();
 
@@ -73,7 +73,7 @@ describe("POST /api/auth/reset-password", () => {
     mockFindFirst.mockRejectedValue(new Error("db down"));
 
     const response = await POST(
-      createRequest({ token: "abc", password: "password123" }),
+      createRequest({ token: "abc", password: "Password123" }),
     );
     const data = await response.json();
 

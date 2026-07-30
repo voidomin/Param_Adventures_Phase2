@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { z } from "zod";
 import { formLimiter } from "@/lib/rate-limiter";
+import { verifyTurnstileToken } from "@/lib/turnstile";
 
 const leadSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -11,6 +12,7 @@ const leadSchema = z.object({
     .string()
     .min(10, "Please provide more details on your requirements"),
   source: z.string().optional(),
+  turnstileToken: z.string().optional(),
 });
 
 export async function POST(req: Request) {
@@ -26,7 +28,11 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json();
-    const data = leadSchema.parse(body);
+    const { turnstileToken, ...data } = leadSchema.parse(body);
+
+    if (!(await verifyTurnstileToken(turnstileToken, ip))) {
+      return NextResponse.json({ error: "Failed bot-protection check. Please try again." }, { status: 400 });
+    }
 
     const lead = await prisma.customLead.create({
       data,

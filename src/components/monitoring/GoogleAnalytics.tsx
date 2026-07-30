@@ -1,10 +1,17 @@
 import React, { Suspense } from 'react';
 import Script from 'next/script';
+import { cookies } from 'next/headers';
 import { prisma } from '@/lib/db';
 import { withBuildSafety } from '@/lib/db-utils';
+import { COOKIE_CONSENT_COOKIE, COOKIE_CONSENT_ACCEPTED } from '@/lib/cookie-consent';
 import GoogleAnalyticsTracker from './GoogleAnalyticsTracker';
 
 export default async function GoogleAnalytics() {
+  const cookieStore = await cookies();
+  if (cookieStore.get(COOKIE_CONSENT_COOKIE)?.value !== COOKIE_CONSENT_ACCEPTED) {
+    return null;
+  }
+
   const gaSetting = await withBuildSafety(() =>
     prisma.platformSetting.findUnique({
       where: { key: 'google_analytics_id' },

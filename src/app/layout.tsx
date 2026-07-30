@@ -56,12 +56,16 @@ export async function generateMetadata(): Promise<Metadata> {
 
 import Navbar from "@/components/layout/Navbar";
 import ProfilePromptBanner from "@/components/layout/ProfilePromptBanner";
+import EmailVerificationBanner from "@/components/layout/EmailVerificationBanner";
+import TwoFactorPromptBanner from "@/components/layout/TwoFactorPromptBanner";
+import CookieConsentBanner from "@/components/layout/CookieConsentBanner";
 import Footer from "@/components/layout/Footer";
 import MaintenanceGuard from "@/components/layout/MaintenanceGuard";
 import GoogleAnalytics from "@/components/monitoring/GoogleAnalytics";
 import MetaPixel from "@/components/monitoring/MetaPixel";
 import MicrosoftClarity from "@/components/monitoring/MicrosoftClarity";
 import { withBuildSafety } from "@/lib/db-utils";
+import { ToastProvider } from "@/components/ui/Toast";
 
 export default async function RootLayout({
   children,
@@ -83,6 +87,8 @@ export default async function RootLayout({
   const siteTitle = getSiteVal("site_title", "Param Adventures");
 
   const officeAddress = getSiteVal("office_address", "Kullu, Himachal Pradesh,\nIndia 175131");
+  const companyName = getPlatformVal("companyName", "");
+  const gstNumber = getPlatformVal("gstNumber", "");
 
   return (
     <html lang="en" suppressHydrationWarning>
@@ -103,21 +109,28 @@ export default async function RootLayout({
         >
           <div data-testid="theme-provider">
             <AuthProvider>
-              <MaintenanceGuard isMaintenanceMode={maintenanceMode}>
-                <div className="flex flex-col min-h-screen">
-                  <Navbar />
-                  <ProfilePromptBanner />
-                  <main className="flex-1 flex flex-col">{children}</main>
-                  <Footer 
-                    supportEmail={supportEmail} 
-                    supportPhone={supportPhone} 
-                    officeAddress={officeAddress}
-                    siteTitle={siteTitle}
-                  />
-                </div>
-              </MaintenanceGuard>
+              <ToastProvider>
+                <MaintenanceGuard isMaintenanceMode={maintenanceMode}>
+                  <div className="flex flex-col min-h-screen">
+                    <Navbar />
+                    <EmailVerificationBanner />
+                    <ProfilePromptBanner />
+                    <TwoFactorPromptBanner />
+                    <main className="flex-1 flex flex-col">{children}</main>
+                    <Footer
+                      supportEmail={supportEmail}
+                      supportPhone={supportPhone}
+                      officeAddress={officeAddress}
+                      siteTitle={siteTitle}
+                      companyName={companyName}
+                      gstNumber={gstNumber}
+                    />
+                  </div>
+                </MaintenanceGuard>
+              </ToastProvider>
             </AuthProvider>
           </div>
+          <CookieConsentBanner />
         </ThemeProvider>
       </body>
     </html>

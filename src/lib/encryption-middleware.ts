@@ -11,6 +11,8 @@ const SENSITIVE_KEYS = new Set([
   "zoho_api_key",
   "resend_api_key",
   "aws_secret_access_key",
+  "resend_webhook_secret",
+  "turnstile_secret_key",
 ]);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

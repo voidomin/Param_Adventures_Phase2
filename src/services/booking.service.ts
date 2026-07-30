@@ -116,6 +116,22 @@ export const BookingService = {
     // We use Serializable isolation to prevent phantom reads and ensure absolute consistency.
     const result = await runWithRetry(() =>
       prisma.$transaction(async (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => {
+        // Idempotent replay: a repeat POST carrying the same client-generated
+        // key (double-click across tabs, a network-level retry) returns the
+        // booking that call already produced instead of creating a duplicate.
+        if (data.idempotencyKey) {
+          const replay = await BookingRepo.findByIdempotencyKey(tx, userId, data.idempotencyKey);
+          if (replay) {
+            return {
+              booking: replay.booking,
+              payment: replay.payment,
+              fullyPaid: replay.booking.bookingStatus === "CONFIRMED",
+              totalCouponRedeemed: Number(replay.booking.paidAmount),
+              idempotentReplay: true,
+            };
+          }
+        }
+
         // If a similar requested/pending booking exists, mark it as cancelled so it doesn't block the new checkout
         const existing = await BookingRepo.findExistingPendingBooking(tx, userId, data.slotId);
         if (existing) {
@@ -210,7 +226,7 @@ export const BookingService = {
           data: { status: "PAID", provider: "MANUAL", providerPaymentId: "COUPON_PAID" },
         });
 
-        return { booking, payment, fullyPaid: true, totalCouponRedeemed };
+        return { booking, payment, fullyPaid: true, totalCouponRedeemed, idempotentReplay: false };
       }
 
       // Regular Flow with remaining Razorpay charge (Case 2)
@@ -220,33 +236,35 @@ export const BookingService = {
         totalPrice: remainingPaymentAmount,
       });
 
-        return { booking, payment, fullyPaid: false, totalCouponRedeemed };
+        return { booking, payment, fullyPaid: false, totalCouponRedeemed, idempotentReplay: false };
       }, {
         isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
       })
     );
 
-    const { booking } = result;
+    const { booking, idempotentReplay } = result;
 
     if (result.fullyPaid) {
-      await logActivity("BOOKING_REQUESTED", userId, "Booking", booking.id, {
-        experienceId: data.experienceId,
-        slotId: data.slotId,
-        participantCount: data.participantCount,
-        paymentType: "COUPON",
-      });
+      if (!idempotentReplay) {
+        await logActivity("BOOKING_REQUESTED", userId, "Booking", booking.id, {
+          experienceId: data.experienceId,
+          slotId: data.slotId,
+          participantCount: data.participantCount,
+          paymentType: "COUPON",
+        });
 
-      await logActivity("BOOKING_CONFIRMED", userId, "Booking", booking.id, {
-        paymentType: "COUPON",
-        totalCouponRedeemed: result.totalCouponRedeemed,
-      });
+        await logActivity("BOOKING_CONFIRMED", userId, "Booking", booking.id, {
+          paymentType: "COUPON",
+          totalCouponRedeemed: result.totalCouponRedeemed,
+        });
 
-      revalidatePath("/", "layout");
+        revalidatePath("/", "layout");
 
-      // Send confirmation email
-      this.sendBookingConfirmationWithDetails(booking.id).catch((err) =>
-        console.error("[BookingService] Background email error:", err),
-      );
+        // Send confirmation email
+        this.sendBookingConfirmationWithDetails(booking.id).catch((err) =>
+          console.error("[BookingService] Background email error:", err),
+        );
+      }
 
       return {
         bookingId: booking.id,
@@ -254,10 +272,27 @@ export const BookingService = {
       };
     }
 
+    if (idempotentReplay) {
+      // Reuse the Razorpay order the original call already created -- no new
+      // order, no duplicate audit log entry, no second confirmation email.
+      const keyIdSetting = await BookingRepo.getRazorpayKeyId(prisma);
+      const keyId = keyIdSetting?.value || process.env.RAZORPAY_KEY_ID;
+
+      return {
+        bookingId: booking.id,
+        orderId: result.payment?.providerOrderId,
+        amount: Math.round(Number(result.payment?.amount) * 100),
+        currency: result.payment?.currency || "INR",
+        keyId,
+      };
+    }
+
     // 3. External Integration: Razorpay
     try {
       const razorpay = await getRazorpay();
-      const amountPaise = Math.round(Number(result.payment.amount) * 100);
+      // Non-null: this branch only runs when idempotentReplay is false, where
+      // `payment` is always the row BookingRepo.createPayment just created.
+      const amountPaise = Math.round(Number(result.payment!.amount) * 100);
 
       const keyIdSetting = await BookingRepo.getRazorpayKeyId(prisma);
       const keyId = keyIdSetting?.value || process.env.RAZORPAY_KEY_ID;

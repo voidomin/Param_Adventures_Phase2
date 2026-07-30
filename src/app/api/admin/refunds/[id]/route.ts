@@ -5,6 +5,7 @@ import { logActivity } from "@/lib/audit-logger";
 import { sendRefundResolved } from "@/lib/email";
 import { RefundStatus, Prisma } from "@prisma/client";
 import { generateCouponCode } from "@/lib/coupon-engine";
+import { logError } from "@/lib/monitoring";
 
 type RefundRequestWithBooking = Prisma.RefundRequestGetPayload<{
   include: {
@@ -212,6 +213,9 @@ export async function PATCH(
 
   } catch (error) {
     console.error("Update refund error:", error);
+    await logError(error instanceof Error ? error : new Error(String(error)), {
+      route: "PATCH /api/admin/refunds/[id]",
+    });
     return NextResponse.json({ error: "Failed to update refund request." }, { status: 500 });
   }
 }

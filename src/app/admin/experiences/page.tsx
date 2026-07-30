@@ -12,6 +12,8 @@ import {
   CheckCircle,
   XCircle,
   CalendarDays,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { ExperienceSkeleton } from "@/components/admin/ExperienceSkeleton";
 
@@ -40,14 +42,22 @@ interface ExperienceList {
 export default function AdminExperiencesPage() {
   const [experiences, setExperiences] = useState<ExperienceList[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 1 });
 
-  const fetchExperiences = async () => {
+  const fetchExperiences = async (page: number) => {
     setIsLoading(true);
     try {
-      const res = await fetch("/api/admin/experiences");
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        limit: itemsPerPage.toString(),
+      });
+      const res = await fetch(`/api/admin/experiences?${queryParams.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setExperiences(data.experiences);
+        if (data.pagination) setPagination(data.pagination);
       }
     } catch (err) {
       console.error("Failed to fetch experiences:", err);
@@ -57,8 +67,8 @@ export default function AdminExperiencesPage() {
   };
 
   useEffect(() => {
-    fetchExperiences();
-  }, []);
+    fetchExperiences(currentPage);
+  }, [currentPage]);
 
   const handleDelete = async (
     id: string,
@@ -81,7 +91,7 @@ export default function AdminExperiencesPage() {
         method: "DELETE",
       });
       if (res.ok) {
-        fetchExperiences();
+        fetchExperiences(currentPage);
       } else {
         const data = await res.json();
         alert(data.error || "Failed to delete");
@@ -101,7 +111,7 @@ export default function AdminExperiencesPage() {
         body: JSON.stringify({ status: newStatus }),
       });
       if (res.ok) {
-        fetchExperiences();
+        fetchExperiences(currentPage);
       } else {
         const data = await res.json();
         alert(data.error || "Failed to change status");
@@ -286,6 +296,40 @@ export default function AdminExperiencesPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {!isLoading && experiences.length > 0 && (
+        <div className="border-t border-border mt-6 pt-4 flex items-center justify-between text-sm text-foreground/60 font-medium">
+          <div>
+            Showing <span className="text-foreground">{((currentPage - 1) * itemsPerPage) + 1}</span> to <span className="text-foreground">{Math.min(currentPage * itemsPerPage, pagination.total)}</span> of <span className="text-foreground">{pagination.total}</span> experiences
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              className="p-1.5 rounded-lg border border-border bg-background hover:bg-foreground/5 disabled:opacity-30 disabled:hover:bg-background transition-colors"
+              aria-label="Previous page"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+
+            <div className="px-3 py-1.5 bg-background border border-border rounded-lg min-w-[3rem] text-center font-bold text-foreground">
+              {currentPage} / {pagination.totalPages}
+            </div>
+
+            <button
+              type="button"
+              disabled={currentPage >= pagination.totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(pagination.totalPages, p + 1))}
+              className="p-1.5 rounded-lg border border-border bg-background hover:bg-foreground/5 disabled:opacity-30 disabled:hover:bg-background transition-colors"
+              aria-label="Next page"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
         </div>
       )}
     </div>
