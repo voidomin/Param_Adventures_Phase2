@@ -35,7 +35,9 @@ export function ToastProvider({ children }: Readonly<{ children: ReactNode }>) {
 
   const push = useCallback(
     (kind: ToastKind, message: string) => {
-      const id = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const id = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+        ? crypto.randomUUID()
+        : `toast-${Date.now()}-${Date.now().toString(36)}`;
       setToasts((prev) => [...prev, { id, kind, message }]);
       setTimeout(() => dismiss(id), AUTO_DISMISS_MS);
     },

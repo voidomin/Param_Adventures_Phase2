@@ -3,7 +3,7 @@ import { z } from "zod";
 export const participantSchema = z.object({
   isPrimary: z.boolean().optional(),
   name: z.string().min(1, "Participant name is required"),
-  email: z.string().email("Invalid email format"),
+  email: z.string().regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Invalid email format"),
   phoneNumber: z.string().min(1, "Phone number is required"),
   gender: z.string().min(1, "Gender is required"),
   dateOfBirth: z.string().min(1, "Date of birth is required"),
@@ -33,7 +33,7 @@ export const bookingSchema = z.object({
   // repeat of the same key returns the original booking instead of creating
   // a duplicate -- covers double-clicks across tabs/network retries that a
   // synchronous client-side guard alone can't catch.
-  idempotencyKey: z.string().uuid().optional(),
+  idempotencyKey: z.string().regex(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/, "Invalid UUID").optional(),
 }).refine(data => data.participants.length === data.participantCount, {
   message: "Participant details must match the participant count.",
   path: ["participants"]
