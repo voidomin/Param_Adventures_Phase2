@@ -16,6 +16,90 @@ const googleLoginSchema = z.object({
   totpCode: z.string().optional(),
 });
 
+interface GoogleProfile {
+  googleId: string;
+  email: string;
+  name: string;
+  emailVerified: boolean;
+}
+
+async function findOrCreateGoogleUser(profile: GoogleProfile) {
+  const existingUser = await prisma.user.findUnique({
+    where: { googleId: profile.googleId },
+    include: { role: true },
+  });
+  if (existingUser) return existingUser;
+
+  const existingByEmail = await prisma.user.findUnique({
+    where: { email: profile.email.toLowerCase().trim() },
+    include: { role: true },
+  });
+
+  if (existingByEmail) {
+    return prisma.user.update({
+      where: { id: existingByEmail.id },
+      data: {
+        googleId: profile.googleId,
+        isVerified: existingByEmail.isVerified || profile.emailVerified,
+      },
+      include: { role: true },
+    });
+  }
+
+  const defaultRole = await prisma.role.findUnique({ where: { name: "REGISTERED_USER" } });
+  if (!defaultRole) {
+    console.error("REGISTERED_USER role not found. Run the seed script.");
+    return null;
+  }
+
+  return prisma.user.create({
+    data: {
+      email: profile.email.toLowerCase().trim(),
+      name: profile.name,
+      googleId: profile.googleId,
+      isVerified: profile.emailVerified,
+      roleId: defaultRole.id,
+      termsVersion: CURRENT_TERMS_VERSION,
+      acceptedTermsAt: new Date(),
+    },
+    include: { role: true },
+  });
+}
+
+async function processTwoFactorChallenge(user: { id: string; twoFactorEnabled: boolean; twoFactorSecret: string | null; twoFactorBackupCodes: string[] }, totpCode?: string) {
+  if (!user.twoFactorEnabled) return { ok: true };
+  if (!totpCode) return { ok: false, response: NextResponse.json({ requiresTwoFactor: true }, { status: 200 }) };
+
+  const isValidTotp = user.twoFactorSecret ? verifyTwoFactorToken(user.twoFactorSecret, totpCode) : false;
+  let isValidBackupCode = false;
+  let remainingBackupCodes = user.twoFactorBackupCodes;
+
+  if (!isValidTotp) {
+    const result = consumeBackupCode(totpCode, user.twoFactorBackupCodes);
+    isValidBackupCode = result.valid;
+    remainingBackupCodes = result.remainingHashedCodes;
+  }
+
+  if (!isValidTotp && !isValidBackupCode) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { error: "Invalid two-factor authentication code.", requiresTwoFactor: true },
+        { status: 401 }
+      ),
+    };
+  }
+
+  if (isValidBackupCode) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { twoFactorBackupCodes: remainingBackupCodes },
+    });
+  }
+
+  return { ok: true };
+}
+
 export async function POST(request: NextRequest) {
   const ip = request.headers?.get("x-forwarded-for") || "127.0.0.1";
   const rateLimit = authLimiter.check(ip);
@@ -42,52 +126,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid Google credential." }, { status: 401 });
     }
 
-    let user = await prisma.user.findUnique({
-      where: { googleId: profile.googleId },
-      include: { role: true },
-    });
-
+    const user = await findOrCreateGoogleUser(profile);
     if (!user) {
-      const existingByEmail = await prisma.user.findUnique({
-        where: { email: profile.email.toLowerCase().trim() },
-        include: { role: true },
-      });
-
-      if (existingByEmail) {
-        // Link this Google identity to the existing account instead of
-        // creating a duplicate -- same email, same person.
-        user = await prisma.user.update({
-          where: { id: existingByEmail.id },
-          data: {
-            googleId: profile.googleId,
-            isVerified: existingByEmail.isVerified || profile.emailVerified,
-          },
-          include: { role: true },
-        });
-      } else {
-        const defaultRole = await prisma.role.findUnique({ where: { name: "REGISTERED_USER" } });
-        if (!defaultRole) {
-          console.error("REGISTERED_USER role not found. Run the seed script.");
-          return NextResponse.json({ error: "Server configuration error." }, { status: 500 });
-        }
-
-        // No interactive checkbox step exists for one-click Google sign-up --
-        // the login/register pages carry a "by continuing you agree to our
-        // Terms & Privacy Policy" disclaimer next to the button instead, so
-        // this still records a specific version at a specific time.
-        user = await prisma.user.create({
-          data: {
-            email: profile.email.toLowerCase().trim(),
-            name: profile.name,
-            googleId: profile.googleId,
-            isVerified: profile.emailVerified,
-            roleId: defaultRole.id,
-            termsVersion: CURRENT_TERMS_VERSION,
-            acceptedTermsAt: new Date(),
-          },
-          include: { role: true },
-        });
-      }
+      return NextResponse.json({ error: "Server configuration error." }, { status: 500 });
     }
 
     if (user.deletedAt || user.status !== "ACTIVE") {
@@ -101,37 +142,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (user.twoFactorEnabled) {
-      const isValidTotp = totpCode && user.twoFactorSecret
-        ? verifyTwoFactorToken(user.twoFactorSecret, totpCode)
-        : false;
-
-      let isValidBackupCode = false;
-      let remainingBackupCodes = user.twoFactorBackupCodes;
-      if (!isValidTotp && totpCode) {
-        const result = consumeBackupCode(totpCode, user.twoFactorBackupCodes);
-        isValidBackupCode = result.valid;
-        remainingBackupCodes = result.remainingHashedCodes;
-      }
-
-      if (!totpCode) {
-        return NextResponse.json({ requiresTwoFactor: true }, { status: 200 });
-      }
-
-      if (!isValidTotp && !isValidBackupCode) {
-        return NextResponse.json(
-          { error: "Invalid two-factor authentication code.", requiresTwoFactor: true },
-          { status: 401 },
-        );
-      }
-
-      if (isValidBackupCode) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { twoFactorBackupCodes: remainingBackupCodes },
-        });
-      }
-    }
+    const twoFactorRes = await processTwoFactorChallenge(user, totpCode);
+    if (!twoFactorRes.ok) return twoFactorRes.response!;
 
     const accessToken = await generateAccessToken(user.id, user.role.name, user.tokenVersion);
     const refreshToken = await generateRefreshToken(user.id, user.tokenVersion);

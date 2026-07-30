@@ -37,36 +37,16 @@ describe("installSessionWatchdog", () => {
     expect(onSessionExpired).toHaveBeenCalledTimes(1);
   });
 
-  it("does not trigger for a 401 with an unrelated message", async () => {
-    window.fetch = vi.fn().mockResolvedValue(mockResponse(401, { error: "Invalid email or password." }));
+  it.each([
+    ["a 401 with an unrelated message", 401, { error: "Invalid email or password." }, "/api/some-endpoint"],
+    ["excluded auth-action paths even with a matching message", 401, { error: "Authentication required." }, "/api/user/2fa/disable"],
+    ["non-API paths", 401, { error: "Authentication required." }, "/some-page"],
+  ])("does not trigger for %s", async (_, status, body, path) => {
+    window.fetch = vi.fn().mockResolvedValue(mockResponse(status, body));
     const onSessionExpired = vi.fn();
     uninstall = installSessionWatchdog(onSessionExpired);
 
-    await window.fetch("/api/some-endpoint");
-    await Promise.resolve();
-    await Promise.resolve();
-
-    expect(onSessionExpired).not.toHaveBeenCalled();
-  });
-
-  it("does not trigger for excluded auth-action paths even with a matching message", async () => {
-    window.fetch = vi.fn().mockResolvedValue(mockResponse(401, { error: "Authentication required." }));
-    const onSessionExpired = vi.fn();
-    uninstall = installSessionWatchdog(onSessionExpired);
-
-    await window.fetch("/api/user/2fa/disable");
-    await Promise.resolve();
-    await Promise.resolve();
-
-    expect(onSessionExpired).not.toHaveBeenCalled();
-  });
-
-  it("does not trigger for non-API paths", async () => {
-    window.fetch = vi.fn().mockResolvedValue(mockResponse(401, { error: "Authentication required." }));
-    const onSessionExpired = vi.fn();
-    uninstall = installSessionWatchdog(onSessionExpired);
-
-    await window.fetch("/some-page");
+    await window.fetch(path);
     await Promise.resolve();
     await Promise.resolve();
 

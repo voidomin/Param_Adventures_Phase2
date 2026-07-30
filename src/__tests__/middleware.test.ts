@@ -166,45 +166,15 @@ describe("Next.js Middleware (Proxy)", () => {
       expect(res.status).toBe(403);
     });
 
-    it("exempts Razorpay webhook endpoint from CSRF verification", async () => {
-      const req = createRequest("http://localhost/api/bookings/webhook", {
+    it.each([
+      ["Razorpay webhook", "http://localhost/api/bookings/webhook"],
+      ["abandoned-bookings cleanup cron", "http://localhost/api/admin/bookings/cleanup"],
+      ["audit-log purge cron", "http://localhost/api/admin/audit-logs/purge"],
+      ["email delivery webhook", "http://localhost/api/webhooks/email"],
+    ])("exempts %s endpoint from CSRF verification", async (_, url) => {
+      const req = createRequest(url, {
         method: "POST",
-        headers: {
-          host: "localhost:3000",
-        },
-      });
-      const res = await proxy(req);
-      expect(res.status).toBe(200);
-    });
-
-    it("exempts the abandoned-bookings cleanup cron endpoint from CSRF verification", async () => {
-      const req = createRequest("http://localhost/api/admin/bookings/cleanup", {
-        method: "POST",
-        headers: {
-          host: "localhost:3000",
-        },
-      });
-      const res = await proxy(req);
-      expect(res.status).toBe(200);
-    });
-
-    it("exempts the audit-log purge cron endpoint from CSRF verification", async () => {
-      const req = createRequest("http://localhost/api/admin/audit-logs/purge", {
-        method: "POST",
-        headers: {
-          host: "localhost:3000",
-        },
-      });
-      const res = await proxy(req);
-      expect(res.status).toBe(200);
-    });
-
-    it("exempts the email delivery webhook from CSRF verification", async () => {
-      const req = createRequest("http://localhost/api/webhooks/email", {
-        method: "POST",
-        headers: {
-          host: "localhost:3000",
-        },
+        headers: { host: "localhost:3000" },
       });
       const res = await proxy(req);
       expect(res.status).toBe(200);

@@ -86,9 +86,7 @@ describe("components/ui/Toast", () => {
       </ToastProvider>,
     );
 
-    act(() => {
-      fireEvent.click(screen.getByText("Fire Success"));
-    });
+    fireEvent.click(screen.getByText("Fire Success"));
     expect(screen.getByText("Payment Successful!")).toBeInTheDocument();
 
     act(() => {

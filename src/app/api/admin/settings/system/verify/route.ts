@@ -100,7 +100,7 @@ const handlers: Record<string, (config: VerifyConfig) => Promise<unknown>> = {
     const { clientId } = config;
     if (!clientId) throw new Error("Client ID is required for Google Sign-In");
 
-    if (!/^\d+-[0-9a-zA-Z_]+\.apps\.googleusercontent\.com$/.test(clientId)) {
+    if (!/^\d+-\w+\.apps\.googleusercontent\.com$/.test(clientId)) {
       throw new Error("Client ID doesn't match Google's expected format (should end in .apps.googleusercontent.com)");
     }
 

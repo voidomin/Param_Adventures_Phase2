@@ -65,9 +65,10 @@ function LoginContent() {
     const wasAlreadyPromptingForCode = needsTwoFactor;
 
     try {
+      const codeParam = wasAlreadyPromptingForCode ? totpCode : undefined;
       const result = pendingGoogleCredential
         ? await loginWithGoogle(pendingGoogleCredential, totpCode)
-        : await login(email, password, wasAlreadyPromptingForCode ? totpCode : undefined);
+        : await login(email, password, codeParam);
 
       if (isRequiresTwoFactor(result)) {
         // Only a genuine wrong-code retry should say "invalid" -- the very

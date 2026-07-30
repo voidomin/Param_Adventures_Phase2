@@ -35,7 +35,7 @@ export function ToastProvider({ children }: Readonly<{ children: ReactNode }>) {
 
   const push = useCallback(
     (kind: ToastKind, message: string) => {
-      const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const id = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       setToasts((prev) => [...prev, { id, kind, message }]);
       setTimeout(() => dismiss(id), AUTO_DISMISS_MS);
     },
@@ -55,7 +55,7 @@ export function ToastProvider({ children }: Readonly<{ children: ReactNode }>) {
       {children}
       <div className="fixed bottom-4 right-4 z-200 flex flex-col gap-2 w-[calc(100%-2rem)] max-w-sm pointer-events-none">
         {toasts.map((t) => (
-          <div
+          <output
             key={t.id}
             role={t.kind === "error" ? "alert" : "status"}
             aria-live={t.kind === "error" ? "assertive" : "polite"}
@@ -79,7 +79,7 @@ export function ToastProvider({ children }: Readonly<{ children: ReactNode }>) {
             >
               <X className="w-4 h-4" />
             </button>
-          </div>
+          </output>
         ))}
       </div>
     </ToastContext.Provider>

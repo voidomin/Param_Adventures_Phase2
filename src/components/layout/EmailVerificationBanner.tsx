@@ -41,7 +41,7 @@ export default function EmailVerificationBanner() {
     setSendState("sending");
     try {
       const res = await fetch("/api/auth/resend-verification", { method: "POST" });
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error("Failed to resend verification email");
       setSendState("sent");
     } catch {
       setSendState("error");

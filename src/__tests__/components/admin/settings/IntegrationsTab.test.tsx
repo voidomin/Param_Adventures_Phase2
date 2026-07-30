@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import IntegrationsTab from "@/components/admin/settings/IntegrationsTab";
 
 const mockFetch = vi.fn();
@@ -32,7 +32,7 @@ describe("components/admin/settings/IntegrationsTab", () => {
     const [googleButton] = screen.getAllByRole("button", { name: /Test Connection/i });
     fireEvent.click(googleButton);
 
-    await waitFor(() => expect(screen.getByText(/Client ID recognized by Google/i)).toBeInTheDocument());
+    expect(await screen.findByText(/Client ID recognized by Google/i)).toBeInTheDocument();
     expect(mockFetch).toHaveBeenCalledWith(
       "/api/admin/settings/system/verify",
       expect.objectContaining({
@@ -47,7 +47,7 @@ describe("components/admin/settings/IntegrationsTab", () => {
     const [googleButton] = screen.getAllByRole("button", { name: /Test Connection/i });
     fireEvent.click(googleButton);
 
-    await waitFor(() => expect(screen.getByText(/enter a Client ID first/i)).toBeInTheDocument());
+    expect(await screen.findByText(/enter a Client ID first/i)).toBeInTheDocument();
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
@@ -62,7 +62,7 @@ describe("components/admin/settings/IntegrationsTab", () => {
     const [, turnstileButton] = screen.getAllByRole("button", { name: /Test Connection/i });
     fireEvent.click(turnstileButton);
 
-    await waitFor(() => expect(screen.getByText(/Secret Key accepted by Cloudflare/i)).toBeInTheDocument());
+    expect(await screen.findByText(/Secret Key accepted by Cloudflare/i)).toBeInTheDocument();
     expect(mockFetch).toHaveBeenCalledWith(
       "/api/admin/settings/system/verify",
       expect.objectContaining({
@@ -82,6 +82,6 @@ describe("components/admin/settings/IntegrationsTab", () => {
     const [, turnstileButton] = screen.getAllByRole("button", { name: /Test Connection/i });
     fireEvent.click(turnstileButton);
 
-    await waitFor(() => expect(screen.getByText(/Cloudflare rejected this Secret Key/i)).toBeInTheDocument());
+    expect(await screen.findByText(/Cloudflare rejected this Secret Key/i)).toBeInTheDocument();
   });
 });

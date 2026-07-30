@@ -7,19 +7,6 @@ interface TurnstileWidgetProps {
   readonly onVerify: (token: string) => void;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type TurnstileApi = any;
-
-/**
- * Renders a Cloudflare Turnstile challenge. Renders nothing (and the caller
- * proceeds without a token) if no site key is configured -- CAPTCHA is
- * opt-in, not required, matching the rest of this app's optional-hardening
- * features.
- *
- * The site key is fetched from /api/settings/public at runtime (admin-
- * configurable, Settings → Integrations) rather than read from a build-time
- * NEXT_PUBLIC_ env var, so rotating it doesn't require a redeploy.
- */
 export default function TurnstileWidget({ onVerify }: TurnstileWidgetProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scriptLoaded, setScriptLoaded] = useState(false);
@@ -38,7 +25,8 @@ export default function TurnstileWidget({ onVerify }: TurnstileWidgetProps) {
   useEffect(() => {
     if (!scriptLoaded || !siteKey || !containerRef.current) return;
 
-    const turnstile = (window as unknown as { turnstile?: TurnstileApi }).turnstile;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const turnstile = (window as unknown as { turnstile?: any }).turnstile;
     if (!turnstile) return;
 
     turnstile.render(containerRef.current, {
