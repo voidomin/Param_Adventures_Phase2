@@ -22,6 +22,20 @@ const disableSchema = z.object({
  * confirm via a current 2FA code instead, since that's the only secondary
  * factor they have.
  */
+async function verifyPasswordOrTwoFactor(
+  user: { password: string | null; twoFactorSecret: string | null; twoFactorBackupCodes: string[] },
+  password?: string,
+  code?: string,
+): Promise<boolean> {
+  if (user.password) {
+    return Boolean(password && (await verifyPassword(password, user.password)));
+  }
+  if (!code) return false;
+  const isValidTotp = user.twoFactorSecret ? verifyTwoFactorToken(user.twoFactorSecret, code) : false;
+  if (isValidTotp) return true;
+  return consumeBackupCode(code, user.twoFactorBackupCodes).valid;
+}
+
 export async function POST(request: NextRequest) {
   const auth = await authorizeRequest(request);
   if (!auth.authorized) return auth.response;
@@ -42,18 +56,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User not found." }, { status: 404 });
     }
 
-    if (user.password) {
-      if (!password || !(await verifyPassword(password, user.password))) {
-        return NextResponse.json({ error: "Incorrect password." }, { status: 401 });
-      }
-    } else {
-      const isValidTotp = code && user.twoFactorSecret ? verifyTwoFactorToken(user.twoFactorSecret, code) : false;
-      const isValidBackupCode = !isValidTotp && code
-        ? consumeBackupCode(code, user.twoFactorBackupCodes).valid
-        : false;
-      if (!isValidTotp && !isValidBackupCode) {
-        return NextResponse.json({ error: "Invalid two-factor code." }, { status: 401 });
-      }
+    const isValid = await verifyPasswordOrTwoFactor(user, password, code);
+    if (!isValid) {
+      const errorMsg = user.password ? "Incorrect password." : "Invalid two-factor code.";
+      return NextResponse.json({ error: errorMsg }, { status: 401 });
     }
 
     await prisma.user.update({

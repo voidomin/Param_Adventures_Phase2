@@ -25,6 +25,62 @@ const loginSchema = z.object({
 const LOCKOUT_THRESHOLD = 10;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
 
+async function handleFailedLogin(userId: string, failedAttempts: number) {
+  const failedLoginAttempts = failedAttempts + 1;
+  const lockingNow = failedLoginAttempts >= LOCKOUT_THRESHOLD;
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      failedLoginAttempts: lockingNow ? 0 : failedLoginAttempts,
+      lockedUntil: lockingNow ? new Date(Date.now() + LOCKOUT_DURATION_MS) : null,
+    },
+  });
+
+  return NextResponse.json(
+    lockingNow
+      ? { error: "Too many failed attempts. This account is temporarily locked. Please try again later." }
+      : { error: "Invalid email or password." },
+    { status: lockingNow ? 423 : 401 },
+  );
+}
+
+async function verifyLoginTwoFactor(
+  user: { id: string; twoFactorEnabled: boolean; twoFactorSecret: string | null; twoFactorBackupCodes: string[] },
+  totpCode?: string,
+) {
+  if (!user.twoFactorEnabled) return { ok: true };
+  if (!totpCode) return { ok: false, response: NextResponse.json({ requiresTwoFactor: true }, { status: 200 }) };
+
+  const isValidTotp = user.twoFactorSecret ? verifyTwoFactorToken(user.twoFactorSecret, totpCode) : false;
+  let isValidBackupCode = false;
+  let remainingBackupCodes = user.twoFactorBackupCodes;
+
+  if (!isValidTotp) {
+    const result = consumeBackupCode(totpCode, user.twoFactorBackupCodes);
+    isValidBackupCode = result.valid;
+    remainingBackupCodes = result.remainingHashedCodes;
+  }
+
+  if (!isValidTotp && !isValidBackupCode) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { error: "Invalid two-factor authentication code.", requiresTwoFactor: true },
+        { status: 401 },
+      ),
+    };
+  }
+
+  if (isValidBackupCode) {
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { twoFactorBackupCodes: remainingBackupCodes },
+    });
+  }
+
+  return { ok: true };
+}
+
 export async function POST(request: NextRequest) {
   // 0. Rate Limiting Protection
   const ip = request.headers?.get("x-forwarded-for") || "127.0.0.1";
@@ -86,57 +142,14 @@ export async function POST(request: NextRequest) {
 
     // ─── Verify password ─────────────────────────────────
     const isValid = await verifyPassword(password, user.password);
-
     if (!isValid) {
-      const failedLoginAttempts = user.failedLoginAttempts + 1;
-      const lockingNow = failedLoginAttempts >= LOCKOUT_THRESHOLD;
-      await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          failedLoginAttempts: lockingNow ? 0 : failedLoginAttempts,
-          lockedUntil: lockingNow ? new Date(Date.now() + LOCKOUT_DURATION_MS) : null,
-        },
-      });
-
-      return NextResponse.json(
-        lockingNow
-          ? { error: "Too many failed attempts. This account is temporarily locked. Please try again later." }
-          : { error: "Invalid email or password." },
-        { status: lockingNow ? 423 : 401 },
-      );
+      return handleFailedLogin(user.id, user.failedLoginAttempts);
     }
 
     // ─── Two-factor challenge ─────────────────────────────
-    if (user.twoFactorEnabled) {
-      const isValidTotp = totpCode && user.twoFactorSecret
-        ? verifyTwoFactorToken(user.twoFactorSecret, totpCode)
-        : false;
-
-      let isValidBackupCode = false;
-      let remainingBackupCodes = user.twoFactorBackupCodes;
-      if (!isValidTotp && totpCode) {
-        const result = consumeBackupCode(totpCode, user.twoFactorBackupCodes);
-        isValidBackupCode = result.valid;
-        remainingBackupCodes = result.remainingHashedCodes;
-      }
-
-      if (!totpCode) {
-        return NextResponse.json({ requiresTwoFactor: true }, { status: 200 });
-      }
-
-      if (!isValidTotp && !isValidBackupCode) {
-        return NextResponse.json(
-          { error: "Invalid two-factor authentication code.", requiresTwoFactor: true },
-          { status: 401 },
-        );
-      }
-
-      if (isValidBackupCode) {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { twoFactorBackupCodes: remainingBackupCodes },
-        });
-      }
+    const twoFactorRes = await verifyLoginTwoFactor(user, totpCode);
+    if (!twoFactorRes.ok) {
+      return twoFactorRes.response!;
     }
 
     // ─── Successful login: clear any lockout state ───────
