@@ -177,6 +177,7 @@ export default async function proxy(request: NextRequest) {
     "/api/bookings/webhook",
     "/api/webhooks/email",
     "/api/health",
+    "/api/settings/public",
     "/api/leads",
     "/api/quotes",
     "/api/proxy-image",
