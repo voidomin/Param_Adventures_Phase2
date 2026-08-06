@@ -86,7 +86,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
     "husky": "^9.1.7",
-    "jsdom": "^29.1.1",
+    "jsdom": "^30.0.1",
     "lint-staged": "^16.4.0",
     "react-email": "^6.9.1",
     "tailwindcss": "^4",
