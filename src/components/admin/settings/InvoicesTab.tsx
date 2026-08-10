@@ -75,22 +75,42 @@ function getPaymentDetails(payments?: { status: string; provider: string; provid
   return { paymentMode, paymentRefId };
 }
 
-function formatBookingRow(b: AuditBooking) {
+// Generic SAC code for tour operator services -- same literal used on the
+// PDF invoice (DownloadInvoiceBtn.tsx), kept in sync manually since neither
+// side reads it from a shared constant.
+const TOUR_OPERATOR_SAC_CODE = "9985";
+
+function formatInvoiceNumber(bookingId: string): string {
+  // Matches the PDF invoice's numbering (DownloadInvoiceBtn.tsx) so the two
+  // exports reference the same booking under the same number.
+  return `PARAM-${bookingId.split("-")[0].toUpperCase()}`;
+}
+
+function formatReturnPeriod(createdAt: string): string {
+  return new Date(createdAt).toLocaleDateString("en-IN", { month: "short", year: "numeric" }).replace(" ", "-");
+}
+
+function formatBookingRow(b: AuditBooking, index: number) {
   const { gstAmount, gstPercent } = calculateGstTotals(b.taxBreakdown);
   const { paymentMode, paymentRefId } = getPaymentDetails(b.payments);
 
   return {
+    "Sr. No": index + 1,
+    "Invoice No": formatInvoiceNumber(b.id),
+    "Invoice Date": new Date(b.createdAt),
+    "Return Period (Mon-YYYY)": formatReturnPeriod(b.createdAt),
+    "HSN/SAC Code": TOUR_OPERATOR_SAC_CODE,
     "Booking ID": b.id,
-    "Customer Name": b.user?.name || "—",
+    "Recipient Name": b.user?.name || "—",
     "Customer Email": b.user?.email || "—",
     "Customer Phone": b.user?.phoneNumber || "—",
     "Experience Title": b.experience?.title || "—",
     "Slot Date": b.slot ? new Date(b.slot.date) : "—",
     "Pax Count": b.participantCount,
-    "Base Taxable Value (INR)": Number(b.baseFare),
+    "Taxable Value (INR)": Number(b.baseFare),
     "GST Rate (%)": gstPercent,
     "GST Amount (INR)": gstAmount,
-    "Total Price (INR)": Number(b.totalPrice),
+    "Total Invoice Value (INR)": Number(b.totalPrice),
     "Booking Status": b.bookingStatus,
     "Payment Status": b.paymentStatus,
     "Payment Mode": paymentMode,
@@ -223,7 +243,7 @@ export default function InvoicesTab() {
         setExportProgress("Formatting GST sales ledger data...");
         
         const selectedBookings = bookings.filter((b) => selectedIds.includes(b.id));
-        const rows = selectedBookings.map(formatBookingRow);
+        const rows = selectedBookings.map((b, i) => formatBookingRow(b, i));
 
         const XLSX = await import("xlsx");
         const worksheet = XLSX.utils.json_to_sheet(rows, { cellDates: true, dateNF: "yyyy-mm-dd" });
