@@ -15,7 +15,7 @@ function isValidCronSecret(provided: string | null, expected: string | undefined
  * POST /api/admin/bookings/cleanup
  *
  * Target: Cancels bookings stuck in REQUESTED/PENDING state for more than
- * 30 minutes. These never held slot capacity in the first place --
+ * 24 hours. These never held slot capacity in the first place --
  * remainingCapacity is only decremented once a booking is CONFIRMED (see
  * booking.service.ts) -- so this is pure housekeeping, not a capacity
  * restoration, despite what a stale earlier version of this comment implied.
@@ -34,13 +34,13 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     const abandonedBookings = await prisma.booking.findMany({
       where: {
         bookingStatus: "REQUESTED",
         paymentStatus: "PENDING",
-        createdAt: { lt: thirtyMinutesAgo },
+        createdAt: { lt: twentyFourHoursAgo },
       },
       select: {
         id: true,
