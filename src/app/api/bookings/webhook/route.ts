@@ -285,6 +285,7 @@ export async function POST(request: NextRequest) {
     console.error("[Webhook] Critical Error:", error);
     await logError(error instanceof Error ? error : new Error(String(error)), {
       route: "POST /api/bookings/webhook",
+      requestId: request.headers?.get("x-request-id"),
     });
     // Even on error, we might want to return 200 to Razorpay if it's a "permanent" failure
     // so they stop retrying, but for now 500 is safer for debugging.

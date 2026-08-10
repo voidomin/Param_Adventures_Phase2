@@ -159,17 +159,33 @@ export async function verifyAccessToken(token: string): Promise<TokenPayload | n
  * to revoke in that case.
  */
 export async function revokeSessionFromToken(token: string | undefined): Promise<void> {
-  if (!token) return;
+  const userId = await getUserIdFromToken(token);
+  if (!userId) return;
   try {
-    const config = await getAuthConfig();
-    const decoded = jwt.verify(token, config.JWT_SECRET, { ignoreExpiration: true }) as { userId?: string };
-    if (!decoded.userId) return;
     await prisma.user.update({
-      where: { id: decoded.userId },
+      where: { id: userId },
       data: { tokenVersion: { increment: 1 } },
     });
   } catch {
-    // Invalid/malformed/unsigned token -- nothing to revoke.
+    // User no longer exists (e.g. deleted between issuing the token and
+    // logout) -- nothing left to revoke.
+  }
+}
+
+/**
+ * Decodes a token (ignoring expiration) just to identify whose session it
+ * belongs to, without revoking anything -- e.g. so the logout route can
+ * audit-log who logged out, separately from revokeSessionFromToken's own
+ * DB write. Returns null on a missing/malformed/unsigned token.
+ */
+export async function getUserIdFromToken(token: string | undefined): Promise<string | null> {
+  if (!token) return null;
+  try {
+    const config = await getAuthConfig();
+    const decoded = jwt.verify(token, config.JWT_SECRET, { ignoreExpiration: true }) as { userId?: string };
+    return decoded.userId || null;
+  } catch {
+    return null;
   }
 }
 

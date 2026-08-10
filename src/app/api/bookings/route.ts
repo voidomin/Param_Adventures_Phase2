@@ -85,6 +85,7 @@ export async function POST(request: NextRequest) {
     console.error("[BookingController] Fatal Error:", error);
     await logError(error instanceof Error ? error : new Error(String(error)), {
       route: "POST /api/bookings",
+      requestId: request.headers?.get("x-request-id"),
     });
     return NextResponse.json(
       { error: "An unexpected error occurred while creating your booking." },

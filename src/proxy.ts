@@ -10,6 +10,18 @@ interface RateLimitResultWrapper {
 }
 
 /**
+ * Stamps every response with the same request ID a route handler can read
+ * off the (forwarded) request header, so one failed request's log lines,
+ * Sentry event, and AuditLog metadata can all be tied together after the
+ * fact -- previously every log line stood alone with nothing to correlate
+ * by except timestamp proximity.
+ */
+function withRequestId(response: NextResponse, requestId: string): NextResponse {
+  response.headers.set("x-request-id", requestId);
+  return response;
+}
+
+/**
  * CSRF Protection for state-changing requests.
  * Returns a response block (NextResponse) if verification fails, or null if allowed.
  */
@@ -135,16 +147,22 @@ export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const method = request.method;
 
+  // Reuse an inbound x-request-id if one was already set upstream (e.g. by
+  // a CDN/load balancer), otherwise mint one for this request.
+  const requestId = request.headers.get("x-request-id") || crypto.randomUUID();
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-request-id", requestId);
+
   // ─── CSRF Protection ───────────────────────────────────
   const csrfBlock = verifyCsrf(request, pathname, method);
   if (csrfBlock) {
-    return csrfBlock;
+    return withRequestId(csrfBlock, requestId);
   }
 
   // ─── Rate Limiting ─────────────────────────────────────
   const { response: rateLimitBlock, result: rateLimitResult } = handleRateLimiting(request, pathname);
   if (rateLimitBlock) {
-    return rateLimitBlock;
+    return withRequestId(rateLimitBlock, requestId);
   }
 
   // ─── Public routes ─────────────────────────────────────
@@ -193,7 +211,7 @@ export default async function proxy(request: NextRequest) {
   );
 
   if (isPublic) {
-    const response = NextResponse.next();
+    const response = NextResponse.next({ request: { headers: requestHeaders } });
     if (rateLimitResult) {
       response.headers.set("X-RateLimit-Limit", String(rateLimitResult.limit));
       response.headers.set(
@@ -201,7 +219,7 @@ export default async function proxy(request: NextRequest) {
         String(rateLimitResult.remaining),
       );
     }
-    return response;
+    return withRequestId(response, requestId);
   }
 
   // ─── Static assets and Next.js internals ───────────────
@@ -210,7 +228,7 @@ export default async function proxy(request: NextRequest) {
     pathname.startsWith("/favicon") ||
     pathname.includes(".")
   ) {
-    return NextResponse.next();
+    return withRequestId(NextResponse.next({ request: { headers: requestHeaders } }), requestId);
   }
 
   // ─── Protected routes: check for access token ──────────
@@ -219,20 +237,20 @@ export default async function proxy(request: NextRequest) {
   if (!accessToken) {
     // For API routes, return 401
     if (pathname.startsWith("/api/")) {
-      return NextResponse.json(
-        { error: "Authentication required." },
-        { status: 401 },
+      return withRequestId(
+        NextResponse.json({ error: "Authentication required." }, { status: 401 }),
+        requestId,
       );
     }
 
     // For page routes, redirect to login
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(loginUrl);
+    return withRequestId(NextResponse.redirect(loginUrl), requestId);
   }
 
   // Token exists — let the route handler verify it
-  const response = NextResponse.next();
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
 
   // Attach rate limit headers if a rule was matched
   if (rateLimitResult) {
@@ -243,7 +261,7 @@ export default async function proxy(request: NextRequest) {
     );
   }
 
-  return response;
+  return withRequestId(response, requestId);
 }
 
 export const config = {

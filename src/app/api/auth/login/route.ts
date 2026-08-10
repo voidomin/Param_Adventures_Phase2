@@ -11,6 +11,7 @@ import { z } from "zod";
 import { emergencyAdminRecovery } from "@/lib/bootstrap";
 import { authLimiter } from "@/lib/rate-limiter";
 import { logError } from "@/lib/monitoring";
+import { logActivity } from "@/lib/audit-logger";
 
 const loginSchema = z.object({
   email: z.email({ message: "Invalid email format" }),
@@ -34,6 +35,10 @@ async function handleFailedLogin(userId: string, failedAttempts: number) {
       failedLoginAttempts: lockingNow ? 0 : failedLoginAttempts,
       lockedUntil: lockingNow ? new Date(Date.now() + LOCKOUT_DURATION_MS) : null,
     },
+  });
+
+  await logActivity("LOGIN_FAILED", userId, "User", userId, {
+    reason: lockingNow ? "account_locked" : "invalid_password",
   });
 
   return NextResponse.json(
@@ -126,6 +131,7 @@ export async function POST(request: NextRequest) {
 
     // ─── Check account status ────────────────────────────
     if (user.deletedAt || user.status !== "ACTIVE") {
+      await logActivity("LOGIN_FAILED", user.id, "User", user.id, { reason: "account_suspended" });
       return NextResponse.json(
         { error: "Your account has been suspended." },
         { status: 403 },
@@ -134,6 +140,7 @@ export async function POST(request: NextRequest) {
 
     // ─── Per-account lockout check ───────────────────────
     if (user.lockedUntil && user.lockedUntil > new Date()) {
+      await logActivity("LOGIN_FAILED", user.id, "User", user.id, { reason: "account_locked" });
       return NextResponse.json(
         { error: "Too many failed attempts. This account is temporarily locked. Please try again later." },
         { status: 423 },
@@ -149,6 +156,12 @@ export async function POST(request: NextRequest) {
     // ─── Two-factor challenge ─────────────────────────────
     const twoFactorRes = await verifyLoginTwoFactor(user, totpCode);
     if (!twoFactorRes.ok) {
+      // A bare "requires 2FA" response (no code submitted yet) isn't a
+      // real failure -- only log when an actual code/backup code was
+      // wrong, matching handleFailedLogin's failed-attempt semantics.
+      if (totpCode) {
+        await logActivity("LOGIN_FAILED", user.id, "User", user.id, { reason: "invalid_2fa" });
+      }
       return twoFactorRes.response!;
     }
 
@@ -159,6 +172,8 @@ export async function POST(request: NextRequest) {
         data: { failedLoginAttempts: 0, lockedUntil: null },
       });
     }
+
+    await logActivity("LOGIN_SUCCESS", user.id, "User", user.id);
 
     // ─── Generate tokens ─────────────────────────────────
     const accessToken = await generateAccessToken(user.id, user.role.name, user.tokenVersion);
@@ -204,6 +219,7 @@ export async function POST(request: NextRequest) {
     console.error("Login error:", error);
     await logError(error instanceof Error ? error : new Error(String(error)), {
       route: "POST /api/auth/login",
+      requestId: request.headers?.get("x-request-id"),
     });
     return NextResponse.json(
       { error: "Internal server error." },
