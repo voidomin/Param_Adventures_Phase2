@@ -115,7 +115,8 @@
     "form-data": "^4.0.6",
     "nodemailer": "^9.0.1",
     "sharp": "^0.35.3",
-    "dompurify": "^3.4.12",
+    "dompurify": "^3.4.13",
+    "nanoid": "^3.3.18",
     "find-my-way": "^9.7.0",
     "@sentry/bundler-plugin-core": {
       "brace-expansion": "^5.0.9"
