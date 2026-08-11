@@ -10,14 +10,17 @@ vi.mock("@/lib/db", () => ({
     },
   },
 }));
+vi.mock("@/lib/audit-logger", () => ({ logActivity: vi.fn() }));
 
 import { GET } from "@/app/api/admin/audit-logs/route";
 import { authorizeRequest } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
+import { logActivity } from "@/lib/audit-logger";
 
 const mockAuthorizeRequest = vi.mocked(authorizeRequest);
 const mockFindMany = vi.mocked(prisma.auditLog.findMany);
 const mockCount = vi.mocked(prisma.auditLog.count);
+const mockLogActivity = vi.mocked(logActivity);
 
 describe("GET /api/admin/audit-logs", () => {
   beforeEach(() => {
@@ -78,6 +81,28 @@ describe("GET /api/admin/audit-logs", () => {
         skip: 4,
         take: 4,
       }),
+    );
+  });
+
+  it("records the export itself when download=true, without leaking log content", async () => {
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: true,
+      roleName: "SUPER_ADMIN",
+      userId: "super-1",
+    } as any);
+    mockFindMany.mockResolvedValue([{ id: "l1" }, { id: "l2" }] as any);
+
+    const response = await GET(
+      new NextRequest("http://localhost/api/admin/audit-logs?download=true&actorId=admin-2"),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockLogActivity).toHaveBeenCalledWith(
+      "AUDIT_LOG_EXPORTED",
+      "super-1",
+      "AuditLog",
+      null,
+      expect.objectContaining({ actorId: "admin-2", rowCount: 2 }),
     );
   });
 

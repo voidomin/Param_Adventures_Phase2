@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 import { Prisma } from "@prisma/client";
+import { logActivity } from "@/lib/audit-logger";
 
 /**
  * GET /api/admin/audit-logs — SUPER_ADMIN only.
@@ -76,6 +77,20 @@ export async function GET(request: NextRequest) {
         orderBy: { timestamp: "desc" },
         include: actorSelect,
       });
+
+      // Downloading the audit trail is itself a sensitive action -- it can
+      // include other users' names/emails via the actor relation -- so it
+      // gets its own trail entry: who exported, which filters, how many
+      // rows. Not the exported content itself, just the fact it happened.
+      await logActivity("AUDIT_LOG_EXPORTED", auth.userId, "AuditLog", null, {
+        targetType: targetTypeRaw,
+        action,
+        actorId,
+        startDate,
+        endDate,
+        rowCount: logs.length,
+      });
+
       return NextResponse.json({ logs });
     }
 

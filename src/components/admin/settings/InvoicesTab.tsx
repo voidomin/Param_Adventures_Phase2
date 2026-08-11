@@ -119,6 +119,22 @@ function formatBookingRow(b: AuditBooking, index: number) {
   };
 }
 
+/**
+ * Records that a bulk export happened -- who, which filters, how many
+ * rows -- without sending any of the actual exported data. Fire-and-forget:
+ * a failure here shouldn't block or roll back a download the user already
+ * has in hand.
+ */
+function recordExport(format: "excel" | "pdf", filters: Record<string, unknown>, rowCount: number) {
+  fetch("/api/admin/bookings/record-export", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ format, filters, rowCount }),
+  }).catch(() => {
+    // Best-effort audit trail -- the export itself already succeeded.
+  });
+}
+
 function getStatusBadgeClass(status: string): string {
   if (status === "CONFIRMED") {
     return "bg-green-500/10 text-green-500 border-green-500/20";
@@ -226,6 +242,7 @@ export default function InvoicesTab() {
 
         const dateStr = new Date().toISOString().split("T")[0];
         doc.save(`invoices_bulk_export_${dateStr}.pdf`);
+        recordExport("pdf", { experienceId: selectedExp, startDate, endDate, status }, selectedIds.length);
       } catch (err) {
         console.error(err);
         alert("Failed to export invoices PDF.");
@@ -271,6 +288,7 @@ export default function InvoicesTab() {
 
         const dateStr = new Date().toISOString().split("T")[0];
         XLSX.writeFile(workbook, `gst_billings_export_${dateStr}.xlsx`);
+        recordExport("excel", { experienceId: selectedExp, startDate, endDate, status }, rows.length);
       } catch (err) {
         console.error(err);
         alert("Failed to export Excel report.");
