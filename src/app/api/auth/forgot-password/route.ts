@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import { z } from "zod";
 import { sendResetPasswordEmail } from "@/lib/email";
 import { authLimiter } from "@/lib/rate-limiter";
+import { logActivity } from "@/lib/audit-logger";
 
 const forgotPasswordSchema = z.object({
   email: z.email("Invalid email address"),
@@ -86,6 +87,7 @@ export async function POST(request: NextRequest) {
     });
 
     console.log(`[AUTH] Password Reset Link for ${user.email} sent via Zoho.`);
+    await logActivity("PASSWORD_RESET_REQUESTED", user.id, "User", user.id);
 
     return NextResponse.json(
       { message: "If an account exists, a reset link has been sent." },

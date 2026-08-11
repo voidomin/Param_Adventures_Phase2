@@ -4,6 +4,7 @@ import { hashPassword } from "@/lib/auth";
 import { z } from "zod";
 import { authLimiter } from "@/lib/rate-limiter";
 import { passwordSchema } from "@/lib/validators/auth.schema";
+import { logActivity } from "@/lib/audit-logger";
 
 const resetPasswordSchema = z.object({
   token: z.string().min(1, "Token is required"),
@@ -64,6 +65,8 @@ export async function POST(request: NextRequest) {
         tokenVersion: { increment: 1 },
       },
     });
+
+    await logActivity("PASSWORD_RESET_COMPLETED", user.id, "User", user.id);
 
     return NextResponse.json(
       { message: "Password updated successfully." },

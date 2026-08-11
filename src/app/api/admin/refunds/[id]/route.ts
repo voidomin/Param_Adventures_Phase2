@@ -215,6 +215,7 @@ export async function PATCH(
     console.error("Update refund error:", error);
     await logError(error instanceof Error ? error : new Error(String(error)), {
       route: "PATCH /api/admin/refunds/[id]",
+      requestId: request.headers?.get("x-request-id"),
     });
     return NextResponse.json({ error: "Failed to update refund request." }, { status: 500 });
   }

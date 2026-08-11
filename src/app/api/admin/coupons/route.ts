@@ -4,6 +4,7 @@ import { authorizeRequest } from "@/lib/api-auth";
 import { generateCouponCode } from "@/lib/coupon-engine";
 import { CouponStatus, CouponType } from "@prisma/client";
 import { z } from "zod";
+import { logActivity } from "@/lib/audit-logger";
 
 const createCouponSchema = z.object({
   customerId: z.string().min(1, "Customer ID is required"),
@@ -115,6 +116,11 @@ export async function POST(request: NextRequest) {
       });
 
       return tc;
+    });
+
+    await logActivity("COUPON_CREATED", adminId, "TravelCoupon", coupon.id, {
+      customerId,
+      originalValue,
     });
 
     return NextResponse.json({ success: true, coupon });

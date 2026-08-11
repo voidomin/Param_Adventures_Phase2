@@ -106,7 +106,11 @@ export async function POST(request: NextRequest) {
         subject: event?.data?.subject,
       });
 
-      await logError(`Email delivery issue: ${eventType}`, { recipient, eventType });
+      await logError(`Email delivery issue: ${eventType}`, {
+        recipient,
+        eventType,
+        requestId: request.headers?.get("x-request-id"),
+      });
     }
 
     return NextResponse.json({ status: "ok" });

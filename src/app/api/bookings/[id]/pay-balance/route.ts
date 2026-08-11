@@ -245,6 +245,7 @@ export async function POST(
     }
     await logError(error instanceof Error ? error : new Error(String(error)), {
       route: "POST /api/bookings/[id]/pay-balance",
+      requestId: request.headers?.get("x-request-id"),
     });
     return NextResponse.json(
       { error: "Failed to initiate balance payment." },

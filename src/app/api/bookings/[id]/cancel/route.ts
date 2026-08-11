@@ -151,6 +151,7 @@ export async function POST(
     console.error("Booking cancellation error:", error);
     await logError(error instanceof Error ? error : new Error(String(error)), {
       route: "POST /api/bookings/[id]/cancel",
+      requestId: request.headers?.get("x-request-id"),
     });
     return NextResponse.json(
       { error: "Failed to cancel booking." },

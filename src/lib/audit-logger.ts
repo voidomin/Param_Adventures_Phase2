@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { Prisma } from "@prisma/client";
+import { logError } from "@/lib/monitoring";
 
 /**
  * Log a system activity securely.
@@ -87,8 +88,17 @@ export async function logActivity(
       // as it might compromise the atomicity of the entire operation.
       throw error;
     }
-    // For non-critical logs elsewhere, we just log to console.
+    // For non-critical logs elsewhere, the underlying business action has
+    // already succeeded -- we don't want to fail the request over a
+    // missing audit trail. Still needs to be visible somewhere other than
+    // ephemeral stdout, though, or a broken audit trail fails silently too.
     console.error("[Audit Logger Error]", error);
+    await logError(error instanceof Error ? error : new Error(String(error)), {
+      context: "audit-logger",
+      action,
+      targetType,
+      targetId,
+    });
   }
 }
 

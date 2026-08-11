@@ -11,10 +11,18 @@ import {
   FileJson,
   FileSpreadsheet,
   AlertCircle,
+  Search,
+  X,
 } from "lucide-react";
 import { useAuth } from "@/lib/AuthContext";
 import { useRouter } from "next/navigation";
 import { formatCellForExport } from "@/lib/utils";
+
+interface ActorOption {
+  id: string;
+  name: string | null;
+  email: string | null;
+}
 
 interface LogCategory {
   id: string;
@@ -32,6 +40,7 @@ interface AuditLogData {
   targetType: string;
   targetId: string | null;
   actorId: string | null;
+  actor: { id: string; name: string | null; email: string | null } | null;
   timestamp: string | Date;
   metadata: unknown;
 }
@@ -89,11 +98,43 @@ export default function AuditLogsPage() {
   const router = useRouter();
   const [downloading, setDownloading] = useState<Record<string, "json" | "excel" | null>>({});
 
+  // Actor + date-range filters, applied on top of each category's own
+  // targetType filter -- lets you answer "what did this admin do last
+  // Tuesday" without pulling a full dump and grepping it by hand.
+  const [actorQuery, setActorQuery] = useState("");
+  const [actorResults, setActorResults] = useState<ActorOption[]>([]);
+  const [selectedActor, setSelectedActor] = useState<ActorOption | null>(null);
+  const [actorSearching, setActorSearching] = useState(false);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
   useEffect(() => {
     if (user && user.role !== "SUPER_ADMIN") {
       router.push("/admin/users");
     }
   }, [user, router]);
+
+  useEffect(() => {
+    if (!actorQuery.trim()) {
+      setActorResults([]);
+      return;
+    }
+    const controller = new AbortController();
+    setActorSearching(true);
+    const timer = setTimeout(() => {
+      fetch(`/api/admin/users?search=${encodeURIComponent(actorQuery.trim())}&limit=8`, {
+        signal: controller.signal,
+      })
+        .then((res) => res.json())
+        .then((data) => setActorResults(data.users || []))
+        .catch(() => {})
+        .finally(() => setActorSearching(false));
+    }, 300);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [actorQuery]);
 
   const handleDownload = async (category: LogCategory, format: "json" | "excel") => {
     setDownloading((prev) => ({ ...prev, [category.id]: format }));
@@ -103,6 +144,15 @@ export default function AuditLogsPage() {
       url.searchParams.set("download", "true");
       if (category.targetType) {
         url.searchParams.set("targetType", category.targetType);
+      }
+      if (selectedActor) {
+        url.searchParams.set("actorId", selectedActor.id);
+      }
+      if (startDate) {
+        url.searchParams.set("startDate", startDate);
+      }
+      if (endDate) {
+        url.searchParams.set("endDate", endDate);
       }
 
       const res = await fetch(url);
@@ -144,6 +194,7 @@ export default function AuditLogsPage() {
           "Action": log.action.replaceAll("_", " "),
           "Target Type": log.targetType,
           "Target ID": log.targetId || "N/A",
+          "Actor": log.actor ? `${log.actor.name || "—"} <${log.actor.email || "—"}>` : "System / Automated",
           "Actor ID": log.actorId || "System / Automated",
           "Timestamp": new Date(log.timestamp),
           "Metadata Payload": log.metadata ? JSON.stringify(log.metadata) : "N/A",
@@ -202,6 +253,119 @@ export default function AuditLogsPage() {
             Live log rendering is deactivated. Admin activities can be exported into JSON payloads or formatted Microsoft Excel spreadsheets for offline parsing, storage, or external auditing.
           </p>
         </div>
+      </div>
+
+      {/* Actor + Date Range Filters -- applied on top of each category's
+          own export, so you can scope a download to e.g. "what did this
+          admin do last week" instead of pulling a full dump. */}
+      <div className="rounded-3xl border border-border bg-card p-6 space-y-4">
+        <h3 className="font-bold text-sm text-foreground">Filter Exports</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="relative">
+            <label htmlFor="audit-actor-search" className="block text-xs font-semibold text-foreground/60 mb-1">
+              Actor
+            </label>
+            {selectedActor ? (
+              <div className="flex items-center justify-between px-3 py-2 text-sm bg-primary/5 border border-primary/20 rounded-xl">
+                <span className="truncate">
+                  {selectedActor.name || selectedActor.email || selectedActor.id}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedActor(null);
+                    setActorQuery("");
+                  }}
+                  className="text-foreground/40 hover:text-foreground transition-colors ml-2"
+                  aria-label="Clear actor filter"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-foreground/30" />
+                  <input
+                    id="audit-actor-search"
+                    type="text"
+                    value={actorQuery}
+                    onChange={(e) => setActorQuery(e.target.value)}
+                    placeholder="Search by name or email…"
+                    className="w-full pl-9 pr-3 py-2 text-sm bg-background border border-border rounded-xl focus:outline-none focus:border-primary/50 text-foreground"
+                  />
+                </div>
+                {actorQuery.trim() && (
+                  <div className="absolute z-10 mt-1 w-full bg-card border border-border rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                    {actorSearching && (
+                      <div className="px-3 py-2 text-xs text-foreground/50 flex items-center gap-2">
+                        <Loader2 className="w-3 h-3 animate-spin" /> Searching…
+                      </div>
+                    )}
+                    {!actorSearching && actorResults.length === 0 && (
+                      <div className="px-3 py-2 text-xs text-foreground/50">No matching users.</div>
+                    )}
+                    {actorResults.map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedActor(option);
+                          setActorResults([]);
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-foreground/5 transition-colors"
+                      >
+                        <div className="font-semibold text-foreground truncate">{option.name || "—"}</div>
+                        <div className="text-[10px] text-foreground/45 truncate">{option.email}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          <div>
+            <label htmlFor="audit-start-date" className="block text-xs font-semibold text-foreground/60 mb-1">
+              Start Date
+            </label>
+            <input
+              id="audit-start-date"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full px-3 py-2 text-sm bg-background border border-border rounded-xl focus:outline-none focus:border-primary/50 text-foreground"
+            />
+          </div>
+
+          <div>
+            <label htmlFor="audit-end-date" className="block text-xs font-semibold text-foreground/60 mb-1">
+              End Date
+            </label>
+            <input
+              id="audit-end-date"
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="w-full px-3 py-2 text-sm bg-background border border-border rounded-xl focus:outline-none focus:border-primary/50 text-foreground"
+            />
+          </div>
+        </div>
+
+        {(selectedActor || startDate || endDate) && (
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedActor(null);
+              setActorQuery("");
+              setStartDate("");
+              setEndDate("");
+            }}
+            className="text-xs font-semibold text-primary hover:underline"
+          >
+            Clear all filters
+          </button>
+        )}
       </div>
 
       {/* Categories Grid */}
