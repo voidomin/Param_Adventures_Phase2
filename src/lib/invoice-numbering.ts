@@ -28,6 +28,17 @@ function formatInvoiceNumber(fiscalYear: string, sequenceNumber: number): string
   return `${COMPANY_PREFIX}/${fiscalYear}/${String(sequenceNumber).padStart(4, "0")}`;
 }
 
+function formatCreditNoteNumber(fiscalYear: string, sequenceNumber: number): string {
+  // Separate series from invoices (own "CN" segment) -- GST requires each
+  // document type to be internally sequential, not that they share one
+  // number pool. Not fully certain whether the 16-char cap that applies to
+  // invoice numbers (Rule 46) also applies to credit notes (Rule 53) --
+  // rather than assume it doesn't, this stays within 16 chars too:
+  // "PARAM/CN/26/0001" is 16 chars (FY as a single start-year digit pair
+  // instead of invoice numbers' "26-27" span, to make room for "/CN").
+  return `${COMPANY_PREFIX}/CN/${fiscalYear.slice(0, 2)}/${String(sequenceNumber).padStart(4, "0")}`;
+}
+
 /**
  * Assigns a sequential, gapless invoice number to a booking the first
  * time it receives payment (advance or full). Idempotent -- calling this
@@ -73,4 +84,46 @@ export async function assignInvoiceNumberIfNeeded(
   });
 
   return invoiceNumber;
+}
+
+/**
+ * Issues a credit note for a genuine refund event -- money actually being
+ * credited back against a previously invoiced booking (a cancellation, a
+ * partial-participant cancellation, an admin-adjusted refund). Unlike
+ * assignInvoiceNumberIfNeeded, this is NOT idempotent by design: a booking
+ * can be legitimately refunded more than once (e.g. two separate
+ * participants cancelling out of the same multi-pax booking on different
+ * days), and each real refund event is its own credit note against the
+ * original invoice, never reusing another event's number. Call this once
+ * per actual refund resolution, not speculatively.
+ *
+ * Must be called inside the same Serializable transaction as the
+ * refund-resolving update, for the same race-safety reason as
+ * assignInvoiceNumberIfNeeded.
+ */
+export async function issueCreditNote(
+  tx: Prisma.TransactionClient,
+  params: { bookingId: string; amount: number; reason?: string | null },
+  now: Date = new Date(),
+): Promise<string> {
+  const fiscalYear = getFinancialYearLabel(now);
+
+  const sequence = await tx.creditNoteSequence.upsert({
+    where: { fiscalYear },
+    create: { fiscalYear, lastNumber: 1 },
+    update: { lastNumber: { increment: 1 } },
+  });
+
+  const creditNoteNumber = formatCreditNoteNumber(fiscalYear, sequence.lastNumber);
+
+  await tx.creditNote.create({
+    data: {
+      bookingId: params.bookingId,
+      creditNoteNumber,
+      amount: params.amount,
+      reason: params.reason ?? null,
+    },
+  });
+
+  return creditNoteNumber;
 }

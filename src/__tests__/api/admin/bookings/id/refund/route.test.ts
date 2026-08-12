@@ -19,6 +19,12 @@ vi.mock("@/lib/db", () => {
     refundRequest: {
       updateMany: vi.fn(),
     },
+    creditNoteSequence: {
+      upsert: vi.fn().mockResolvedValue({ fiscalYear: "26-27", lastNumber: 1 }),
+    },
+    creditNote: {
+      create: vi.fn(),
+    },
     $transaction: vi.fn(),
   };
   mockPrisma.$transaction = vi.fn().mockImplementation(async (callback) => {
@@ -141,6 +147,69 @@ describe("POST /api/admin/bookings/[id]/refund", () => {
       expect.objectContaining({ refundNote: "UTR123" }),
     );
     expect(mockSendRefundResolved).toHaveBeenCalled();
+  });
+
+  it("issues a credit note against the original invoice when a genuine refund resolves", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
+    mockBookingFindUnique.mockResolvedValue({
+      id: "b1",
+      bookingStatus: "CANCELLED",
+      paymentStatus: "REFUND_PENDING",
+      refundPreference: "BANK_REFUND",
+      cancellationReason: "Change of plans",
+      totalPrice: 5000,
+      paidAmount: 5000,
+      refundAmount: null,
+      slot: { date: new Date("2026-04-01T00:00:00.000Z") },
+      user: { name: "Akash", email: "akash@example.com" },
+      experience: { title: "Everest Base Camp" },
+    } as any);
+
+    const response = await POST(createRequest({ refundNote: "UTR12345" }), {
+      params: Promise.resolve({ id: "b1" }),
+    });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.creditNoteNumber).toBe("PARAM/CN/26/0001");
+    expect(prisma.creditNote.create).toHaveBeenCalledWith({
+      data: { bookingId: "b1", creditNoteNumber: "PARAM/CN/26/0001", amount: 5000, reason: "Change of plans" },
+    });
+    expect(mockLogActivity).toHaveBeenCalledWith(
+      "REFUND_RESOLVED",
+      "a1",
+      "Booking",
+      "b1",
+      expect.objectContaining({ creditNoteNumber: "PARAM/CN/26/0001" }),
+    );
+    expect(mockSendRefundResolved).toHaveBeenCalledWith(
+      expect.objectContaining({ creditNoteNumber: "PARAM/CN/26/0001" }),
+    );
+  });
+
+  it("skips issuing a credit note when the resolved refund amount is zero", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
+    mockBookingFindUnique.mockResolvedValue({
+      id: "b1",
+      bookingStatus: "CANCELLED",
+      paymentStatus: "REFUND_PENDING",
+      refundPreference: "BANK_REFUND",
+      totalPrice: 5000,
+      paidAmount: 5000,
+      refundAmount: 0,
+      slot: { date: new Date("2026-04-01T00:00:00.000Z") },
+      user: { name: "Akash", email: "akash@example.com" },
+      experience: { title: "Everest Base Camp" },
+    } as any);
+
+    const response = await POST(createRequest({ refundNote: "No refund due" }), {
+      params: Promise.resolve({ id: "b1" }),
+    });
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.creditNoteNumber).toBeNull();
+    expect(prisma.creditNote.create).not.toHaveBeenCalled();
   });
 
   it("uses fallback userName when booking user name is missing", async () => {

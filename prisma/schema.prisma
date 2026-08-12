@@ -229,6 +229,7 @@ model Booking {
   refundRequest      RefundRequest?
   generatedCoupons   TravelCoupon[]
   couponTransactions CouponTransaction[]
+  creditNotes        CreditNote[]
 
   @@index([userId])
   @@index([experienceId])
@@ -249,6 +250,31 @@ model Booking {
 model InvoiceSequence {
   fiscalYear String @id
   lastNumber Int    @default(0)
+}
+
+// Separate numbering series from InvoiceSequence -- GST requires each
+// document type (invoice, credit note) to be internally sequential, but
+// they don't need to share a number pool. See lib/invoice-numbering.ts.
+model CreditNoteSequence {
+  fiscalYear String @id
+  lastNumber Int    @default(0)
+}
+
+// One row per actual refund event, not per booking -- a booking can be
+// partially refunded more than once (e.g. individual participants
+// cancelling out of a multi-pax booking), and each real refund is its
+// own credit note against the original invoice, never reusing another
+// event's number.
+model CreditNote {
+  id               String   @id @default(uuid())
+  bookingId        String
+  creditNoteNumber String   @unique
+  amount           Decimal  @db.Decimal(10, 2)
+  reason           String?
+  createdAt        DateTime @default(now())
+  booking          Booking  @relation(fields: [bookingId], references: [id])
+
+  @@index([bookingId])
 }
 
 model Payment {

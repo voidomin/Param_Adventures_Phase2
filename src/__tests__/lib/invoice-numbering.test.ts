@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { assignInvoiceNumberIfNeeded, getFinancialYearLabel } from "@/lib/invoice-numbering";
+import { assignInvoiceNumberIfNeeded, getFinancialYearLabel, issueCreditNote } from "@/lib/invoice-numbering";
 
 describe("getFinancialYearLabel", () => {
   it("labels an April date as the start of that year's FY", () => {
@@ -68,5 +68,59 @@ describe("assignInvoiceNumberIfNeeded", () => {
     const result = await assignInvoiceNumberIfNeeded(tx as any, "booking-3", new Date("2026-08-15"));
 
     expect(result).toBe("PARAM/26-27/10042");
+  });
+});
+
+describe("issueCreditNote", () => {
+  const createTx = (lastNumber: number) => ({
+    creditNoteSequence: {
+      upsert: vi.fn().mockResolvedValue({ fiscalYear: "26-27", lastNumber }),
+    },
+    creditNote: {
+      create: vi.fn().mockResolvedValue({}),
+    },
+  });
+
+  it("issues a sequential, 16-char-max credit note number in its own series", async () => {
+    const tx = createTx(1);
+
+    const result = await issueCreditNote(
+      tx as any,
+      { bookingId: "booking-1", amount: 5000, reason: "Customer cancelled" },
+      new Date("2026-08-15"),
+    );
+
+    expect(result).toBe("PARAM/CN/26/0001");
+    expect(result.length).toBeLessThanOrEqual(16);
+    expect(tx.creditNoteSequence.upsert).toHaveBeenCalledWith({
+      where: { fiscalYear: "26-27" },
+      create: { fiscalYear: "26-27", lastNumber: 1 },
+      update: { lastNumber: { increment: 1 } },
+    });
+    expect(tx.creditNote.create).toHaveBeenCalledWith({
+      data: { bookingId: "booking-1", creditNoteNumber: "PARAM/CN/26/0001", amount: 5000, reason: "Customer cancelled" },
+    });
+  });
+
+  it("does not reuse a number across separate refund events -- each call gets the next one", async () => {
+    const tx = createTx(3);
+
+    const result = await issueCreditNote(tx as any, { bookingId: "booking-2", amount: 1200 }, new Date("2026-09-01"));
+
+    expect(result).toBe("PARAM/CN/26/0003");
+  });
+
+  it("uses its own sequence table, independent of invoice numbers", async () => {
+    const invoiceTx = {
+      booking: { findUnique: vi.fn().mockResolvedValue({ invoiceNumber: null }), update: vi.fn().mockResolvedValue({}) },
+      invoiceSequence: { upsert: vi.fn().mockResolvedValue({ fiscalYear: "26-27", lastNumber: 1 }) },
+    };
+    const creditTx = createTx(1);
+
+    const invoiceNumber = await assignInvoiceNumberIfNeeded(invoiceTx as any, "booking-3", new Date("2026-08-15"));
+    const creditNoteNumber = await issueCreditNote(creditTx as any, { bookingId: "booking-3", amount: 500 }, new Date("2026-08-15"));
+
+    expect(invoiceNumber).toBe("PARAM/26-27/0001");
+    expect(creditNoteNumber).toBe("PARAM/CN/26/0001");
   });
 });
