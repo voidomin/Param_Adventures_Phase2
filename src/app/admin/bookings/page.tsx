@@ -20,6 +20,7 @@ import { TableSkeleton } from "@/components/admin/TableSkeleton";
 import { ManualVerifyModal } from "@/components/admin/ManualVerifyModal";
 import { RefundResolveModal } from "@/components/admin/RefundResolveModal";
 import { exportRowsToExcel } from "@/lib/utils";
+import { useToast } from "@/components/ui/Toast";
 
 
 type BookingStatus = "REQUESTED" | "CONFIRMED" | "CANCELLED";
@@ -576,6 +577,7 @@ function PaymentModeDetail({ payments }: Readonly<{ payments: Booking["payments"
 }
 
 export default function AdminBookingsPage() {
+  const toast = useToast();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<BookingStatus | "ALL">(
@@ -1551,9 +1553,12 @@ export default function AdminBookingsPage() {
         <RefundResolveModal
           booking={resolvingBooking}
           onClose={() => setResolvingBooking(null)}
-          onSuccess={() => {
+          onSuccess={(creditNoteNumber) => {
             setResolvingBooking(null);
             fetchBookings();
+            if (creditNoteNumber) {
+              toast.success(`Credit note ${creditNoteNumber} issued.`);
+            }
           }}
         />
       )}
