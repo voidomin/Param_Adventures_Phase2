@@ -250,11 +250,16 @@ describe("BookingService.calculatePricing", () => {
 
 describe("BookingService.processBooking", () => {
   const mockTx = {
-    booking: { update: vi.fn(), updateMany: vi.fn() },
+    booking: {
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      findUnique: vi.fn().mockResolvedValue({ invoiceNumber: null }),
+    },
     slot: { update: vi.fn() },
     payment: { updateMany: vi.fn() },
     travelCoupon: { findUnique: vi.fn(), update: vi.fn() },
     couponTransaction: { create: vi.fn(), findMany: vi.fn() },
+    invoiceSequence: { upsert: vi.fn().mockResolvedValue({ fiscalYear: "26-27", lastNumber: 1 }) },
   };
 
   const validData = {
@@ -451,6 +456,7 @@ describe("BookingService.confirmPayment", () => {
     payment: { findFirst: vi.fn(), updateMany: vi.fn() },
     couponTransaction: { findMany: vi.fn() },
     slot: { update: vi.fn() },
+    invoiceSequence: { upsert: vi.fn().mockResolvedValue({ fiscalYear: "26-27", lastNumber: 1 }) },
   };
 
   const baseBooking = {

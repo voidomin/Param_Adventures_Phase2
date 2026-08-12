@@ -60,6 +60,7 @@ export async function GET(
     return NextResponse.json({
       booking: {
          id: booking.id,
+         invoiceNumber: booking.invoiceNumber,
          date: booking.createdAt,
          totalPrice: Number(booking.totalPrice),
          baseFare: Number(booking.baseFare),

@@ -29,6 +29,7 @@ interface TaxItem {
 
 interface AuditBooking {
   id: string;
+  invoiceNumber?: string | null;
   participantCount: number;
   totalPrice: number;
   baseFare: number;
@@ -80,12 +81,6 @@ function getPaymentDetails(payments?: { status: string; provider: string; provid
 // side reads it from a shared constant.
 const TOUR_OPERATOR_SAC_CODE = "9985";
 
-function formatInvoiceNumber(bookingId: string): string {
-  // Matches the PDF invoice's numbering (DownloadInvoiceBtn.tsx) so the two
-  // exports reference the same booking under the same number.
-  return `PARAM-${bookingId.split("-")[0].toUpperCase()}`;
-}
-
 function formatReturnPeriod(createdAt: string): string {
   return new Date(createdAt).toLocaleDateString("en-IN", { month: "short", year: "numeric" }).replace(" ", "-");
 }
@@ -96,7 +91,7 @@ function formatBookingRow(b: AuditBooking, index: number) {
 
   return {
     "Sr. No": index + 1,
-    "Invoice No": formatInvoiceNumber(b.id),
+    "Invoice No": b.invoiceNumber || "PENDING",
     "Invoice Date": new Date(b.createdAt),
     "Return Period (Mon-YYYY)": formatReturnPeriod(b.createdAt),
     "HSN/SAC Code": TOUR_OPERATOR_SAC_CODE,

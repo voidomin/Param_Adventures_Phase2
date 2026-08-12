@@ -6,6 +6,7 @@ import { BookingRepo } from "@/repositories/booking.repo";
 import { logError } from "@/lib/monitoring";
 import { logActivity } from "@/lib/audit-logger";
 import { isExpiredIST, redeemCoupon } from "@/lib/coupon-engine";
+import { assignInvoiceNumberIfNeeded } from "@/lib/invoice-numbering";
 
 interface CouponInput {
   customerId: string;
@@ -147,6 +148,14 @@ export async function POST(
             bookingStatus: finalBookingStatus,
           },
         });
+
+        // Idempotent no-op for the normal case (a prior advance payment
+        // already assigned one) -- only actually assigns here for the
+        // edge case of a booking reaching its first payment via this
+        // route rather than the initial checkout.
+        if (newPaidAmount > 0.01) {
+          await assignInvoiceNumberIfNeeded(tx, bookingId);
+        }
 
         // If fully paid, create payment log and clean up
         if (newRemaining <= 0.01) {

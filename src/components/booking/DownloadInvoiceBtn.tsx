@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/Toast";
 export interface InvoiceData {
   booking: {
     id: string;
+    invoiceNumber?: string | null;
     date: string;
     status: string;
     participantCount: number;
@@ -155,7 +156,7 @@ export function drawInvoiceDetailsAndBilledTo(
   
   doc.setFont("helvetica", "normal");
   doc.setTextColor(75, 85, 99); // Slate-600
-  doc.text(`Invoice No: PARAM-${booking.id.split("-")[0].toUpperCase()}`, 18, cardY + 12);
+  doc.text(`Invoice No: ${booking.invoiceNumber || "PENDING"}`, 18, cardY + 12);
   doc.text(`Date: ${formatInvoiceDate(booking.date)}`, 18, cardY + 17);
   doc.text(`Booking Status: ${booking.status}`, 18, cardY + 22);
 
@@ -436,8 +437,11 @@ export default function DownloadInvoiceBtn({ bookingId }: Readonly<{ bookingId: 
       const pageWidth = doc.internal.pageSize.getWidth();
       drawInvoicePage(doc, data, logoBase64, pageWidth);
 
-      // Save
-      doc.save(`Invoice_PARAM_${data.booking.id.split("-")[0].toUpperCase()}.pdf`);
+      // Save -- "/" isn't valid in filenames, so PARAM/26-27/0001 becomes
+      // PARAM_26-27_0001 for the downloaded file, same characters the
+      // invoice document itself displays.
+      const fileNameSafeInvoiceNumber = (data.booking.invoiceNumber || `PENDING_${data.booking.id.split("-")[0].toUpperCase()}`).replaceAll("/", "_");
+      doc.save(`Invoice_${fileNameSafeInvoiceNumber}.pdf`);
 
     } catch (error) {
       console.error("PDF generation error:", error);

@@ -7,6 +7,7 @@ import { sendRefundResolved } from "@/lib/email";
 import { z } from "zod";
 
 import { generateCouponCode } from "@/lib/coupon-engine";
+import { issueCreditNote } from "@/lib/invoice-numbering";
 
 const refundSchema = z.object({
   refundNote: z.string().min(1, "Refund note is required (coupon code or UTR number)"),
@@ -109,6 +110,20 @@ export async function POST(
           },
         });
 
+        // Real money (or coupon credit) is being handed back against a
+        // previously invoiced booking -- GST requires a credit note for
+        // that, referencing the original invoice, in its own sequential
+        // series (see lib/invoice-numbering.ts). Every dollar amount here
+        // was already validated above (capped at what was actually paid),
+        // so this only fires for a genuine refund, never speculatively.
+        const creditNoteNumber = refundAmt > 0
+          ? await issueCreditNote(tx, {
+              bookingId,
+              amount: refundAmt,
+              reason: booking.cancellationReason || "Booking cancellation/refund",
+            })
+          : null;
+
         if (booking.refundPreference === "COUPON") {
           const expiry = new Date();
           expiry.setMonth(expiry.getMonth() + 12); // 12 months validity
@@ -155,16 +170,17 @@ export async function POST(
           });
         }
 
-        return { booking, refundAmt, couponCode };
+        return { booking, refundAmt, couponCode, creditNoteNumber };
       }, { isolationLevel: "Serializable" }),
     );
 
-    const { booking, refundAmt, couponCode } = result;
+    const { booking, refundAmt, couponCode, creditNoteNumber } = result;
 
     await logActivity("REFUND_RESOLVED", adminId, "Booking", bookingId, {
       refundNote: couponCode,
       refundPreference: booking.refundPreference,
       refundAmount: refundAmt,
+      creditNoteNumber,
     });
 
     // The refund itself already committed above -- a failure sending this
@@ -180,12 +196,13 @@ export async function POST(
         refundNote: couponCode,
         totalPrice: refundAmt,
         bookingId: booking.id,
+        creditNoteNumber,
       });
     } catch (emailError) {
       console.error("Failed to send refund-resolved email:", emailError);
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, creditNoteNumber });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "";
     if (message === "BOOKING_NOT_FOUND") {

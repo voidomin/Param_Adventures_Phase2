@@ -3,7 +3,7 @@
  * Used server-side to enforce D-Day constraints on trek lead actions.
  */
 
-const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000; // 5 hours 30 minutes in ms
+export const IST_OFFSET_MS = 5.5 * 60 * 60 * 1000; // 5 hours 30 minutes in ms
 
 /** Returns today's date string in IST: "YYYY-MM-DD" */
 export function todayInIST(): string {

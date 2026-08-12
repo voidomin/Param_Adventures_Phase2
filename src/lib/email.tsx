@@ -44,6 +44,7 @@ export interface RefundResolvedData {
   refundNote: string;
   totalPrice: number;
   bookingId?: string;
+  creditNoteNumber?: string | null;
 }
 
 export interface WelcomeEmailData {
@@ -170,6 +171,7 @@ export async function sendRefundResolved(data: RefundResolvedData) {
         amount={data.totalPrice}
         couponCode={isCoupon ? data.refundNote : undefined}
         expiryDate={expiryStr}
+        creditNoteNumber={data.creditNoteNumber}
       />,
     );
     const label =

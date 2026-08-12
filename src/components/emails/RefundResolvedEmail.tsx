@@ -8,6 +8,7 @@ interface RefundResolvedEmailProps {
   amount: number;
   couponCode?: string;
   expiryDate?: string;
+  creditNoteNumber?: string | null;
 }
 
 export const RefundResolvedEmail = ({
@@ -16,6 +17,7 @@ export const RefundResolvedEmail = ({
   amount = 0,
   couponCode,
   expiryDate,
+  creditNoteNumber,
 }: RefundResolvedEmailProps) => {
   const isCoupon = !!couponCode;
 
@@ -53,8 +55,14 @@ export const RefundResolvedEmail = ({
         </Text>
       )}
 
+      {creditNoteNumber && (
+        <Text style={commonStyles.smallText}>
+          Credit Note Ref: <strong>{creditNoteNumber}</strong>
+        </Text>
+      )}
+
       <Text style={commonStyles.text}>
-        Thank you for your patience during this process. We hope to see you on 
+        Thank you for your patience during this process. We hope to see you on
         another adventure soon!
       </Text>
 
