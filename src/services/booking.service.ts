@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { BookingRepo, BookingPricing } from "@/repositories/booking.repo";
 import { BookingInput } from "@/lib/validators/booking.schema";
 import { isExpiredIST, redeemCoupon } from "@/lib/coupon-engine";
+import { assignInvoiceNumberIfNeeded } from "@/lib/invoice-numbering";
 
 interface ExtraAmenityOption {
   id: string;
@@ -209,6 +210,8 @@ export const BookingService = {
             paymentStatus: "PAID",
           },
         });
+
+        await assignInvoiceNumberIfNeeded(tx, booking.id);
 
         await tx.slot.update({
           where: { id: slot.id },
@@ -422,13 +425,15 @@ export const BookingService = {
 
         const updated = await tx.booking.update({
           where: { id: bookingId },
-          data: { 
-            bookingStatus: "CONFIRMED", 
+          data: {
+            bookingStatus: "CONFIRMED",
             paymentStatus: newPaymentStatus,
             paidAmount: newPaidAmount,
             remainingBalance: Math.max(0, remainingBalance),
           },
         });
+
+        await assignInvoiceNumberIfNeeded(tx, bookingId);
 
         await tx.payment.updateMany({
           where: { providerOrderId: razorpayOrderId, status: { not: "PAID" } },

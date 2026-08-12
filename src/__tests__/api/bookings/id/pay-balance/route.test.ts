@@ -14,6 +14,7 @@ vi.mock("@/lib/db", () => {
     payment: { create: vi.fn(), deleteMany: vi.fn(), update: vi.fn() },
     travelCoupon: { findUnique: vi.fn(), update: vi.fn() },
     couponTransaction: { create: vi.fn() },
+    invoiceSequence: { upsert: vi.fn() },
     $transaction: vi.fn(),
   };
   mockPrisma.$transaction = vi.fn().mockImplementation(async (cb: any) => cb(mockPrisma));
@@ -44,8 +45,11 @@ describe("POST /api/bookings/[id]/pay-balance", () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
     vi.mocked(prisma.booking.findUnique)
       .mockResolvedValueOnce(initialBooking as any)
-      .mockResolvedValueOnce(fullBooking as any);
+      .mockResolvedValueOnce(fullBooking as any)
+      // 3rd call: assignInvoiceNumberIfNeeded checking for an existing number.
+      .mockResolvedValue({ invoiceNumber: null } as any);
     vi.mocked(prisma.booking.update).mockResolvedValue({ ...fullBooking, remainingBalance: 500 } as any);
+    vi.mocked(prisma.invoiceSequence.upsert).mockResolvedValue({ fiscalYear: "26-27", lastNumber: 1 } as any);
     vi.mocked(BookingRepo.getRazorpayKeyId).mockResolvedValue({ value: "rzp_key" } as any);
   });
 

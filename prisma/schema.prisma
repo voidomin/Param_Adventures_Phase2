@@ -216,6 +216,11 @@ model Booking {
   refundNote         String?
   refundPreference   String?
   idempotencyKey     String?
+  // Assigned once, at the first payment received (advance or full) --
+  // never regenerated on subsequent balance payments. Sequential per
+  // financial year for GST filing continuity, e.g. "PARAM/26-27/0001".
+  // See lib/invoice-numbering.ts.
+  invoiceNumber      String?              @unique
   experience         Experience           @relation(fields: [experienceId], references: [id])
   slot               Slot?                @relation(fields: [slotId], references: [id])
   user               User                 @relation(fields: [userId], references: [id])
@@ -234,6 +239,16 @@ model Booking {
   @@index([deletedAt])
   @@index([bookingStatus, paymentStatus, createdAt])
   @@index([userId, idempotencyKey])
+}
+
+// One row per Indian financial year (e.g. "26-27"), holding the last
+// invoice number issued in that year. Incrementing this row inside a
+// Serializable transaction is what makes invoice-number assignment
+// gapless and race-safe under concurrent payments -- see
+// lib/invoice-numbering.ts.
+model InvoiceSequence {
+  fiscalYear String @id
+  lastNumber Int    @default(0)
 }
 
 model Payment {

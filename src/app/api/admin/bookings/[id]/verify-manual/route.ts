@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 import { sendBookingConfirmation } from "@/lib/email";
 import { logActivity } from "@/lib/audit-logger";
+import { assignInvoiceNumberIfNeeded } from "@/lib/invoice-numbering";
 import { z } from "zod";
 
 const manualVerifySchema = z.object({
@@ -105,6 +106,8 @@ export async function POST(
           remainingBalance: Math.max(0, remainingBalance),
         },
       });
+
+      await assignInvoiceNumberIfNeeded(tx, bookingId);
 
       await tx.payment.create({
         data: {

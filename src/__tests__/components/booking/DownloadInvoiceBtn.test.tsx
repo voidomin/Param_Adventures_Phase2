@@ -19,6 +19,7 @@ describe("DownloadInvoiceBtn", () => {
   const basePayload = {
     booking: {
       id: "book-1234",
+      invoiceNumber: "PARAM/26-27/0042",
       date: "2026-01-10T00:00:00.000Z",
       status: "PAID",
       participantCount: 2,
@@ -81,7 +82,7 @@ describe("DownloadInvoiceBtn", () => {
     await waitFor(() => {
       expect(globalThis.fetch).toHaveBeenCalledWith("/api/bookings/book-1234/invoice");
       expect(autoTable).toHaveBeenCalled();
-      expect(jsPDF.prototype.save).toHaveBeenCalledWith("Invoice_PARAM_BOOK.pdf");
+      expect(jsPDF.prototype.save).toHaveBeenCalledWith("Invoice_PARAM_26-27_0042.pdf");
     });
 
     expect(screen.getByRole("button", { name: /download tax invoice/i })).toBeEnabled();
@@ -111,7 +112,9 @@ describe("DownloadInvoiceBtn", () => {
     fireEvent.click(screen.getByRole("button", { name: /download tax invoice/i }));
 
     await waitFor(() => {
-      expect(jsPDF.prototype.save).toHaveBeenCalledWith("Invoice_PARAM_ABC.pdf");
+      // No invoiceNumber on this booking (e.g. a never-paid booking) -->
+      // falls back to a PENDING_{id-prefix} filename instead of throwing.
+      expect(jsPDF.prototype.save).toHaveBeenCalledWith("Invoice_PENDING_ABC.pdf");
     });
 
     expect(mockToast.error).not.toHaveBeenCalled();
