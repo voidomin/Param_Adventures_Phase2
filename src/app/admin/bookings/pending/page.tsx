@@ -9,6 +9,7 @@ import {
 import Link from "next/link";
 import { TableSkeleton } from "@/components/admin/TableSkeleton";
 import { RefundResolveModal } from "@/components/admin/RefundResolveModal";
+import { useToast } from "@/components/ui/Toast";
 
 type BookingStatus = "REQUESTED" | "CONFIRMED" | "CANCELLED";
 type PaymentStatus = "PENDING" | "PARTIALLY_PAID" | "PAID" | "FAILED" | "REFUND_PENDING" | "REFUNDED";
@@ -58,6 +59,7 @@ interface Booking {
 
 
 export default function PendingRefundsPage() {
+  const toast = useToast();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -219,10 +221,13 @@ export default function PendingRefundsPage() {
         <RefundResolveModal
           booking={resolvingBooking}
           onClose={() => setResolvingBooking(null)}
-          onSuccess={() => {
+          onSuccess={(creditNoteNumber) => {
             setResolvingBooking(null);
             setIsLoading(true);
             fetchBookings();
+            if (creditNoteNumber) {
+              toast.success(`Credit note ${creditNoteNumber} issued.`);
+            }
           }}
         />
       )}

@@ -19,7 +19,7 @@ export function RefundResolveModal({
 }: Readonly<{
   booking: RefundResolveBooking;
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (creditNoteNumber?: string | null) => void;
 }>) {
   const isCoupon = booking.refundPreference === "COUPON";
   const [note, setNote] = useState(isCoupon ? "AUTO_GENERATE" : "");
@@ -57,7 +57,7 @@ export function RefundResolveModal({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
-      onSuccess();
+      onSuccess(data.creditNoteNumber);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to resolve");
     } finally {
