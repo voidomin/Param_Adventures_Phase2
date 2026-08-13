@@ -8,7 +8,7 @@ vi.mock("@/lib/db", () => ({
       findUnique: vi.fn(),
       update: vi.fn(),
     },
-    siteSetting: {
+    platformSetting: {
       findMany: vi.fn(),
     },
   },
@@ -25,7 +25,7 @@ import { sendVerificationEmail } from "@/lib/email";
 const mockAuthorizeRequest = vi.mocked(authorizeRequest);
 const mockFindUnique = vi.mocked(prisma.user.findUnique);
 const mockUpdate = vi.mocked(prisma.user.update);
-const mockSiteSettingFindMany = vi.mocked(prisma.siteSetting.findMany);
+const mockPlatformSettingFindMany = vi.mocked(prisma.platformSetting.findMany);
 const mockSendVerificationEmail = vi.mocked(sendVerificationEmail);
 
 const createRequest = () => new NextRequest("http://localhost/api/auth/resend-verification", { method: "POST" });
@@ -33,7 +33,7 @@ const createRequest = () => new NextRequest("http://localhost/api/auth/resend-ve
 describe("POST /api/auth/resend-verification", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockSiteSettingFindMany.mockResolvedValue([{ key: "app_url", value: "https://example.com" }] as any);
+    mockPlatformSettingFindMany.mockResolvedValue([{ key: "app_url", value: "https://example.com" }] as any);
     mockUpdate.mockResolvedValue({} as any);
   });
 

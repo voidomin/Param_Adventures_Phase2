@@ -21,7 +21,7 @@ vi.mock("@/lib/db", () => ({
       findUnique: vi.fn(),
       update: vi.fn(),
     },
-    siteSetting: {
+    platformSetting: {
       findMany: vi.fn().mockResolvedValue([]),
     },
   },

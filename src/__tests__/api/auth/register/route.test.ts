@@ -66,11 +66,16 @@ describe("POST /api/auth/register", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockPlatformSettingFindUnique.mockResolvedValue({ key: "registration_enabled", value: "true" } as any);
-    mockPlatformSettingFindMany.mockResolvedValue([
-      { key: "jwt_expiry", value: "1h" },
-      { key: "refresh_token_expiry", value: "7d" },
-    ] as any);
-    mockSiteSettingFindMany.mockResolvedValue([{ key: "app_url", value: "https://example.com" }] as any);
+    mockPlatformSettingFindMany.mockImplementation(((args: any) => {
+      if (args?.where?.key === "app_url") {
+        return Promise.resolve([{ key: "app_url", value: "https://example.com" }]);
+      }
+      return Promise.resolve([
+        { key: "jwt_expiry", value: "1h" },
+        { key: "refresh_token_expiry", value: "7d" },
+      ]);
+    }) as any);
+    mockSiteSettingFindMany.mockResolvedValue([] as any);
     mockVerifyTurnstileToken.mockResolvedValue(true);
   });
 
