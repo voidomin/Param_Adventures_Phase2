@@ -67,12 +67,12 @@ export async function POST(request: NextRequest) {
     });
 
     // Determine base URL dynamically from settings or headers
-    const siteSettings = await prisma.siteSetting.findMany({
+    const appUrlSettings = await prisma.platformSetting.findMany({
       where: { key: "app_url" }
     });
-    
+
     const baseUrl =
-      siteSettings[0]?.value ||
+      appUrlSettings[0]?.value ||
       process.env.NEXT_PUBLIC_APP_URL ||
       request.headers.get("origin") ||
       "https://localhost:3000";

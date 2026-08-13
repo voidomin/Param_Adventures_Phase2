@@ -48,7 +48,6 @@ export const DEFAULT_SITE_SETTINGS = [
   { key: "site_title", value: "Param Adventures" },
   { key: "site_description", value: "Curated outdoor experiences across India" },
   { key: "site_favicon_url", value: "/favicon.ico" },
-  { key: "app_url", value: "http://localhost:3000" },
   { key: "company_name", value: "Param Adventures Private Limited" },
   { key: "company_address", value: "" },
   { key: "company_gst", value: "" },
