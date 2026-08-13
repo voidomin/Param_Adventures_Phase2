@@ -56,6 +56,67 @@ describe("app/dashboard/settings/page", () => {
     expect(screen.getByLabelText(/Gender/i)).toHaveValue("Female");
   });
 
+  it("shows a Verified badge and no resend button when the account is verified", () => {
+    render(<SettingsPage />);
+
+    expect(screen.getByText(/^Verified$/i)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /resend verification email/i })).not.toBeInTheDocument();
+  });
+
+  it("shows a Not verified badge and a resend button when the account is unverified", async () => {
+    mockUseAuth.mockReturnValue({
+      user: {
+        id: "u1",
+        email: "jane@example.com",
+        name: "Jane Trekker",
+        role: "USER",
+        phoneNumber: "+91 9876543210",
+        gender: "Female",
+        age: 29,
+        dateOfBirth: "1997-03-26",
+        bloodGroup: "O+",
+        emergencyContactName: "John",
+        emergencyContactNumber: "+91 9123456780",
+        emergencyRelationship: "Brother",
+        isVerified: false,
+        permissions: [],
+      },
+      mutateUser: mockMutateUser,
+      logout: mockLogout,
+    });
+
+    render(<SettingsPage />);
+
+    expect(screen.getByText(/not verified/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /resend verification email/i }));
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith("/api/auth/resend-verification", { method: "POST" });
+    });
+    expect(await screen.findByText(/verification email sent/i)).toBeInTheDocument();
+  });
+
+  it("shows an error when resending the verification email fails", async () => {
+    mockUseAuth.mockReturnValue({
+      user: {
+        id: "u1",
+        email: "jane@example.com",
+        name: "Jane Trekker",
+        role: "USER",
+        isVerified: false,
+        permissions: [],
+      },
+      mutateUser: mockMutateUser,
+      logout: mockLogout,
+    });
+    mockFetch.mockResolvedValue({ ok: false });
+
+    render(<SettingsPage />);
+    fireEvent.click(screen.getByRole("button", { name: /resend verification email/i }));
+
+    expect(await screen.findByText(/couldn.t send/i)).toBeInTheDocument();
+  });
+
   it("submits profile update and calls mutateUser on success", async () => {
     render(<SettingsPage />);
 

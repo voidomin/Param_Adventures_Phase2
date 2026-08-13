@@ -36,6 +36,24 @@ export default function SettingsPage() {
   const { user, mutateUser, logout } = useAuth();
   const router = useRouter();
 
+  // Email verification resend state -- mirrors EmailVerificationBanner's
+  // own local state, since this page has no toast system wired in and
+  // the banner is dismissible (so this is the only permanent place a
+  // user can see their status or trigger a resend without waiting for
+  // the banner to reappear next session).
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent" | "error">("idle");
+
+  const handleResendVerification = async () => {
+    setResendState("sending");
+    try {
+      const res = await fetch("/api/auth/resend-verification", { method: "POST" });
+      if (!res.ok) throw new Error();
+      setResendState("sent");
+    } catch {
+      setResendState("error");
+    }
+  };
+
   // Profile Identity State
   const [name, setName] = useState("");
   const [countryCode, setCountryCode] = useState("+91");
@@ -385,6 +403,38 @@ export default function SettingsPage() {
                     disabled
                     className="w-full px-4 py-3 bg-foreground/5 text-foreground/40 border border-transparent rounded-xl cursor-not-allowed"
                   />
+                  <div className="mt-2 flex items-center gap-2">
+                    {user.isVerified ? (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-500">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        Verified
+                      </span>
+                    ) : (
+                      <>
+                        <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-500">
+                          <AlertCircle className="w-3.5 h-3.5" />
+                          Not verified
+                        </span>
+                        {resendState === "sent" ? (
+                          <span className="text-xs font-bold text-emerald-500">
+                            Verification email sent — check your inbox!
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleResendVerification}
+                            disabled={resendState === "sending"}
+                            className="text-xs font-bold text-primary hover:underline disabled:opacity-50 cursor-pointer"
+                          >
+                            {resendState === "sending" ? "Sending…" : "Resend verification email"}
+                          </button>
+                        )}
+                        {resendState === "error" && (
+                          <span className="text-xs text-red-400">Couldn&apos;t send — try again.</span>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
