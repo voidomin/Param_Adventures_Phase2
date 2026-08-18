@@ -5,11 +5,15 @@ import { logActivity } from "@/lib/audit-logger";
 
 import { z } from "zod";
 
+import { calculateRefundBreakdown } from "@/lib/refund-engine";
+import { generateCouponCode } from "@/lib/coupon-engine";
+
 const updateSlotSchema = z.object({
   date: z.iso.datetime().or(z.string().refine(val => !Number.isNaN(Date.parse(val)), "Invalid date format")).optional(),
   capacity: z.number().int().min(1, "Capacity must be at least 1").optional(),
-}).refine(data => data.date !== undefined || data.capacity !== undefined, {
-  message: "Date or capacity must be provided.",
+  status: z.enum(["UPCOMING", "ACTIVE", "TREK_STARTED", "TREK_ENDED", "COMPLETED", "CANCELLED"]).optional(),
+}).refine(data => data.date !== undefined || data.capacity !== undefined || data.status !== undefined, {
+  message: "Date, capacity, or status must be provided.",
 });
 
 // PATCH /api/admin/experiences/[id]/slots/[slotId]
@@ -32,13 +36,9 @@ export async function PATCH(
         { status: 400 },
       );
     }
-    const { date, capacity } = parseResult.data;
+    const { date, capacity, status } = parseResult.data;
 
-    // Read-modify-write on capacity/remainingCapacity must be atomic with
-    // respect to concurrent bookings decrementing remainingCapacity, or an
-    // admin edit here can silently overwrite/revert a simultaneous booking's
-    // capacity decrement. Serializable + retry matches the isolation level
-    // booking.service.ts already uses for the same slot row.
+    // Read-modify-write on capacity/remainingCapacity must be atomic
     const updatedSlot = await runWithRetry(() =>
       prisma.$transaction(async (tx) => {
         const slot = await tx.slot.findUnique({ where: { id: slotId } });
@@ -56,12 +56,98 @@ export async function PATCH(
         }
 
         const newCapacity = capacity ?? slot.capacity;
-        const newRemaining = newCapacity - bookedCount;
+        const newRemaining = status === "CANCELLED" ? newCapacity : (newCapacity - bookedCount);
+
+        // If status changes to CANCELLED, handle company slot cancellation hook for all active bookings
+        if (status === "CANCELLED" && slot.status !== "CANCELLED") {
+          const activeBookings = await tx.booking.findMany({
+            where: { slotId, bookingStatus: { in: ["CONFIRMED", "REQUESTED"] } },
+          });
+
+          for (const booking of activeBookings) {
+            const breakdown = calculateRefundBreakdown({
+              baseFare: Number(booking.baseFare),
+              totalPrice: Number(booking.totalPrice),
+              paidAmount: Number(booking.paidAmount),
+              paymentType: booking.paymentType as "FULL" | "ADVANCE",
+              refundPercent: 0,
+              taxBreakdown: booking.taxBreakdown,
+              isCompanyCancellation: true,
+            });
+
+            const finalRefund = breakdown.finalRefundAmount;
+
+            await tx.booking.update({
+              where: { id: booking.id },
+              data: {
+                bookingStatus: "CANCELLED",
+                paymentStatus: Number(booking.paidAmount) > 0 ? "REFUND_PENDING" : booking.paymentStatus,
+                cancelledAt: new Date(),
+                cancellationReason: "Slot cancelled by management.",
+                refundAmount: finalRefund > 0 ? finalRefund : null,
+              },
+            });
+
+            if (Number(booking.paidAmount) > 0 && finalRefund > 0) {
+              if (booking.refundPreference === "COUPON") {
+                const couponCode = generateCouponCode("PARAM");
+                const createdCoupon = await tx.travelCoupon.create({
+                  data: {
+                    code: couponCode,
+                    customerId: booking.userId,
+                    bookingId: booking.id,
+                    originalValue: finalRefund,
+                    balance: finalRefund,
+                    expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+                    status: "ACTIVE",
+                    type: "CANCELLATION",
+                    reason: "100% Refund coupon for company-cancelled slot",
+                  },
+                });
+
+                await tx.couponTransaction.create({
+                  data: {
+                    couponId: createdCoupon.id,
+                    bookingId: booking.id,
+                    type: "ISSUED",
+                    amount: finalRefund,
+                    previousBalance: 0,
+                    newBalance: finalRefund,
+                    remarks: "Issued for company-cancelled slot",
+                  },
+                });
+              } else {
+                await tx.refundRequest.upsert({
+                  where: { bookingId: booking.id },
+                  create: {
+                    bookingId: booking.id,
+                    customerId: booking.userId,
+                    refundMethod: "BANK_TRANSFER",
+                    baseFare: breakdown.baseFare,
+                    gst: breakdown.gst,
+                    convenienceFee: breakdown.convenienceFee,
+                    cancellationPercent: 0,
+                    cancellationCharges: 0,
+                    finalRefundAmount: finalRefund,
+                    status: "REQUESTED",
+                    remarks: "Slot cancelled by management. Awaiting admin refund approval.",
+                  },
+                  update: {
+                    finalRefundAmount: finalRefund,
+                    status: "REQUESTED",
+                    remarks: "Slot cancelled by management. Awaiting admin refund approval.",
+                  },
+                });
+              }
+            }
+          }
+        }
 
         return tx.slot.update({
           where: { id: slotId },
           data: {
             ...(date && { date: new Date(date) }),
+            ...(status && { status }),
             capacity: newCapacity,
             remainingCapacity: newRemaining,
           },

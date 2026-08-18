@@ -265,6 +265,15 @@ function validateBookingCancellation(params: {
   if (booking.bookingStatus !== "REQUESTED" && booking.bookingStatus !== "CONFIRMED") {
     return { error: "This booking cannot be cancelled.", status: 409 };
   }
+  if (booking.slot) {
+    if (["TREK_STARTED", "TREK_ENDED", "COMPLETED"].includes(booking.slot.status)) {
+      return { error: "Cannot cancel a booking for a trip that has already started or completed.", status: 400 };
+    }
+    const departureDate = new Date(booking.slot.date);
+    if (departureDate.getTime() <= Date.now()) {
+      return { error: "Cannot cancel a booking on or after the departure date.", status: 400 };
+    }
+  }
 
   const activeParticipants = booking.participants.filter((p) => !p.isCancelled);
   const activeIds = new Set(activeParticipants.map((p) => p.id));

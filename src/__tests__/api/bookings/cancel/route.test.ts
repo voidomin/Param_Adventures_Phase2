@@ -110,6 +110,7 @@ describe("POST /api/bookings/[id]/cancel", () => {
   });
 
   it("cancels booking and restores slot capacity", async () => {
+    const futureDate = new Date(Date.now() + 30 * 86400 * 1000);
     mockAuthorizeRequest.mockResolvedValue({
       authorized: true,
       userId: "u1",
@@ -123,7 +124,7 @@ describe("POST /api/bookings/[id]/cancel", () => {
       paymentStatus: "PAID",
       user: { name: "User", email: "u@example.com" },
       experience: { title: "Trip" },
-      slot: { date: new Date("2026-06-01") },
+      slot: { date: futureDate, status: "UPCOMING" },
     } as any);
 
     const updateBooking = vi.fn().mockResolvedValue({});
@@ -152,6 +153,28 @@ describe("POST /api/bookings/[id]/cancel", () => {
     });
     expect(mockLogActivity).toHaveBeenCalled();
     expect(mockSendBookingCancellation).toHaveBeenCalled();
+  });
+
+  it("blocks cancellation if departure date is in the past", async () => {
+    const pastDate = new Date(Date.now() - 86400 * 1000);
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: true,
+      userId: "u1",
+    } as any);
+    mockFindUnique.mockResolvedValue({
+      id: "b1",
+      userId: "u1",
+      bookingStatus: "CONFIRMED",
+      slot: { date: pastDate, status: "UPCOMING" },
+    } as any);
+
+    const response = await POST(createRequest({ preference: "COUPON" }), {
+      params: Promise.resolve({ id: "b1" }),
+    });
+
+    expect(response.status).toBe(400);
+    const data = await response.json();
+    expect(data.error).toContain("departure date");
   });
 
   it("cancels booking without slot update when slotId is absent", async () => {
@@ -202,7 +225,7 @@ describe("POST /api/bookings/[id]/cancel", () => {
       paymentStatus: "PENDING",
       user: { name: "", email: "u@example.com" },
       experience: { title: "Trip" },
-      slot: { date: new Date("2026-06-01") },
+      slot: { date: new Date(Date.now() + 30 * 86400 * 1000), status: "UPCOMING" },
     } as any);
 
     const updateBooking = vi.fn().mockResolvedValue({});

@@ -65,6 +65,21 @@ export async function POST(
         { status: 409 }
       );
     }
+    if (booking.slot) {
+      if (["TREK_STARTED", "TREK_ENDED", "COMPLETED"].includes(booking.slot.status)) {
+        return NextResponse.json(
+          { error: "Cannot cancel a booking for a trip that has already started or completed." },
+          { status: 400 }
+        );
+      }
+      const departureDate = new Date(booking.slot.date);
+      if (departureDate.getTime() <= Date.now()) {
+        return NextResponse.json(
+          { error: "Cannot cancel a booking on or after the departure date." },
+          { status: 400 }
+        );
+      }
+    }
 
     // Determine refund: only if payment was made (fully or partially)
     const newPaymentStatus =
