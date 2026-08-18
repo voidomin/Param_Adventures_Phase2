@@ -72,6 +72,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       return NextResponse.json({ error: "Trip not found." }, { status: 404 });
     }
 
+    if (slot.status === "COMPLETED") {
+      return NextResponse.json(
+        { error: "Trip is completed and locked for edits." },
+        { status: 409 },
+      );
+    }
+
     // Must be ACTIVE or TREK_STARTED
     if (!["ACTIVE", "TREK_STARTED"].includes(slot.status)) {
       return NextResponse.json(

@@ -567,5 +567,24 @@ export const BookingService = {
     }
 
     return { totalPrice, baseFare, taxBreakdown } as BookingPricing;
+  },
+
+  /**
+   * Auto-expires abandoned REQUESTED bookings older than 24 hours (1440 minutes).
+   */
+  async autoExpireAbandonedBookings(): Promise<number> {
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const result = await prisma.booking.updateMany({
+      where: {
+        bookingStatus: "REQUESTED",
+        paymentStatus: "PENDING",
+        createdAt: { lt: twentyFourHoursAgo },
+      },
+      data: {
+        bookingStatus: "CANCELLED",
+        cancellationReason: "Expired - Unpaid booking request exceeded 24 hours",
+      },
+    });
+    return result.count;
   }
 };

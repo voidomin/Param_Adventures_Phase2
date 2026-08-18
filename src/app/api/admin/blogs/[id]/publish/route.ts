@@ -23,8 +23,8 @@ export async function POST(
 
   const isPublishing = blog.status !== "PUBLISHED";
 
-  // Prevent self-publishing a draft
-  if (isPublishing && blog.authorId === auth.userId) {
+  // Prevent self-publishing a draft unless user is SUPER_ADMIN
+  if (isPublishing && blog.authorId === auth.userId && auth.roleName !== "SUPER_ADMIN") {
     return NextResponse.json(
       { error: "You cannot self-publish your own blog. Another admin must approve it." },
       { status: 400 }

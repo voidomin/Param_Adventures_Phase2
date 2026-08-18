@@ -130,8 +130,24 @@ export async function DELETE(
       );
     }
 
-    await prisma.experienceReview.delete({
-      where: { id },
+    await prisma.$transaction(async (tx) => {
+      await tx.experienceReview.delete({
+        where: { id },
+      });
+
+      // Reset canReview = true on user's booking for this experience so customer can resubmit
+      if (review.userId && review.experienceId) {
+        await tx.booking.updateMany({
+          where: {
+            userId: review.userId,
+            experienceId: review.experienceId,
+            bookingStatus: "CONFIRMED",
+          },
+          data: {
+            canReview: true,
+          },
+        });
+      }
     });
 
     await logActivity(
