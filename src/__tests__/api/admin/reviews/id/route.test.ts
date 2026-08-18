@@ -179,6 +179,8 @@ describe("DELETE /api/admin/reviews/[id]", () => {
     } as any);
     mockFindUnique.mockResolvedValue({
       id: "rev-1",
+      userId: "u1",
+      experienceId: "exp-1",
       user: { name: "Reviewer A" },
       experience: { title: "Adventure Express" },
     } as any);

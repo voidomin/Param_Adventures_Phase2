@@ -96,6 +96,21 @@ describe("POST /api/trek-lead/trips/[id]/attendance", () => {
     expect(response.status).toBe(409);
   });
 
+  it("returns 409 when slot is COMPLETED and locked for edits", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "t1" } as any);
+    mockAssignmentFindUnique.mockResolvedValue({ id: "a1" } as any);
+    mockSlotFindUnique.mockResolvedValue({ date: new Date(), status: "COMPLETED" } as any);
+
+    const response = await POST(
+      createRequest({ attendees: [{ participantId: "p1", attended: true }] }),
+      { params: Promise.resolve({ id: "slot-1" }) },
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(data.error).toBe("Trip is completed and locked for edits.");
+  });
+
   it("returns 403 when not slot day", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "t1" } as any);
     mockAssignmentFindUnique.mockResolvedValue({ id: "a1" } as any);
