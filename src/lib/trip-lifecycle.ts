@@ -1,5 +1,4 @@
 import { prisma, runWithRetry } from "@/lib/db";
-import { IST_OFFSET_MS } from "@/lib/ist-utils";
 
 /**
  * Evaluates past slots and auto-completes them if the trek end date has passed.

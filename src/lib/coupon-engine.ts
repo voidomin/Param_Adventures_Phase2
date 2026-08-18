@@ -81,9 +81,11 @@ export async function redeemCoupon(params: {
   const { couponId, bookingId, amount, tx, remarks } = params;
 
   let coupon: TravelCoupon | null = null;
-  if ("$queryRaw" in tx && typeof (tx as any).$queryRaw === "function") {
+  type QueryableTx = { $queryRaw?: (strings: TemplateStringsArray, ...values: unknown[]) => Promise<unknown[]> };
+  const rawTx = tx as unknown as QueryableTx;
+  if (typeof rawTx.$queryRaw === "function") {
     try {
-      const rows = await (tx as any).$queryRaw`SELECT * FROM "TravelCoupon" WHERE id = ${couponId} FOR UPDATE`;
+      const rows = await rawTx.$queryRaw`SELECT * FROM "TravelCoupon" WHERE id = ${couponId} FOR UPDATE`;
       if (Array.isArray(rows) && rows.length > 0) {
         coupon = rows[0] as TravelCoupon;
       }
