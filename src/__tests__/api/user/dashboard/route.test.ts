@@ -81,21 +81,25 @@ describe("GET /api/user/dashboard", () => {
       {
         id: "b1",
         bookingStatus: "CONFIRMED",
+        canReview: false,
         slot: { status: "UPCOMING", date: future },
       },
       {
         id: "b2",
         bookingStatus: "CONFIRMED",
+        canReview: true,
         slot: { status: "COMPLETED", date: past },
       },
       {
         id: "b3",
         bookingStatus: "CANCELLED",
+        canReview: false,
         slot: { status: "UPCOMING", date: future },
       },
       {
         id: "b4",
         bookingStatus: "CONFIRMED",
+        canReview: false,
         slot: null,
       },
     ] as any);
@@ -109,6 +113,7 @@ describe("GET /api/user/dashboard", () => {
     expect(data.user.roleName).toBe("USER");
     expect(data.upcomingBookings.map((b: any) => b.id)).toEqual(["b1", "b4"]);
     expect(data.pastBookings.map((b: any) => b.id)).toEqual(["b2", "b3"]);
+    expect(data.eligibleReviewBookings.map((b: any) => b.id)).toEqual(["b2"]);
     expect(data.refundRequests).toEqual([]);
     expect(data.coupons).toEqual([]);
     expect(data.stats).toEqual({ total: 4, upcoming: 2, past: 2 });

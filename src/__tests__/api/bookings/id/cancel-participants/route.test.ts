@@ -168,6 +168,32 @@ describe("POST /api/bookings/[id]/cancel-participants", () => {
     );
   });
 
+  it("recalculates taxBreakdown proportionally when partially cancelling participants", async () => {
+    mockCalculateRefundBreakdown.mockReturnValueOnce({
+      baseFare: 1000, gst: 0, convenienceFee: 0, cancellationPercent: 0,
+      cancellationCharges: 0, finalRefundAmount: 600,
+    } as any);
+    vi.mocked(prisma.booking.findUnique).mockResolvedValue({
+      ...baseBooking,
+      baseFare: 2000,
+      taxBreakdown: [{ name: "GST", percentage: 5, amount: 50 }],
+    } as any);
+
+    const response = await POST(
+      createRequest({ participantIds: ["p1"], preference: "COUPON" }),
+      { params: Promise.resolve({ id: "b1" }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(prisma.booking.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          taxBreakdown: [{ name: "GST", percentage: 5, amount: 25 }],
+        }),
+      }),
+    );
+  });
+
   it("returns 409 when a race condition already cancelled the participant", async () => {
     vi.mocked(prisma.bookingParticipant.count).mockResolvedValue(1);
 
