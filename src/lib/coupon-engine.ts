@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { prisma } from "@/lib/db";
 import { CouponStatus, TravelCoupon } from "@prisma/client";
+import { IST_OFFSET_MS } from "@/lib/ist-utils";
 
 /**
  * Checks if the current time is past the end of the expiry day in Indian Standard Time (IST, UTC+5.5).
@@ -9,10 +10,13 @@ export function isExpiredIST(expiryDate: Date | string): boolean {
   const expiry = new Date(expiryDate);
   if (Number.isNaN(expiry.getTime())) return true;
 
-  const expiryYear = expiry.getUTCFullYear();
-  const expiryMonth = expiry.getUTCMonth();
-  const expiryDay = expiry.getUTCDate();
+  // Normalize date to IST calendar components before computing end-of-day UTC bound
+  const expiryIST = new Date(expiry.getTime() + IST_OFFSET_MS);
+  const expiryYear = expiryIST.getUTCFullYear();
+  const expiryMonth = expiryIST.getUTCMonth();
+  const expiryDay = expiryIST.getUTCDate();
 
+  // End of expiry day in IST (23:59:59.999 IST = 18:29:59.999 UTC)
   const endOfExpiryDayIST = new Date(Date.UTC(expiryYear, expiryMonth, expiryDay, 18, 29, 59, 999));
 
   return new Date() > endOfExpiryDayIST;

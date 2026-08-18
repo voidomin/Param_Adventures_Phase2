@@ -24,6 +24,7 @@ vi.mock("@/lib/db", () => ({
     },
     $transaction: vi.fn(),
   },
+  runWithRetry: vi.fn((fn) => fn()),
 }));
 
 import { POST } from "@/app/api/bookings/[id]/cancel/route";

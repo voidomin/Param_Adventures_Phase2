@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma, runWithRetry } from "@/lib/db";
 import { PaymentStatus, Prisma } from "@prisma/client";
 import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
@@ -73,94 +73,96 @@ async function processFullCancellation(params: {
     newPaymentStatus = "PAID";
   }
 
-  await prisma.$transaction(async (tx) => {
-    const current = await tx.booking.findUnique({
-      where: { id: bookingId },
-      select: { bookingStatus: true },
-    });
-    if (!current || current.bookingStatus === "CANCELLED") {
-      throw new Error("Booking is already cancelled.");
-    }
+  await runWithRetry(() =>
+    prisma.$transaction(async (tx) => {
+      const current = await tx.booking.findUnique({
+        where: { id: bookingId },
+        select: { bookingStatus: true },
+      });
+      if (!current || current.bookingStatus === "CANCELLED") {
+        throw new Error("Booking is already cancelled.");
+      }
 
-    let refundNote: string | null = null;
-    if (preference === "NO_REFUND") {
-      refundNote = "No Refund Issued (Admin Decision)";
-    }
+      let refundNote: string | null = null;
+      if (preference === "NO_REFUND") {
+        refundNote = "No Refund Issued (Admin Decision)";
+      }
 
-    await tx.booking.update({
-      where: { id: bookingId },
-      data: {
-        bookingStatus: "CANCELLED",
-        paymentStatus: newPaymentStatus as PaymentStatus,
-        cancelledAt: new Date(),
-        cancelledByUserId: userId,
-        cancellationReason: reason || null,
-        refundPreference: preference,
-        refundAmount: finalRefund > 0 && (preference === "BANK_REFUND" || preference === "COUPON") ? finalRefund : null,
-        refundNote,
-      },
-    });
-
-    // Mark all active participants as cancelled
-    await tx.bookingParticipant.updateMany({
-      where: { bookingId, isCancelled: false },
-      data: {
-        isCancelled: true,
-        cancelledAt: new Date(),
-      },
-    });
-
-    if (booking.slotId && booking.bookingStatus === "CONFIRMED") {
-      await tx.slot.update({
-        where: { id: booking.slotId },
+      await tx.booking.update({
+        where: { id: bookingId },
         data: {
-          remainingCapacity: { increment: activeCount },
+          bookingStatus: "CANCELLED",
+          paymentStatus: newPaymentStatus as PaymentStatus,
+          cancelledAt: new Date(),
+          cancelledByUserId: userId,
+          cancellationReason: reason || null,
+          refundPreference: preference,
+          refundAmount: finalRefund > 0 && (preference === "BANK_REFUND" || preference === "COUPON") ? finalRefund : null,
+          refundNote,
         },
       });
-    }
 
-    // Restore coupons originally used in the booking
-    await restoreCouponsForBooking({
-      bookingId,
-      cancellationCharges: Number(breakdown.cancellationCharges),
-      tx,
-    });
+      // Mark all active participants as cancelled
+      await tx.bookingParticipant.updateMany({
+        where: { bookingId, isCancelled: false },
+        data: {
+          isCancelled: true,
+          cancelledAt: new Date(),
+        },
+      });
 
-    // Create refund request if refund is due
-    if (finalRefund > 0) {
-      if (preference === "COUPON") {
-        await tx.refundRequest.create({
+      if (booking.slotId && booking.bookingStatus === "CONFIRMED") {
+        await tx.slot.update({
+          where: { id: booking.slotId },
           data: {
-            bookingId,
-            customerId: booking.userId,
-            refundMethod: "TRAVEL_COUPON",
-            baseFare: breakdown.baseFare,
-            gst: breakdown.gst,
-            convenienceFee: breakdown.convenienceFee,
-            cancellationPercent: breakdown.cancellationPercent,
-            cancellationCharges: breakdown.cancellationCharges,
-            finalRefundAmount: breakdown.finalRefundAmount,
-            status: "REQUESTED",
-          },
-        });
-      } else if (preference === "BANK_REFUND") {
-        await tx.refundRequest.create({
-          data: {
-            bookingId,
-            customerId: booking.userId,
-            refundMethod: "BANK_TRANSFER",
-            baseFare: breakdown.baseFare,
-            gst: breakdown.gst,
-            convenienceFee: breakdown.convenienceFee,
-            cancellationPercent: breakdown.cancellationPercent,
-            cancellationCharges: breakdown.cancellationCharges,
-            finalRefundAmount: breakdown.finalRefundAmount,
-            status: "REQUESTED",
+            remainingCapacity: { increment: activeCount },
           },
         });
       }
-    }
-  });
+
+      // Restore coupons originally used in the booking
+      await restoreCouponsForBooking({
+        bookingId,
+        cancellationCharges: Number(breakdown.cancellationCharges),
+        tx,
+      });
+
+      // Create refund request if refund is due
+      if (finalRefund > 0) {
+        if (preference === "COUPON") {
+          await tx.refundRequest.create({
+            data: {
+              bookingId,
+              customerId: booking.userId,
+              refundMethod: "TRAVEL_COUPON",
+              baseFare: breakdown.baseFare,
+              gst: breakdown.gst,
+              convenienceFee: breakdown.convenienceFee,
+              cancellationPercent: breakdown.cancellationPercent,
+              cancellationCharges: breakdown.cancellationCharges,
+              finalRefundAmount: breakdown.finalRefundAmount,
+              status: "REQUESTED",
+            },
+          });
+        } else if (preference === "BANK_REFUND") {
+          await tx.refundRequest.create({
+            data: {
+              bookingId,
+              customerId: booking.userId,
+              refundMethod: "BANK_TRANSFER",
+              baseFare: breakdown.baseFare,
+              gst: breakdown.gst,
+              convenienceFee: breakdown.convenienceFee,
+              cancellationPercent: breakdown.cancellationPercent,
+              cancellationCharges: breakdown.cancellationCharges,
+              finalRefundAmount: breakdown.finalRefundAmount,
+              status: "REQUESTED",
+            },
+          });
+        }
+      }
+    })
+  );
 
   await logActivity("BOOKING_CANCELLED", userId, "Booking", bookingId, {
     preference,
