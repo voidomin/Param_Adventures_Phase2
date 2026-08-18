@@ -64,6 +64,44 @@ describe("PendingEnquiriesTab Component", () => {
     expect(whatsappLink).toHaveAttribute("href", "https://wa.me/919876543210");
   });
 
+  it("renders email fallback link when phone number is missing and formats hours elapsed", async () => {
+    const twoHoursAgo = new Date(Date.now() - 2.5 * 60 * 60 * 1000).toISOString();
+
+    (globalThis.fetch as any).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        pendingEnquiries: [
+          {
+            id: "b2",
+            createdAt: twoHoursAgo,
+            participantCount: 1,
+            totalPrice: "3000",
+            user: {
+              name: "David Miller",
+              email: "david@example.com",
+              phoneNumber: null,
+            },
+            experience: {
+              title: "Coorg Trek",
+              slug: "coorg-trek",
+            },
+            slot: null,
+          },
+        ],
+      }),
+    });
+
+    render(<PendingEnquiriesTab />);
+
+    const emailLink = await screen.findByRole("link", { name: /Email Customer/i });
+    expect(emailLink).toHaveAttribute("href", "mailto:david@example.com");
+    expect(screen.getByText(/2h 30m ago/i)).toBeInTheDocument();
+
+    const refreshBtn = screen.getByRole("button", { name: /Refresh/i });
+    fireEvent.click(refreshBtn);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+  });
+
   it("renders error alert on fetch failure", async () => {
     (globalThis.fetch as any).mockResolvedValue({
       ok: false,

@@ -150,7 +150,7 @@ export function PendingEnquiriesTab() {
                       <Phone className="w-3.5 h-3.5" /> Call
                     </a>
                     <a
-                      href={`https://wa.me/${enquiry.user.phoneNumber.replace(/[^0-9]/g, "")}`}
+                      href={`https://wa.me/${enquiry.user.phoneNumber.replace(/\D/g, "")}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-teal-500/10 text-teal-600 border border-teal-500/20 text-xs font-bold hover:bg-teal-500/20 transition-all"
