@@ -128,10 +128,13 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       prisma.booking.updateMany({
         where: {
           slotId,
-          attended: true,
           bookingStatus: "CONFIRMED",
+          OR: [
+            { attended: true },
+            { participants: { some: { attended: true, isCancelled: false } } },
+          ],
         },
-        data: { canReview: true },
+        data: { canReview: true, attended: true },
       }),
     ]);
 

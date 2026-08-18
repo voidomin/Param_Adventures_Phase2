@@ -8,7 +8,8 @@ vi.mock("@/lib/db", () => ({
     tripAssignment: { findUnique: vi.fn() },
     slot: { findUnique: vi.fn() },
     tripLog: { upsert: vi.fn() },
-    bookingParticipant: { update: vi.fn() },
+    bookingParticipant: { update: vi.fn(), count: vi.fn().mockResolvedValue(1) },
+    booking: { update: vi.fn().mockResolvedValue({}) },
   },
 }));
 
@@ -30,7 +31,7 @@ const createRequest = (body?: unknown) =>
 describe("POST /api/trek-lead/trips/[id]/attendance", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockParticipantUpdate.mockResolvedValue({} as any);
+    mockParticipantUpdate.mockResolvedValue({ bookingId: "b1" } as any);
     mockTripLogUpsert.mockResolvedValue({} as any);
   });
 
