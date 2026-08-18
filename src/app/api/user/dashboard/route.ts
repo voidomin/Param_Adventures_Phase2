@@ -109,6 +109,10 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    const eligibleReviewBookings = allBookings.filter(
+      (b) => b.bookingStatus === "CONFIRMED" && b.canReview === true
+    );
+
     return NextResponse.json({
       user: {
         ...user,
@@ -116,6 +120,7 @@ export async function GET(request: NextRequest) {
       },
       upcomingBookings,
       pastBookings,
+      eligibleReviewBookings,
       stats: {
         total: allBookings.length,
         upcoming: upcomingBookings.length,

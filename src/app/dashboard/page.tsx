@@ -26,6 +26,7 @@ import dynamic from "next/dynamic";
 const ImageCropper = dynamic(() => import("@/components/admin/ImageCropper"), {
   ssr: false,
 });
+import { CustomerReviewBanner } from "@/components/dashboard/CustomerReviewBanner";
 import { ASPECT_RATIOS } from "@/lib/constants/aspect-ratios";
 import { DashboardStatsSkeleton } from "@/components/dashboard/DashboardSkeleton";
 
@@ -74,6 +75,7 @@ interface DashboardData {
   };
   upcomingBookings: Booking[];
   pastBookings: Booking[];
+  eligibleReviewBookings?: Booking[];
   stats: {
     total: number;
     upcoming: number;
@@ -613,6 +615,9 @@ export default function DashboardPage() {
 
       {/* Content */}
       <div className="max-w-7xl mx-auto px-4 space-y-16">
+        {data.eligibleReviewBookings && data.eligibleReviewBookings.length > 0 && (
+          <CustomerReviewBanner eligibleBookings={data.eligibleReviewBookings} />
+        )}
         {/* Manager Hub — only visible to TRIP_MANAGER role */}
         {user.roleName === "TRIP_MANAGER" && (
           <section>

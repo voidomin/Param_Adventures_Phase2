@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 
+import { autoCompletePastTrips } from "@/lib/trip-lifecycle";
+
 // GET /api/admin/dashboard — SUPER_ADMIN only
 export async function GET(request: NextRequest) {
   const auth = await authorizeRequest(request);
@@ -15,6 +17,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // Auto-complete any past departure slots and unlock review eligibility
+    await autoCompletePastTrips().catch((err) =>
+      console.error("[AdminDashboard] Auto-completion error:", err),
+    );
+
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
