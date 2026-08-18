@@ -31,4 +31,33 @@ describe("Dashboard Page", () => {
     const errorMsg = await screen.findByText(/something went wrong/i);
     expect(errorMsg).toBeDefined();
   });
+
+  it("renders dashboard content and CustomerReviewBanner when user has eligible review bookings", async () => {
+    (globalThis.fetch as any).mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        user: {
+          id: "u1",
+          name: "Alex Smith",
+          email: "alex@example.com",
+          roleName: "REGISTERED_USER",
+          createdAt: "2026-01-01",
+        },
+        upcomingBookings: [],
+        pastBookings: [],
+        eligibleReviewBookings: [
+          {
+            id: "b1",
+            experience: { title: "Kudremukh Trek", slug: "kudremukh-trek" },
+            slot: { date: "2026-08-10" },
+          },
+        ],
+        stats: { total: 1, upcoming: 0, past: 1 },
+      }),
+    });
+
+    render(<DashboardPage />);
+    const reviewPrompt = await screen.findByText(/How was your trip to Kudremukh Trek\?/i);
+    expect(reviewPrompt).toBeInTheDocument();
+  });
 });

@@ -375,12 +375,22 @@ export async function POST(
           newPaymentStatus = "REFUND_PENDING";
         }
 
+        let newTaxBreakdown = dbBooking.taxBreakdown;
+        if (Array.isArray(dbBooking.taxBreakdown) && Number(dbBooking.baseFare) > 0) {
+          const ratio = financials.newBaseFare / Number(dbBooking.baseFare);
+          newTaxBreakdown = (dbBooking.taxBreakdown as Array<{ name: string; percentage: number; amount: number }>).map((item) => ({
+            ...item,
+            amount: Number(((item.amount || 0) * ratio).toFixed(2)),
+          }));
+        }
+
         await tx.booking.update({
           where: { id: bookingId },
           data: {
             participantCount: financials.newParticipantCount,
             baseFare: financials.newBaseFare,
             totalPrice: financials.newTotalPrice,
+            taxBreakdown: newTaxBreakdown ?? undefined,
             remainingBalance: financials.newRemainingBalance,
             refundAmount: (preference === "BANK_REFUND" || preference === "COUPON") && financials.newRefundAmount > 0 ? financials.newRefundAmount : null,
             paymentStatus: newPaymentStatus,

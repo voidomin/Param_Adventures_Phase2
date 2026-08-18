@@ -162,6 +162,63 @@ describe("Coupon Engine Unit Tests", () => {
       });
     });
 
+    it("uses $queryRaw FOR UPDATE when available on transaction client", async () => {
+      const mockTxWithRaw = {
+        $queryRaw: vi.fn().mockResolvedValue([{
+          id: "c1",
+          code: "TRAVEL100",
+          balance: 100,
+          status: "ACTIVE",
+        }]),
+        travelCoupon: {
+          update: vi.fn().mockResolvedValue({}),
+        },
+        couponTransaction: {
+          create: vi.fn().mockResolvedValue({}),
+        },
+      };
+
+      await redeemCoupon({
+        couponId: "c1",
+        bookingId: "b1",
+        amount: 50,
+        tx: mockTxWithRaw as any,
+      });
+
+      expect(mockTxWithRaw.$queryRaw).toHaveBeenCalled();
+      expect(mockTxWithRaw.travelCoupon.update).toHaveBeenCalledWith({
+        where: { id: "c1" },
+        data: { balance: 50, status: CouponStatus.PARTIALLY_USED },
+      });
+    });
+
+    it("falls back to findUnique if $queryRaw throws an error", async () => {
+      const mockTxWithFailingRaw = {
+        $queryRaw: vi.fn().mockRejectedValue(new Error("Raw query failed")),
+        travelCoupon: {
+          findUnique: vi.fn().mockResolvedValue({
+            id: "c1",
+            code: "TRAVEL100",
+            balance: 100,
+            status: "ACTIVE",
+          }),
+          update: vi.fn().mockResolvedValue({}),
+        },
+        couponTransaction: {
+          create: vi.fn().mockResolvedValue({}),
+        },
+      };
+
+      await redeemCoupon({
+        couponId: "c1",
+        bookingId: "b1",
+        amount: 50,
+        tx: mockTxWithFailingRaw as any,
+      });
+
+      expect(mockTxWithFailingRaw.travelCoupon.findUnique).toHaveBeenCalledWith({ where: { id: "c1" } });
+    });
+
     it("throws error if coupon is not found during redemption", async () => {
       const mockTx = {
         travelCoupon: {

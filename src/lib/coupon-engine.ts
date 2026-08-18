@@ -80,9 +80,21 @@ export async function redeemCoupon(params: {
 }): Promise<void> {
   const { couponId, bookingId, amount, tx, remarks } = params;
 
-  const coupon = await tx.travelCoupon.findUnique({
-    where: { id: couponId },
-  });
+  let coupon: TravelCoupon | null = null;
+  type QueryableTx = { $queryRaw?: (strings: TemplateStringsArray, ...values: unknown[]) => Promise<unknown[]> };
+  const rawTx = tx as unknown as QueryableTx;
+  if (typeof rawTx.$queryRaw === "function") {
+    try {
+      const rows = await rawTx.$queryRaw`SELECT * FROM "TravelCoupon" WHERE id = ${couponId} FOR UPDATE`;
+      if (Array.isArray(rows) && rows.length > 0) {
+        coupon = rows[0] as TravelCoupon;
+      }
+    } catch {
+      coupon = await tx.travelCoupon.findUnique({ where: { id: couponId } });
+    }
+  } else {
+    coupon = await tx.travelCoupon.findUnique({ where: { id: couponId } });
+  }
 
   if (!coupon) throw new Error("Coupon not found during redemption.");
 
