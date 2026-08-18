@@ -98,6 +98,36 @@ describe("Trip Lifecycle Module - autoCompletePastTrips", () => {
     expect(mockTransaction).not.toHaveBeenCalled();
   });
 
+  it("defaults durationDays to 1 when slot.experience is null", async () => {
+    const pastSlotDate = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+
+    mockFindMany.mockResolvedValue([
+      {
+        id: "slot-no-exp",
+        date: pastSlotDate,
+        status: "UPCOMING",
+        experience: null,
+        bookings: [],
+      },
+    ] as any);
+
+    const mockSlotUpdate = vi.fn().mockResolvedValue({});
+    const mockBookingUpdateMany = vi.fn().mockResolvedValue({ count: 0 });
+    const mockParticipantUpdateMany = vi.fn().mockResolvedValue({ count: 0 });
+
+    mockTransaction.mockImplementation(async (cb: any) =>
+      cb({
+        slot: { update: mockSlotUpdate },
+        booking: { updateMany: mockBookingUpdateMany },
+        bookingParticipant: { updateMany: mockParticipantUpdateMany },
+      })
+    );
+
+    const result = await autoCompletePastTrips();
+
+    expect(result).toEqual({ completedCount: 1, unlockedBookingsCount: 0 });
+  });
+
   it("handles catch block gracefully and returns zeros on error", async () => {
     mockFindMany.mockRejectedValue(new Error("Database connection error"));
 
