@@ -98,14 +98,27 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
     });
 
     // Update BookingParticipant.attended flag for each entry
-    await Promise.all(
+    const updatedParticipants = await Promise.all(
       attendees.map(({ participantId, attended }) =>
         prisma.bookingParticipant.update({
           where: { id: participantId },
           data: { attended },
+          select: { bookingId: true },
         }),
       ),
     );
+
+    // Sync parent Booking.attended flag
+    const bookingIds = Array.from(new Set(updatedParticipants.map((p) => p.bookingId)));
+    for (const bookingId of bookingIds) {
+      const activeAttendedCount = await prisma.bookingParticipant.count({
+        where: { bookingId, isCancelled: false, attended: true },
+      });
+      await prisma.booking.update({
+        where: { id: bookingId },
+        data: { attended: activeAttendedCount > 0 },
+      });
+    }
 
     return NextResponse.json({ success: true, count: attendees.length });
   } catch (error) {

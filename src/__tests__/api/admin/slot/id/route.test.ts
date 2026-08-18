@@ -267,7 +267,7 @@ describe("/api/admin/experiences/[id]/slots/[slotId]", () => {
       experienceId: "exp-1",
       status: "UPCOMING",
     } as any);
-    mockBookingCount.mockResolvedValue(0);
+    mockBookingFindMany.mockResolvedValue([]);
     mockTransaction.mockResolvedValue([[], [], [], { id: "slot-1" }] as any);
 
     const response = await DELETE({} as NextRequest, {
@@ -277,42 +277,46 @@ describe("/api/admin/experiences/[id]/slots/[slotId]", () => {
 
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
-    expect(mockBookingCount).toHaveBeenCalledWith({
+    expect(mockBookingFindMany).toHaveBeenCalledWith({
       where: {
         slotId: "slot-1",
-        bookingStatus: "CONFIRMED",
+        bookingStatus: { in: ["CONFIRMED", "REQUESTED"] },
       },
     });
     expect(mockTransaction).toHaveBeenCalled();
   });
 
-  it("DELETE returns 400 when slot has bookings and status is not COMPLETED", async () => {
+  it("DELETE processes 100% company refund hook and removes slot when slot has active bookings", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, roleName: "ADMIN" } as any);
     mockSlotFindUnique.mockResolvedValue({
       id: "slot-1",
       experienceId: "exp-1",
       status: "UPCOMING",
     } as any);
-    mockBookingCount.mockResolvedValue(1);
-
-    const response = await DELETE({} as NextRequest, {
-      params: Promise.resolve({ id: "exp-1", slotId: "slot-1" }),
-    });
-    const data = await response.json();
-
-    expect(response.status).toBe(400);
-    expect(data.error).toContain("Cannot delete slot with active/confirmed bookings unless the trip is completed");
-  });
-
-  it("DELETE removes slot when slot has bookings and status is COMPLETED", async () => {
-    mockAuthorizeRequest.mockResolvedValue({ authorized: true, roleName: "ADMIN" } as any);
-    mockSlotFindUnique.mockResolvedValue({
-      id: "slot-1",
-      experienceId: "exp-1",
-      status: "COMPLETED",
-    } as any);
-    mockBookingCount.mockResolvedValue(1);
-    mockTransaction.mockResolvedValue([[], [], [], { id: "slot-1" }] as any);
+    mockBookingFindMany.mockResolvedValue([
+      {
+        id: "b1",
+        userId: "u1",
+        slotId: "slot-1",
+        baseFare: 1000,
+        totalPrice: 1100,
+        paidAmount: 1100,
+        paymentType: "FULL",
+        taxBreakdown: [],
+        refundPreference: "BANK_REFUND",
+      },
+    ] as any);
+    mockTransaction.mockImplementation(async (cb: any) =>
+      cb({
+        booking: { update: vi.fn().mockResolvedValue({}), updateMany: vi.fn().mockResolvedValue({}) },
+        refundRequest: { upsert: vi.fn().mockResolvedValue({}) },
+        travelCoupon: { create: vi.fn().mockResolvedValue({}) },
+        couponTransaction: { create: vi.fn().mockResolvedValue({}) },
+        tripAssignment: { deleteMany: vi.fn().mockResolvedValue({}) },
+        tripLog: { deleteMany: vi.fn().mockResolvedValue({}) },
+        slot: { delete: vi.fn().mockResolvedValue({}) },
+      }),
+    );
 
     const response = await DELETE({} as NextRequest, {
       params: Promise.resolve({ id: "exp-1", slotId: "slot-1" }),
@@ -321,7 +325,7 @@ describe("/api/admin/experiences/[id]/slots/[slotId]", () => {
 
     expect(response.status).toBe(200);
     expect(data.success).toBe(true);
-    expect(mockTransaction).toHaveBeenCalled();
+    expect(data.processedRefundsCount).toBe(1);
   });
 
   it("DELETE returns 500 on unexpected error", async () => {

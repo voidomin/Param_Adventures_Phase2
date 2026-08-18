@@ -2,14 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma, runWithRetry } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
-
 import { z } from "zod";
+import { calculateRefundBreakdown } from "@/lib/refund-engine";
+import { generateCouponCode } from "@/lib/coupon-engine";
 
 const updateSlotSchema = z.object({
   date: z.iso.datetime().or(z.string().refine(val => !Number.isNaN(Date.parse(val)), "Invalid date format")).optional(),
   capacity: z.number().int().min(1, "Capacity must be at least 1").optional(),
-}).refine(data => data.date !== undefined || data.capacity !== undefined, {
-  message: "Date or capacity must be provided.",
+  status: z.enum(["UPCOMING", "ACTIVE", "TREK_STARTED", "TREK_ENDED", "COMPLETED"]).optional(),
+}).refine(data => data.date !== undefined || data.capacity !== undefined || data.status !== undefined, {
+  message: "Date, capacity, or status must be provided.",
 });
 
 // PATCH /api/admin/experiences/[id]/slots/[slotId]
@@ -32,13 +34,9 @@ export async function PATCH(
         { status: 400 },
       );
     }
-    const { date, capacity } = parseResult.data;
+    const { date, capacity, status } = parseResult.data;
 
-    // Read-modify-write on capacity/remainingCapacity must be atomic with
-    // respect to concurrent bookings decrementing remainingCapacity, or an
-    // admin edit here can silently overwrite/revert a simultaneous booking's
-    // capacity decrement. Serializable + retry matches the isolation level
-    // booking.service.ts already uses for the same slot row.
+    // Read-modify-write on capacity/remainingCapacity must be atomic
     const updatedSlot = await runWithRetry(() =>
       prisma.$transaction(async (tx) => {
         const slot = await tx.slot.findUnique({ where: { id: slotId } });
@@ -62,6 +60,7 @@ export async function PATCH(
           where: { id: slotId },
           data: {
             ...(date && { date: new Date(date) }),
+            ...(status && { status }),
             capacity: newCapacity,
             remainingCapacity: newRemaining,
           },
@@ -74,7 +73,7 @@ export async function PATCH(
       auth.userId,
       "Slot",
       slotId,
-      { date: updatedSlot.date, capacity: updatedSlot.capacity }
+      { date: updatedSlot.date, capacity: updatedSlot.capacity, status: updatedSlot.status }
     );
 
     return NextResponse.json({ slot: updatedSlot });
@@ -125,43 +124,110 @@ export async function DELETE(
       return NextResponse.json({ error: "Slot not found" }, { status: 404 });
     }
 
-    // Check if slot has active/confirmed bookings
-    const activeBookingsCount = await prisma.booking.count({
+    // Check for active/confirmed bookings on this slot
+    const activeBookings = await prisma.booking.findMany({
       where: {
         slotId,
-        bookingStatus: "CONFIRMED",
+        bookingStatus: { in: ["CONFIRMED", "REQUESTED"] },
       },
     });
 
-    if (activeBookingsCount > 0 && slot.status !== "COMPLETED") {
-      return NextResponse.json(
-        { error: "Cannot delete slot with active/confirmed bookings unless the trip is completed." },
-        { status: 400 },
+    // If deleting a slot with active bookings, run the 100% refund hook for all active bookings
+    if (activeBookings.length > 0) {
+      await runWithRetry(() =>
+        prisma.$transaction(async (tx) => {
+          for (const booking of activeBookings) {
+            const breakdown = calculateRefundBreakdown({
+              baseFare: Number(booking.baseFare),
+              totalPrice: Number(booking.totalPrice),
+              paidAmount: Number(booking.paidAmount),
+              paymentType: booking.paymentType as "FULL" | "ADVANCE",
+              refundPercent: 0,
+              taxBreakdown: booking.taxBreakdown,
+              isCompanyCancellation: true,
+            });
+
+            const finalRefund = breakdown.finalRefundAmount;
+
+            await tx.booking.update({
+              where: { id: booking.id },
+              data: {
+                bookingStatus: "CANCELLED",
+                paymentStatus: Number(booking.paidAmount) > 0 ? "REFUND_PENDING" : booking.paymentStatus,
+                cancelledAt: new Date(),
+                cancellationReason: "Slot cancelled by management.",
+                refundAmount: finalRefund > 0 ? finalRefund : null,
+              },
+            });
+
+            if (Number(booking.paidAmount) > 0 && finalRefund > 0) {
+              if (booking.refundPreference === "COUPON") {
+                const couponCode = generateCouponCode("PARAM");
+                const createdCoupon = await tx.travelCoupon.create({
+                  data: {
+                    code: couponCode,
+                    customerId: booking.userId,
+                    bookingId: booking.id,
+                    originalValue: finalRefund,
+                    balance: finalRefund,
+                    expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+                    status: "ACTIVE",
+                    type: "CANCELLATION",
+                    reason: "100% Refund coupon for company-cancelled slot",
+                  },
+                });
+
+                await tx.couponTransaction.create({
+                  data: {
+                    couponId: createdCoupon.id,
+                    bookingId: booking.id,
+                    type: "ISSUED",
+                    amount: finalRefund,
+                    previousBalance: 0,
+                    newBalance: finalRefund,
+                    remarks: "Issued for company-cancelled slot",
+                  },
+                });
+              } else {
+                await tx.refundRequest.upsert({
+                  where: { bookingId: booking.id },
+                  create: {
+                    bookingId: booking.id,
+                    customerId: booking.userId,
+                    refundMethod: "BANK_TRANSFER",
+                    baseFare: breakdown.baseFare,
+                    gst: breakdown.gst,
+                    convenienceFee: breakdown.convenienceFee,
+                    cancellationPercent: 0,
+                    cancellationCharges: 0,
+                    finalRefundAmount: finalRefund,
+                    status: "REQUESTED",
+                    remarks: "Slot cancelled by management. Awaiting admin refund approval.",
+                  },
+                  update: {
+                    finalRefundAmount: finalRefund,
+                    status: "REQUESTED",
+                    remarks: "Slot cancelled by management. Awaiting admin refund approval.",
+                  },
+                });
+              }
+            }
+          }
+
+          await tx.tripAssignment.deleteMany({ where: { slotId } });
+          await tx.tripLog.deleteMany({ where: { slotId } });
+          await tx.booking.updateMany({ where: { slotId }, data: { slotId: null } });
+          await tx.slot.delete({ where: { id: slotId } });
+        })
       );
+    } else {
+      await prisma.$transaction([
+        prisma.tripAssignment.deleteMany({ where: { slotId } }),
+        prisma.tripLog.deleteMany({ where: { slotId } }),
+        prisma.booking.updateMany({ where: { slotId }, data: { slotId: null } }),
+        prisma.slot.delete({ where: { id: slotId } }),
+      ]);
     }
-
-    // Fetch associated bookings before deletion for audit logging
-    const associatedBookings = await prisma.booking.findMany({
-      where: { slotId },
-      select: { id: true, userId: true },
-    });
-
-    // Safely delete the slot and all related assignments/logs, and disassociate bookings
-    await prisma.$transaction([
-      prisma.tripAssignment.deleteMany({
-        where: { slotId },
-      }),
-      prisma.tripLog.deleteMany({
-        where: { slotId },
-      }),
-      prisma.booking.updateMany({
-        where: { slotId },
-        data: { slotId: null },
-      }),
-      prisma.slot.delete({
-        where: { id: slotId },
-      }),
-    ]);
 
     await logActivity(
       "SLOT_DELETED",
@@ -170,12 +236,12 @@ export async function DELETE(
       slotId,
       {
         date: slot.date,
-        disassociatedBookingsCount: associatedBookings.length,
-        disassociatedBookingIds: associatedBookings.map((b) => b.id),
+        cancelledBookingsCount: activeBookings.length,
+        cancelledBookingIds: activeBookings.map((b) => b.id),
       }
     );
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, processedRefundsCount: activeBookings.length });
   } catch (error) {
     console.error("Delete slot error:", error);
     return NextResponse.json(
