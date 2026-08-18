@@ -14,12 +14,14 @@ vi.mock("@/lib/db", () => ({
     },
     payment: {
       create: vi.fn(),
+      deleteMany: vi.fn(),
     },
     slot: {
       update: vi.fn(),
     },
     $transaction: vi.fn(),
   },
+  runWithRetry: vi.fn((fn) => fn()),
 }));
 
 import { POST } from "@/app/api/admin/bookings/[id]/verify-manual/route";

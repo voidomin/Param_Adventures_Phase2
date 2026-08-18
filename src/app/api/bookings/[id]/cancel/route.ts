@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma, runWithRetry } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
 import { sendBookingCancellation } from "@/lib/email";
@@ -89,46 +89,48 @@ export async function POST(
     const finalRefund = breakdown.finalRefundAmount;
 
     // Atomic transaction: update booking + restore slot capacity + create refund request
-    await prisma.$transaction(async (tx) => {
-      await tx.booking.update({
-        where: { id: bookingId },
-        data: {
-          bookingStatus: "CANCELLED",
-          paymentStatus: newPaymentStatus,
-          cancelledAt: new Date(),
-          cancelledByUserId: userId,
-          cancellationReason: reason || null,
-          refundPreference: preference,
-          refundAmount: finalRefund > 0 ? finalRefund : null,
-        },
-      });
-
-      if (booking.slotId && booking.bookingStatus === "CONFIRMED") {
-        await tx.slot.update({
-          where: { id: booking.slotId },
+    await runWithRetry(() =>
+      prisma.$transaction(async (tx) => {
+        await tx.booking.update({
+          where: { id: bookingId },
           data: {
-            remainingCapacity: { increment: booking.participantCount },
+            bookingStatus: "CANCELLED",
+            paymentStatus: newPaymentStatus,
+            cancelledAt: new Date(),
+            cancelledByUserId: userId,
+            cancellationReason: reason || null,
+            refundPreference: preference,
+            refundAmount: finalRefund > 0 ? finalRefund : null,
           },
         });
-      }
 
-      if (newPaymentStatus === "REFUND_PENDING" && finalRefund > 0) {
-        await tx.refundRequest.create({
-          data: {
-            bookingId,
-            customerId: booking.userId,
-            refundMethod: preference === "COUPON" ? "TRAVEL_COUPON" : "BANK_TRANSFER",
-            baseFare: breakdown.baseFare,
-            gst: breakdown.gst,
-            convenienceFee: breakdown.convenienceFee,
-            cancellationPercent: breakdown.cancellationPercent,
-            cancellationCharges: breakdown.cancellationCharges,
-            finalRefundAmount: breakdown.finalRefundAmount,
-            status: "REQUESTED",
-          },
-        });
-      }
-    });
+        if (booking.slotId && booking.bookingStatus === "CONFIRMED") {
+          await tx.slot.update({
+            where: { id: booking.slotId },
+            data: {
+              remainingCapacity: { increment: booking.participantCount },
+            },
+          });
+        }
+
+        if (newPaymentStatus === "REFUND_PENDING" && finalRefund > 0) {
+          await tx.refundRequest.create({
+            data: {
+              bookingId,
+              customerId: booking.userId,
+              refundMethod: preference === "COUPON" ? "TRAVEL_COUPON" : "BANK_TRANSFER",
+              baseFare: breakdown.baseFare,
+              gst: breakdown.gst,
+              convenienceFee: breakdown.convenienceFee,
+              cancellationPercent: breakdown.cancellationPercent,
+              cancellationCharges: breakdown.cancellationCharges,
+              finalRefundAmount: breakdown.finalRefundAmount,
+              status: "REQUESTED",
+            },
+          });
+        }
+      })
+    );
 
     // Audit log
     await logActivity("BOOKING_CANCELLED", userId, "Booking", bookingId, {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/db";
+import { prisma, runWithRetry } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 import { sendBookingConfirmation } from "@/lib/email";
 import { logActivity } from "@/lib/audit-logger";
@@ -84,82 +84,84 @@ export async function POST(
     }
 
     // 3. Update Database (Atomic Transaction)
-    const updatedBooking = await prisma.$transaction(async (tx) => {
-      const freshBooking = await tx.booking.findUnique({
-        where: { id: bookingId },
-      });
+    const updatedBooking = await runWithRetry(() =>
+      prisma.$transaction(async (tx) => {
+        const freshBooking = await tx.booking.findUnique({
+          where: { id: bookingId },
+        });
 
-      if (!freshBooking) {
-        throw new Error("Booking not found");
-      }
+        if (!freshBooking) {
+          throw new Error("Booking not found");
+        }
 
-      const newPaidAmount = Number(freshBooking.paidAmount) + amountPaid;
-      const remainingBalance = Number(freshBooking.totalPrice) - newPaidAmount;
-      const newPaymentStatus = remainingBalance > 0.01 ? "PARTIALLY_PAID" : "PAID";
+        const newPaidAmount = Number(freshBooking.paidAmount) + amountPaid;
+        const remainingBalance = Number(freshBooking.totalPrice) - newPaidAmount;
+        const newPaymentStatus = remainingBalance > 0.01 ? "PARTIALLY_PAID" : "PAID";
 
-      const updated = await tx.booking.update({
-        where: { id: bookingId },
-        data: {
-          bookingStatus: "CONFIRMED",
-          paymentStatus: newPaymentStatus,
-          paidAmount: newPaidAmount,
-          remainingBalance: Math.max(0, remainingBalance),
-        },
-      });
-
-      await assignInvoiceNumberIfNeeded(tx, bookingId);
-
-      await tx.payment.create({
-        data: {
-          bookingId: bookingId,
-          provider: "MANUAL",
-          providerPaymentId: transactionId,
-          status: "PAID",
-          amount: amountPaid,
-          fullPayload: {
-            proofUrl: paymentProofUrl,
-            adminNotes: adminNotes ?? null,
-            verifiedBy: auth.userId,
-            verifiedAt: new Date().toISOString(),
-          },
-        },
-      });
-
-      // Clean up any pending payment records for this booking
-      await tx.payment.deleteMany({
-        where: { bookingId, status: "PENDING" },
-      });
-
-      if (freshBooking.slotId && freshBooking.bookingStatus !== "CONFIRMED") {
-        await tx.slot.update({
-          where: { id: freshBooking.slotId },
+        const updated = await tx.booking.update({
+          where: { id: bookingId },
           data: {
-            remainingCapacity: {
-              decrement: freshBooking.participantCount,
+            bookingStatus: "CONFIRMED",
+            paymentStatus: newPaymentStatus,
+            paidAmount: newPaidAmount,
+            remainingBalance: Math.max(0, remainingBalance),
+          },
+        });
+
+        await assignInvoiceNumberIfNeeded(tx, bookingId);
+
+        await tx.payment.create({
+          data: {
+            bookingId: bookingId,
+            provider: "MANUAL",
+            providerPaymentId: transactionId,
+            status: "PAID",
+            amount: amountPaid,
+            fullPayload: {
+              proofUrl: paymentProofUrl,
+              adminNotes: adminNotes ?? null,
+              verifiedBy: auth.userId,
+              verifiedAt: new Date().toISOString(),
             },
           },
         });
 
-        // Cancel any other older pending/requested bookings for this user on the same slot
-        await tx.booking.updateMany({
-          where: {
-            userId: freshBooking.userId,
-            slotId: freshBooking.slotId,
-            id: { not: bookingId },
-            bookingStatus: "REQUESTED",
-            paymentStatus: "PENDING",
-          },
-          data: {
-            bookingStatus: "CANCELLED",
-            paymentStatus: "FAILED",
-          },
+        // Clean up any pending payment records for this booking
+        await tx.payment.deleteMany({
+          where: { bookingId, status: "PENDING" },
         });
-      }
 
-      return updated;
-    }, {
-      isolationLevel: "Serializable"
-    });
+        if (freshBooking.slotId && freshBooking.bookingStatus !== "CONFIRMED") {
+          await tx.slot.update({
+            where: { id: freshBooking.slotId },
+            data: {
+              remainingCapacity: {
+                decrement: freshBooking.participantCount,
+              },
+            },
+          });
+
+          // Cancel any other older pending/requested bookings for this user on the same slot
+          await tx.booking.updateMany({
+            where: {
+              userId: freshBooking.userId,
+              slotId: freshBooking.slotId,
+              id: { not: bookingId },
+              bookingStatus: "REQUESTED",
+              paymentStatus: "PENDING",
+            },
+            data: {
+              bookingStatus: "CANCELLED",
+              paymentStatus: "FAILED",
+            },
+          });
+        }
+
+        return updated;
+      }, {
+        isolationLevel: "Serializable"
+      })
+    );
 
     // 4. Audit Logging
     await logActivity(

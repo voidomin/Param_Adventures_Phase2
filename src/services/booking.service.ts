@@ -336,40 +336,42 @@ export const BookingService = {
 
     } catch (razorpayError) {
       // 5. Graceful Soft-Rollback: Restore coupons and set booking CANCELLED
-      await prisma.$transaction(async (rollbackTx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => {
-        await BookingRepo.updateStatus(rollbackTx, booking.id, "CANCELLED");
-        
-        // Restore applied coupons on Razorpay error
-        const redemptions = await rollbackTx.couponTransaction.findMany({
-          where: { bookingId: booking.id, type: "REDEEMED" },
-        });
-
-        for (const r of redemptions) {
-          const coupon = await rollbackTx.travelCoupon.findUnique({ where: { id: r.couponId } });
-          if (!coupon) continue;
-          const currentBal = Number(coupon.balance);
-          const newBal = currentBal + Number(r.amount);
+      await runWithRetry(() =>
+        prisma.$transaction(async (rollbackTx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => {
+          await BookingRepo.updateStatus(rollbackTx, booking.id, "CANCELLED");
           
-          await rollbackTx.travelCoupon.update({
-            where: { id: coupon.id },
-            data: { balance: newBal, status: "ACTIVE" },
+          // Restore applied coupons on Razorpay error
+          const redemptions = await rollbackTx.couponTransaction.findMany({
+            where: { bookingId: booking.id, type: "REDEEMED" },
           });
 
-          await rollbackTx.couponTransaction.create({
-            data: {
-              couponId: coupon.id,
-              bookingId: booking.id,
-              type: "RESTORED",
-              amount: r.amount,
-              previousBalance: currentBal,
-              newBalance: newBal,
-              remarks: "Restored due to Razorpay order initialization failure",
-            },
-          });
-        }
-      }, {
-        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
-      });
+          for (const r of redemptions) {
+            const coupon = await rollbackTx.travelCoupon.findUnique({ where: { id: r.couponId } });
+            if (!coupon) continue;
+            const currentBal = Number(coupon.balance);
+            const newBal = currentBal + Number(r.amount);
+            
+            await rollbackTx.travelCoupon.update({
+              where: { id: coupon.id },
+              data: { balance: newBal, status: "ACTIVE" },
+            });
+
+            await rollbackTx.couponTransaction.create({
+              data: {
+                couponId: coupon.id,
+                bookingId: booking.id,
+                type: "RESTORED",
+                amount: r.amount,
+                previousBalance: currentBal,
+                newBalance: newBal,
+                remarks: "Restored due to Razorpay order initialization failure",
+              },
+            });
+          }
+        }, {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        })
+      );
 
       revalidatePath("/", "layout");
       console.error("[BookingService] Razorpay failure, booking rolled back to CANCELLED state:", razorpayError);

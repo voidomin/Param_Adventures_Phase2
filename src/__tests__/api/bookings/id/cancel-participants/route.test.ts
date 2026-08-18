@@ -19,7 +19,7 @@ vi.mock("@/lib/db", () => {
     $transaction: vi.fn(),
   };
   mockPrisma.$transaction = vi.fn().mockImplementation(async (cb: any) => cb(mockPrisma));
-  return { prisma: mockPrisma };
+  return { prisma: mockPrisma, runWithRetry: vi.fn((fn) => fn()) };
 });
 
 import { POST } from "@/app/api/bookings/[id]/cancel-participants/route";
