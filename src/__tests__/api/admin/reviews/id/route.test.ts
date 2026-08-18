@@ -3,18 +3,23 @@ import { NextRequest, NextResponse } from "next/server";
 
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/api-auth", () => ({ authorizeRequest: vi.fn() }));
-vi.mock("@/lib/db", () => ({
-  prisma: {
+vi.mock("@/lib/db", () => {
+  const mockPrisma = {
     experienceReview: {
       update: vi.fn(),
       findUnique: vi.fn(),
       delete: vi.fn(),
     },
+    booking: {
+      updateMany: vi.fn(),
+    },
     auditLog: {
       create: vi.fn(),
     },
-  },
-}));
+    $transaction: vi.fn((cb: any) => cb(mockPrisma)),
+  };
+  return { prisma: mockPrisma };
+});
 
 import { PATCH, DELETE } from "@/app/api/admin/reviews/[id]/route";
 import { revalidatePath } from "next/cache";
@@ -174,6 +179,8 @@ describe("DELETE /api/admin/reviews/[id]", () => {
     } as any);
     mockFindUnique.mockResolvedValue({
       id: "rev-1",
+      userId: "u1",
+      experienceId: "exp-1",
       user: { name: "Reviewer A" },
       experience: { title: "Adventure Express" },
     } as any);

@@ -5,7 +5,7 @@ vi.mock("@/lib/db", () => {
   const mockPrisma = {
     experience: { findUnique: vi.fn() },
     payment: { updateMany: vi.fn() },
-    booking: { findUnique: vi.fn() },
+    booking: { findUnique: vi.fn(), updateMany: vi.fn() },
     $transaction: vi.fn(),
   };
   return {
@@ -542,5 +542,26 @@ describe("BookingService.confirmPayment", () => {
     vi.mocked(prisma.$transaction).mockRejectedValue(new Error("db exploded"));
 
     await expect(BookingService.confirmPayment("booking-1", "order_1", "pay_1", {})).rejects.toThrow("db exploded");
+  });
+
+  describe("autoExpireAbandonedBookings", () => {
+    it("updates bookingStatus to CANCELLED for REQUESTED bookings older than 24 hours", async () => {
+      vi.mocked(prisma.booking.updateMany).mockResolvedValue({ count: 3 });
+
+      const count = await BookingService.autoExpireAbandonedBookings();
+
+      expect(count).toBe(3);
+      expect(prisma.booking.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            bookingStatus: "REQUESTED",
+            paymentStatus: "PENDING",
+          }),
+          data: expect.objectContaining({
+            bookingStatus: "CANCELLED",
+          }),
+        })
+      );
+    });
   });
 });
