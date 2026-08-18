@@ -19,7 +19,7 @@ interface CustomerReviewBannerProps {
   eligibleBookings: EligibleReviewBooking[];
 }
 
-export function CustomerReviewBanner({ eligibleBookings }: CustomerReviewBannerProps) {
+export function CustomerReviewBanner({ eligibleBookings }: Readonly<CustomerReviewBannerProps>) {
   const [dismissed, setDismissed] = useState(false);
 
   if (dismissed || !eligibleBookings || eligibleBookings.length === 0) {
@@ -41,8 +41,8 @@ export function CustomerReviewBanner({ eligibleBookings }: CustomerReviewBannerP
                 Trek Completed
               </span>
               <div className="flex text-amber-400">
-                {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-3.5 h-3.5 fill-current" />
+                {[...new Array(5)].map((_, i) => (
+                  <Star key={`star-${i + 1}`} className="w-3.5 h-3.5 fill-current" />
                 ))}
               </div>
             </div>
@@ -64,6 +64,7 @@ export function CustomerReviewBanner({ eligibleBookings }: CustomerReviewBannerP
             <ArrowRight className="w-4 h-4" />
           </Link>
           <button
+            type="button"
             onClick={() => setDismissed(true)}
             className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             title="Dismiss notification"
