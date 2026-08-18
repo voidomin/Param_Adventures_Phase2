@@ -62,6 +62,30 @@ describe("assignInvoiceNumberIfNeeded", () => {
     });
   });
 
+  it("uses booking createdAt date to derive fiscal year sequence", async () => {
+    const tx = {
+      booking: {
+        findUnique: vi.fn().mockResolvedValue({
+          invoiceNumber: null,
+          createdAt: new Date("2025-05-10T10:00:00Z"),
+        }),
+        update: vi.fn().mockResolvedValue({}),
+      },
+      invoiceSequence: {
+        upsert: vi.fn().mockResolvedValue({ fiscalYear: "25-26", lastNumber: 5 }),
+      },
+    };
+
+    const result = await assignInvoiceNumberIfNeeded(tx as any, "booking-4", new Date("2026-08-15"));
+
+    expect(result).toBe("PARAM/25-26/0005");
+    expect(tx.invoiceSequence.upsert).toHaveBeenCalledWith({
+      where: { fiscalYear: "25-26" },
+      create: { fiscalYear: "25-26", lastNumber: 1 },
+      update: { lastNumber: { increment: 1 } },
+    });
+  });
+
   it("grows past 4 digits instead of truncating", async () => {
     const tx = createTx(null, 10042);
 

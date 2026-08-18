@@ -45,6 +45,14 @@ export async function PATCH(
           throw new Error("SLOT_NOT_FOUND");
         }
 
+        if (date !== undefined) {
+          const targetDate = new Date(date);
+          const effectiveStatus = status ?? slot.status;
+          if (targetDate < new Date() && effectiveStatus !== "COMPLETED") {
+            throw new Error("NEW_DATE_IN_PAST: Departure date cannot be set to a past date for uncompleted trips.");
+          }
+        }
+
         const bookedCount = slot.capacity - slot.remainingCapacity;
 
         if (capacity !== undefined && capacity < bookedCount) {
@@ -85,6 +93,12 @@ export async function PATCH(
     if (message.startsWith("CAPACITY_ERROR: ")) {
       return NextResponse.json(
         { error: message.replace("CAPACITY_ERROR: ", "") },
+        { status: 400 },
+      );
+    }
+    if (message.startsWith("NEW_DATE_IN_PAST: ")) {
+      return NextResponse.json(
+        { error: message.replace("NEW_DATE_IN_PAST: ", "") },
         { status: 400 },
       );
     }
