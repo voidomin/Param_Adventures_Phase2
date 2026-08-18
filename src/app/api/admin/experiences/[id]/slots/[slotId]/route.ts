@@ -2,16 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma, runWithRetry } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
-
 import { z } from "zod";
-
 import { calculateRefundBreakdown } from "@/lib/refund-engine";
 import { generateCouponCode } from "@/lib/coupon-engine";
 
 const updateSlotSchema = z.object({
   date: z.iso.datetime().or(z.string().refine(val => !Number.isNaN(Date.parse(val)), "Invalid date format")).optional(),
   capacity: z.number().int().min(1, "Capacity must be at least 1").optional(),
-  status: z.enum(["UPCOMING", "ACTIVE", "TREK_STARTED", "TREK_ENDED", "COMPLETED", "CANCELLED"]).optional(),
+  status: z.enum(["UPCOMING", "ACTIVE", "TREK_STARTED", "TREK_ENDED", "COMPLETED"]).optional(),
 }).refine(data => data.date !== undefined || data.capacity !== undefined || data.status !== undefined, {
   message: "Date, capacity, or status must be provided.",
 });
@@ -56,14 +54,88 @@ export async function PATCH(
         }
 
         const newCapacity = capacity ?? slot.capacity;
-        const newRemaining = status === "CANCELLED" ? newCapacity : (newCapacity - bookedCount);
+        const newRemaining = newCapacity - bookedCount;
 
-        // If status changes to CANCELLED, handle company slot cancellation hook for all active bookings
-        if (status === "CANCELLED" && slot.status !== "CANCELLED") {
-          const activeBookings = await tx.booking.findMany({
-            where: { slotId, bookingStatus: { in: ["CONFIRMED", "REQUESTED"] } },
-          });
+        return tx.slot.update({
+          where: { id: slotId },
+          data: {
+            ...(date && { date: new Date(date) }),
+            ...(status && { status }),
+            capacity: newCapacity,
+            remainingCapacity: newRemaining,
+          },
+        });
+      }, { isolationLevel: "Serializable" }),
+    );
 
+    await logActivity(
+      "SLOT_UPDATED",
+      auth.userId,
+      "Slot",
+      slotId,
+      { date: updatedSlot.date, capacity: updatedSlot.capacity, status: updatedSlot.status }
+    );
+
+    return NextResponse.json({ slot: updatedSlot });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message === "SLOT_NOT_FOUND") {
+      return NextResponse.json({ error: "Slot not found" }, { status: 404 });
+    }
+    if (message.startsWith("CAPACITY_ERROR: ")) {
+      return NextResponse.json(
+        { error: message.replace("CAPACITY_ERROR: ", "") },
+        { status: 400 },
+      );
+    }
+    console.error("Update slot error:", error);
+    return NextResponse.json(
+      { error: "Failed to update slot" },
+      { status: 500 },
+    );
+  }
+}
+
+
+// DELETE /api/admin/experiences/[id]/slots/[slotId]
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string; slotId: string }> },
+) {
+  const auth = await authorizeRequest(request, ["trip:create", "trip:edit"]);
+  if (!auth.authorized) return auth.response;
+
+  // Restrict slot deletion strictly to SUPER_ADMIN and ADMIN roles
+  if (auth.roleName !== "SUPER_ADMIN" && auth.roleName !== "ADMIN") {
+    return NextResponse.json(
+      { error: "Insufficient permissions. Only administrators can delete trips." },
+      { status: 403 },
+    );
+  }
+
+  try {
+    const { id, slotId } = await params;
+
+    const slot = await prisma.slot.findUnique({
+      where: { id: slotId },
+    });
+
+    if (slot?.experienceId !== id) {
+      return NextResponse.json({ error: "Slot not found" }, { status: 404 });
+    }
+
+    // Check for active/confirmed bookings on this slot
+    const activeBookings = await prisma.booking.findMany({
+      where: {
+        slotId,
+        bookingStatus: { in: ["CONFIRMED", "REQUESTED"] },
+      },
+    });
+
+    // If deleting a slot with active bookings, run the 100% refund hook for all active bookings
+    if (activeBookings.length > 0) {
+      await runWithRetry(() =>
+        prisma.$transaction(async (tx) => {
           for (const booking of activeBookings) {
             const breakdown = calculateRefundBreakdown({
               baseFare: Number(booking.baseFare),
@@ -141,113 +213,21 @@ export async function PATCH(
               }
             }
           }
-        }
 
-        return tx.slot.update({
-          where: { id: slotId },
-          data: {
-            ...(date && { date: new Date(date) }),
-            ...(status && { status }),
-            capacity: newCapacity,
-            remainingCapacity: newRemaining,
-          },
-        });
-      }, { isolationLevel: "Serializable" }),
-    );
-
-    await logActivity(
-      "SLOT_UPDATED",
-      auth.userId,
-      "Slot",
-      slotId,
-      { date: updatedSlot.date, capacity: updatedSlot.capacity }
-    );
-
-    return NextResponse.json({ slot: updatedSlot });
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "";
-    if (message === "SLOT_NOT_FOUND") {
-      return NextResponse.json({ error: "Slot not found" }, { status: 404 });
-    }
-    if (message.startsWith("CAPACITY_ERROR: ")) {
-      return NextResponse.json(
-        { error: message.replace("CAPACITY_ERROR: ", "") },
-        { status: 400 },
+          await tx.tripAssignment.deleteMany({ where: { slotId } });
+          await tx.tripLog.deleteMany({ where: { slotId } });
+          await tx.booking.updateMany({ where: { slotId }, data: { slotId: null } });
+          await tx.slot.delete({ where: { id: slotId } });
+        })
       );
+    } else {
+      await prisma.$transaction([
+        prisma.tripAssignment.deleteMany({ where: { slotId } }),
+        prisma.tripLog.deleteMany({ where: { slotId } }),
+        prisma.booking.updateMany({ where: { slotId }, data: { slotId: null } }),
+        prisma.slot.delete({ where: { id: slotId } }),
+      ]);
     }
-    console.error("Update slot error:", error);
-    return NextResponse.json(
-      { error: "Failed to update slot" },
-      { status: 500 },
-    );
-  }
-}
-
-
-// DELETE /api/admin/experiences/[id]/slots/[slotId]
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string; slotId: string }> },
-) {
-  const auth = await authorizeRequest(request, ["trip:create", "trip:edit"]);
-  if (!auth.authorized) return auth.response;
-
-  // Restrict slot deletion strictly to SUPER_ADMIN and ADMIN roles
-  if (auth.roleName !== "SUPER_ADMIN" && auth.roleName !== "ADMIN") {
-    return NextResponse.json(
-      { error: "Insufficient permissions. Only administrators can delete trips." },
-      { status: 403 },
-    );
-  }
-
-  try {
-    const { id, slotId } = await params;
-
-    const slot = await prisma.slot.findUnique({
-      where: { id: slotId },
-    });
-
-    if (slot?.experienceId !== id) {
-      return NextResponse.json({ error: "Slot not found" }, { status: 404 });
-    }
-
-    // Check if slot has active/confirmed bookings
-    const activeBookingsCount = await prisma.booking.count({
-      where: {
-        slotId,
-        bookingStatus: "CONFIRMED",
-      },
-    });
-
-    if (activeBookingsCount > 0 && slot.status !== "COMPLETED") {
-      return NextResponse.json(
-        { error: "Cannot delete slot with active/confirmed bookings unless the trip is completed." },
-        { status: 400 },
-      );
-    }
-
-    // Fetch associated bookings before deletion for audit logging
-    const associatedBookings = await prisma.booking.findMany({
-      where: { slotId },
-      select: { id: true, userId: true },
-    });
-
-    // Safely delete the slot and all related assignments/logs, and disassociate bookings
-    await prisma.$transaction([
-      prisma.tripAssignment.deleteMany({
-        where: { slotId },
-      }),
-      prisma.tripLog.deleteMany({
-        where: { slotId },
-      }),
-      prisma.booking.updateMany({
-        where: { slotId },
-        data: { slotId: null },
-      }),
-      prisma.slot.delete({
-        where: { id: slotId },
-      }),
-    ]);
 
     await logActivity(
       "SLOT_DELETED",
@@ -256,12 +236,12 @@ export async function DELETE(
       slotId,
       {
         date: slot.date,
-        disassociatedBookingsCount: associatedBookings.length,
-        disassociatedBookingIds: associatedBookings.map((b) => b.id),
+        cancelledBookingsCount: activeBookings.length,
+        cancelledBookingIds: activeBookings.map((b) => b.id),
       }
     );
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, processedRefundsCount: activeBookings.length });
   } catch (error) {
     console.error("Delete slot error:", error);
     return NextResponse.json(
