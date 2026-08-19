@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
-import { autoCompletePastTrips } from "@/lib/trip-lifecycle";
 import { BookingService } from "@/services/booking.service";
 
 // GET /api/admin/dashboard — SUPER_ADMIN only
@@ -17,11 +16,9 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Auto-complete any past departure slots and unlock review eligibility
-    await autoCompletePastTrips().catch((err) =>
-      console.error("[AdminDashboard] Auto-completion error:", err),
-    );
     // Auto-expire abandoned booking requests older than 24 hours
+    // (trip auto-completion now runs on its own schedule -- see
+    // /api/admin/trips/auto-complete and the auto-complete-trips cron)
     await BookingService.autoExpireAbandonedBookings().catch((err) =>
       console.error("[AdminDashboard] Abandoned booking auto-expiration error:", err),
     );

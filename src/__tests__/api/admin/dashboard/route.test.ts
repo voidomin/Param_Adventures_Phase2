@@ -5,10 +5,6 @@ vi.mock("@/lib/api-auth", () => ({
   authorizeRequest: vi.fn(),
 }));
 
-vi.mock("@/lib/trip-lifecycle", () => ({
-  autoCompletePastTrips: vi.fn().mockResolvedValue({ completedCount: 0, unlockedBookingsCount: 0 }),
-}));
-
 vi.mock("@/lib/db", () => ({
   prisma: {
     booking: {
