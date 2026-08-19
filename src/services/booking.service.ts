@@ -7,6 +7,7 @@ import { BookingRepo, BookingPricing } from "@/repositories/booking.repo";
 import { BookingInput } from "@/lib/validators/booking.schema";
 import { isExpiredIST, redeemCoupon } from "@/lib/coupon-engine";
 import { assignInvoiceNumberIfNeeded } from "@/lib/invoice-numbering";
+import { calculateRefundBreakdown } from "@/lib/refund-engine";
 
 interface ExtraAmenityOption {
   id: string;
@@ -545,6 +546,9 @@ export const BookingService = {
       baseFare: Number(booking.baseFare),
       taxBreakdown: booking.taxBreakdown as { name: string; percentage: number; amount: number }[],
       bookingId: booking.id,
+      paymentType: booking.paymentType,
+      paidAmount: Number(booking.paidAmount),
+      remainingBalance: Number(booking.remainingBalance),
     });
   },
 
@@ -637,5 +641,98 @@ export const BookingService = {
     );
 
     return abandonedBookings.length;
-  }
+  },
+
+  /**
+   * Auto-cancels CONFIRMED advance-payment bookings that still have an
+   * unpaid remaining balance within 7 days of departure, restoring the
+   * slot capacity they reserved and creating a RefundRequest for the full
+   * advance amount paid (no cancellation charge -- this is a system
+   * cancellation, not a choice the customer made, so the usual departure-
+   * proximity cancellation-fee tiers don't apply). The RefundRequest is
+   * only ever REQUESTED here -- disbursement always requires an
+   * admin/super-admin to approve it, exactly like every other refund path
+   * in this codebase; this function never moves money on its own.
+   */
+  async autoCancelUnpaidAdvanceBookings(): Promise<number> {
+    const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    const candidates = await prisma.booking.findMany({
+      where: {
+        paymentType: "ADVANCE",
+        paymentStatus: "PARTIALLY_PAID",
+        bookingStatus: "CONFIRMED",
+        slot: {
+          date: { lte: sevenDaysFromNow },
+          status: { in: ["UPCOMING", "ACTIVE"] },
+        },
+      },
+      select: {
+        id: true,
+        slotId: true,
+        participantCount: true,
+        userId: true,
+        paidAmount: true,
+        totalPrice: true,
+        baseFare: true,
+        taxBreakdown: true,
+      },
+    });
+
+    if (candidates.length === 0) return 0;
+
+    for (const booking of candidates) {
+      const paidAmount = Number(booking.paidAmount);
+      const breakdown = calculateRefundBreakdown({
+        baseFare: Number(booking.baseFare),
+        totalPrice: Number(booking.totalPrice),
+        paidAmount,
+        paymentType: "ADVANCE",
+        refundPercent: 100,
+        taxBreakdown: booking.taxBreakdown,
+        isCompanyCancellation: true,
+      });
+
+      await runWithRetry(() =>
+        prisma.$transaction(async (tx) => {
+          await tx.booking.update({
+            where: { id: booking.id },
+            data: {
+              bookingStatus: "CANCELLED",
+              paymentStatus: paidAmount > 0 ? "REFUND_PENDING" : "FAILED",
+              cancelledAt: new Date(),
+              cancellationReason:
+                "Auto-cancelled: remaining balance was not paid within 7 days of departure.",
+              refundPreference: paidAmount > 0 ? "BANK_REFUND" : null,
+              refundAmount: paidAmount > 0 ? breakdown.finalRefundAmount : null,
+            },
+          });
+
+          if (booking.slotId) {
+            await BookingRepo.incrementSlotCapacity(tx, booking.slotId, booking.participantCount);
+          }
+
+          if (paidAmount > 0) {
+            await tx.refundRequest.create({
+              data: {
+                bookingId: booking.id,
+                customerId: booking.userId,
+                refundMethod: "BANK_TRANSFER",
+                baseFare: breakdown.baseFare,
+                gst: breakdown.gst,
+                convenienceFee: breakdown.convenienceFee,
+                cancellationPercent: breakdown.cancellationPercent,
+                cancellationCharges: breakdown.cancellationCharges,
+                finalRefundAmount: breakdown.finalRefundAmount,
+                status: "REQUESTED",
+                remarks:
+                  "System auto-cancellation: advance paid, remaining balance unpaid 7 days before departure. Refund method defaulted to bank transfer -- confirm the customer's preference before processing.",
+              },
+            });
+          }
+        }),
+      );
+    }
+
+    return candidates.length;
+  },
 };

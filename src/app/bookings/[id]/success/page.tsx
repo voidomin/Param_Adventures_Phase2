@@ -75,9 +75,10 @@ interface HeaderBannerProps {
   bookingId: string;
   paymentStatus: string;
   providerPaymentId?: string | null;
+  advanceDeadline?: string | null;
 }
 
-function HeaderBanner({ bookingId, paymentStatus, providerPaymentId }: Readonly<HeaderBannerProps>) {
+function HeaderBanner({ bookingId, paymentStatus, providerPaymentId, advanceDeadline }: Readonly<HeaderBannerProps>) {
   const isPartiallyPaid = paymentStatus === "PARTIALLY_PAID";
   const isRefundPending = paymentStatus === "REFUND_PENDING";
 
@@ -105,28 +106,39 @@ function HeaderBanner({ bookingId, paymentStatus, providerPaymentId }: Readonly<
   }
 
   return (
-    <div className={`rounded-2xl p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6 shadow-xl border relative overflow-hidden ${bannerBgClass}`}>
+    <div className={`rounded-2xl p-6 sm:p-8 shadow-xl border relative overflow-hidden ${bannerBgClass}`}>
       <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -mr-20 -mt-20" />
-      
-      <div className={`w-16 h-16 shrink-0 rounded-full flex items-center justify-center ${iconBgClass}`}>
-        <CheckCircle2 className="w-10 h-10 text-white" />
+
+      <div className="flex flex-col sm:flex-row items-center gap-6">
+        <div className={`w-16 h-16 shrink-0 rounded-full flex items-center justify-center ${iconBgClass}`}>
+          <CheckCircle2 className="w-10 h-10 text-white" />
+        </div>
+
+        <div className="flex-1 text-center sm:text-left z-10">
+          <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+            {titleText}
+          </h1>
+          <p className={`font-medium mt-1 uppercase tracking-wider text-sm ${textSubColorClass}`}>
+            Booking ID: {bookingId.split("-")[0].toUpperCase()}
+          </p>
+        </div>
+
+        <div className="text-center sm:text-right z-10 bg-black/20 px-6 py-4 rounded-xl border border-white/10 backdrop-blur-sm">
+          <p className="font-bold text-white mb-0.5">{badgeText}</p>
+          <p className={`text-sm ${textRefColorClass}`}>
+            Reference: {providerPaymentId || "N/A"}
+          </p>
+        </div>
       </div>
-      
-      <div className="flex-1 text-center sm:text-left z-10">
-        <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-          {titleText}
-        </h1>
-        <p className={`font-medium mt-1 uppercase tracking-wider text-sm ${textSubColorClass}`}>
-          Booking ID: {bookingId.split("-")[0].toUpperCase()}
-        </p>
-      </div>
-      
-      <div className="text-center sm:text-right z-10 bg-black/20 px-6 py-4 rounded-xl border border-white/10 backdrop-blur-sm">
-        <p className="font-bold text-white mb-0.5">{badgeText}</p>
-        <p className={`text-sm ${textRefColorClass}`}>
-          Reference: {providerPaymentId || "N/A"}
-        </p>
-      </div>
+
+      {isPartiallyPaid && advanceDeadline && (
+        <div className="w-full z-10 mt-4 bg-black/25 border border-amber-300/20 rounded-xl px-4 py-2.5 text-center sm:text-left">
+          <p className="text-xs sm:text-sm font-semibold text-amber-100">
+            Pay your remaining balance by <span className="font-black">{advanceDeadline}</span> (7 days before departure) to keep your seat.
+            A booking not fully paid by then is automatically cancelled, and your advance becomes eligible for a refund pending admin approval.
+          </p>
+        </div>
+      )}
     </div>
   );
 }
@@ -454,6 +466,11 @@ export default async function BookingSuccessPage({
 
   const adventureImage = experience.cardImage || experience.coverImage || experience.images?.[0];
 
+  const advanceDeadline =
+    booking.paymentType === "ADVANCE" && slot?.date
+      ? formatDate(new Date(new Date(slot.date).getTime() - 7 * 24 * 60 * 60 * 1000))
+      : null;
+
   let statusBadgeClasses = "text-foreground/50 bg-muted";
   if (booking.paymentStatus === "PAID") {
     statusBadgeClasses = "text-green-500 bg-green-500/10";
@@ -471,6 +488,7 @@ export default async function BookingSuccessPage({
           bookingId={booking.id}
           paymentStatus={booking.paymentStatus}
           providerPaymentId={payment?.providerPaymentId}
+          advanceDeadline={advanceDeadline}
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

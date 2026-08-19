@@ -633,3 +633,101 @@ describe("BookingService.confirmPayment", () => {
     });
   });
 });
+
+describe("BookingService.autoCancelUnpaidAdvanceBookings", () => {
+  const mockTx = {
+    booking: { update: vi.fn() },
+    refundRequest: { create: vi.fn() },
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(prisma.$transaction).mockImplementation(async (cb: any) => cb(mockTx));
+  });
+
+  it("returns 0 and never opens a transaction when nothing is due", async () => {
+    vi.mocked(prisma.booking.findMany).mockResolvedValue([]);
+
+    const count = await BookingService.autoCancelUnpaidAdvanceBookings();
+
+    expect(count).toBe(0);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("queries only CONFIRMED, PARTIALLY_PAID, ADVANCE bookings on slots departing within 7 days", async () => {
+    vi.mocked(prisma.booking.findMany).mockResolvedValue([]);
+
+    await BookingService.autoCancelUnpaidAdvanceBookings();
+
+    expect(prisma.booking.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          paymentType: "ADVANCE",
+          paymentStatus: "PARTIALLY_PAID",
+          bookingStatus: "CONFIRMED",
+        }),
+      }),
+    );
+  });
+
+  it("cancels an unpaid advance booking, restores capacity, and creates a REQUESTED (not disbursed) refund request for the full advance", async () => {
+    vi.mocked(prisma.booking.findMany).mockResolvedValue([
+      {
+        id: "b1",
+        slotId: "slot-1",
+        participantCount: 2,
+        userId: "u1",
+        paidAmount: 1000,
+        totalPrice: 5000,
+        baseFare: 4500,
+        taxBreakdown: [],
+      },
+    ] as any);
+
+    const count = await BookingService.autoCancelUnpaidAdvanceBookings();
+
+    expect(count).toBe(1);
+    expect(mockTx.booking.update).toHaveBeenCalledWith({
+      where: { id: "b1" },
+      data: expect.objectContaining({
+        bookingStatus: "CANCELLED",
+        paymentStatus: "REFUND_PENDING",
+        refundAmount: 1000,
+      }),
+    });
+    expect(BookingRepo.incrementSlotCapacity).toHaveBeenCalledWith(mockTx, "slot-1", 2);
+    expect(mockTx.refundRequest.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        bookingId: "b1",
+        customerId: "u1",
+        refundMethod: "BANK_TRANSFER",
+        finalRefundAmount: 1000,
+        cancellationCharges: 0,
+        status: "REQUESTED",
+      }),
+    });
+  });
+
+  it("does not create a refund request when nothing was paid yet", async () => {
+    vi.mocked(prisma.booking.findMany).mockResolvedValue([
+      {
+        id: "b1",
+        slotId: "slot-1",
+        participantCount: 1,
+        userId: "u1",
+        paidAmount: 0,
+        totalPrice: 5000,
+        baseFare: 4500,
+        taxBreakdown: [],
+      },
+    ] as any);
+
+    await BookingService.autoCancelUnpaidAdvanceBookings();
+
+    expect(mockTx.refundRequest.create).not.toHaveBeenCalled();
+    expect(mockTx.booking.update).toHaveBeenCalledWith({
+      where: { id: "b1" },
+      data: expect.objectContaining({ paymentStatus: "FAILED", refundAmount: null }),
+    });
+  });
+});

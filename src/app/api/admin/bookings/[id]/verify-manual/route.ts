@@ -36,6 +36,9 @@ async function sendBookingConfirmationEmail(bookingId: string) {
     baseFare: Number(booking.baseFare),
     taxBreakdown: booking.taxBreakdown as { name: string; percentage: number; amount: number }[],
     bookingId: booking.id,
+    paymentType: booking.paymentType,
+    paidAmount: Number(booking.paidAmount),
+    remainingBalance: Number(booking.remainingBalance),
   });
 }
 
