@@ -11,6 +11,7 @@ vi.mock("@/lib/db", () => ({
     },
   },
 }));
+vi.mock("@/lib/monitoring", () => ({ logError: vi.fn() }));
 
 import { GET } from "@/app/api/settings/public/route";
 import { prisma } from "@/lib/db";
@@ -66,11 +67,11 @@ describe("GET /api/settings/public", () => {
     expect(data.turnstile_site_key).toBe("env-turnstile-site-key");
   });
 
-  it("returns 200 fallback config object on DB error to prevent client crashes", async () => {
+  it("returns a real 500 on DB error instead of a fabricated 200 (observability)", async () => {
     mockSiteSettingFindMany.mockRejectedValue(new Error("db down"));
     const response = await GET();
     const data = await response.json();
-    expect(response.status).toBe(200);
-    expect(data.site_title).toBe("Param Adventures");
+    expect(response.status).toBe(500);
+    expect(data.error).toBeTruthy();
   });
 });

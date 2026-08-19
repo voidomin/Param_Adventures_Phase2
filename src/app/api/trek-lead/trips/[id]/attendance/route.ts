@@ -97,6 +97,23 @@ export async function POST(request: NextRequest, { params }: RouteContext) {
       );
     }
 
+    // Every participantId must belong to a booking on THIS slot -- otherwise
+    // a trek lead could (accidentally or not) flip attendance on someone
+    // else's trip by supplying a participantId from a different slot.
+    const participantIds = attendees.map((a) => a.participantId);
+    const validParticipants = await prisma.bookingParticipant.findMany({
+      where: { id: { in: participantIds }, booking: { slotId } },
+      select: { id: true },
+    });
+    if (validParticipants.length !== participantIds.length) {
+      const validIds = new Set(validParticipants.map((p) => p.id));
+      const invalidIds = participantIds.filter((id) => !validIds.has(id));
+      return NextResponse.json(
+        { error: `These participants do not belong to this trip: ${invalidIds.join(", ")}` },
+        { status: 400 },
+      );
+    }
+
     // Upsert TripLog with attendance data
     await prisma.tripLog.upsert({
       where: { slotId },

@@ -8,7 +8,7 @@ vi.mock("@/lib/db", () => ({
     tripAssignment: { findUnique: vi.fn() },
     slot: { findUnique: vi.fn() },
     tripLog: { upsert: vi.fn() },
-    bookingParticipant: { update: vi.fn(), count: vi.fn().mockResolvedValue(1) },
+    bookingParticipant: { update: vi.fn(), count: vi.fn().mockResolvedValue(1), findMany: vi.fn() },
     booking: { update: vi.fn().mockResolvedValue({}) },
   },
 }));
@@ -24,6 +24,7 @@ const mockAssignmentFindUnique = vi.mocked(prisma.tripAssignment.findUnique);
 const mockSlotFindUnique = vi.mocked(prisma.slot.findUnique);
 const mockTripLogUpsert = vi.mocked(prisma.tripLog.upsert);
 const mockParticipantUpdate = vi.mocked(prisma.bookingParticipant.update);
+const mockParticipantFindMany = vi.mocked(prisma.bookingParticipant.findMany);
 
 const createRequest = (body?: unknown) =>
   ({ json: vi.fn().mockResolvedValue(body ?? {}) }) as unknown as NextRequest;
@@ -33,6 +34,8 @@ describe("POST /api/trek-lead/trips/[id]/attendance", () => {
     vi.clearAllMocks();
     mockParticipantUpdate.mockResolvedValue({ bookingId: "b1" } as any);
     mockTripLogUpsert.mockResolvedValue({} as any);
+    mockParticipantFindMany.mockImplementation(((args: any) =>
+      Promise.resolve((args.where.id.in as string[]).map((id) => ({ id })))) as any);
   });
 
   it("returns auth response when unauthorized", async () => {
@@ -162,6 +165,31 @@ describe("POST /api/trek-lead/trips/[id]/attendance", () => {
     expect(mockAssignmentFindUnique).not.toHaveBeenCalled();
     expect(mockTripLogUpsert).toHaveBeenCalledTimes(1);
     expect(mockParticipantUpdate).toHaveBeenCalledTimes(1);
+  });
+
+  it("rejects a participantId that does not belong to a booking on this slot", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "t1" } as any);
+    mockAssignmentFindUnique.mockResolvedValue({ id: "a1" } as any);
+    mockSlotFindUnique.mockResolvedValue({ date: new Date(), status: "TREK_STARTED" } as any);
+    mockIsSlotDayToday.mockReturnValue(true);
+    // Only p1 actually belongs to this slot; p2 belongs to some other trip.
+    mockParticipantFindMany.mockResolvedValue([{ id: "p1" }] as any);
+
+    const response = await POST(
+      createRequest({
+        attendees: [
+          { participantId: "p1", attended: true },
+          { participantId: "p2", attended: true },
+        ],
+      }),
+      { params: Promise.resolve({ id: "slot-1" }) },
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toContain("p2");
+    expect(mockTripLogUpsert).not.toHaveBeenCalled();
+    expect(mockParticipantUpdate).not.toHaveBeenCalled();
   });
 
   it("returns 500 on unexpected error", async () => {
