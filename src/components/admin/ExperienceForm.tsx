@@ -728,6 +728,7 @@ export default function ExperienceForm({
 
   const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setIsSubmitting(true);
     setError("");
     setFieldErrors({});

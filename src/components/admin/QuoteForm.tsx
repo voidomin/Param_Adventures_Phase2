@@ -29,6 +29,7 @@ export default function QuoteForm({ quote, onClose, onSuccess }: QuoteFormProps)
   // Using BaseSyntheticEvent as a robust alternative to deprecated FormEvent if warned
   const handleSubmit = async (e: React.BaseSyntheticEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setIsSubmitting(true);
     setError(null);
 

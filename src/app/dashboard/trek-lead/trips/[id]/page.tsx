@@ -186,6 +186,7 @@ export default function TrekLeadTripDetailPage() {
     }));
 
   const saveAttendance = async () => {
+    if (isSavingAttendance) return;
     setIsSavingAttendance(true);
     setAttendanceError("");
     setAttendanceSaved(false);
@@ -212,6 +213,7 @@ export default function TrekLeadTripDetailPage() {
   };
 
   const handleStartTrek = async () => {
+    if (isStartingTrek) return;
     setIsStartingTrek(true);
     setTrekStartError("");
     try {
@@ -255,6 +257,7 @@ export default function TrekLeadTripDetailPage() {
   const trekEnded = slot.status === "TREK_ENDED";
 
   const handleEndTrek = async () => {
+    if (isEndingTrek) return;
     setIsEndingTrek(true);
     setTrekEndError("");
     try {

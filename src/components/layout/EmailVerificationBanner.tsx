@@ -38,6 +38,7 @@ export default function EmailVerificationBanner() {
   };
 
   const handleResend = async () => {
+    if (sendState === "sending") return;
     setSendState("sending");
     try {
       const res = await fetch("/api/auth/resend-verification", { method: "POST" });

@@ -170,6 +170,7 @@ export default function ExperienceReviews({
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting) return;
     setIsSubmitting(true);
     setSubmitError("");
     try {

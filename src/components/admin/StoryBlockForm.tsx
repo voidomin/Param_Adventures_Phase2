@@ -51,6 +51,7 @@ export default function StoryBlockForm({
 
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (loading) return;
     setLoading(true);
     setError("");
 

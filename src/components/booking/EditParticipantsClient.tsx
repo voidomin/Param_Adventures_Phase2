@@ -174,7 +174,7 @@ export default function EditParticipantsClient({
   };
 
   const handleSaveEdit = async () => {
-    if (!editingParticipant) return;
+    if (!editingParticipant || isEditSubmitting) return;
     setIsEditSubmitting(true);
     setEditError(null);
 
@@ -217,7 +217,7 @@ export default function EditParticipantsClient({
   };
 
   const handleCancelParticipant = async () => {
-    if (cancellingParticipants.length === 0) return;
+    if (cancellingParticipants.length === 0 || isCancelSubmitting) return;
     setIsCancelSubmitting(true);
     setCancelError(null);
 

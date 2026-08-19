@@ -40,6 +40,7 @@ export function RefundResolveModal({
       ? Math.max(Number(booking.paidAmount), Number(booking.refundAmount))
       : Number(booking.paidAmount);
 
+    if (isSubmitting) return;
     if (amt > effectiveCap) {
       setError(`Refund amount cannot exceed the paid/refund limit of ₹${effectiveCap.toLocaleString()}`);
       return;

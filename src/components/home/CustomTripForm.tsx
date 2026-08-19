@@ -40,6 +40,7 @@ export default function CustomTripForm() {
 
   const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (loading) return;
     const target = e.target as HTMLFormElement;
     setLoading(true);
     setError("");
