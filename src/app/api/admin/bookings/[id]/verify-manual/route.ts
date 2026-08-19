@@ -95,7 +95,14 @@ export async function POST(
         }
 
         const newPaidAmount = Number(freshBooking.paidAmount) + amountPaid;
-        const remainingBalance = Number(freshBooking.totalPrice) - newPaidAmount;
+        const totalPrice = Number(freshBooking.totalPrice);
+        if (newPaidAmount > totalPrice + 0.01) {
+          const maxAllowed = Math.max(0, totalPrice - Number(freshBooking.paidAmount));
+          throw new Error(
+            `OVERPAYMENT: This amount would push the total paid to ${newPaidAmount.toFixed(2)}, exceeding the booking total of ${totalPrice.toFixed(2)}. Maximum additional amount allowed is ${maxAllowed.toFixed(2)}.`
+          );
+        }
+        const remainingBalance = totalPrice - newPaidAmount;
         const newPaymentStatus = remainingBalance > 0.01 ? "PARTIALLY_PAID" : "PAID";
 
         const updated = await tx.booking.update({
@@ -190,7 +197,14 @@ export async function POST(
 
   } catch (error: unknown) {
     console.error("Manual verification error:", error);
-    
+
+    if (error instanceof Error && error.message.startsWith("OVERPAYMENT:")) {
+      return NextResponse.json(
+        { error: error.message.replace("OVERPAYMENT: ", "") },
+        { status: 400 }
+      );
+    }
+
     // Catch unique constraint violation on providerPaymentId
     const err = error as { code?: string; meta?: { target?: string[] } };
     if (err.code === "P2002" && err.meta?.target?.includes("providerPaymentId")) {

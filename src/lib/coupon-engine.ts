@@ -137,13 +137,17 @@ export async function restoreCouponsForBooking(params: {
 }): Promise<{ totalRestored: number }> {
   const { bookingId, cancellationCharges, tx } = params;
 
-  // Find all REDEEMED transactions for this booking, oldest first, so cancellation
-  // charges are always allocated in the same deterministic order (first redeemed,
-  // first charged) rather than whatever order the database happens to return them in.
-  const redemptions = await tx.couponTransaction.findMany({
+  // Find every REDEEMED/RESTORED transaction for this booking, oldest first, so
+  // cancellation charges are always allocated in the same deterministic order
+  // (first redeemed, first charged). This function can run more than once for
+  // the same booking (e.g. a partial cancellation followed later by a full
+  // cancellation of the rest), so we net each coupon's redeemed total against
+  // whatever was already restored by an earlier call -- otherwise re-scanning
+  // the same REDEEMED rows every time would restore the same money twice.
+  const transactions = await tx.couponTransaction.findMany({
     where: {
       bookingId,
-      type: "REDEEMED",
+      type: { in: ["REDEEMED", "RESTORED"] },
     },
     include: {
       coupon: true,
@@ -153,12 +157,32 @@ export async function restoreCouponsForBooking(params: {
     },
   });
 
+  const byCoupon = new Map<
+    string,
+    { coupon: TravelCoupon; redeemed: number; alreadyRestored: number; order: number }
+  >();
+  let order = 0;
+  for (const t of transactions) {
+    let entry = byCoupon.get(t.couponId);
+    if (!entry) {
+      entry = { coupon: t.coupon, redeemed: 0, alreadyRestored: 0, order: order++ };
+      byCoupon.set(t.couponId, entry);
+    }
+    if (t.type === "REDEEMED") {
+      entry.redeemed += Number(t.amount);
+    } else {
+      entry.alreadyRestored += Number(t.amount);
+    }
+  }
+  const redemptions = Array.from(byCoupon.values()).sort((a, b) => a.order - b.order);
+
   let remainingChargeToApply = cancellationCharges;
   let totalRestored = 0;
 
   for (const r of redemptions) {
     const coupon = r.coupon;
-    const redeemedAmount = Number(r.amount);
+    const outstanding = Math.max(0, r.redeemed - r.alreadyRestored);
+    if (outstanding <= 0) continue;
 
     // Scenario 6: Do not restore if coupon has expired
     if (isExpiredIST(coupon.expiryDate)) {
@@ -178,7 +202,7 @@ export async function restoreCouponsForBooking(params: {
     }
 
     // Determine how much of the cancellation charge falls on this coupon's share
-    let restorationAmount = redeemedAmount;
+    let restorationAmount = outstanding;
     if (remainingChargeToApply > 0) {
       const deduction = Math.min(restorationAmount, remainingChargeToApply);
       restorationAmount -= deduction;
