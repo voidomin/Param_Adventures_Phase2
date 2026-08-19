@@ -66,9 +66,11 @@ describe("GET /api/settings/public", () => {
     expect(data.turnstile_site_key).toBe("env-turnstile-site-key");
   });
 
-  it("returns 500 on unexpected error", async () => {
+  it("returns 200 fallback config object on DB error to prevent client crashes", async () => {
     mockSiteSettingFindMany.mockRejectedValue(new Error("db down"));
     const response = await GET();
-    expect(response.status).toBe(500);
+    const data = await response.json();
+    expect(response.status).toBe(200);
+    expect(data.site_title).toBe("Param Adventures");
   });
 });
