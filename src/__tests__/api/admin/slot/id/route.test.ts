@@ -102,21 +102,44 @@ describe("/api/admin/experiences/[id]/slots/[slotId]", () => {
     expect(response.status).toBe(404);
   });
 
-  it("PATCH returns 400 when reducing below booked seats", async () => {
+  it("PATCH returns 400 when setting departure date to a past date on uncompleted slot", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
     mockSlotFindUnique.mockResolvedValue({
       id: "slot-1",
       experienceId: "exp-1",
       capacity: 20,
-      remainingCapacity: 8,
-      _count: { bookings: 12 },
+      remainingCapacity: 10,
+      status: "UPCOMING",
     } as any);
 
-    const response = await PATCH(createJsonRequest({ capacity: 10 }), {
+    const pastDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const response = await PATCH(createJsonRequest({ date: pastDate }), {
+      params: Promise.resolve({ id: "exp-1", slotId: "slot-1" }),
+    });
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toContain("Departure date cannot be set to a past date");
+  });
+
+  it("PATCH allows setting past date when slot status is COMPLETED", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true } as any);
+    mockSlotFindUnique.mockResolvedValue({
+      id: "slot-1",
+      experienceId: "exp-1",
+      capacity: 20,
+      remainingCapacity: 10,
+      status: "COMPLETED",
+    } as any);
+
+    const pastDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    mockSlotUpdate.mockResolvedValue({ id: "slot-1", date: new Date(pastDate), status: "COMPLETED" } as any);
+
+    const response = await PATCH(createJsonRequest({ date: pastDate }), {
       params: Promise.resolve({ id: "exp-1", slotId: "slot-1" }),
     });
 
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(200);
   });
 
   it("PATCH updates date/capacity and recomputes remaining seats", async () => {

@@ -61,14 +61,16 @@ export async function assignInvoiceNumberIfNeeded(
 ): Promise<string> {
   const existing = await tx.booking.findUnique({
     where: { id: bookingId },
-    select: { invoiceNumber: true },
+    select: { invoiceNumber: true, createdAt: true },
   });
 
   if (existing?.invoiceNumber) {
     return existing.invoiceNumber;
   }
 
-  const fiscalYear = getFinancialYearLabel(now);
+  // Align fiscal year sequence with booking creation date
+  const invoiceDate = existing?.createdAt ?? now;
+  const fiscalYear = getFinancialYearLabel(invoiceDate);
 
   const sequence = await tx.invoiceSequence.upsert({
     where: { fiscalYear },
