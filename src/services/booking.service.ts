@@ -104,6 +104,73 @@ async function processCheckoutCoupons(
   return { remaining, totalCouponRedeemed, redemptionsList };
 }
 
+type BookingTx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+type ExperienceForBooking = Awaited<ReturnType<typeof BookingRepo.findExperienceById>>;
+type SlotForBooking = Awaited<ReturnType<typeof BookingRepo.findSlotById>>;
+
+/**
+ * A repeat POST carrying the same client-generated idempotency key (double-click
+ * across tabs, a network-level retry) returns the booking that call already
+ * produced instead of creating a duplicate. Returns null when there's nothing to replay.
+ */
+async function tryIdempotentReplay(tx: BookingTx, userId: string, idempotencyKey: string | undefined) {
+  if (!idempotencyKey) return null;
+  const replay = await BookingRepo.findByIdempotencyKey(tx, userId, idempotencyKey);
+  if (!replay) return null;
+  return {
+    booking: replay.booking,
+    payment: replay.payment,
+    fullyPaid: replay.booking.bookingStatus === "CONFIRMED",
+    totalCouponRedeemed: Number(replay.booking.paidAmount),
+    idempotentReplay: true as const,
+  };
+}
+
+/**
+ * If a similar requested/pending booking exists, mark it cancelled so it doesn't
+ * block the new checkout. That earlier attempt reserved capacity when IT was
+ * created, so cancelling it here must give that reservation back before this
+ * new attempt's own capacity check runs.
+ */
+async function cancelSupersededPendingBooking(tx: BookingTx, userId: string, slotId: string) {
+  const existing = await BookingRepo.findExistingPendingBooking(tx, userId, slotId);
+  if (!existing) return;
+  await tx.booking.update({
+    where: { id: existing.id },
+    data: {
+      bookingStatus: "CANCELLED",
+      cancellationReason: "Superseded by new checkout attempt",
+    },
+  });
+  if (existing.slotId) {
+    await BookingRepo.incrementSlotCapacity(tx, existing.slotId, existing.participantCount);
+  }
+}
+
+function assertExperienceAvailable(
+  experience: ExperienceForBooking
+): asserts experience is NonNullable<ExperienceForBooking> {
+  if (experience?.status !== "PUBLISHED") {
+    throw new Error("EXPERIENCE_NOT_AVAILABLE");
+  }
+}
+
+function assertSlotAvailable(
+  slot: SlotForBooking,
+  data: BookingInput,
+  now: Date
+): asserts slot is NonNullable<SlotForBooking> {
+  if (slot?.experienceId !== data.experienceId) {
+    throw new Error("SLOT_MISMATCH");
+  }
+  if (new Date(slot.date) < now) {
+    throw new Error("SLOT_EXPIRED");
+  }
+  if (slot.remainingCapacity < data.participantCount) {
+    throw new Error("INSUFFICIENT_CAPACITY");
+  }
+}
+
 export const BookingService = {
   /**
    * Orchestrates the entire booking creation flow with production-grade safety.
@@ -117,39 +184,11 @@ export const BookingService = {
     // 2. ATOMIC TRANSACTION: Ensuring Slot Capacity vs Booking Entry
     // We use Serializable isolation to prevent phantom reads and ensure absolute consistency.
     const result = await runWithRetry(() =>
-      prisma.$transaction(async (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => {
-        // Idempotent replay: a repeat POST carrying the same client-generated
-        // key (double-click across tabs, a network-level retry) returns the
-        // booking that call already produced instead of creating a duplicate.
-        if (data.idempotencyKey) {
-          const replay = await BookingRepo.findByIdempotencyKey(tx, userId, data.idempotencyKey);
-          if (replay) {
-            return {
-              booking: replay.booking,
-              payment: replay.payment,
-              fullyPaid: replay.booking.bookingStatus === "CONFIRMED",
-              totalCouponRedeemed: Number(replay.booking.paidAmount),
-              idempotentReplay: true,
-            };
-          }
-        }
+      prisma.$transaction(async (tx: BookingTx) => {
+        const replay = await tryIdempotentReplay(tx, userId, data.idempotencyKey);
+        if (replay) return replay;
 
-        // If a similar requested/pending booking exists, mark it as cancelled so it doesn't block the new checkout.
-        // That earlier attempt reserved capacity when IT was created (see below), so cancelling it here must
-        // give that reservation back before this new attempt's own capacity check runs.
-        const existing = await BookingRepo.findExistingPendingBooking(tx, userId, data.slotId);
-        if (existing) {
-          await tx.booking.update({
-            where: { id: existing.id },
-            data: {
-              bookingStatus: "CANCELLED",
-              cancellationReason: "Superseded by new checkout attempt",
-            },
-          });
-          if (existing.slotId) {
-            await BookingRepo.incrementSlotCapacity(tx, existing.slotId, existing.participantCount);
-          }
-        }
+        await cancelSupersededPendingBooking(tx, userId, data.slotId);
 
       // Experience & Slot checks
       const [experience, slot] = await Promise.all([
@@ -157,22 +196,9 @@ export const BookingService = {
         BookingRepo.findSlotById(tx, data.slotId),
       ]);
 
-      if (experience?.status !== "PUBLISHED") {
-        throw new Error("EXPERIENCE_NOT_AVAILABLE");
-      }
-
-      if (slot?.experienceId !== data.experienceId) {
-        throw new Error("SLOT_MISMATCH");
-      }
-
       const now = new Date();
-      if (new Date(slot.date) < now) {
-        throw new Error("SLOT_EXPIRED");
-      }
-
-      if (slot.remainingCapacity < data.participantCount) {
-        throw new Error("INSUFFICIENT_CAPACITY");
-      }
+      assertExperienceAvailable(experience);
+      assertSlotAvailable(slot, data, now);
 
       const isAdvance = data.paymentType === "ADVANCE" && experience.allowAdvancePayment && experience.advancePaymentAmount;
       const paymentAmount = isAdvance

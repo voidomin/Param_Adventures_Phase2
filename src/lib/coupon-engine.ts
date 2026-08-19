@@ -127,40 +127,18 @@ export async function redeemCoupon(params: {
   });
 }
 
+type RedemptionTx = { couponId: string; type: string; amount: unknown; coupon: TravelCoupon };
+type RedemptionEntry = { coupon: TravelCoupon; redeemed: number; alreadyRestored: number; order: number };
+
 /**
- * Restores any coupon values redeemed on a booking, respecting cancellation policy.
+ * Nets each coupon's REDEEMED total against whatever was already RESTORED by an
+ * earlier call (this function can run more than once per booking -- a partial
+ * cancellation followed later by a full one), so re-scanning the same REDEEMED
+ * rows never restores the same money twice. Returned oldest-first so cancellation
+ * charges are always allocated in the same deterministic order.
  */
-export async function restoreCouponsForBooking(params: {
-  bookingId: string;
-  cancellationCharges: number;
-  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
-}): Promise<{ totalRestored: number }> {
-  const { bookingId, cancellationCharges, tx } = params;
-
-  // Find every REDEEMED/RESTORED transaction for this booking, oldest first, so
-  // cancellation charges are always allocated in the same deterministic order
-  // (first redeemed, first charged). This function can run more than once for
-  // the same booking (e.g. a partial cancellation followed later by a full
-  // cancellation of the rest), so we net each coupon's redeemed total against
-  // whatever was already restored by an earlier call -- otherwise re-scanning
-  // the same REDEEMED rows every time would restore the same money twice.
-  const transactions = await tx.couponTransaction.findMany({
-    where: {
-      bookingId,
-      type: { in: ["REDEEMED", "RESTORED"] },
-    },
-    include: {
-      coupon: true,
-    },
-    orderBy: {
-      createdAt: "asc",
-    },
-  });
-
-  const byCoupon = new Map<
-    string,
-    { coupon: TravelCoupon; redeemed: number; alreadyRestored: number; order: number }
-  >();
+function summarizeRedemptionsByCoupon(transactions: RedemptionTx[]): RedemptionEntry[] {
+  const byCoupon = new Map<string, RedemptionEntry>();
   let order = 0;
   for (const t of transactions) {
     let entry = byCoupon.get(t.couponId);
@@ -174,68 +152,111 @@ export async function restoreCouponsForBooking(params: {
       entry.alreadyRestored += Number(t.amount);
     }
   }
-  const redemptions = Array.from(byCoupon.values()).sort((a, b) => a.order - b.order);
+  return Array.from(byCoupon.values()).sort((a, b) => a.order - b.order);
+}
+
+/**
+ * Restores one coupon's outstanding redemption, applying whatever cancellation
+ * charge is still remaining first. Returns the updated remaining charge and how
+ * much (if anything) was actually restored to the coupon's balance.
+ */
+async function restoreOneCoupon(
+  entry: RedemptionEntry,
+  bookingId: string,
+  remainingChargeToApply: number,
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]
+): Promise<{ remainingChargeToApply: number; restored: number }> {
+  const coupon = entry.coupon;
+  const outstanding = Math.max(0, entry.redeemed - entry.alreadyRestored);
+  if (outstanding <= 0) return { remainingChargeToApply, restored: 0 };
+
+  // Scenario 6: Do not restore if coupon has expired
+  if (isExpiredIST(coupon.expiryDate)) {
+    // Keep transaction logs but don't restore balance
+    await tx.couponTransaction.create({
+      data: {
+        couponId: coupon.id,
+        bookingId,
+        type: "EXPIRED",
+        amount: 0,
+        previousBalance: coupon.balance,
+        newBalance: coupon.balance,
+        remarks: `Coupon was expired at cancellation time. Restoration skipped.`,
+      },
+    });
+    return { remainingChargeToApply, restored: 0 };
+  }
+
+  // Determine how much of the cancellation charge falls on this coupon's share
+  let restorationAmount = outstanding;
+  let remaining = remainingChargeToApply;
+  if (remaining > 0) {
+    const deduction = Math.min(restorationAmount, remaining);
+    restorationAmount -= deduction;
+    remaining -= deduction;
+  }
+
+  if (restorationAmount <= 0) return { remainingChargeToApply: remaining, restored: 0 };
+
+  const currentBalance = Number(coupon.balance);
+  const newBalance = Math.min(Number(coupon.originalValue), currentBalance + restorationAmount);
+  const newStatus = newBalance === Number(coupon.originalValue) ? CouponStatus.ACTIVE : CouponStatus.PARTIALLY_USED;
+
+  await tx.travelCoupon.update({
+    where: { id: coupon.id },
+    data: {
+      balance: newBalance,
+      status: newStatus,
+    },
+  });
+
+  await tx.couponTransaction.create({
+    data: {
+      couponId: coupon.id,
+      bookingId,
+      type: "RESTORED",
+      amount: restorationAmount,
+      previousBalance: currentBalance,
+      newBalance,
+      remarks: `Restored ${restorationAmount} from cancelled booking ${bookingId.substring(0, 8)}...`,
+    },
+  });
+
+  return { remainingChargeToApply: remaining, restored: restorationAmount };
+}
+
+/**
+ * Restores any coupon values redeemed on a booking, respecting cancellation policy.
+ */
+export async function restoreCouponsForBooking(params: {
+  bookingId: string;
+  cancellationCharges: number;
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+}): Promise<{ totalRestored: number }> {
+  const { bookingId, cancellationCharges, tx } = params;
+
+  const transactions = await tx.couponTransaction.findMany({
+    where: {
+      bookingId,
+      type: { in: ["REDEEMED", "RESTORED"] },
+    },
+    include: {
+      coupon: true,
+    },
+    orderBy: {
+      createdAt: "asc",
+    },
+  });
+
+  const redemptions = summarizeRedemptionsByCoupon(transactions);
 
   let remainingChargeToApply = cancellationCharges;
   let totalRestored = 0;
 
-  for (const r of redemptions) {
-    const coupon = r.coupon;
-    const outstanding = Math.max(0, r.redeemed - r.alreadyRestored);
-    if (outstanding <= 0) continue;
-
-    // Scenario 6: Do not restore if coupon has expired
-    if (isExpiredIST(coupon.expiryDate)) {
-      // Keep transaction logs but don't restore balance
-      await tx.couponTransaction.create({
-        data: {
-          couponId: coupon.id,
-          bookingId,
-          type: "EXPIRED",
-          amount: 0,
-          previousBalance: coupon.balance,
-          newBalance: coupon.balance,
-          remarks: `Coupon was expired at cancellation time. Restoration skipped.`,
-        },
-      });
-      continue;
-    }
-
-    // Determine how much of the cancellation charge falls on this coupon's share
-    let restorationAmount = outstanding;
-    if (remainingChargeToApply > 0) {
-      const deduction = Math.min(restorationAmount, remainingChargeToApply);
-      restorationAmount -= deduction;
-      remainingChargeToApply -= deduction;
-    }
-
-    if (restorationAmount > 0) {
-      const currentBalance = Number(coupon.balance);
-      const newBalance = Math.min(Number(coupon.originalValue), currentBalance + restorationAmount);
-      const newStatus = newBalance === Number(coupon.originalValue) ? CouponStatus.ACTIVE : CouponStatus.PARTIALLY_USED;
-
-      await tx.travelCoupon.update({
-        where: { id: coupon.id },
-        data: {
-          balance: newBalance,
-          status: newStatus,
-        },
-      });
-
-      await tx.couponTransaction.create({
-        data: {
-          couponId: coupon.id,
-          bookingId,
-          type: "RESTORED",
-          amount: restorationAmount,
-          previousBalance: currentBalance,
-          newBalance,
-          remarks: `Restored ${restorationAmount} from cancelled booking ${bookingId.substring(0, 8)}...`,
-        },
-      });
-
-      totalRestored += restorationAmount;
-    }
+  for (const entry of redemptions) {
+    const result = await restoreOneCoupon(entry, bookingId, remainingChargeToApply, tx);
+    remainingChargeToApply = result.remainingChargeToApply;
+    totalRestored += result.restored;
   }
 
   return { totalRestored };

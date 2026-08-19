@@ -52,6 +52,23 @@ interface ParticipantWithAmenities {
   selectedAmenities?: unknown;
 }
 
+function getStatusBadgeClasses(paymentStatus: string): string {
+  if (paymentStatus === "PAID") return "text-green-500 bg-green-500/10";
+  if (paymentStatus === "PARTIALLY_PAID") return "text-amber-500 bg-amber-500/10";
+  if (paymentStatus === "REFUND_PENDING") return "text-orange-500 bg-orange-500/10";
+  return "text-foreground/50 bg-muted";
+}
+
+function getAdvanceDeadline(
+  paymentType: string,
+  slotDate: Date | string | null | undefined,
+  advancePaymentDeadlineDays: number | null | undefined
+): string | null {
+  if (paymentType !== "ADVANCE" || !slotDate) return null;
+  const deadlineMs = new Date(slotDate).getTime() - (advancePaymentDeadlineDays || 7) * 24 * 60 * 60 * 1000;
+  return formatDate(new Date(deadlineMs));
+}
+
 function getAggregatedAmenities(participants: ParticipantWithAmenities[]) {
   const aggregatedAmenities = new Map<string, { name: string; price: number; count: number }>();
   participants.forEach((p) => {
@@ -209,12 +226,7 @@ function PaymentConfirmationCard({
           {/* Includes REFUNDED rows -- they document a real historical charge that was later reversed, not a payment that never happened. */}
           {payments.filter(p => p.status === "PAID" || p.status === "REFUNDED").map((p, idx) => {
             const isAdvance = idx === 0 && paymentType === "ADVANCE";
-            const pDateObj = new Date(p.createdAt);
-            const pDay = String(pDateObj.getDate()).padStart(2, "0");
-            const pMonths = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-            const pMonth = pMonths[pDateObj.getMonth()];
-            const pYear = pDateObj.getFullYear();
-            const pDate = `${pDay}/${pMonth}/${pYear}`;
+            const pDate = formatDate(new Date(p.createdAt));
             return (
               <div key={p.id} className="flex justify-between items-center text-xs text-foreground/80 font-medium bg-foreground/3 px-2.5 py-1.5 rounded-lg">
                 <span className="opacity-75">
@@ -470,24 +482,9 @@ export default async function BookingSuccessPage({
 
   const adventureImage = experience.cardImage || experience.coverImage || experience.images?.[0];
 
-  const advanceDeadline =
-    booking.paymentType === "ADVANCE" && slot?.date
-      ? formatDate(
-          new Date(
-            new Date(slot.date).getTime() -
-              (experience.advancePaymentDeadlineDays || 7) * 24 * 60 * 60 * 1000
-          )
-        )
-      : null;
+  const advanceDeadline = getAdvanceDeadline(booking.paymentType, slot?.date, experience.advancePaymentDeadlineDays);
 
-  let statusBadgeClasses = "text-foreground/50 bg-muted";
-  if (booking.paymentStatus === "PAID") {
-    statusBadgeClasses = "text-green-500 bg-green-500/10";
-  } else if (booking.paymentStatus === "PARTIALLY_PAID") {
-    statusBadgeClasses = "text-amber-500 bg-amber-500/10";
-  } else if (booking.paymentStatus === "REFUND_PENDING") {
-    statusBadgeClasses = "text-orange-500 bg-orange-500/10";
-  }
+  const statusBadgeClasses = getStatusBadgeClasses(booking.paymentStatus);
 
   return (
     <main className="min-h-screen bg-background/50 py-12 px-4 sm:px-6 lg:px-8">
