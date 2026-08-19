@@ -664,7 +664,7 @@ export default function ManagerTripDetailPage() {
   );
 
   const handleAssignLead = async () => {
-    if (!selectedLeadId) return;
+    if (!selectedLeadId || isAssigningLead) return;
     setIsAssigningLead(true);
     setLeadAssignError("");
     try {
@@ -701,6 +701,7 @@ export default function ManagerTripDetailPage() {
 
   // ─── Start Trip ────────────────────────────────────────────
   const handleStartTrip = async () => {
+    if (isStarting) return;
     setIsStarting(true);
     setStartError("");
     try {
@@ -719,6 +720,7 @@ export default function ManagerTripDetailPage() {
 
   // ─── Complete Trip ────────────────────────────────────────
   const handleCompleteTrip = async () => {
+    if (isCompleting) return;
     setIsCompleting(true);
     setCompleteError("");
     try {

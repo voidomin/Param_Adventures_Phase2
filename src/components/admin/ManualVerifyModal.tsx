@@ -64,6 +64,7 @@ export function ManualVerifyModal({
 
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (isSubmitting) return;
     if (!proofUrl) {
       setError("Please upload payment proof first.");
       return;

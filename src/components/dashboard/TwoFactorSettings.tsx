@@ -21,6 +21,7 @@ export default function TwoFactorSettings({ enabled }: Readonly<{ enabled: boole
   const [busy, setBusy] = useState(false);
 
   const startSetup = async () => {
+    if (busy) return;
     setBusy(true);
     setMsg({ type: "", text: "" });
     try {
@@ -37,6 +38,7 @@ export default function TwoFactorSettings({ enabled }: Readonly<{ enabled: boole
 
   const confirmSetup = async (e: React.SyntheticEvent) => {
     e.preventDefault();
+    if (busy) return;
     setBusy(true);
     setMsg({ type: "", text: "" });
     try {
@@ -58,6 +60,7 @@ export default function TwoFactorSettings({ enabled }: Readonly<{ enabled: boole
 
   const disable2fa = async (e: React.SyntheticEvent) => {
     e.preventDefault();
+    if (busy) return;
     setBusy(true);
     setMsg({ type: "", text: "" });
     try {

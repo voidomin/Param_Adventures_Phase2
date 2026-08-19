@@ -58,6 +58,7 @@ export default function HeroForm({ slide, onClose, onSuccess }: HeroFormProps) {
 
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setIsSubmitting(true);
     setError("");
 

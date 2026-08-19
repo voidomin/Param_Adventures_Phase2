@@ -151,6 +151,7 @@ export default function WriteBlogPage() {
   };
 
   const handleSaveDraft = async (): Promise<string | null> => {
+    if (isSaving) return null;
     setError("");
     if (!selectedExp && !isAdmin) {
       setError("Please select an experience first.");
@@ -203,6 +204,7 @@ export default function WriteBlogPage() {
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting || isSaving) return;
     // Save draft first — get the blog ID back directly
     const savedBlogId = await handleSaveDraft();
     if (!savedBlogId) return; // save failed or validation error

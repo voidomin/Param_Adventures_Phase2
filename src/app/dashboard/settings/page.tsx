@@ -134,6 +134,7 @@ export default function SettingsPage() {
 
   const handleProfileUpdate = async (e: React.SyntheticEvent) => {
     e.preventDefault();
+    if (isUpdatingProfile) return;
     setIsUpdatingProfile(true);
     setProfileMsg({ type: "", text: "" });
 
@@ -201,6 +202,7 @@ export default function SettingsPage() {
   const handlePasswordUpdate = async (e: React.SyntheticEvent) => {
     // ... (logic remains same, just ensuring icons and classes match)
     e.preventDefault();
+    if (isUpdatingPassword) return;
     setIsUpdatingPassword(true);
     setPasswordMsg({ type: "", text: "" });
 
@@ -237,6 +239,7 @@ export default function SettingsPage() {
   };
 
   const handleDataExport = async () => {
+    if (isExportingData) return;
     setIsExportingData(true);
     setExportMsg({ type: "", text: "" });
     try {
@@ -262,6 +265,7 @@ export default function SettingsPage() {
 
   const handleDeleteAccount = async (e: React.SyntheticEvent) => {
     e.preventDefault();
+    if (isDeletingAccount) return;
     setIsDeletingAccount(true);
     setDeleteMsg({ type: "", text: "" });
 

@@ -24,6 +24,7 @@ export default function ReauthModal({
 
   const handleSubmit = async (e: SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (!password.trim()) {
       setError("Please enter your password.");
       return;
