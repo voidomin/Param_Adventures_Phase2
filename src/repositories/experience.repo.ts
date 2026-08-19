@@ -59,6 +59,7 @@ export const ExperienceRepo = {
         isFeatured: rest.isFeatured || false,
         allowAdvancePayment: rest.allowAdvancePayment || false,
         advancePaymentAmount: rest.advancePaymentAmount ? new Prisma.Decimal(rest.advancePaymentAmount) : null,
+        advancePaymentDeadlineDays: rest.advancePaymentDeadlineDays || 7,
         extraAmenities: (rest.extraAmenities as Prisma.InputJsonValue) || [],
         images: rest.images || [],
         itinerary: rest.itinerary || [],

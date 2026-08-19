@@ -654,7 +654,7 @@ describe("BookingService.autoCancelUnpaidAdvanceBookings", () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
-  it("queries only CONFIRMED, PARTIALLY_PAID, ADVANCE bookings on slots departing within 7 days", async () => {
+  it("queries only CONFIRMED, PARTIALLY_PAID, ADVANCE bookings on upcoming/active slots", async () => {
     vi.mocked(prisma.booking.findMany).mockResolvedValue([]);
 
     await BookingService.autoCancelUnpaidAdvanceBookings();
@@ -671,6 +671,7 @@ describe("BookingService.autoCancelUnpaidAdvanceBookings", () => {
   });
 
   it("cancels an unpaid advance booking, restores capacity, and creates a REQUESTED (not disbursed) refund request for the full advance", async () => {
+    const departingInTwoDays = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
     vi.mocked(prisma.booking.findMany).mockResolvedValue([
       {
         id: "b1",
@@ -681,6 +682,8 @@ describe("BookingService.autoCancelUnpaidAdvanceBookings", () => {
         totalPrice: 5000,
         baseFare: 4500,
         taxBreakdown: [],
+        slot: { date: departingInTwoDays },
+        experience: { advancePaymentDeadlineDays: 7 },
       },
     ] as any);
 
@@ -709,6 +712,7 @@ describe("BookingService.autoCancelUnpaidAdvanceBookings", () => {
   });
 
   it("does not create a refund request when nothing was paid yet", async () => {
+    const departingInTwoDays = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
     vi.mocked(prisma.booking.findMany).mockResolvedValue([
       {
         id: "b1",
@@ -719,6 +723,8 @@ describe("BookingService.autoCancelUnpaidAdvanceBookings", () => {
         totalPrice: 5000,
         baseFare: 4500,
         taxBreakdown: [],
+        slot: { date: departingInTwoDays },
+        experience: { advancePaymentDeadlineDays: 7 },
       },
     ] as any);
 
@@ -729,5 +735,47 @@ describe("BookingService.autoCancelUnpaidAdvanceBookings", () => {
       where: { id: "b1" },
       data: expect.objectContaining({ paymentStatus: "FAILED", refundAmount: null }),
     });
+  });
+
+  it("uses each trip's own advancePaymentDeadlineDays instead of a fixed 7 days", async () => {
+    const departingInFiveDays = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+    vi.mocked(prisma.booking.findMany).mockResolvedValue([
+      {
+        // Deadline is 3 days before departure -- departing in 5 days means
+        // the deadline (2 days from now) hasn't arrived yet. Not due.
+        id: "not-due",
+        slotId: "slot-1",
+        participantCount: 1,
+        userId: "u1",
+        paidAmount: 500,
+        totalPrice: 5000,
+        baseFare: 4500,
+        taxBreakdown: [],
+        slot: { date: departingInFiveDays },
+        experience: { advancePaymentDeadlineDays: 3 },
+      },
+      {
+        // Deadline is 10 days before departure -- departing in 5 days means
+        // the deadline was already 5 days ago. Due for auto-cancellation.
+        id: "due",
+        slotId: "slot-2",
+        participantCount: 1,
+        userId: "u2",
+        paidAmount: 500,
+        totalPrice: 5000,
+        baseFare: 4500,
+        taxBreakdown: [],
+        slot: { date: departingInFiveDays },
+        experience: { advancePaymentDeadlineDays: 10 },
+      },
+    ] as any);
+
+    const count = await BookingService.autoCancelUnpaidAdvanceBookings();
+
+    expect(count).toBe(1);
+    expect(mockTx.booking.update).toHaveBeenCalledTimes(1);
+    expect(mockTx.booking.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "due" } }),
+    );
   });
 });

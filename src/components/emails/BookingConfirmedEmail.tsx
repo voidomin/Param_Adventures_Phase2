@@ -79,7 +79,7 @@ export const BookingConfirmedEmail = ({
         <Section style={noticeContainer}>
           <Text style={noticeText}>
             ⏰ Please pay your remaining balance of ₹{Number(remainingBalance).toLocaleString("en-IN")} by{" "}
-            <strong>{advanceDeadline}</strong> (7 days before departure) to keep your seat. Bookings not fully
+            <strong>{advanceDeadline}</strong> to keep your seat. Bookings not fully
             paid by then are automatically cancelled, and the advance becomes eligible for a refund pending
             admin approval.
           </Text>

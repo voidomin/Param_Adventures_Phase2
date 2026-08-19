@@ -529,7 +529,7 @@ export const BookingService = {
       where: { id: bookingId },
       include: {
         user: { select: { name: true, email: true } },
-        experience: { select: { title: true } },
+        experience: { select: { title: true, advancePaymentDeadlineDays: true } },
         slot: { select: { date: true } },
       },
     });
@@ -549,6 +549,7 @@ export const BookingService = {
       paymentType: booking.paymentType,
       paidAmount: Number(booking.paidAmount),
       remainingBalance: Number(booking.remainingBalance),
+      advancePaymentDeadlineDays: booking.experience.advancePaymentDeadlineDays,
     });
   },
 
@@ -645,8 +646,10 @@ export const BookingService = {
 
   /**
    * Auto-cancels CONFIRMED advance-payment bookings that still have an
-   * unpaid remaining balance within 7 days of departure, restoring the
-   * slot capacity they reserved and creating a RefundRequest for the full
+   * unpaid remaining balance within each trip's own balance-payment
+   * deadline (Experience.advancePaymentDeadlineDays, set per-experience by
+   * the admin -- defaults to 7 if never configured), restoring the slot
+   * capacity they reserved and creating a RefundRequest for the full
    * advance amount paid (no cancellation charge -- this is a system
    * cancellation, not a choice the customer made, so the usual departure-
    * proximity cancellation-fee tiers don't apply). The RefundRequest is
@@ -655,14 +658,15 @@ export const BookingService = {
    * in this codebase; this function never moves money on its own.
    */
   async autoCancelUnpaidAdvanceBookings(): Promise<number> {
-    const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    const candidates = await prisma.booking.findMany({
+    // Deadlines are per-experience and vary trip to trip, so we can't filter
+    // by a single cutoff date in the query -- pull every still-open advance
+    // booking (a small, bounded set) and check each one's own deadline in JS.
+    const openAdvanceBookings = await prisma.booking.findMany({
       where: {
         paymentType: "ADVANCE",
         paymentStatus: "PARTIALLY_PAID",
         bookingStatus: "CONFIRMED",
         slot: {
-          date: { lte: sevenDaysFromNow },
           status: { in: ["UPCOMING", "ACTIVE"] },
         },
       },
@@ -675,7 +679,16 @@ export const BookingService = {
         totalPrice: true,
         baseFare: true,
         taxBreakdown: true,
+        slot: { select: { date: true } },
+        experience: { select: { advancePaymentDeadlineDays: true } },
       },
+    });
+
+    const now = Date.now();
+    const candidates = openAdvanceBookings.filter((booking) => {
+      const deadlineDays = booking.experience.advancePaymentDeadlineDays || 7;
+      const deadline = (booking.slot?.date.getTime() ?? 0) - deadlineDays * 24 * 60 * 60 * 1000;
+      return deadline <= now;
     });
 
     if (candidates.length === 0) return 0;
@@ -701,7 +714,7 @@ export const BookingService = {
               paymentStatus: paidAmount > 0 ? "REFUND_PENDING" : "FAILED",
               cancelledAt: new Date(),
               cancellationReason:
-                "Auto-cancelled: remaining balance was not paid within 7 days of departure.",
+                "Auto-cancelled: remaining balance was not paid within the trip's balance-payment deadline.",
               refundPreference: paidAmount > 0 ? "BANK_REFUND" : null,
               refundAmount: paidAmount > 0 ? breakdown.finalRefundAmount : null,
             },
@@ -725,7 +738,7 @@ export const BookingService = {
                 finalRefundAmount: breakdown.finalRefundAmount,
                 status: "REQUESTED",
                 remarks:
-                  "System auto-cancellation: advance paid, remaining balance unpaid 7 days before departure. Refund method defaulted to bank transfer -- confirm the customer's preference before processing.",
+                  "System auto-cancellation: advance paid, remaining balance unpaid by the trip's balance-payment deadline. Refund method defaulted to bank transfer -- confirm the customer's preference before processing.",
               },
             });
           }

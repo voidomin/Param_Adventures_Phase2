@@ -28,6 +28,7 @@ export interface BookingEmailData {
   paymentType?: string;
   paidAmount?: number;
   remainingBalance?: number;
+  advancePaymentDeadlineDays?: number;
 }
 
 export interface BookingCancelledData {
@@ -118,7 +119,10 @@ export async function sendBookingConfirmation(data: BookingEmailData) {
   try {
     const isAdvance = data.paymentType === "ADVANCE" && (data.remainingBalance ?? 0) > 0;
     const advanceDeadline = isAdvance
-      ? new Date(new Date(data.slotDate).getTime() - 7 * 24 * 60 * 60 * 1000).toLocaleDateString("en-IN", {
+      ? new Date(
+          new Date(data.slotDate).getTime() -
+            (data.advancePaymentDeadlineDays || 7) * 24 * 60 * 60 * 1000
+        ).toLocaleDateString("en-IN", {
           day: "2-digit",
           month: "short",
           year: "numeric",

@@ -38,6 +38,7 @@ export const experienceSchema = z.object({
   vibeTags: z.array(z.string().trim()).transform(arr => arr.filter(Boolean)).optional(),
   allowAdvancePayment: z.boolean().optional(),
   advancePaymentAmount: z.number().min(0).optional().nullable(),
+  advancePaymentDeadlineDays: z.number().int().min(1).max(365).optional(),
   extraAmenities: z.any().optional(),
 });
 

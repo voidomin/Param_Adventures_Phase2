@@ -19,7 +19,7 @@ async function sendBookingConfirmationEmail(bookingId: string) {
     where: { id: bookingId },
     include: {
       user: { select: { name: true, email: true } },
-      experience: { select: { title: true } },
+      experience: { select: { title: true, advancePaymentDeadlineDays: true } },
       slot: { select: { date: true } },
     },
   });
@@ -39,6 +39,7 @@ async function sendBookingConfirmationEmail(bookingId: string) {
     paymentType: booking.paymentType,
     paidAmount: Number(booking.paidAmount),
     remainingBalance: Number(booking.remainingBalance),
+    advancePaymentDeadlineDays: booking.experience.advancePaymentDeadlineDays,
   });
 }
 

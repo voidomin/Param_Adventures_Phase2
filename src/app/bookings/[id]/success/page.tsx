@@ -134,7 +134,7 @@ function HeaderBanner({ bookingId, paymentStatus, providerPaymentId, advanceDead
       {isPartiallyPaid && advanceDeadline && (
         <div className="w-full z-10 mt-4 bg-black/25 border border-amber-300/20 rounded-xl px-4 py-2.5 text-center sm:text-left">
           <p className="text-xs sm:text-sm font-semibold text-amber-100">
-            Pay your remaining balance by <span className="font-black">{advanceDeadline}</span> (7 days before departure) to keep your seat.
+            Pay your remaining balance by <span className="font-black">{advanceDeadline}</span> to keep your seat.
             A booking not fully paid by then is automatically cancelled, and your advance becomes eligible for a refund pending admin approval.
           </p>
         </div>
@@ -468,7 +468,12 @@ export default async function BookingSuccessPage({
 
   const advanceDeadline =
     booking.paymentType === "ADVANCE" && slot?.date
-      ? formatDate(new Date(new Date(slot.date).getTime() - 7 * 24 * 60 * 60 * 1000))
+      ? formatDate(
+          new Date(
+            new Date(slot.date).getTime() -
+              (experience.advancePaymentDeadlineDays || 7) * 24 * 60 * 60 * 1000
+          )
+        )
       : null;
 
   let statusBadgeClasses = "text-foreground/50 bg-muted";

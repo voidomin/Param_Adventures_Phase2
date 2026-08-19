@@ -46,6 +46,7 @@ interface BookingItem {
     durationDays: number;
     coverImage: string | null;
     cardImage: string | null;
+    advancePaymentDeadlineDays?: number;
   };
   slot?: {
     date: string;
@@ -631,11 +632,11 @@ function formatDate(dateStr: string) {
   return `${day}/${month}/${year}`;
 }
 
-function getAdvanceDeadline(slotDate?: string) {
+function getAdvanceDeadline(slotDate?: string, deadlineDays = 7) {
   if (!slotDate) return null;
   const departure = new Date(slotDate);
   if (Number.isNaN(departure.getTime())) return null;
-  return formatDate(new Date(departure.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString());
+  return formatDate(new Date(departure.getTime() - deadlineDays * 24 * 60 * 60 * 1000).toISOString());
 }
 
 function getPaymentStatusColor(status: string) {
@@ -1005,11 +1006,11 @@ export default function BookingsPage() {
                           )}
                         </div>
 
-                        {b.paymentStatus === "PARTIALLY_PAID" && b.paymentType === "ADVANCE" && getAdvanceDeadline(b.slot?.date) && (
+                        {b.paymentStatus === "PARTIALLY_PAID" && b.paymentType === "ADVANCE" && getAdvanceDeadline(b.slot?.date, b.experience.advancePaymentDeadlineDays) && (
                           <div className="mb-4 bg-amber-500/10 border border-amber-500/20 rounded-lg px-3 py-2">
                             <p className="text-xs font-semibold text-amber-500">
-                              Pay by {getAdvanceDeadline(b.slot?.date)} or this booking will be auto-cancelled
-                              (7 days before departure). Your advance would then be eligible for a refund, pending admin approval.
+                              Pay by {getAdvanceDeadline(b.slot?.date, b.experience.advancePaymentDeadlineDays)} or this booking will be auto-cancelled.
+                              Your advance would then be eligible for a refund, pending admin approval.
                             </p>
                           </div>
                         )}

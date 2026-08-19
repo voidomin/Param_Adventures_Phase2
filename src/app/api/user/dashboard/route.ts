@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
             durationDays: true,
             images: true,
             difficulty: true,
+            advancePaymentDeadlineDays: true,
           },
         },
         slot: { select: { date: true, capacity: true, status: true } },
