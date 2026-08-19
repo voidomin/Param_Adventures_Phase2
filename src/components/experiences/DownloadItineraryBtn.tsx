@@ -1136,7 +1136,7 @@ export default function DownloadItineraryBtn({
         addPageFooter(doc, i - 1, total - 1);
       }
 
-      const safeName = data.title.replaceAll(/[^a-zA-Z0-9]/g, "_");
+      const safeName = data.title.replace(/[^a-zA-Z0-9]/g, "_");
       doc.save(`${safeName}_Itinerary_Param_Adventures.pdf`);
     } catch (e) {
       console.error("PDF Fail", e);

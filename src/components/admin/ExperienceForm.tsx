@@ -959,7 +959,7 @@ export default function ExperienceForm({
   });
 
   const getExportFilename = () =>
-    `${title ? title.toLowerCase().replaceAll(/\s+/g, "-") : "trip"}-export`;
+    `${title ? title.toLowerCase().replace(/\s+/g, "-") : "trip"}-export`;
 
   const handleExportJSON = () => {
     const dataStr = JSON.stringify(currentPayload(), null, 2);

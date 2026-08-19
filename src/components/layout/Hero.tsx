@@ -91,6 +91,12 @@ export default function Hero({
   mediaSettings,
 }: Readonly<{ slides?: HeroSlide[]; mediaSettings?: MediaSettings }>) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const activeSlides = slides.length > 0 ? slides : FALLBACK_SLIDES;
   const currentSlide = activeSlides[currentIndex];
 

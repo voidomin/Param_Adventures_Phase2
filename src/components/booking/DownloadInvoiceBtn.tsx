@@ -440,7 +440,7 @@ export default function DownloadInvoiceBtn({ bookingId }: Readonly<{ bookingId: 
       // Save -- "/" isn't valid in filenames, so PARAM/26-27/0001 becomes
       // PARAM_26-27_0001 for the downloaded file, same characters the
       // invoice document itself displays.
-      const fileNameSafeInvoiceNumber = (data.booking.invoiceNumber || `PENDING_${data.booking.id.split("-")[0].toUpperCase()}`).replaceAll("/", "_");
+      const fileNameSafeInvoiceNumber = (data.booking.invoiceNumber || `PENDING_${data.booking.id.split("-")[0].toUpperCase()}`).replace(/\//g, "_");
       doc.save(`Invoice_${fileNameSafeInvoiceNumber}.pdf`);
 
     } catch (error) {

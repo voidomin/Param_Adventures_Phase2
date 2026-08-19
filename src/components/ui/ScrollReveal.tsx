@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ReactNode } from "react";
+import { ReactNode, useState, useEffect } from "react";
 
 interface ScrollRevealProps {
   readonly children: ReactNode;
@@ -20,6 +20,12 @@ export default function ScrollReveal({
   variant = "fade",
   stagger = false,
 }: Readonly<ScrollRevealProps>) {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const getInitial = () => {
     const initial: {
       opacity: number;
@@ -49,6 +55,10 @@ export default function ScrollReveal({
 
     return initial;
   };
+
+  if (!isMounted) {
+    return <div className={className}>{children}</div>;
+  }
 
   return (
     <motion.div
