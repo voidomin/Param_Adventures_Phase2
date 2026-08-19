@@ -1,7 +1,16 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useSyncExternalStore } from "react";
+
+const emptySubscribe = () => () => {};
+function useIsMounted() {
+  return useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
+}
 
 interface ScrollRevealProps {
   readonly children: ReactNode;
@@ -20,11 +29,7 @@ export default function ScrollReveal({
   variant = "fade",
   stagger = false,
 }: Readonly<ScrollRevealProps>) {
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const isMounted = useIsMounted();
 
   const getInitial = () => {
     const initial: {

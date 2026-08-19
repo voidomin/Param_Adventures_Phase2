@@ -1,6 +1,15 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useSyncExternalStore } from "react";
+
+const emptySubscribe = () => () => {};
+function useIsMounted() {
+  return useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
+}
 import Link from "next/link";
 import {
   ArrowRight,
@@ -91,11 +100,7 @@ export default function Hero({
   mediaSettings,
 }: Readonly<{ slides?: HeroSlide[]; mediaSettings?: MediaSettings }>) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  useIsMounted();
 
   const activeSlides = slides.length > 0 ? slides : FALLBACK_SLIDES;
   const currentSlide = activeSlides[currentIndex];
