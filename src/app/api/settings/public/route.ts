@@ -60,9 +60,17 @@ export async function GET() {
     return NextResponse.json(config);
   } catch (error) {
     console.error("Public settings fetch error:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch settings." },
-      { status: 500 },
-    );
+    return NextResponse.json({
+      site_title: "Param Adventures",
+      support_email: "info@paramadventures.in",
+      support_phone: "+91 98765 43210",
+      maintenance_mode: false,
+      taxConfig: null,
+      google_client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "",
+      turnstile_site_key: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "",
+      branding: {
+        site_title: "Param Adventures",
+      },
+    });
   }
 }

@@ -7,10 +7,10 @@ export function generateSlug(text: string): string {
   let slug = text
     .toLowerCase()
     .normalize("NFD")
-    .replaceAll(/[\u0300-\u036f]/g, "")
-    .replaceAll(/[^a-z0-9\s_-]/g, "") // Strip symbols
-    .replaceAll(/[\s_]+/g, "-") // Convert spaces and underscores to hyphens
-    .replaceAll(/-+/g, "-"); // Collapse multiple hyphens
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s_-]/g, "") // Strip symbols
+    .replace(/[\s_]+/g, "-") // Convert spaces and underscores to hyphens
+    .replace(/-+/g, "-"); // Collapse multiple hyphens
 
   // Remove leading/trailing hyphens without using anchored quantifiers to satisfy SonarQube S5852
   if (slug.startsWith("-")) slug = slug.substring(1);

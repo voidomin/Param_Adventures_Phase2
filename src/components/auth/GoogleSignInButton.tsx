@@ -17,9 +17,9 @@ export default function GoogleSignInButton({ onCredential }: GoogleSignInButtonP
       .then((res) => res.json())
       .then((data) => {
          
-        setClientId(data.google_client_id || null);
+        setClientId(data.google_client_id || process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || null);
       })
-      .catch(() => setClientId(null));
+      .catch(() => setClientId(process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || null));
   }, []);
 
   useEffect(() => {

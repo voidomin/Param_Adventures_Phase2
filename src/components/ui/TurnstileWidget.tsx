@@ -17,9 +17,9 @@ export default function TurnstileWidget({ onVerify }: TurnstileWidgetProps) {
       .then((res) => res.json())
       .then((data) => {
          
-        setSiteKey(data.turnstile_site_key || null);
+        setSiteKey(data.turnstile_site_key || process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || null);
       })
-      .catch(() => setSiteKey(null));
+      .catch(() => setSiteKey(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || null));
   }, []);
 
   useEffect(() => {
