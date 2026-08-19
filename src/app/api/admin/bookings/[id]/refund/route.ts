@@ -110,6 +110,21 @@ export async function POST(
           },
         });
 
+        // A booking's individual Payment rows (each charge attempt --
+        // Razorpay, manual bank-transfer verification, coupon settlement)
+        // are written PAID at collection time and never revisited. Once the
+        // booking itself is fully REFUNDED, those rows are stale: they'd
+        // otherwise say PAID forever with nothing on the payment record
+        // itself showing the money went back. Only applies to a full
+        // refund -- a partial refund still legitimately kept some of what
+        // was collected, so there's no single row to flip to REFUNDED.
+        if (newPaymentStatus === "REFUNDED") {
+          await tx.payment.updateMany({
+            where: { bookingId, status: "PAID" },
+            data: { status: "REFUNDED" },
+          });
+        }
+
         // Real money (or coupon credit) is being handed back against a
         // previously invoiced booking -- GST requires a credit note for
         // that, referencing the original invoice, in its own sequential

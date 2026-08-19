@@ -206,7 +206,8 @@ function PaymentConfirmationCard({
         
         <div className="mt-4 space-y-2 border-t border-border/50 pt-3">
           <span className="text-[10px] font-black text-foreground/40 uppercase tracking-wider block">Transaction History</span>
-          {payments.filter(p => p.status === "PAID").map((p, idx) => {
+          {/* Includes REFUNDED rows -- they document a real historical charge that was later reversed, not a payment that never happened. */}
+          {payments.filter(p => p.status === "PAID" || p.status === "REFUNDED").map((p, idx) => {
             const isAdvance = idx === 0 && paymentType === "ADVANCE";
             const pDateObj = new Date(p.createdAt);
             const pDay = String(pDateObj.getDate()).padStart(2, "0");
@@ -216,12 +217,15 @@ function PaymentConfirmationCard({
             const pDate = `${pDay}/${pMonth}/${pYear}`;
             return (
               <div key={p.id} className="flex justify-between items-center text-xs text-foreground/80 font-medium bg-foreground/3 px-2.5 py-1.5 rounded-lg">
-                <span className="opacity-75">{isAdvance ? "Advance Payment" : `Payment #${idx + 1}`} ({pDate})</span>
+                <span className="opacity-75">
+                  {isAdvance ? "Advance Payment" : `Payment #${idx + 1}`} ({pDate})
+                  {p.status === "REFUNDED" && <span className="ml-1.5 text-orange-500">· Refunded</span>}
+                </span>
                 <span className="font-bold">₹{Number(p.amount).toLocaleString("en-IN")}</span>
               </div>
             );
           })}
-          {payments.filter(p => p.status === "PAID").length === 0 && (
+          {payments.filter(p => p.status === "PAID" || p.status === "REFUNDED").length === 0 && (
             <span className="text-xs text-foreground/40 italic">No payments confirmed yet.</span>
           )}
         </div>

@@ -29,7 +29,11 @@ export async function GET(
           select: { name: true, isPrimary: true, email: true, phoneNumber: true, pickupPoint: true }
         },
         payments: {
-          where: { status: "PAID" },
+          // The original invoice documents what was actually charged at the
+          // time, so it must keep showing a payment after a refund flips its
+          // status to REFUNDED (the reversal itself is a separate credit
+          // note) -- otherwise a refunded booking's invoice would go blank.
+          where: { status: { in: ["PAID", "REFUNDED"] } },
           orderBy: { createdAt: "asc" }
         },
         couponTransactions: {

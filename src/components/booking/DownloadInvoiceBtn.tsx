@@ -212,7 +212,10 @@ export function drawPaymentAndSummaryBlocks(
   let payY = paymentCardY + 12;
   const paidAmt = Number(booking.paidAmount ?? booking.totalPrice);
   const remBal = Number(booking.remainingBalance ?? 0);
-  const paidPayments = payments ? payments.filter((p) => p.status === "PAID") : [];
+  // Include REFUNDED rows too -- they document a real historical charge,
+  // just one that was later reversed (the reversal itself shows up on the
+  // credit note, not by erasing this payment from history).
+  const paidPayments = payments ? payments.filter((p) => p.status === "PAID" || p.status === "REFUNDED") : [];
 
   if (paidPayments.length > 0) {
     paidPayments.forEach((p, idx) => {

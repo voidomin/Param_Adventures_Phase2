@@ -21,6 +21,9 @@ vi.mock("@/lib/db", () => {
     couponTransaction: {
       create: vi.fn(),
     },
+    payment: {
+      updateMany: vi.fn(),
+    },
     $transaction: vi.fn(),
   };
   mockPrisma.$transaction = vi.fn().mockImplementation(async (callback) => callback(mockPrisma));
@@ -134,6 +137,25 @@ describe("PATCH /api/admin/refunds/[id]", () => {
     expect(mockSendRefundResolved).toHaveBeenCalledWith(
       expect.objectContaining({ refundPreference: "BANK_REFUND", refundNote: "UTR12345" }),
     );
+    expect(prisma.payment.updateMany).toHaveBeenCalledWith({
+      where: { bookingId: "b1", status: "PAID" },
+      data: { status: "REFUNDED" },
+    });
+  });
+
+  it("does not touch Payment rows when the booking isn't fully refunded (stays CONFIRMED)", async () => {
+    mockFindUnique.mockResolvedValue({
+      ...baseRefundRequest,
+      booking: { ...baseRefundRequest.booking, bookingStatus: "CONFIRMED", paidAmount: 1000, totalPrice: 1000 },
+    } as any);
+
+    const response = await PATCH(
+      createRequest({ status: "TRANSFER_COMPLETED", utrNumber: "UTR999" }),
+      { params: Promise.resolve({ id: "r1" }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(prisma.payment.updateMany).not.toHaveBeenCalled();
   });
 
   it("issues a travel coupon and settles the booking on completion", async () => {

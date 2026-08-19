@@ -19,6 +19,9 @@ vi.mock("@/lib/db", () => {
     refundRequest: {
       updateMany: vi.fn(),
     },
+    payment: {
+      updateMany: vi.fn(),
+    },
     creditNoteSequence: {
       upsert: vi.fn().mockResolvedValue({ fiscalYear: "26-27", lastNumber: 1 }),
     },
@@ -147,6 +150,33 @@ describe("POST /api/admin/bookings/[id]/refund", () => {
       expect.objectContaining({ refundNote: "UTR123" }),
     );
     expect(mockSendRefundResolved).toHaveBeenCalled();
+    expect(prisma.payment.updateMany).toHaveBeenCalledWith({
+      where: { bookingId: "b1", status: "PAID" },
+      data: { status: "REFUNDED" },
+    });
+  });
+
+  it("does not touch Payment rows when the refund is only partial (booking stays PARTIALLY_PAID)", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
+    mockBookingFindUnique.mockResolvedValue({
+      id: "b1",
+      bookingStatus: "CONFIRMED",
+      paymentStatus: "REFUND_PENDING",
+      refundPreference: "BANK_TRANSFER",
+      totalPrice: 5000,
+      paidAmount: 5000,
+      refundAmount: 1000,
+      slot: { date: new Date("2026-04-01T00:00:00.000Z") },
+      user: { name: "Akash", email: "akash@example.com" },
+      experience: { title: "Everest Base Camp" },
+    } as any);
+
+    const response = await POST(createRequest({ refundNote: "UTR456", refundAmount: 1000 }), {
+      params: Promise.resolve({ id: "b1" }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(prisma.payment.updateMany).not.toHaveBeenCalled();
   });
 
   it("issues a credit note against the original invoice when a genuine refund resolves", async () => {

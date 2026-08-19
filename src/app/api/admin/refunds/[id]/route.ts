@@ -90,6 +90,17 @@ async function applyCompletedRefund(
     },
   });
 
+  // See the identical comment in /api/admin/bookings/[id]/refund -- once a
+  // booking is fully REFUNDED, its underlying Payment rows (still PAID from
+  // whenever the money was originally collected) are stale and need to be
+  // flipped too, or they'd say PAID forever with no trace of the refund.
+  if (newPaymentStatus === "REFUNDED") {
+    await tx.payment.updateMany({
+      where: { bookingId: booking.id, status: "PAID" },
+      data: { status: "REFUNDED" },
+    });
+  }
+
   return couponCode;
 }
 
