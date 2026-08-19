@@ -5,7 +5,7 @@ vi.mock("@/lib/db", () => {
   const mockPrisma = {
     experience: { findUnique: vi.fn() },
     payment: { updateMany: vi.fn() },
-    booking: { findUnique: vi.fn(), updateMany: vi.fn() },
+    booking: { findUnique: vi.fn(), updateMany: vi.fn(), findMany: vi.fn() },
     $transaction: vi.fn(),
   };
   return {
@@ -25,6 +25,8 @@ vi.mock("@/repositories/booking.repo", () => ({
     createPayment: vi.fn(),
     getRazorpayKeyId: vi.fn(),
     updateStatus: vi.fn(),
+    updateSlotCapacity: vi.fn(),
+    incrementSlotCapacity: vi.fn(),
   },
 }));
 
@@ -290,10 +292,14 @@ describe("BookingService.processBooking", () => {
     } as any);
     vi.mocked(BookingRepo.createPayment).mockResolvedValue({ id: "payment-1", amount: 1000 } as any);
     vi.mocked(BookingRepo.getRazorpayKeyId).mockResolvedValue({ value: "rzp_key" } as any);
+    vi.mocked(BookingRepo.updateSlotCapacity).mockResolvedValue({ count: 1 } as any);
+    vi.mocked(BookingRepo.incrementSlotCapacity).mockResolvedValue({} as any);
   });
 
-  it("cancels a stale pending booking for the same slot before creating a new one", async () => {
-    vi.mocked(BookingRepo.findExistingPendingBooking).mockResolvedValue({ id: "old-booking" } as any);
+  it("cancels a stale pending booking for the same slot before creating a new one, restoring its reserved capacity", async () => {
+    vi.mocked(BookingRepo.findExistingPendingBooking).mockResolvedValue({
+      id: "old-booking", slotId: "slot-1", participantCount: 2,
+    } as any);
     vi.mocked(getRazorpay).mockResolvedValue({
       orders: { create: vi.fn().mockResolvedValue({ id: "order_1" }) },
     } as any);
@@ -305,6 +311,15 @@ describe("BookingService.processBooking", () => {
         where: { id: "old-booking" },
         data: expect.objectContaining({ bookingStatus: "CANCELLED" }),
       }),
+    );
+    expect(BookingRepo.incrementSlotCapacity).toHaveBeenCalledWith(mockTx, "slot-1", 2);
+  });
+
+  it("throws INSUFFICIENT_CAPACITY when the guarded reservation loses a concurrency race", async () => {
+    vi.mocked(BookingRepo.updateSlotCapacity).mockResolvedValue({ count: 0 } as any);
+
+    await expect(BookingService.processBooking("user-1", validData)).rejects.toThrow(
+      "INSUFFICIENT_CAPACITY",
     );
   });
 
@@ -413,9 +428,10 @@ describe("BookingService.processBooking", () => {
     expect(mockTx.booking.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ bookingStatus: "CONFIRMED", paymentStatus: "PAID" }) }),
     );
-    expect(mockTx.slot.update).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: "slot-1" } }),
-    );
+    // Capacity is reserved once, right after the initial capacity check --
+    // not decremented a second time here for the coupon-instant-pay path.
+    expect(BookingRepo.updateSlotCapacity).toHaveBeenCalledWith(mockTx, "slot-1", 1);
+    expect(BookingRepo.updateSlotCapacity).toHaveBeenCalledTimes(1);
   });
 
   it("creates a Razorpay order for the remaining balance when no coupon is applied", async () => {
@@ -452,7 +468,7 @@ describe("BookingService.processBooking", () => {
 
 describe("BookingService.confirmPayment", () => {
   const mockTx = {
-    booking: { findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
+    booking: { findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn(), findMany: vi.fn() },
     payment: { findFirst: vi.fn(), updateMany: vi.fn() },
     couponTransaction: { findMany: vi.fn() },
     slot: { update: vi.fn() },
@@ -471,6 +487,8 @@ describe("BookingService.confirmPayment", () => {
     mockTx.payment.findFirst.mockResolvedValue({ id: "payment-1", amount: 1000, status: "PENDING" });
     mockTx.couponTransaction.findMany.mockResolvedValue([]);
     mockTx.booking.update.mockResolvedValue({ ...baseBooking, bookingStatus: "CONFIRMED", paymentStatus: "PAID" });
+    mockTx.booking.findMany.mockResolvedValue([]);
+    vi.mocked(BookingRepo.incrementSlotCapacity).mockResolvedValue({} as any);
   });
 
   it("throws BOOKING_NOT_FOUND when the booking doesn't exist", async () => {
@@ -502,7 +520,7 @@ describe("BookingService.confirmPayment", () => {
     expect(mockTx.booking.update).not.toHaveBeenCalled();
   });
 
-  it("confirms the booking, marks the payment PAID, and decrements slot capacity", async () => {
+  it("confirms the booking and marks the payment PAID -- capacity was already reserved at booking creation, not decremented here", async () => {
     await BookingService.confirmPayment("booking-1", "order_1", "pay_1", { event: "payment.captured" });
 
     expect(mockTx.booking.update).toHaveBeenCalledWith(
@@ -511,12 +529,32 @@ describe("BookingService.confirmPayment", () => {
         data: expect.objectContaining({ bookingStatus: "CONFIRMED", paymentStatus: "PAID", paidAmount: 1000 }),
       }),
     );
-    expect(mockTx.slot.update).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: "slot-1" }, data: { remainingCapacity: { decrement: 2 } } }),
-    );
+    expect(mockTx.slot.update).not.toHaveBeenCalled();
     expect(mockTx.payment.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ status: "PAID", providerPaymentId: "pay_1" }) }),
     );
+  });
+
+  it("cancels sibling pending bookings for the same user+slot and restores the capacity they had reserved", async () => {
+    mockTx.booking.findMany.mockResolvedValue([
+      { id: "sibling-1", participantCount: 1 },
+      { id: "sibling-2", participantCount: 3 },
+    ] as any);
+
+    await BookingService.confirmPayment("booking-1", "order_1", "pay_1", {});
+
+    expect(mockTx.booking.updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ["sibling-1", "sibling-2"] } },
+      data: { bookingStatus: "CANCELLED", paymentStatus: "FAILED" },
+    });
+    expect(BookingRepo.incrementSlotCapacity).toHaveBeenCalledWith(mockTx, "slot-1", 4);
+  });
+
+  it("does not touch capacity when there are no sibling pending bookings to cancel", async () => {
+    await BookingService.confirmPayment("booking-1", "order_1", "pay_1", {});
+
+    expect(mockTx.booking.updateMany).not.toHaveBeenCalled();
+    expect(BookingRepo.incrementSlotCapacity).not.toHaveBeenCalled();
   });
 
   it("sets PARTIALLY_PAID when the payment doesn't cover the full remaining balance", async () => {
@@ -545,23 +583,53 @@ describe("BookingService.confirmPayment", () => {
   });
 
   describe("autoExpireAbandonedBookings", () => {
-    it("updates bookingStatus to CANCELLED for REQUESTED bookings older than 24 hours", async () => {
-      vi.mocked(prisma.booking.updateMany).mockResolvedValue({ count: 3 });
+    beforeEach(() => {
+      vi.mocked(prisma.$transaction).mockImplementation(async (cb: any) => cb(mockTx));
+    });
+
+    it("returns 0 and never opens a transaction when nothing is abandoned", async () => {
+      vi.mocked(prisma.booking.findMany).mockResolvedValue([]);
 
       const count = await BookingService.autoExpireAbandonedBookings();
 
-      expect(count).toBe(3);
-      expect(prisma.booking.updateMany).toHaveBeenCalledWith(
+      expect(count).toBe(0);
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it("cancels each abandoned booking, marks payment FAILED, and restores its reserved capacity", async () => {
+      vi.mocked(prisma.booking.findMany).mockResolvedValue([
+        { id: "b1", slotId: "slot-1", participantCount: 2 },
+        { id: "b2", slotId: "slot-2", participantCount: 1 },
+      ] as any);
+
+      const count = await BookingService.autoExpireAbandonedBookings();
+
+      expect(count).toBe(2);
+      expect(prisma.booking.findMany).toHaveBeenCalledWith(
         expect.objectContaining({
-          where: expect.objectContaining({
-            bookingStatus: "REQUESTED",
-            paymentStatus: "PENDING",
-          }),
-          data: expect.objectContaining({
-            bookingStatus: "CANCELLED",
-          }),
-        })
+          where: expect.objectContaining({ bookingStatus: "REQUESTED", paymentStatus: "PENDING" }),
+        }),
       );
+      expect(mockTx.booking.update).toHaveBeenCalledWith({
+        where: { id: "b1" },
+        data: expect.objectContaining({ bookingStatus: "CANCELLED", paymentStatus: "FAILED" }),
+      });
+      expect(mockTx.booking.update).toHaveBeenCalledWith({
+        where: { id: "b2" },
+        data: expect.objectContaining({ bookingStatus: "CANCELLED", paymentStatus: "FAILED" }),
+      });
+      expect(BookingRepo.incrementSlotCapacity).toHaveBeenCalledWith(mockTx, "slot-1", 2);
+      expect(BookingRepo.incrementSlotCapacity).toHaveBeenCalledWith(mockTx, "slot-2", 1);
+    });
+
+    it("skips capacity restoration for a booking with no slotId", async () => {
+      vi.mocked(prisma.booking.findMany).mockResolvedValue([
+        { id: "b1", slotId: null, participantCount: 1 },
+      ] as any);
+
+      await BookingService.autoExpireAbandonedBookings();
+
+      expect(BookingRepo.incrementSlotCapacity).not.toHaveBeenCalled();
     });
   });
 });

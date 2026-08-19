@@ -133,7 +133,9 @@ export const BookingService = {
           }
         }
 
-        // If a similar requested/pending booking exists, mark it as cancelled so it doesn't block the new checkout
+        // If a similar requested/pending booking exists, mark it as cancelled so it doesn't block the new checkout.
+        // That earlier attempt reserved capacity when IT was created (see below), so cancelling it here must
+        // give that reservation back before this new attempt's own capacity check runs.
         const existing = await BookingRepo.findExistingPendingBooking(tx, userId, data.slotId);
         if (existing) {
           await tx.booking.update({
@@ -143,6 +145,9 @@ export const BookingService = {
               cancellationReason: "Superseded by new checkout attempt",
             },
           });
+          if (existing.slotId) {
+            await BookingRepo.incrementSlotCapacity(tx, existing.slotId, existing.participantCount);
+          }
         }
 
       // Experience & Slot checks
@@ -184,6 +189,22 @@ export const BookingService = {
         redemptionsList,
       } = await processCheckoutCoupons(tx, data.appliedCoupons || [], userId, paymentAmount);
 
+      // Reserve the seats NOW, atomically, rather than only checking and
+      // decrementing later at payment confirmation. The plain check above
+      // is not enough on its own: several concurrent checkouts can all pass
+      // it before any of them writes to the slot, oversubscribing capacity.
+      // This guarded updateMany is the actual atomic gate -- it only
+      // succeeds if remainingCapacity is still sufficient at write time
+      // (Serializable isolation forces a losing concurrent transaction to
+      // retry against fresh data rather than both succeeding). Placed after
+      // all the validation-only checks above so an invalid request fails
+      // fast without first taking a (harmless but pointless) capacity write
+      // that a thrown error would just roll back anyway.
+      const capacityReserved = await BookingRepo.updateSlotCapacity(tx, slot.id, data.participantCount);
+      if (capacityReserved.count === 0) {
+        throw new Error("INSUFFICIENT_CAPACITY");
+      }
+
       // Create Booking record
       const booking = await BookingRepo.createBooking(tx, userId, data, pricing);
 
@@ -213,10 +234,8 @@ export const BookingService = {
 
         await assignInvoiceNumberIfNeeded(tx, booking.id);
 
-        await tx.slot.update({
-          where: { id: slot.id },
-          data: { remainingCapacity: { decrement: booking.participantCount } },
-        });
+        // Capacity was already reserved above, right after the check --
+        // nothing left to decrement here.
 
         const payment = await BookingRepo.createPayment(tx, {
           bookingId: booking.id,
@@ -447,14 +466,13 @@ export const BookingService = {
         });
 
         if (booking.slotId && booking.bookingStatus !== "CONFIRMED") {
-          // Decrement slot remainingCapacity by participantCount
-          await tx.slot.update({
-            where: { id: booking.slotId },
-            data: { remainingCapacity: { decrement: booking.participantCount } },
-          });
+          // Capacity for THIS booking was already reserved when it was
+          // created (see processBooking) -- nothing to decrement here.
 
-          // Cancel any other older pending/requested bookings for this user on the same slot
-          await tx.booking.updateMany({
+          // Cancel any other older pending/requested bookings for this user
+          // on the same slot, restoring the capacity those attempts
+          // reserved at their own creation time.
+          const siblingPending = await tx.booking.findMany({
             where: {
               userId: booking.userId,
               slotId: booking.slotId,
@@ -462,11 +480,20 @@ export const BookingService = {
               bookingStatus: "REQUESTED",
               paymentStatus: "PENDING",
             },
-            data: {
-              bookingStatus: "CANCELLED",
-              paymentStatus: "FAILED",
-            },
+            select: { id: true, participantCount: true },
           });
+
+          if (siblingPending.length > 0) {
+            await tx.booking.updateMany({
+              where: { id: { in: siblingPending.map((b) => b.id) } },
+              data: {
+                bookingStatus: "CANCELLED",
+                paymentStatus: "FAILED",
+              },
+            });
+            const totalToRestore = siblingPending.reduce((sum, b) => sum + b.participantCount, 0);
+            await BookingRepo.incrementSlotCapacity(tx, booking.slotId, totalToRestore);
+          }
         }
 
         return updated;
@@ -570,21 +597,45 @@ export const BookingService = {
   },
 
   /**
-   * Auto-expires abandoned REQUESTED bookings older than 24 hours (1440 minutes).
+   * Auto-expires abandoned REQUESTED bookings older than 24 hours (1440
+   * minutes), restoring the slot capacity each one reserved when it was
+   * created (see processBooking). This is the single source of truth for
+   * this rule -- both the admin-dashboard-triggered path and the scheduled
+   * cron (POST /api/admin/bookings/cleanup) call this same function, so
+   * there's only one place that can drift from "cancel + restore capacity"
+   * for the exact same underlying business rule.
    */
   async autoExpireAbandonedBookings(): Promise<number> {
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const result = await prisma.booking.updateMany({
+    const abandonedBookings = await prisma.booking.findMany({
       where: {
         bookingStatus: "REQUESTED",
         paymentStatus: "PENDING",
         createdAt: { lt: twentyFourHoursAgo },
       },
-      data: {
-        bookingStatus: "CANCELLED",
-        cancellationReason: "Expired - Unpaid booking request exceeded 24 hours",
-      },
+      select: { id: true, slotId: true, participantCount: true },
     });
-    return result.count;
+
+    if (abandonedBookings.length === 0) return 0;
+
+    await runWithRetry(() =>
+      prisma.$transaction(async (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => {
+        for (const booking of abandonedBookings) {
+          await tx.booking.update({
+            where: { id: booking.id },
+            data: {
+              bookingStatus: "CANCELLED",
+              paymentStatus: "FAILED",
+              cancellationReason: "Expired - Unpaid booking request exceeded 24 hours",
+            },
+          });
+          if (booking.slotId) {
+            await BookingRepo.incrementSlotCapacity(tx, booking.slotId, booking.participantCount);
+          }
+        }
+      }),
+    );
+
+    return abandonedBookings.length;
   }
 };
