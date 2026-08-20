@@ -40,7 +40,9 @@ function verifyCsrf(request: NextRequest, pathname: string, method: string): Nex
   // signature check above.
   const isCronEndpoint =
     pathname.startsWith("/api/admin/bookings/cleanup") ||
-    pathname.startsWith("/api/admin/audit-logs/purge");
+    pathname.startsWith("/api/admin/audit-logs/purge") ||
+    pathname.startsWith("/api/admin/trips/auto-complete") ||
+    pathname.startsWith("/api/admin/bookings/cancel-unpaid-advance");
   if (isWebhook || isCronEndpoint) {
     return null;
   }
@@ -192,6 +194,8 @@ export default async function proxy(request: NextRequest) {
     "/api/admin/bootstrap",
     "/api/admin/bookings/cleanup",
     "/api/admin/audit-logs/purge",
+    "/api/admin/trips/auto-complete",
+    "/api/admin/bookings/cancel-unpaid-advance",
     "/api/bookings/webhook",
     "/api/webhooks/email",
     "/api/health",
