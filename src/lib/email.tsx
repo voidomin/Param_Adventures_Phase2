@@ -25,6 +25,10 @@ export interface BookingEmailData {
   baseFare?: number;
   taxBreakdown?: { name: string; percentage: number; amount: number }[];
   bookingId: string;
+  paymentType?: string;
+  paidAmount?: number;
+  remainingBalance?: number;
+  advancePaymentDeadlineDays?: number;
 }
 
 export interface BookingCancelledData {
@@ -113,6 +117,18 @@ async function sendEmail({
 
 export async function sendBookingConfirmation(data: BookingEmailData) {
   try {
+    const isAdvance = data.paymentType === "ADVANCE" && (data.remainingBalance ?? 0) > 0;
+    const advanceDeadline = isAdvance
+      ? new Date(
+          new Date(data.slotDate).getTime() -
+            (data.advancePaymentDeadlineDays || 7) * 24 * 60 * 60 * 1000
+        ).toLocaleDateString("en-IN", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        })
+      : undefined;
+
     const html = await render(
       <BookingConfirmedEmail
         userName={data.userName}
@@ -122,6 +138,10 @@ export async function sendBookingConfirmation(data: BookingEmailData) {
         totalPrice={data.totalPrice}
         baseFare={data.baseFare}
         taxBreakdown={data.taxBreakdown}
+        paymentType={data.paymentType}
+        paidAmount={data.paidAmount}
+        remainingBalance={data.remainingBalance}
+        advanceDeadline={advanceDeadline}
       />,
     );
     await sendEmail({

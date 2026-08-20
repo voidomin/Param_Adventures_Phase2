@@ -1,7 +1,33 @@
+import crypto from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyAccessToken } from "@/lib/auth";
 import { SYSTEM_ADMIN_EMAILS } from "@/lib/constants/auth";
+
+function isValidCronSecret(provided: string | null, expected: string | undefined): boolean {
+  if (!provided || !expected) return false;
+  const providedBuf = Buffer.from(provided);
+  const expectedBuf = Buffer.from(expected);
+  return providedBuf.length === expectedBuf.length && crypto.timingSafeEqual(providedBuf, expectedBuf);
+}
+
+type AuthResult =
+  | { authorized: true; userId: string; roleName: string }
+  | { authorized: false; response: NextResponse };
+
+/**
+ * Scheduled jobs (GitHub Actions cron) call several admin endpoints without
+ * ever authenticating as a user, using a shared secret instead. Given the
+ * result of authorizeRequest(), this returns the NextResponse to bail out
+ * with if the request is neither a real authorized user NOR carrying a
+ * valid x-cron-secret header -- or null if the request should proceed.
+ */
+export function resolveCronAuthDenial(auth: AuthResult, request: NextRequest): NextResponse | null {
+  if (auth.authorized) return null;
+  const cronSecret = request.headers.get("x-cron-secret");
+  if (isValidCronSecret(cronSecret, process.env.CRON_SECRET)) return null;
+  return auth.response;
+}
 
 /**
  * Verify the request has a valid access token and (optionally) the required permission.

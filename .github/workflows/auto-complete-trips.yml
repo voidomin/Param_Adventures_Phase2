@@ -1,0 +1,31 @@
+name: Auto-Complete Past Trips
+
+# Marks past-departure slots COMPLETED and unlocks review eligibility for
+# their confirmed bookings, via /api/admin/trips/auto-complete. This used to
+# only run opportunistically when a SUPER_ADMIN loaded the admin dashboard,
+# so trips could sit un-completed (and reviews stay locked) indefinitely.
+on:
+  schedule:
+    - cron: "0 * * * *" # every hour
+  workflow_dispatch:
+
+jobs:
+  auto-complete:
+    name: Trigger Auto-Complete
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call auto-complete endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ vars.PROD_APP_URL || 'https://www.paramadventures.in' }}
+        run: |
+          status=$(curl -s -o response.json -w "%{http_code}" -X POST \
+            "$APP_URL/api/admin/trips/auto-complete" \
+            -H "x-cron-secret: $CRON_SECRET")
+          echo "HTTP status: $status"
+          cat response.json
+          if [ "$status" -ge 400 ]; then
+            echo "Auto-complete request failed."
+            exit 1
+          fi

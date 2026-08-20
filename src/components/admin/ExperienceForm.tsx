@@ -96,6 +96,7 @@ export interface ExperienceFormData {
   dropPoints?: string[];
   allowAdvancePayment?: boolean;
   advancePaymentAmount?: number | null;
+  advancePaymentDeadlineDays?: number | null;
   extraAmenities?: ExtraAmenityGroup[];
 }
 
@@ -355,6 +356,9 @@ export default function ExperienceForm({
   );
   const [advancePaymentAmount, setAdvancePaymentAmount] = useState<number | string>(
     initialData?.advancePaymentAmount || ""
+  );
+  const [advancePaymentDeadlineDays, setAdvancePaymentDeadlineDays] = useState<number | string>(
+    initialData?.advancePaymentDeadlineDays || 7
   );
 
   const getInitialAmenities = () => {
@@ -653,6 +657,9 @@ export default function ExperienceForm({
       ),
     allowAdvancePayment,
     advancePaymentAmount: allowAdvancePayment && advancePaymentAmount !== "" ? Number(advancePaymentAmount) : null,
+    advancePaymentDeadlineDays: allowAdvancePayment && advancePaymentDeadlineDays !== ""
+      ? Number(advancePaymentDeadlineDays)
+      : 7,
     extraAmenities,
   });
 
@@ -713,6 +720,7 @@ export default function ExperienceForm({
         capacity: "booking",
         allowAdvancePayment: "booking",
         advancePaymentAmount: "booking",
+        advancePaymentDeadlineDays: "booking",
         extraAmenities: "booking",
       };
       if (errorTabMap[firstErrorField]) {
@@ -777,6 +785,7 @@ export default function ExperienceForm({
         capacity: "booking",
         allowAdvancePayment: "booking",
         advancePaymentAmount: "booking",
+        advancePaymentDeadlineDays: "booking",
         extraAmenities: "booking",
       };
       if (firstErrorField && errorTabMap[firstErrorField]) {
@@ -838,6 +847,7 @@ export default function ExperienceForm({
   const applyPaymentData = (data: Partial<ExperienceFormData>) => {
     if (data.allowAdvancePayment !== undefined) setAllowAdvancePayment(data.allowAdvancePayment);
     if (data.advancePaymentAmount !== undefined) setAdvancePaymentAmount(data.advancePaymentAmount ?? "");
+    if (data.advancePaymentDeadlineDays !== undefined) setAdvancePaymentDeadlineDays(data.advancePaymentDeadlineDays ?? 7);
     if (data.extraAmenities !== undefined) {
       if (typeof data.extraAmenities === "string") {
         try { setExtraAmenities(JSON.parse(data.extraAmenities)); } catch { setExtraAmenities([]); }
@@ -956,6 +966,7 @@ export default function ExperienceForm({
     vibeTags: vibeTags.map((i) => i.text),
     allowAdvancePayment,
     advancePaymentAmount,
+    advancePaymentDeadlineDays,
     extraAmenities,
   });
 
@@ -1145,6 +1156,7 @@ export default function ExperienceForm({
         { Key: "cancellationPolicy", Value: JSON.stringify({ template: cancelPolicyType, text: cancelPolicyText, selectedPolicies }) },
         { Key: "allowAdvancePayment", Value: allowAdvancePayment },
         { Key: "advancePaymentAmount", Value: advancePaymentAmount },
+        { Key: "advancePaymentDeadlineDays", Value: advancePaymentDeadlineDays },
         { Key: "extraAmenities", Value: JSON.stringify(extraAmenities) },
       ];
 
@@ -2846,6 +2858,27 @@ export default function ExperienceForm({
                           placeholder="e.g. 2000"
                         />
                       </div>
+
+                      <label
+                        htmlFor="advancePaymentDeadlineDays"
+                        className="block text-xs font-bold text-foreground/80 mb-1 mt-3"
+                      >
+                        Balance Payment Deadline (days before departure)
+                      </label>
+                      <input
+                        id="advancePaymentDeadlineDays"
+                        type="number"
+                        min="1"
+                        max="365"
+                        value={advancePaymentDeadlineDays}
+                        onChange={(e) => setAdvancePaymentDeadlineDays(e.target.value)}
+                        className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50 font-semibold"
+                        placeholder="e.g. 7"
+                      />
+                      <p className="mt-1 text-xs text-foreground/50">
+                        Bookings on this trip that still have an unpaid balance this many days before
+                        departure are automatically cancelled, with the advance eligible for a refund.
+                      </p>
                     </div>
                   )}
                 </div>

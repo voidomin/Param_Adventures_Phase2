@@ -4,7 +4,10 @@ import { NextRequest } from "next/server";
 vi.mock("@/lib/api-auth", () => ({ authorizeRequest: vi.fn() }));
 vi.mock("@/lib/audit-logger", () => ({ logActivity: vi.fn() }));
 vi.mock("@/lib/email", () => ({ sendRefundResolved: vi.fn() }));
-vi.mock("@/lib/coupon-engine", () => ({ generateCouponCode: vi.fn(() => "PARAM-TESTCODE") }));
+vi.mock("@/lib/coupon-engine", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/coupon-engine")>();
+  return { ...actual };
+});
 vi.mock("@/lib/monitoring", () => ({ logError: vi.fn() }));
 vi.mock("@/lib/db", () => {
   const mockPrisma = {
@@ -20,6 +23,9 @@ vi.mock("@/lib/db", () => {
     },
     couponTransaction: {
       create: vi.fn(),
+    },
+    payment: {
+      updateMany: vi.fn(),
     },
     $transaction: vi.fn(),
   };
@@ -134,6 +140,25 @@ describe("PATCH /api/admin/refunds/[id]", () => {
     expect(mockSendRefundResolved).toHaveBeenCalledWith(
       expect.objectContaining({ refundPreference: "BANK_REFUND", refundNote: "UTR12345" }),
     );
+    expect(prisma.payment.updateMany).toHaveBeenCalledWith({
+      where: { bookingId: "b1", status: "PAID" },
+      data: { status: "REFUNDED" },
+    });
+  });
+
+  it("does not touch Payment rows when the booking isn't fully refunded (stays CONFIRMED)", async () => {
+    mockFindUnique.mockResolvedValue({
+      ...baseRefundRequest,
+      booking: { ...baseRefundRequest.booking, bookingStatus: "CONFIRMED", paidAmount: 1000, totalPrice: 1000 },
+    } as any);
+
+    const response = await PATCH(
+      createRequest({ status: "TRANSFER_COMPLETED", utrNumber: "UTR999" }),
+      { params: Promise.resolve({ id: "r1" }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(prisma.payment.updateMany).not.toHaveBeenCalled();
   });
 
   it("issues a travel coupon and settles the booking on completion", async () => {
@@ -146,14 +171,14 @@ describe("PATCH /api/admin/refunds/[id]", () => {
     expect(response.status).toBe(200);
     expect(mockCouponCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ code: "PARAM-TESTCODE", customerId: "u1", originalValue: 500 }),
+        data: expect.objectContaining({ code: expect.any(String), customerId: "u1", originalValue: 500 }),
       }),
     );
     expect(mockBookingUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ refundNote: "PARAM-TESTCODE" }) }),
+      expect.objectContaining({ data: expect.objectContaining({ refundNote: expect.any(String) }) }),
     );
     expect(mockSendRefundResolved).toHaveBeenCalledWith(
-      expect.objectContaining({ refundPreference: "COUPON", refundNote: "PARAM-TESTCODE" }),
+      expect.objectContaining({ refundPreference: "COUPON", refundNote: expect.any(String) }),
     );
   });
 

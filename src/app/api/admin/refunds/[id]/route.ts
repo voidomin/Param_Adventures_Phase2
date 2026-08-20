@@ -4,7 +4,7 @@ import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
 import { sendRefundResolved } from "@/lib/email";
 import { RefundStatus, Prisma } from "@prisma/client";
-import { generateCouponCode } from "@/lib/coupon-engine";
+import { issueCancellationCoupon } from "@/lib/coupon-engine";
 import { logError } from "@/lib/monitoring";
 
 type RefundRequestWithBooking = Prisma.RefundRequestGetPayload<{
@@ -45,35 +45,12 @@ async function applyCompletedRefund(
 
   let couponCode: string;
   if (refundRequest.refundMethod === "TRAVEL_COUPON") {
-    couponCode = generateCouponCode("PARAM");
-    const expiry = new Date();
-    expiry.setMonth(expiry.getMonth() + 12);
-
-    const newCoupon = await tx.travelCoupon.create({
-      data: {
-        code: couponCode,
-        customerId: booking.userId,
-        bookingId: booking.id,
-        originalValue: refundAmt,
-        balance: refundAmt,
-        expiryDate: expiry,
-        status: "ACTIVE",
-        type: "CANCELLATION",
-        reason: `Refund for cancelled booking ${booking.id.substring(0, 8)}`,
-        issuedById: adminId,
-      },
-    });
-
-    await tx.couponTransaction.create({
-      data: {
-        couponId: newCoupon.id,
-        bookingId: booking.id,
-        type: "ISSUED",
-        amount: refundAmt,
-        previousBalance: 0,
-        newBalance: refundAmt,
-        remarks: `Issued Travel Coupon refund for booking ${booking.id.substring(0, 8)}`,
-      },
+    couponCode = await issueCancellationCoupon(tx, {
+      bookingId: booking.id,
+      customerId: booking.userId,
+      amount: refundAmt,
+      issuedById: adminId,
+      reason: `Refund for cancelled booking ${booking.id.substring(0, 8)}`,
     });
   } else {
     couponCode = utrNumber || remarks || "Bank Transfer Refund Completed";
@@ -89,6 +66,17 @@ async function applyCompletedRefund(
       refundAmount: null, // Clear transient refund field as it's fully settled
     },
   });
+
+  // See the identical comment in /api/admin/bookings/[id]/refund -- once a
+  // booking is fully REFUNDED, its underlying Payment rows (still PAID from
+  // whenever the money was originally collected) are stale and need to be
+  // flipped too, or they'd say PAID forever with no trace of the refund.
+  if (newPaymentStatus === "REFUNDED") {
+    await tx.payment.updateMany({
+      where: { bookingId: booking.id, status: "PAID" },
+      data: { status: "REFUNDED" },
+    });
+  }
 
   return couponCode;
 }

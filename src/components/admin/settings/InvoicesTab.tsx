@@ -67,7 +67,10 @@ function calculateGstTotals(taxBreakdown: TaxItem[] | null) {
 }
 
 function getPaymentDetails(payments?: { status: string; provider: string; providerPaymentId?: string | null }[]) {
-  const successfulPayment = payments?.find((p) => p.status === "PAID");
+  // Includes REFUNDED -- this GST invoice report documents the original
+  // charge even after a booking is later refunded (see refund routes'
+  // Payment.status transition).
+  const successfulPayment = payments?.find((p) => p.status === "PAID" || p.status === "REFUNDED");
   let paymentMode = "—";
   if (successfulPayment) {
     paymentMode = successfulPayment.provider === "MANUAL" ? "Manual Transfer" : "Razorpay Online";

@@ -19,7 +19,7 @@ async function sendBookingConfirmationEmail(bookingId: string) {
     where: { id: bookingId },
     include: {
       user: { select: { name: true, email: true } },
-      experience: { select: { title: true } },
+      experience: { select: { title: true, advancePaymentDeadlineDays: true } },
       slot: { select: { date: true } },
     },
   });
@@ -36,12 +36,140 @@ async function sendBookingConfirmationEmail(bookingId: string) {
     baseFare: Number(booking.baseFare),
     taxBreakdown: booking.taxBreakdown as { name: string; percentage: number; amount: number }[],
     bookingId: booking.id,
+    paymentType: booking.paymentType,
+    paidAmount: Number(booking.paidAmount),
+    remainingBalance: Number(booking.remainingBalance),
+    advancePaymentDeadlineDays: booking.experience.advancePaymentDeadlineDays,
   });
+}
+
+type VerifyManualTx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+
+/**
+ * Applies a manually-verified payment to a booking inside a serializable
+ * transaction: updates paid/remaining amounts, records the payment, clears
+ * any stale pending payment rows, and (on first confirmation only) decrements
+ * slot capacity and cancels the user's other pending attempts on that slot.
+ */
+async function applyManualVerification(
+  tx: VerifyManualTx,
+  bookingId: string,
+  amountPaid: number,
+  transactionId: string,
+  paymentProofUrl: string,
+  adminNotes: string | undefined,
+  verifiedBy: string
+) {
+  const freshBooking = await tx.booking.findUnique({
+    where: { id: bookingId },
+  });
+
+  if (!freshBooking) {
+    throw new Error("Booking not found");
+  }
+
+  const newPaidAmount = Number(freshBooking.paidAmount) + amountPaid;
+  const totalPrice = Number(freshBooking.totalPrice);
+  if (newPaidAmount > totalPrice + 0.01) {
+    const maxAllowed = Math.max(0, totalPrice - Number(freshBooking.paidAmount));
+    throw new Error(
+      `OVERPAYMENT: This amount would push the total paid to ${newPaidAmount.toFixed(2)}, exceeding the booking total of ${totalPrice.toFixed(2)}. Maximum additional amount allowed is ${maxAllowed.toFixed(2)}.`
+    );
+  }
+  const remainingBalance = totalPrice - newPaidAmount;
+  const newPaymentStatus = remainingBalance > 0.01 ? "PARTIALLY_PAID" : "PAID";
+
+  const updated = await tx.booking.update({
+    where: { id: bookingId },
+    data: {
+      bookingStatus: "CONFIRMED",
+      paymentStatus: newPaymentStatus,
+      paidAmount: newPaidAmount,
+      remainingBalance: Math.max(0, remainingBalance),
+    },
+  });
+
+  await assignInvoiceNumberIfNeeded(tx, bookingId);
+
+  await tx.payment.create({
+    data: {
+      bookingId: bookingId,
+      provider: "MANUAL",
+      providerPaymentId: transactionId,
+      status: "PAID",
+      amount: amountPaid,
+      fullPayload: {
+        proofUrl: paymentProofUrl,
+        adminNotes: adminNotes ?? null,
+        verifiedBy,
+        verifiedAt: new Date().toISOString(),
+      },
+    },
+  });
+
+  // Clean up any pending payment records for this booking
+  await tx.payment.deleteMany({
+    where: { bookingId, status: "PENDING" },
+  });
+
+  if (freshBooking.slotId && freshBooking.bookingStatus !== "CONFIRMED") {
+    await tx.slot.update({
+      where: { id: freshBooking.slotId },
+      data: {
+        remainingCapacity: {
+          decrement: freshBooking.participantCount,
+        },
+      },
+    });
+
+    // Cancel any other older pending/requested bookings for this user on the same slot
+    await tx.booking.updateMany({
+      where: {
+        userId: freshBooking.userId,
+        slotId: freshBooking.slotId,
+        id: { not: bookingId },
+        bookingStatus: "REQUESTED",
+        paymentStatus: "PENDING",
+      },
+      data: {
+        bookingStatus: "CANCELLED",
+        paymentStatus: "FAILED",
+      },
+    });
+  }
+
+  return updated;
+}
+
+/** Maps a thrown error from the manual-verification flow to the right HTTP response. */
+function mapManualVerifyError(error: unknown) {
+  console.error("Manual verification error:", error);
+
+  if (error instanceof Error && error.message.startsWith("OVERPAYMENT:")) {
+    return NextResponse.json(
+      { error: error.message.replace("OVERPAYMENT: ", "") },
+      { status: 400 }
+    );
+  }
+
+  // Catch unique constraint violation on providerPaymentId
+  const err = error as { code?: string; meta?: { target?: string[] } };
+  if (err.code === "P2002" && err.meta?.target?.includes("providerPaymentId")) {
+    return NextResponse.json({
+      error: "This Transaction ID / Reference has already been registered for another payment. Please verify the Reference ID and try again."
+    }, { status: 400 });
+  }
+
+  return NextResponse.json({
+    error: "Internal server error",
+    details: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? error.stack : undefined,
+  }, { status: 500 });
 }
 
 /**
  * POST /api/admin/bookings/[id]/verify-manual
- * 
+ *
  * Verifies a booking via manual payment (Admin only).
  */
 export async function POST(
@@ -56,7 +184,7 @@ export async function POST(
     if (!auth.authorized) {
       return auth.response;
     }
-    
+
     if (auth.roleName !== "ADMIN" && auth.roleName !== "SUPER_ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
@@ -85,82 +213,11 @@ export async function POST(
 
     // 3. Update Database (Atomic Transaction)
     const updatedBooking = await runWithRetry(() =>
-      prisma.$transaction(async (tx) => {
-        const freshBooking = await tx.booking.findUnique({
-          where: { id: bookingId },
-        });
-
-        if (!freshBooking) {
-          throw new Error("Booking not found");
-        }
-
-        const newPaidAmount = Number(freshBooking.paidAmount) + amountPaid;
-        const remainingBalance = Number(freshBooking.totalPrice) - newPaidAmount;
-        const newPaymentStatus = remainingBalance > 0.01 ? "PARTIALLY_PAID" : "PAID";
-
-        const updated = await tx.booking.update({
-          where: { id: bookingId },
-          data: {
-            bookingStatus: "CONFIRMED",
-            paymentStatus: newPaymentStatus,
-            paidAmount: newPaidAmount,
-            remainingBalance: Math.max(0, remainingBalance),
-          },
-        });
-
-        await assignInvoiceNumberIfNeeded(tx, bookingId);
-
-        await tx.payment.create({
-          data: {
-            bookingId: bookingId,
-            provider: "MANUAL",
-            providerPaymentId: transactionId,
-            status: "PAID",
-            amount: amountPaid,
-            fullPayload: {
-              proofUrl: paymentProofUrl,
-              adminNotes: adminNotes ?? null,
-              verifiedBy: auth.userId,
-              verifiedAt: new Date().toISOString(),
-            },
-          },
-        });
-
-        // Clean up any pending payment records for this booking
-        await tx.payment.deleteMany({
-          where: { bookingId, status: "PENDING" },
-        });
-
-        if (freshBooking.slotId && freshBooking.bookingStatus !== "CONFIRMED") {
-          await tx.slot.update({
-            where: { id: freshBooking.slotId },
-            data: {
-              remainingCapacity: {
-                decrement: freshBooking.participantCount,
-              },
-            },
-          });
-
-          // Cancel any other older pending/requested bookings for this user on the same slot
-          await tx.booking.updateMany({
-            where: {
-              userId: freshBooking.userId,
-              slotId: freshBooking.slotId,
-              id: { not: bookingId },
-              bookingStatus: "REQUESTED",
-              paymentStatus: "PENDING",
-            },
-            data: {
-              bookingStatus: "CANCELLED",
-              paymentStatus: "FAILED",
-            },
-          });
-        }
-
-        return updated;
-      }, {
-        isolationLevel: "Serializable"
-      })
+      prisma.$transaction(
+        (tx) =>
+          applyManualVerification(tx, bookingId, amountPaid, transactionId, paymentProofUrl, adminNotes, auth.userId),
+        { isolationLevel: "Serializable" }
+      )
     );
 
     // 4. Audit Logging
@@ -178,7 +235,7 @@ export async function POST(
 
     // 5. Revalidate & Notify
     revalidatePath("/", "layout");
-    
+
     // Send confirmation email (fire-and-forget)
     sendBookingConfirmationEmail(bookingId).catch(console.error);
 
@@ -189,20 +246,6 @@ export async function POST(
     });
 
   } catch (error: unknown) {
-    console.error("Manual verification error:", error);
-    
-    // Catch unique constraint violation on providerPaymentId
-    const err = error as { code?: string; meta?: { target?: string[] } };
-    if (err.code === "P2002" && err.meta?.target?.includes("providerPaymentId")) {
-      return NextResponse.json({
-        error: "This Transaction ID / Reference has already been registered for another payment. Please verify the Reference ID and try again."
-      }, { status: 400 });
-    }
-
-    return NextResponse.json({
-      error: "Internal server error",
-      details: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-    }, { status: 500 });
+    return mapManualVerifyError(error);
   }
 }

@@ -4,7 +4,7 @@ import { PaymentStatus, Prisma } from "@prisma/client";
 import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
 import { z } from "zod";
-import { getRefundPercentage, calculateRefundBreakdown } from "@/lib/refund-engine";
+import { getRefundPercentage, calculateRefundBreakdown, createRefundRequestForBreakdown } from "@/lib/refund-engine";
 import { restoreCouponsForBooking } from "@/lib/coupon-engine";
 
 const cancelSchema = z.object({
@@ -53,10 +53,18 @@ async function processFullCancellation(params: {
   const departureDate = booking.slot ? new Date(booking.slot.date) : new Date();
   const { refundPercent } = await getRefundPercentage(departureDate, new Date());
 
+  // Net out any refund already issued by an earlier partial cancellation on
+  // this same booking (booking.refundAmount is a running total, never reset
+  // between calls) -- paidAmount itself is never reduced by a partial
+  // cancellation, so computing straight from it here would recompute a
+  // refund against money that was already handed back, double-counting it.
+  const alreadyRefunded = Number(booking.refundAmount || 0);
+  const effectivePaidAmount = Math.max(0, Number(booking.paidAmount) - alreadyRefunded);
+
   const breakdown = calculateRefundBreakdown({
     baseFare: Number(booking.baseFare),
     totalPrice: Number(booking.totalPrice),
-    paidAmount: Number(booking.paidAmount),
+    paidAmount: effectivePaidAmount,
     paymentType: booking.paymentType as "FULL" | "ADVANCE",
     refundPercent,
     taxBreakdown: booking.taxBreakdown,
@@ -64,6 +72,7 @@ async function processFullCancellation(params: {
   });
 
   const finalRefund = preference === "NO_REFUND" ? 0 : breakdown.finalRefundAmount;
+  const totalRefundAmount = alreadyRefunded + finalRefund;
 
   // If selecting coupon refund or bank refund, booking paymentStatus becomes REFUND_PENDING
   let newPaymentStatus = booking.paymentStatus;
@@ -97,7 +106,7 @@ async function processFullCancellation(params: {
           cancelledByUserId: userId,
           cancellationReason: reason || null,
           refundPreference: preference,
-          refundAmount: finalRefund > 0 && (preference === "BANK_REFUND" || preference === "COUPON") ? finalRefund : null,
+          refundAmount: totalRefundAmount > 0 && (preference === "BANK_REFUND" || preference === "COUPON") ? totalRefundAmount : null,
           refundNote,
         },
       });
@@ -111,7 +120,12 @@ async function processFullCancellation(params: {
         },
       });
 
-      if (booking.slotId && booking.bookingStatus === "CONFIRMED") {
+      // Capacity is reserved from the moment a booking is created
+      // (REQUESTED), not just once CONFIRMED -- see processBooking in
+      // booking.service.ts. validateBookingCancellation already guarantees
+      // bookingStatus is REQUESTED or CONFIRMED here, so both hold a
+      // reservation that needs to be given back.
+      if (booking.slotId) {
         await tx.slot.update({
           where: { id: booking.slotId },
           data: {
@@ -128,38 +142,13 @@ async function processFullCancellation(params: {
       });
 
       // Create refund request if refund is due
-      if (finalRefund > 0) {
-        if (preference === "COUPON") {
-          await tx.refundRequest.create({
-            data: {
-              bookingId,
-              customerId: booking.userId,
-              refundMethod: "TRAVEL_COUPON",
-              baseFare: breakdown.baseFare,
-              gst: breakdown.gst,
-              convenienceFee: breakdown.convenienceFee,
-              cancellationPercent: breakdown.cancellationPercent,
-              cancellationCharges: breakdown.cancellationCharges,
-              finalRefundAmount: breakdown.finalRefundAmount,
-              status: "REQUESTED",
-            },
-          });
-        } else if (preference === "BANK_REFUND") {
-          await tx.refundRequest.create({
-            data: {
-              bookingId,
-              customerId: booking.userId,
-              refundMethod: "BANK_TRANSFER",
-              baseFare: breakdown.baseFare,
-              gst: breakdown.gst,
-              convenienceFee: breakdown.convenienceFee,
-              cancellationPercent: breakdown.cancellationPercent,
-              cancellationCharges: breakdown.cancellationCharges,
-              finalRefundAmount: breakdown.finalRefundAmount,
-              status: "REQUESTED",
-            },
-          });
-        }
+      if (finalRefund > 0 && (preference === "COUPON" || preference === "BANK_REFUND")) {
+        await createRefundRequestForBreakdown(tx, {
+          bookingId,
+          customerId: booking.userId,
+          preference,
+          breakdown,
+        });
       }
     })
   );
@@ -200,8 +189,16 @@ async function calculateRefundProportional(params: {
   const cancelledCount = participantIds.length;
   const ratio = cancelledCount / totalActiveCount;
 
+  // Base the proportional split on the paid amount not yet refunded --
+  // a prior partial cancellation on this booking may have already refunded
+  // part of paidAmount (tracked in booking.refundAmount) without paidAmount
+  // itself ever being reduced, so splitting the raw paidAmount here would
+  // overstate what's left to refund for the remaining participants.
+  const alreadyRefunded = Number(booking.refundAmount || 0);
+  const effectivePaidAmount = Math.max(0, Number(booking.paidAmount) - alreadyRefunded);
+
   const proportionalTotalPrice = Number(booking.totalPrice) * ratio;
-  const proportionalPaidAmount = Number(booking.paidAmount) * ratio;
+  const proportionalPaidAmount = effectivePaidAmount * ratio;
 
   // Resolve cancellation policy based on departure date
   const departureDate = booking.slot ? new Date(booking.slot.date) : new Date();
@@ -225,7 +222,7 @@ async function calculateRefundProportional(params: {
 
   let newRemainingBalance = 0;
   if (booking.paymentStatus === "PARTIALLY_PAID") {
-    const netPaid = Math.max(0, Number(booking.paidAmount) - refundAmount);
+    const netPaid = Math.max(0, effectivePaidAmount - refundAmount);
     newRemainingBalance = Math.max(0, newTotalPrice - netPaid);
   }
 
@@ -399,7 +396,9 @@ export async function POST(
           },
         });
 
-        if (dbBooking.slotId && dbBooking.bookingStatus === "CONFIRMED") {
+        // Capacity is reserved from booking creation (REQUESTED) onward,
+        // not just once CONFIRMED -- see processBooking in booking.service.ts.
+        if (dbBooking.slotId) {
           await tx.slot.update({
             where: { id: dbBooking.slotId },
             data: {
@@ -416,38 +415,13 @@ export async function POST(
         });
 
         // Create Refund Request if refund is due
-        if (financials.refundAmount > 0) {
-          if (preference === "COUPON") {
-            await tx.refundRequest.create({
-              data: {
-                bookingId,
-                customerId: dbBooking.userId,
-                refundMethod: "TRAVEL_COUPON",
-                baseFare: financials.breakdown.baseFare,
-                gst: financials.breakdown.gst,
-                convenienceFee: financials.breakdown.convenienceFee,
-                cancellationPercent: financials.breakdown.cancellationPercent,
-                cancellationCharges: financials.breakdown.cancellationCharges,
-                finalRefundAmount: financials.breakdown.finalRefundAmount,
-                status: "REQUESTED",
-              },
-            });
-          } else if (preference === "BANK_REFUND") {
-            await tx.refundRequest.create({
-              data: {
-                bookingId,
-                customerId: dbBooking.userId,
-                refundMethod: "BANK_TRANSFER",
-                baseFare: financials.breakdown.baseFare,
-                gst: financials.breakdown.gst,
-                convenienceFee: financials.breakdown.convenienceFee,
-                cancellationPercent: financials.breakdown.cancellationPercent,
-                cancellationCharges: financials.breakdown.cancellationCharges,
-                finalRefundAmount: financials.breakdown.finalRefundAmount,
-                status: "REQUESTED",
-              },
-            });
-          }
+        if (financials.refundAmount > 0 && (preference === "COUPON" || preference === "BANK_REFUND")) {
+          await createRefundRequestForBreakdown(tx, {
+            bookingId,
+            customerId: dbBooking.userId,
+            preference,
+            breakdown: financials.breakdown,
+          });
         }
       });
 

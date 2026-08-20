@@ -140,6 +140,7 @@ model Experience {
   description         Json                 @default("{}")
   allowAdvancePayment Boolean              @default(false)
   advancePaymentAmount Decimal?            @db.Decimal(10, 2)
+  advancePaymentDeadlineDays Int          @default(7)
   extraAmenities      Json?                @default("[]")
   blogs               Blog[]
   bookings            Booking[]

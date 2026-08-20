@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
             durationDays: true,
             images: true,
             difficulty: true,
+            advancePaymentDeadlineDays: true,
           },
         },
         slot: { select: { date: true, capacity: true, status: true } },
@@ -109,8 +110,17 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    const reviewedExperiences = await prisma.experienceReview.findMany({
+      where: { userId: payload.userId },
+      select: { experienceId: true },
+    });
+    const reviewedExperienceIds = new Set(reviewedExperiences.map((r) => r.experienceId));
+
     const eligibleReviewBookings = allBookings.filter(
-      (b) => b.bookingStatus === "CONFIRMED" && b.canReview === true
+      (b) =>
+        b.bookingStatus === "CONFIRMED" &&
+        b.canReview === true &&
+        !reviewedExperienceIds.has(b.experienceId)
     );
 
     return NextResponse.json({

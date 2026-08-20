@@ -7,6 +7,7 @@ import { BookingRepo, BookingPricing } from "@/repositories/booking.repo";
 import { BookingInput } from "@/lib/validators/booking.schema";
 import { isExpiredIST, redeemCoupon } from "@/lib/coupon-engine";
 import { assignInvoiceNumberIfNeeded } from "@/lib/invoice-numbering";
+import { calculateRefundBreakdown } from "@/lib/refund-engine";
 
 interface ExtraAmenityOption {
   id: string;
@@ -103,6 +104,73 @@ async function processCheckoutCoupons(
   return { remaining, totalCouponRedeemed, redemptionsList };
 }
 
+type BookingTx = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+type ExperienceForBooking = Awaited<ReturnType<typeof BookingRepo.findExperienceById>>;
+type SlotForBooking = Awaited<ReturnType<typeof BookingRepo.findSlotById>>;
+
+/**
+ * A repeat POST carrying the same client-generated idempotency key (double-click
+ * across tabs, a network-level retry) returns the booking that call already
+ * produced instead of creating a duplicate. Returns null when there's nothing to replay.
+ */
+async function tryIdempotentReplay(tx: BookingTx, userId: string, idempotencyKey: string | undefined) {
+  if (!idempotencyKey) return null;
+  const replay = await BookingRepo.findByIdempotencyKey(tx, userId, idempotencyKey);
+  if (!replay) return null;
+  return {
+    booking: replay.booking,
+    payment: replay.payment,
+    fullyPaid: replay.booking.bookingStatus === "CONFIRMED",
+    totalCouponRedeemed: Number(replay.booking.paidAmount),
+    idempotentReplay: true as const,
+  };
+}
+
+/**
+ * If a similar requested/pending booking exists, mark it cancelled so it doesn't
+ * block the new checkout. That earlier attempt reserved capacity when IT was
+ * created, so cancelling it here must give that reservation back before this
+ * new attempt's own capacity check runs.
+ */
+async function cancelSupersededPendingBooking(tx: BookingTx, userId: string, slotId: string) {
+  const existing = await BookingRepo.findExistingPendingBooking(tx, userId, slotId);
+  if (!existing) return;
+  await tx.booking.update({
+    where: { id: existing.id },
+    data: {
+      bookingStatus: "CANCELLED",
+      cancellationReason: "Superseded by new checkout attempt",
+    },
+  });
+  if (existing.slotId) {
+    await BookingRepo.incrementSlotCapacity(tx, existing.slotId, existing.participantCount);
+  }
+}
+
+function assertExperienceAvailable(
+  experience: ExperienceForBooking
+): asserts experience is NonNullable<ExperienceForBooking> {
+  if (experience?.status !== "PUBLISHED") {
+    throw new Error("EXPERIENCE_NOT_AVAILABLE");
+  }
+}
+
+function assertSlotAvailable(
+  slot: SlotForBooking,
+  data: BookingInput,
+  now: Date
+): asserts slot is NonNullable<SlotForBooking> {
+  if (slot?.experienceId !== data.experienceId) {
+    throw new Error("SLOT_MISMATCH");
+  }
+  if (new Date(slot.date) < now) {
+    throw new Error("SLOT_EXPIRED");
+  }
+  if (slot.remainingCapacity < data.participantCount) {
+    throw new Error("INSUFFICIENT_CAPACITY");
+  }
+}
+
 export const BookingService = {
   /**
    * Orchestrates the entire booking creation flow with production-grade safety.
@@ -116,34 +184,11 @@ export const BookingService = {
     // 2. ATOMIC TRANSACTION: Ensuring Slot Capacity vs Booking Entry
     // We use Serializable isolation to prevent phantom reads and ensure absolute consistency.
     const result = await runWithRetry(() =>
-      prisma.$transaction(async (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => {
-        // Idempotent replay: a repeat POST carrying the same client-generated
-        // key (double-click across tabs, a network-level retry) returns the
-        // booking that call already produced instead of creating a duplicate.
-        if (data.idempotencyKey) {
-          const replay = await BookingRepo.findByIdempotencyKey(tx, userId, data.idempotencyKey);
-          if (replay) {
-            return {
-              booking: replay.booking,
-              payment: replay.payment,
-              fullyPaid: replay.booking.bookingStatus === "CONFIRMED",
-              totalCouponRedeemed: Number(replay.booking.paidAmount),
-              idempotentReplay: true,
-            };
-          }
-        }
+      prisma.$transaction(async (tx: BookingTx) => {
+        const replay = await tryIdempotentReplay(tx, userId, data.idempotencyKey);
+        if (replay) return replay;
 
-        // If a similar requested/pending booking exists, mark it as cancelled so it doesn't block the new checkout
-        const existing = await BookingRepo.findExistingPendingBooking(tx, userId, data.slotId);
-        if (existing) {
-          await tx.booking.update({
-            where: { id: existing.id },
-            data: {
-              bookingStatus: "CANCELLED",
-              cancellationReason: "Superseded by new checkout attempt",
-            },
-          });
-        }
+        await cancelSupersededPendingBooking(tx, userId, data.slotId);
 
       // Experience & Slot checks
       const [experience, slot] = await Promise.all([
@@ -151,22 +196,9 @@ export const BookingService = {
         BookingRepo.findSlotById(tx, data.slotId),
       ]);
 
-      if (experience?.status !== "PUBLISHED") {
-        throw new Error("EXPERIENCE_NOT_AVAILABLE");
-      }
-
-      if (slot?.experienceId !== data.experienceId) {
-        throw new Error("SLOT_MISMATCH");
-      }
-
       const now = new Date();
-      if (new Date(slot.date) < now) {
-        throw new Error("SLOT_EXPIRED");
-      }
-
-      if (slot.remainingCapacity < data.participantCount) {
-        throw new Error("INSUFFICIENT_CAPACITY");
-      }
+      assertExperienceAvailable(experience);
+      assertSlotAvailable(slot, data, now);
 
       const isAdvance = data.paymentType === "ADVANCE" && experience.allowAdvancePayment && experience.advancePaymentAmount;
       const paymentAmount = isAdvance
@@ -183,6 +215,22 @@ export const BookingService = {
         totalCouponRedeemed,
         redemptionsList,
       } = await processCheckoutCoupons(tx, data.appliedCoupons || [], userId, paymentAmount);
+
+      // Reserve the seats NOW, atomically, rather than only checking and
+      // decrementing later at payment confirmation. The plain check above
+      // is not enough on its own: several concurrent checkouts can all pass
+      // it before any of them writes to the slot, oversubscribing capacity.
+      // This guarded updateMany is the actual atomic gate -- it only
+      // succeeds if remainingCapacity is still sufficient at write time
+      // (Serializable isolation forces a losing concurrent transaction to
+      // retry against fresh data rather than both succeeding). Placed after
+      // all the validation-only checks above so an invalid request fails
+      // fast without first taking a (harmless but pointless) capacity write
+      // that a thrown error would just roll back anyway.
+      const capacityReserved = await BookingRepo.updateSlotCapacity(tx, slot.id, data.participantCount);
+      if (capacityReserved.count === 0) {
+        throw new Error("INSUFFICIENT_CAPACITY");
+      }
 
       // Create Booking record
       const booking = await BookingRepo.createBooking(tx, userId, data, pricing);
@@ -213,10 +261,8 @@ export const BookingService = {
 
         await assignInvoiceNumberIfNeeded(tx, booking.id);
 
-        await tx.slot.update({
-          where: { id: slot.id },
-          data: { remainingCapacity: { decrement: booking.participantCount } },
-        });
+        // Capacity was already reserved above, right after the check --
+        // nothing left to decrement here.
 
         const payment = await BookingRepo.createPayment(tx, {
           bookingId: booking.id,
@@ -447,14 +493,13 @@ export const BookingService = {
         });
 
         if (booking.slotId && booking.bookingStatus !== "CONFIRMED") {
-          // Decrement slot remainingCapacity by participantCount
-          await tx.slot.update({
-            where: { id: booking.slotId },
-            data: { remainingCapacity: { decrement: booking.participantCount } },
-          });
+          // Capacity for THIS booking was already reserved when it was
+          // created (see processBooking) -- nothing to decrement here.
 
-          // Cancel any other older pending/requested bookings for this user on the same slot
-          await tx.booking.updateMany({
+          // Cancel any other older pending/requested bookings for this user
+          // on the same slot, restoring the capacity those attempts
+          // reserved at their own creation time.
+          const siblingPending = await tx.booking.findMany({
             where: {
               userId: booking.userId,
               slotId: booking.slotId,
@@ -462,11 +507,20 @@ export const BookingService = {
               bookingStatus: "REQUESTED",
               paymentStatus: "PENDING",
             },
-            data: {
-              bookingStatus: "CANCELLED",
-              paymentStatus: "FAILED",
-            },
+            select: { id: true, participantCount: true },
           });
+
+          if (siblingPending.length > 0) {
+            await tx.booking.updateMany({
+              where: { id: { in: siblingPending.map((b) => b.id) } },
+              data: {
+                bookingStatus: "CANCELLED",
+                paymentStatus: "FAILED",
+              },
+            });
+            const totalToRestore = siblingPending.reduce((sum, b) => sum + b.participantCount, 0);
+            await BookingRepo.incrementSlotCapacity(tx, booking.slotId, totalToRestore);
+          }
         }
 
         return updated;
@@ -501,7 +555,7 @@ export const BookingService = {
       where: { id: bookingId },
       include: {
         user: { select: { name: true, email: true } },
-        experience: { select: { title: true } },
+        experience: { select: { title: true, advancePaymentDeadlineDays: true } },
         slot: { select: { date: true } },
       },
     });
@@ -518,6 +572,10 @@ export const BookingService = {
       baseFare: Number(booking.baseFare),
       taxBreakdown: booking.taxBreakdown as { name: string; percentage: number; amount: number }[],
       bookingId: booking.id,
+      paymentType: booking.paymentType,
+      paidAmount: Number(booking.paidAmount),
+      remainingBalance: Number(booking.remainingBalance),
+      advancePaymentDeadlineDays: booking.experience.advancePaymentDeadlineDays,
     });
   },
 
@@ -570,21 +628,150 @@ export const BookingService = {
   },
 
   /**
-   * Auto-expires abandoned REQUESTED bookings older than 24 hours (1440 minutes).
+   * Auto-expires abandoned REQUESTED bookings older than 24 hours (1440
+   * minutes), restoring the slot capacity each one reserved when it was
+   * created (see processBooking). This is the single source of truth for
+   * this rule -- both the admin-dashboard-triggered path and the scheduled
+   * cron (POST /api/admin/bookings/cleanup) call this same function, so
+   * there's only one place that can drift from "cancel + restore capacity"
+   * for the exact same underlying business rule.
    */
   async autoExpireAbandonedBookings(): Promise<number> {
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const result = await prisma.booking.updateMany({
+    const abandonedBookings = await prisma.booking.findMany({
       where: {
         bookingStatus: "REQUESTED",
         paymentStatus: "PENDING",
         createdAt: { lt: twentyFourHoursAgo },
       },
-      data: {
-        bookingStatus: "CANCELLED",
-        cancellationReason: "Expired - Unpaid booking request exceeded 24 hours",
+      select: { id: true, slotId: true, participantCount: true },
+    });
+
+    if (abandonedBookings.length === 0) return 0;
+
+    await runWithRetry(() =>
+      prisma.$transaction(async (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => {
+        for (const booking of abandonedBookings) {
+          await tx.booking.update({
+            where: { id: booking.id },
+            data: {
+              bookingStatus: "CANCELLED",
+              paymentStatus: "FAILED",
+              cancellationReason: "Expired - Unpaid booking request exceeded 24 hours",
+            },
+          });
+          if (booking.slotId) {
+            await BookingRepo.incrementSlotCapacity(tx, booking.slotId, booking.participantCount);
+          }
+        }
+      }),
+    );
+
+    return abandonedBookings.length;
+  },
+
+  /**
+   * Auto-cancels CONFIRMED advance-payment bookings that still have an
+   * unpaid remaining balance within each trip's own balance-payment
+   * deadline (Experience.advancePaymentDeadlineDays, set per-experience by
+   * the admin -- defaults to 7 if never configured), restoring the slot
+   * capacity they reserved and creating a RefundRequest for the full
+   * advance amount paid (no cancellation charge -- this is a system
+   * cancellation, not a choice the customer made, so the usual departure-
+   * proximity cancellation-fee tiers don't apply). The RefundRequest is
+   * only ever REQUESTED here -- disbursement always requires an
+   * admin/super-admin to approve it, exactly like every other refund path
+   * in this codebase; this function never moves money on its own.
+   */
+  async autoCancelUnpaidAdvanceBookings(): Promise<number> {
+    // Deadlines are per-experience and vary trip to trip, so we can't filter
+    // by a single cutoff date in the query -- pull every still-open advance
+    // booking (a small, bounded set) and check each one's own deadline in JS.
+    const openAdvanceBookings = await prisma.booking.findMany({
+      where: {
+        paymentType: "ADVANCE",
+        paymentStatus: "PARTIALLY_PAID",
+        bookingStatus: "CONFIRMED",
+        slot: {
+          status: { in: ["UPCOMING", "ACTIVE"] },
+        },
+      },
+      select: {
+        id: true,
+        slotId: true,
+        participantCount: true,
+        userId: true,
+        paidAmount: true,
+        totalPrice: true,
+        baseFare: true,
+        taxBreakdown: true,
+        slot: { select: { date: true } },
+        experience: { select: { advancePaymentDeadlineDays: true } },
       },
     });
-    return result.count;
-  }
+
+    const now = Date.now();
+    const candidates = openAdvanceBookings.filter((booking) => {
+      const deadlineDays = booking.experience.advancePaymentDeadlineDays || 7;
+      const deadline = (booking.slot?.date.getTime() ?? 0) - deadlineDays * 24 * 60 * 60 * 1000;
+      return deadline <= now;
+    });
+
+    if (candidates.length === 0) return 0;
+
+    for (const booking of candidates) {
+      const paidAmount = Number(booking.paidAmount);
+      const breakdown = calculateRefundBreakdown({
+        baseFare: Number(booking.baseFare),
+        totalPrice: Number(booking.totalPrice),
+        paidAmount,
+        paymentType: "ADVANCE",
+        refundPercent: 100,
+        taxBreakdown: booking.taxBreakdown,
+        isCompanyCancellation: true,
+      });
+
+      await runWithRetry(() =>
+        prisma.$transaction(async (tx) => {
+          await tx.booking.update({
+            where: { id: booking.id },
+            data: {
+              bookingStatus: "CANCELLED",
+              paymentStatus: paidAmount > 0 ? "REFUND_PENDING" : "FAILED",
+              cancelledAt: new Date(),
+              cancellationReason:
+                "Auto-cancelled: remaining balance was not paid within the trip's balance-payment deadline.",
+              refundPreference: paidAmount > 0 ? "BANK_REFUND" : null,
+              refundAmount: paidAmount > 0 ? breakdown.finalRefundAmount : null,
+            },
+          });
+
+          if (booking.slotId) {
+            await BookingRepo.incrementSlotCapacity(tx, booking.slotId, booking.participantCount);
+          }
+
+          if (paidAmount > 0) {
+            await tx.refundRequest.create({
+              data: {
+                bookingId: booking.id,
+                customerId: booking.userId,
+                refundMethod: "BANK_TRANSFER",
+                baseFare: breakdown.baseFare,
+                gst: breakdown.gst,
+                convenienceFee: breakdown.convenienceFee,
+                cancellationPercent: breakdown.cancellationPercent,
+                cancellationCharges: breakdown.cancellationCharges,
+                finalRefundAmount: breakdown.finalRefundAmount,
+                status: "REQUESTED",
+                remarks:
+                  "System auto-cancellation: advance paid, remaining balance unpaid by the trip's balance-payment deadline. Refund method defaulted to bank transfer -- confirm the customer's preference before processing.",
+              },
+            });
+          }
+        }),
+      );
+    }
+
+    return candidates.length;
+  },
 };

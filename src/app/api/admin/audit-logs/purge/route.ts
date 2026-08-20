@@ -1,16 +1,8 @@
-import crypto from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { authorizeRequest } from "@/lib/api-auth";
+import { authorizeRequest, resolveCronAuthDenial } from "@/lib/api-auth";
 
 const DEFAULT_RETENTION_DAYS = 365;
-
-function isValidCronSecret(provided: string | null, expected: string | undefined): boolean {
-  if (!provided || !expected) return false;
-  const providedBuf = Buffer.from(provided);
-  const expectedBuf = Buffer.from(expected);
-  return providedBuf.length === expectedBuf.length && crypto.timingSafeEqual(providedBuf, expectedBuf);
-}
 
 /**
  * POST /api/admin/audit-logs/purge
@@ -29,13 +21,8 @@ function isValidCronSecret(provided: string | null, expected: string | undefined
  */
 export async function POST(request: NextRequest) {
   const auth = await authorizeRequest(request, "system:config");
-
-  if (!auth.authorized) {
-    const cronSecret = request.headers.get("x-cron-secret");
-    if (!isValidCronSecret(cronSecret, process.env.CRON_SECRET)) {
-      return auth.response;
-    }
-  }
+  const denied = resolveCronAuthDenial(auth, request);
+  if (denied) return denied;
 
   try {
     const setting = await prisma.platformSetting.findUnique({ where: { key: "audit_log_retention_days" } });

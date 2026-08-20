@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 
@@ -261,5 +261,62 @@ describe("authorizeSystemRequest", () => {
     if (result.authorized) {
       expect(result.userId).toBe("u1");
     }
+  });
+});
+
+describe("resolveCronAuthDenial", () => {
+  const originalCronSecret = process.env.CRON_SECRET;
+
+  beforeEach(() => {
+    process.env.CRON_SECRET = "secret-123";
+  });
+
+  afterEach(() => {
+    process.env.CRON_SECRET = originalCronSecret;
+  });
+
+  it("returns null (proceed) when already authorized, without checking the header", async () => {
+    const { resolveCronAuthDenial } = await vi.importActual<typeof import("@/lib/api-auth")>("@/lib/api-auth");
+    const req = new NextRequest("http://localhost");
+
+    const result = resolveCronAuthDenial({ authorized: true, userId: "u1", roleName: "ADMIN" }, req);
+    expect(result).toBeNull();
+  });
+
+  it("returns null (proceed) when unauthorized but the cron secret header matches", async () => {
+    const { resolveCronAuthDenial } = await vi.importActual<typeof import("@/lib/api-auth")>("@/lib/api-auth");
+    const req = new NextRequest("http://localhost", { headers: { "x-cron-secret": "secret-123" } });
+    const deniedResponse = new Response(null) as any;
+
+    const result = resolveCronAuthDenial({ authorized: false, response: deniedResponse }, req);
+    expect(result).toBeNull();
+  });
+
+  it("returns the original denial response when the cron secret header is missing", async () => {
+    const { resolveCronAuthDenial } = await vi.importActual<typeof import("@/lib/api-auth")>("@/lib/api-auth");
+    const req = new NextRequest("http://localhost");
+    const deniedResponse = new Response(null) as any;
+
+    const result = resolveCronAuthDenial({ authorized: false, response: deniedResponse }, req);
+    expect(result).toBe(deniedResponse);
+  });
+
+  it("returns the original denial response when the cron secret header is wrong", async () => {
+    const { resolveCronAuthDenial } = await vi.importActual<typeof import("@/lib/api-auth")>("@/lib/api-auth");
+    const req = new NextRequest("http://localhost", { headers: { "x-cron-secret": "wrong-secret" } });
+    const deniedResponse = new Response(null) as any;
+
+    const result = resolveCronAuthDenial({ authorized: false, response: deniedResponse }, req);
+    expect(result).toBe(deniedResponse);
+  });
+
+  it("returns the original denial response when CRON_SECRET is not configured", async () => {
+    delete process.env.CRON_SECRET;
+    const { resolveCronAuthDenial } = await vi.importActual<typeof import("@/lib/api-auth")>("@/lib/api-auth");
+    const req = new NextRequest("http://localhost", { headers: { "x-cron-secret": "secret-123" } });
+    const deniedResponse = new Response(null) as any;
+
+    const result = resolveCronAuthDenial({ authorized: false, response: deniedResponse }, req);
+    expect(result).toBe(deniedResponse);
   });
 });

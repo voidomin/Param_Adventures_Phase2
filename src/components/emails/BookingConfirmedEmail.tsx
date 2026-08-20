@@ -9,6 +9,10 @@ export interface BookingConfirmedEmailProps {
   totalPrice?: number;
   baseFare?: number;
   taxBreakdown?: { name: string; percentage: number; amount: number }[];
+  paymentType?: string;
+  paidAmount?: number;
+  remainingBalance?: number;
+  advanceDeadline?: string;
 }
 
 export const BookingConfirmedEmail = ({
@@ -19,7 +23,13 @@ export const BookingConfirmedEmail = ({
   totalPrice = 0,
   baseFare = 0,
   taxBreakdown = [],
+  paymentType,
+  paidAmount,
+  remainingBalance,
+  advanceDeadline,
 }: BookingConfirmedEmailProps) => {
+  const isAdvance = paymentType === "ADVANCE" && (remainingBalance ?? 0) > 0;
+
   return (
     <EmailBase
       preview={`Your booking for ${tripName} is confirmed! 🏔️`}
@@ -54,10 +64,27 @@ export const BookingConfirmedEmail = ({
 
          <Hr style={hr} />
          <Row style={totalRow}>
-            <Column><Text style={totalLabel}>Total Paid</Text></Column>
-            <Column align="right"><Text style={totalValue}>₹{Number(totalPrice).toLocaleString("en-IN")}</Text></Column>
+            <Column><Text style={totalLabel}>{isAdvance ? "Advance Paid" : "Total Paid"}</Text></Column>
+            <Column align="right"><Text style={totalValue}>₹{Number(isAdvance ? paidAmount : totalPrice).toLocaleString("en-IN")}</Text></Column>
          </Row>
+         {isAdvance && (
+            <Row style={priceRow}>
+               <Column><Text style={priceLabel}>Remaining Balance</Text></Column>
+               <Column align="right"><Text style={priceValue}>₹{Number(remainingBalance).toLocaleString("en-IN")}</Text></Column>
+            </Row>
+         )}
       </Section>
+
+      {isAdvance && advanceDeadline && (
+        <Section style={noticeContainer}>
+          <Text style={noticeText}>
+            ⏰ Please pay your remaining balance of ₹{Number(remainingBalance).toLocaleString("en-IN")} by{" "}
+            <strong>{advanceDeadline}</strong> to keep your seat. Bookings not fully
+            paid by then are automatically cancelled, and the advance becomes eligible for a refund pending
+            admin approval.
+          </Text>
+        </Section>
+      )}
 
       <Text style={commonStyles.text}>
         You can view your full booking details and download your tax invoice from your dashboard.
@@ -131,6 +158,21 @@ const totalValue = {
    fontWeight: "900",
    color: "#f97316",
    margin: "0",
+};
+
+const noticeContainer = {
+   backgroundColor: "#fffbeb",
+   padding: "16px 20px",
+   borderRadius: "12px",
+   margin: "16px 0",
+   border: "1px solid #fde68a",
+};
+
+const noticeText = {
+   fontSize: "13px",
+   color: "#92400e",
+   margin: "0",
+   lineHeight: "1.5",
 };
 
 export default BookingConfirmedEmail;

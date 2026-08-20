@@ -3,10 +3,14 @@ import { NextRequest, NextResponse } from "next/server";
 
 vi.mock("@/lib/api-auth", () => ({ authorizeRequest: vi.fn() }));
 vi.mock("@/lib/audit-logger", () => ({ logActivity: vi.fn() }));
-vi.mock("@/lib/refund-engine", () => ({
-  getRefundPercentage: vi.fn(),
-  calculateRefundBreakdown: vi.fn(),
-}));
+vi.mock("@/lib/refund-engine", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/refund-engine")>();
+  return {
+    ...actual,
+    getRefundPercentage: vi.fn(),
+    calculateRefundBreakdown: vi.fn(),
+  };
+});
 vi.mock("@/lib/coupon-engine", () => ({
   restoreCouponsForBooking: vi.fn(),
 }));

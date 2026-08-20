@@ -4,7 +4,7 @@ import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
 import { sendBookingCancellation } from "@/lib/email";
 import { z } from "zod";
-import { getRefundPercentage, calculateRefundBreakdown } from "@/lib/refund-engine";
+import { getRefundPercentage, calculateRefundBreakdown, createRefundRequestForBreakdown } from "@/lib/refund-engine";
 import { logError } from "@/lib/monitoring";
 
 const cancelSchema = z.object({
@@ -91,10 +91,18 @@ export async function POST(
     const departureDate = booking.slot ? new Date(booking.slot.date) : new Date();
     const { refundPercent } = await getRefundPercentage(departureDate, new Date());
 
+    // Net out any refund already issued by an earlier partial cancellation
+    // on this booking (via /cancel-participants) -- booking.refundAmount is
+    // a running total and paidAmount is never reduced when that happens, so
+    // computing straight from paidAmount here would recompute a refund
+    // against money that was already handed back, double-counting it.
+    const alreadyRefunded = Number(booking.refundAmount || 0);
+    const effectivePaidAmount = Math.max(0, Number(booking.paidAmount) - alreadyRefunded);
+
     const breakdown = calculateRefundBreakdown({
       baseFare: Number(booking.baseFare),
       totalPrice: Number(booking.totalPrice),
-      paidAmount: Number(booking.paidAmount),
+      paidAmount: effectivePaidAmount,
       paymentType: booking.paymentType as "FULL" | "ADVANCE",
       refundPercent,
       taxBreakdown: booking.taxBreakdown,
@@ -102,6 +110,7 @@ export async function POST(
     });
 
     const finalRefund = breakdown.finalRefundAmount;
+    const totalRefundAmount = alreadyRefunded + finalRefund;
 
     // Atomic transaction: update booking + restore slot capacity + create refund request
     await runWithRetry(() =>
@@ -115,11 +124,17 @@ export async function POST(
             cancelledByUserId: userId,
             cancellationReason: reason || null,
             refundPreference: preference,
-            refundAmount: finalRefund > 0 ? finalRefund : null,
+            refundAmount: totalRefundAmount > 0 ? totalRefundAmount : null,
           },
         });
 
-        if (booking.slotId && booking.bookingStatus === "CONFIRMED") {
+        // Capacity is reserved from the moment a booking is created
+        // (REQUESTED), not just once CONFIRMED -- see processBooking in
+        // booking.service.ts. The status check at the top of this handler
+        // already guarantees bookingStatus is REQUESTED or CONFIRMED here
+        // (anything else was rejected earlier), so both cases hold a
+        // reservation that needs to be given back.
+        if (booking.slotId) {
           await tx.slot.update({
             where: { id: booking.slotId },
             data: {
@@ -129,19 +144,11 @@ export async function POST(
         }
 
         if (newPaymentStatus === "REFUND_PENDING" && finalRefund > 0) {
-          await tx.refundRequest.create({
-            data: {
-              bookingId,
-              customerId: booking.userId,
-              refundMethod: preference === "COUPON" ? "TRAVEL_COUPON" : "BANK_TRANSFER",
-              baseFare: breakdown.baseFare,
-              gst: breakdown.gst,
-              convenienceFee: breakdown.convenienceFee,
-              cancellationPercent: breakdown.cancellationPercent,
-              cancellationCharges: breakdown.cancellationCharges,
-              finalRefundAmount: breakdown.finalRefundAmount,
-              status: "REQUESTED",
-            },
+          await createRefundRequestForBreakdown(tx, {
+            bookingId,
+            customerId: booking.userId,
+            preference,
+            breakdown,
           });
         }
       })

@@ -297,6 +297,8 @@ describe("Coupon Engine Unit Tests", () => {
           findMany: vi.fn().mockResolvedValue([
             {
               id: "t1",
+              couponId: "c1",
+              type: "REDEEMED",
               amount: 500,
               coupon: {
                 id: "c1",
@@ -307,6 +309,8 @@ describe("Coupon Engine Unit Tests", () => {
             },
             {
               id: "t2",
+              couponId: "c2",
+              type: "REDEEMED",
               amount: 500,
               coupon: {
                 id: "c2",

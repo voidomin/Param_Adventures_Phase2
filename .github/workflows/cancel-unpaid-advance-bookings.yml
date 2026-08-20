@@ -1,0 +1,32 @@
+name: Cancel Unpaid Advance Bookings
+
+# Auto-cancels CONFIRMED advance-payment bookings whose remaining balance is
+# still unpaid within 7 days of departure, restores slot capacity, and
+# creates a REQUESTED (admin-approval-only) RefundRequest for the advance
+# paid so far -- via /api/admin/bookings/cancel-unpaid-advance. No refund is
+# ever disbursed automatically; an admin/super-admin must approve it first.
+on:
+  schedule:
+    - cron: "0 3 * * *" # once daily at 03:00 UTC
+  workflow_dispatch:
+
+jobs:
+  cancel-unpaid-advance:
+    name: Trigger Auto-Cancel
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call cancel-unpaid-advance endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ vars.PROD_APP_URL || 'https://www.paramadventures.in' }}
+        run: |
+          status=$(curl -s -o response.json -w "%{http_code}" -X POST \
+            "$APP_URL/api/admin/bookings/cancel-unpaid-advance" \
+            -H "x-cron-secret: $CRON_SECRET")
+          echo "HTTP status: $status"
+          cat response.json
+          if [ "$status" -ge 400 ]; then
+            echo "Auto-cancel request failed."
+            exit 1
+          fi

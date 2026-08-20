@@ -211,7 +211,7 @@ describe("POST /api/bookings/[id]/cancel", () => {
     expect(updateSlot).not.toHaveBeenCalled();
   });
 
-  it("cancels booking without slot update when bookingStatus is REQUESTED", async () => {
+  it("restores slot capacity even when bookingStatus is REQUESTED (capacity is reserved from creation)", async () => {
     mockAuthorizeRequest.mockResolvedValue({
       authorized: true,
       userId: "u1",
@@ -242,7 +242,10 @@ describe("POST /api/bookings/[id]/cancel", () => {
     });
 
     expect(response.status).toBe(200);
-    expect(updateSlot).not.toHaveBeenCalled();
+    expect(updateSlot).toHaveBeenCalledWith({
+      where: { id: "s1" },
+      data: { remainingCapacity: { increment: 2 } },
+    });
   });
 
   it("returns 500 on unexpected error", async () => {

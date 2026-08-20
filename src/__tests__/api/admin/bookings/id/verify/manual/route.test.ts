@@ -5,6 +5,7 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/api-auth", () => ({ authorizeRequest: vi.fn() }));
 vi.mock("@/lib/audit-logger", () => ({ logActivity: vi.fn() }));
 vi.mock("@/lib/email", () => ({ sendBookingConfirmation: vi.fn() }));
+vi.mock("@/lib/invoice-numbering", () => ({ assignInvoiceNumberIfNeeded: vi.fn() }));
 vi.mock("@/lib/db", () => ({
   prisma: {
     booking: {
@@ -305,5 +306,49 @@ describe("POST /api/admin/bookings/[id]/verify-manual", () => {
     });
 
     expect(response.status).toBe(500);
+  });
+
+  it("returns 400 and does not write anything when amountPaid would exceed totalPrice", async () => {
+    mockAuthorizeRequest.mockResolvedValue({
+      authorized: true,
+      roleName: "ADMIN",
+      userId: "a1",
+    } as any);
+    mockBookingFindUnique.mockResolvedValue({
+      id: "b1",
+      slotId: "slot-1",
+      participantCount: 2,
+      paymentStatus: "PENDING",
+    } as any);
+
+    const txBookingUpdate = vi.fn();
+    const txBookingFindUnique = vi.fn().mockResolvedValue({
+      id: "b1",
+      slotId: "slot-1",
+      userId: "u1",
+      bookingStatus: "REQUESTED",
+      participantCount: 2,
+      paidAmount: 4000,
+      totalPrice: 5000,
+    });
+    mockTransaction.mockImplementation(async (cb: any) =>
+      cb({
+        booking: { findUnique: txBookingFindUnique, update: txBookingUpdate, updateMany: vi.fn() },
+        payment: { create: vi.fn(), deleteMany: vi.fn() },
+        slot: { update: vi.fn() },
+      }),
+    );
+
+    // Already paid 4000 of 5000; admin enters 2000 more, which would push
+    // paidAmount to 6000 -- over the booking total.
+    const response = await POST(createRequest({ ...validBody, amountPaid: 2000 }), {
+      params: Promise.resolve({ id: "b1" }),
+    });
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toContain("exceeding the booking total");
+    expect(txBookingUpdate).not.toHaveBeenCalled();
+    expect(mockLogActivity).not.toHaveBeenCalled();
   });
 });
