@@ -273,3 +273,53 @@ export function generateCouponCode(prefix = "PARAM"): string {
   }
   return `${prefix}-${random}`;
 }
+
+/**
+ * Issues a fresh 12-month CANCELLATION coupon for a refund and logs its
+ * ISSUED transaction, in one step -- shared by every refund-resolution path
+ * that offers a coupon as the refund method. Returns the new coupon code.
+ */
+export async function issueCancellationCoupon(
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  params: {
+    bookingId: string;
+    customerId: string;
+    amount: number;
+    issuedById: string;
+    reason: string;
+  }
+): Promise<string> {
+  const { bookingId, customerId, amount, issuedById, reason } = params;
+  const code = generateCouponCode("PARAM");
+  const expiry = new Date();
+  expiry.setMonth(expiry.getMonth() + 12);
+
+  const newCoupon = await tx.travelCoupon.create({
+    data: {
+      code,
+      customerId,
+      bookingId,
+      originalValue: amount,
+      balance: amount,
+      expiryDate: expiry,
+      status: CouponStatus.ACTIVE,
+      type: "CANCELLATION",
+      reason,
+      issuedById,
+    },
+  });
+
+  await tx.couponTransaction.create({
+    data: {
+      couponId: newCoupon.id,
+      bookingId,
+      type: "ISSUED",
+      amount,
+      previousBalance: 0,
+      newBalance: amount,
+      remarks: reason,
+    },
+  });
+
+  return code;
+}

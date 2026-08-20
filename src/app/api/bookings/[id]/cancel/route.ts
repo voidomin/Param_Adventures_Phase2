@@ -4,7 +4,7 @@ import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
 import { sendBookingCancellation } from "@/lib/email";
 import { z } from "zod";
-import { getRefundPercentage, calculateRefundBreakdown } from "@/lib/refund-engine";
+import { getRefundPercentage, calculateRefundBreakdown, createRefundRequestForBreakdown } from "@/lib/refund-engine";
 import { logError } from "@/lib/monitoring";
 
 const cancelSchema = z.object({
@@ -144,19 +144,11 @@ export async function POST(
         }
 
         if (newPaymentStatus === "REFUND_PENDING" && finalRefund > 0) {
-          await tx.refundRequest.create({
-            data: {
-              bookingId,
-              customerId: booking.userId,
-              refundMethod: preference === "COUPON" ? "TRAVEL_COUPON" : "BANK_TRANSFER",
-              baseFare: breakdown.baseFare,
-              gst: breakdown.gst,
-              convenienceFee: breakdown.convenienceFee,
-              cancellationPercent: breakdown.cancellationPercent,
-              cancellationCharges: breakdown.cancellationCharges,
-              finalRefundAmount: breakdown.finalRefundAmount,
-              status: "REQUESTED",
-            },
+          await createRefundRequestForBreakdown(tx, {
+            bookingId,
+            customerId: booking.userId,
+            preference,
+            breakdown,
           });
         }
       })

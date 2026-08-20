@@ -4,7 +4,10 @@ import { NextRequest } from "next/server";
 vi.mock("@/lib/api-auth", () => ({ authorizeRequest: vi.fn() }));
 vi.mock("@/lib/audit-logger", () => ({ logActivity: vi.fn() }));
 vi.mock("@/lib/email", () => ({ sendRefundResolved: vi.fn() }));
-vi.mock("@/lib/coupon-engine", () => ({ generateCouponCode: vi.fn(() => "PARAM-TESTCODE") }));
+vi.mock("@/lib/coupon-engine", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/lib/coupon-engine")>();
+  return { ...actual };
+});
 vi.mock("@/lib/monitoring", () => ({ logError: vi.fn() }));
 vi.mock("@/lib/db", () => {
   const mockPrisma = {
@@ -168,14 +171,14 @@ describe("PATCH /api/admin/refunds/[id]", () => {
     expect(response.status).toBe(200);
     expect(mockCouponCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ code: "PARAM-TESTCODE", customerId: "u1", originalValue: 500 }),
+        data: expect.objectContaining({ code: expect.any(String), customerId: "u1", originalValue: 500 }),
       }),
     );
     expect(mockBookingUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ refundNote: "PARAM-TESTCODE" }) }),
+      expect.objectContaining({ data: expect.objectContaining({ refundNote: expect.any(String) }) }),
     );
     expect(mockSendRefundResolved).toHaveBeenCalledWith(
-      expect.objectContaining({ refundPreference: "COUPON", refundNote: "PARAM-TESTCODE" }),
+      expect.objectContaining({ refundPreference: "COUPON", refundNote: expect.any(String) }),
     );
   });
 

@@ -144,3 +144,35 @@ export function calculateRefundBreakdown(params: {
     finalRefundAmount: round2(finalRefundAmount),
   };
 }
+
+/**
+ * Creates the RefundRequest row for a cancellation breakdown -- always
+ * REQUESTED, never disbursed here. Shared by every cancellation path
+ * (full/partial, user-initiated/admin-initiated) so the
+ * breakdown-field-to-RefundRequest-field mapping exists in exactly one place.
+ */
+export async function createRefundRequestForBreakdown(
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  params: {
+    bookingId: string;
+    customerId: string;
+    preference: "COUPON" | "BANK_REFUND";
+    breakdown: RefundBreakdown;
+  }
+): Promise<void> {
+  const { bookingId, customerId, preference, breakdown } = params;
+  await tx.refundRequest.create({
+    data: {
+      bookingId,
+      customerId,
+      refundMethod: preference === "COUPON" ? "TRAVEL_COUPON" : "BANK_TRANSFER",
+      baseFare: breakdown.baseFare,
+      gst: breakdown.gst,
+      convenienceFee: breakdown.convenienceFee,
+      cancellationPercent: breakdown.cancellationPercent,
+      cancellationCharges: breakdown.cancellationCharges,
+      finalRefundAmount: breakdown.finalRefundAmount,
+      status: "REQUESTED",
+    },
+  });
+}

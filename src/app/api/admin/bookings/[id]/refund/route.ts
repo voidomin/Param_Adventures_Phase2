@@ -6,7 +6,7 @@ import { logActivity } from "@/lib/audit-logger";
 import { sendRefundResolved } from "@/lib/email";
 import { z } from "zod";
 
-import { generateCouponCode } from "@/lib/coupon-engine";
+import { issueCancellationCoupon } from "@/lib/coupon-engine";
 import { issueCreditNote } from "@/lib/invoice-numbering";
 
 const refundSchema = z.object({
@@ -96,7 +96,13 @@ export async function POST(
 
         let couponCode = refundNote;
         if (booking.refundPreference === "COUPON") {
-          couponCode = generateCouponCode("PARAM");
+          couponCode = await issueCancellationCoupon(tx, {
+            bookingId,
+            customerId: booking.userId,
+            amount: refundAmt,
+            issuedById: adminId,
+            reason: `Refund for cancelled booking ${bookingId.substring(0, 8)}`,
+          });
         }
 
         await tx.booking.update({
@@ -138,38 +144,6 @@ export async function POST(
               reason: booking.cancellationReason || "Booking cancellation/refund",
             })
           : null;
-
-        if (booking.refundPreference === "COUPON") {
-          const expiry = new Date();
-          expiry.setMonth(expiry.getMonth() + 12); // 12 months validity
-
-          const newCoupon = await tx.travelCoupon.create({
-            data: {
-              code: couponCode,
-              customerId: booking.userId,
-              bookingId,
-              originalValue: refundAmt,
-              balance: refundAmt,
-              expiryDate: expiry,
-              status: "ACTIVE",
-              type: "CANCELLATION",
-              reason: `Refund for cancelled booking ${bookingId.substring(0, 8)}`,
-              issuedById: adminId,
-            },
-          });
-
-          await tx.couponTransaction.create({
-            data: {
-              couponId: newCoupon.id,
-              bookingId,
-              type: "ISSUED",
-              amount: refundAmt,
-              previousBalance: 0,
-              newBalance: refundAmt,
-              remarks: `Automatically issued from refund of booking ${bookingId.substring(0, 8)}`,
-            },
-          });
-        }
 
         // Update any associated RefundRequest to COMPLETED
         if (tx.refundRequest) {

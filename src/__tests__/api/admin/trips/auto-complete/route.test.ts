@@ -1,7 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
 
-vi.mock("@/lib/api-auth", () => ({ authorizeRequest: vi.fn() }));
+vi.mock("@/lib/api-auth", () => ({
+  authorizeRequest: vi.fn(),
+  resolveCronAuthDenial: vi.fn((auth: any, request: any) => {
+    if (auth.authorized) return null;
+    const provided = request.headers.get("x-cron-secret");
+    const expected = process.env.CRON_SECRET;
+    if (provided && expected && provided === expected) return null;
+    return auth.response;
+  }),
+}));
 vi.mock("@/lib/audit-logger", () => ({ logActivity: vi.fn() }));
 vi.mock("@/lib/trip-lifecycle", () => ({ autoCompletePastTrips: vi.fn() }));
 

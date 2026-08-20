@@ -1,15 +1,7 @@
-import crypto from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { authorizeRequest } from "@/lib/api-auth";
+import { authorizeRequest, resolveCronAuthDenial } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
 import { BookingService } from "@/services/booking.service";
-
-function isValidCronSecret(provided: string | null, expected: string | undefined): boolean {
-  if (!provided || !expected) return false;
-  const providedBuf = Buffer.from(provided);
-  const expectedBuf = Buffer.from(expected);
-  return providedBuf.length === expectedBuf.length && crypto.timingSafeEqual(providedBuf, expectedBuf);
-}
 
 /**
  * POST /api/admin/bookings/cleanup
@@ -26,13 +18,8 @@ function isValidCronSecret(provided: string | null, expected: string | undefined
  */
 export async function POST(request: NextRequest) {
   const auth = await authorizeRequest(request, "booking:moderate");
-
-  if (!auth.authorized) {
-    const cronSecret = request.headers.get("x-cron-secret");
-    if (!isValidCronSecret(cronSecret, process.env.CRON_SECRET)) {
-       return auth.response;
-    }
-  }
+  const denied = resolveCronAuthDenial(auth, request);
+  if (denied) return denied;
 
   try {
     const restoredCount = await BookingService.autoExpireAbandonedBookings();
