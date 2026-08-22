@@ -157,8 +157,13 @@ describe("/api/admin/experiences/[id]/slots/[slotId]", () => {
       remainingCapacity: 13,
     } as any);
 
+    // A future date relative to whenever this test actually runs, so it
+    // never ages into the past and starts tripping a past-date guard.
+    const futureDate = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000);
+    futureDate.setUTCHours(10, 0, 0, 0);
+
     const response = await PATCH(
-      createJsonRequest({ date: "2026-08-21T10:00:00.000Z", capacity: 25 }),
+      createJsonRequest({ date: futureDate.toISOString(), capacity: 25 }),
       { params: Promise.resolve({ id: "exp-1", slotId: "slot-1" }) },
     );
     const data = await response.json();
@@ -168,7 +173,7 @@ describe("/api/admin/experiences/[id]/slots/[slotId]", () => {
     expect(mockSlotUpdate).toHaveBeenCalledWith({
       where: { id: "slot-1" },
       data: {
-        date: new Date("2026-08-21T10:00:00.000Z"),
+        date: futureDate,
         capacity: 25,
         remainingCapacity: 13,
       },

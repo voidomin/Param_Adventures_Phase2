@@ -190,7 +190,7 @@ export default function Hero({
             ) : (
               <Image
                 src={primaryMediaUrl}
-                alt={currentSlide.title}
+                alt={currentSlide.subtitle ? `${currentSlide.title} — ${currentSlide.subtitle}` : currentSlide.title}
                 fill
                 priority
                 sizes="100vw"

@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { format } from "date-fns";
 import { MapPin, CalendarDays, ArrowRight, PenLine, Search, Mountain } from "lucide-react";
+import { buildBlogAltText } from "@/lib/seo/alt-text";
 
 interface BlogAuthor {
   id: string;
@@ -157,7 +158,7 @@ export default function BlogListingClient({ initialBlogs }: Readonly<BlogListing
                   <div className="relative h-48 overflow-hidden">
                     <Image
                       src={cover}
-                      alt={blog.title}
+                      alt={buildBlogAltText(blog.title, blog.experience?.location)}
                       fill
                       className="object-cover group-hover:scale-105 transition-transform duration-500"
                     />

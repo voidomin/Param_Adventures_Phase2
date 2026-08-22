@@ -9,6 +9,7 @@ import { motion } from "framer-motion";
 import SaveButton from "./SaveButton";
 import ShareButton from "../ui/ShareButton";
 import { getMediaUrl } from "@/lib/media/media-gateway";
+import { buildTrekAltText } from "@/lib/seo/alt-text";
 
 interface Category {
   category: {
@@ -46,6 +47,7 @@ interface ExperienceCardProps {
     }[];
   };
   mediaSettings?: MediaSettings;
+  priority?: boolean;
 }
 
 function FlippingDatePill({
@@ -114,6 +116,7 @@ function FlippingDatePill({
 export default function ExperienceCard({
   experience,
   mediaSettings,
+  priority = false,
 }: Readonly<ExperienceCardProps>) {
 
   const getDifficultyColor = (diff: string) => {
@@ -236,10 +239,12 @@ export default function ExperienceCard({
           ) : (
             <Image
               src={primaryImage}
-              alt={experience.title}
+              alt={buildTrekAltText(experience.title, experience.location)}
               fill
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               className="object-cover group-hover/card:scale-105 transition-transform duration-700"
+              priority={priority}
+              loading={priority ? undefined : "lazy"}
             />
           )}
         </div>

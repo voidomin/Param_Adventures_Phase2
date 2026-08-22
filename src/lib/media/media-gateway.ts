@@ -112,22 +112,20 @@ export function getMediaUrl(
   }
 
   if ((detectedProvider === 'AWS_S3' || detectedProvider === 'S3') && settings.s3Bucket) {
+    // S3-hosted images are optimized once, client-side, before they're
+    // ever uploaded (see src/lib/image-compression.ts) -- not here at
+    // render/request time. Deliberately no per-request transform for S3.
     return getS3Url(processedPath, settings.s3Bucket, settings.s3Region, settings.cdnUrl);
   }
 
   return processedPath.startsWith('/') ? processedPath : `/${processedPath}`;
 }
 
-function getCloudinaryUrl(
-  path: string,
-  cloudName: string,
+function buildCloudinaryTransforms(
   quality: number,
   isHighFid: boolean,
   options: MediaOptions
-): string {
-  const isVideo = /\.(mp4|webm|ogv|mov)$/i.test(path);
-  const resourceType = isVideo ? 'video' : 'image';
-  const baseUrl = `https://res.cloudinary.com/${cloudName}/${resourceType}/upload`;
+): string[] {
   const transforms: string[] = [];
 
   if (isHighFid && quality >= 95) {
@@ -141,9 +139,24 @@ function getCloudinaryUrl(
   if (options.height) transforms.push(`h_${options.height}`);
   if (options.crop) transforms.push(`c_${options.crop}`);
 
+  return transforms;
+}
+
+function getCloudinaryUrl(
+  path: string,
+  cloudName: string,
+  quality: number,
+  isHighFid: boolean,
+  options: MediaOptions
+): string {
+  const isVideo = /\.(mp4|webm|ogv|mov)$/i.test(path);
+  const resourceType = isVideo ? 'video' : 'image';
+  const baseUrl = `https://res.cloudinary.com/${cloudName}/${resourceType}/upload`;
+  const transforms = buildCloudinaryTransforms(quality, isHighFid, options);
+
   const transformPath = transforms.length > 0 ? transforms.join(',') + '/' : '';
   const cleanPath = path.startsWith('/') ? path.substring(1) : path;
-  
+
   return `${baseUrl}/${transformPath}${cleanPath}`;
 }
 

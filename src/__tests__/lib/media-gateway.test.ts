@@ -75,7 +75,10 @@ describe("Media Gateway Utility Tests", () => {
       const fullAwsUrl = "https://some-old-bucket.s3.amazonaws.com/legacy/trek.jpg";
       const url = getMediaUrl(fullAwsUrl, "CLOUDINARY", settings);
 
-      // Should switch to S3 URL structure using settings bucket
+      // Should switch to S3 URL structure using settings bucket -- S3 URLs
+      // are returned as-is regardless of whether a Cloudinary cloud name
+      // happens to be configured; images are optimized client-side before
+      // upload instead (see src/lib/image-compression.ts), not per-request.
       expect(url).toBe("https://my-bucket.s3.us-west-2.amazonaws.com/legacy/trek.jpg");
     });
   });

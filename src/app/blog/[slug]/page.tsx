@@ -30,6 +30,7 @@ const YoutubeSVG = () => (
 
 import Image from "next/image";
 import ClientTiptapViewer from "@/components/blog/ClientTiptapViewer";
+import { buildBlogAltText } from "@/lib/seo/alt-text";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -166,7 +167,7 @@ export default async function BlogArticlePage({ params }: Props) {
       <div className="relative h-[45vh] min-h-[300px] overflow-hidden">
         <Image
           src={cover}
-          alt={blog.title}
+          alt={buildBlogAltText(blog.title, blog.experience?.location)}
           fill
           priority
           className="object-cover"
@@ -314,9 +315,13 @@ export default async function BlogArticlePage({ params }: Props) {
               <p className="text-xs text-foreground/40 mb-1 font-medium uppercase tracking-wider">
                 About this adventure
               </p>
-              <h3 className="font-bold text-foreground text-lg">
+              {/* Not a heading: this is a small promotional card naming a
+                  linked trek, not a new section of the article's outline --
+                  using h3 here (with no h2 anywhere on the page) jumped
+                  straight from h1 to h3. */}
+              <p className="font-bold text-foreground text-lg">
                 {blog.experience.title}
-              </h3>
+              </p>
               <div className="flex items-center gap-1 text-foreground/50 text-sm mt-1">
                 <MapPin className="w-3 h-3" /> {blog.experience.location}
               </div>

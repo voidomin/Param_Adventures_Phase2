@@ -808,11 +808,12 @@ export default function ExperiencesClient({
             animate="show"
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
           >
-            {filteredExperiences.map((exp: Experience) => (
+            {filteredExperiences.map((exp: Experience, index: number) => (
               <motion.div key={exp.id} variants={itemVariants} className="flex flex-col">
-                <ExperienceCard 
-                  experience={exp} 
-                  mediaSettings={mediaSettings} 
+                <ExperienceCard
+                  experience={exp}
+                  mediaSettings={mediaSettings}
+                  priority={index < 3}
                 />
               </motion.div>
             ))}

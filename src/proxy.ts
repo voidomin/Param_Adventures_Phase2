@@ -22,6 +22,42 @@ function withRequestId(response: NextResponse, requestId: string): NextResponse 
 }
 
 /**
+ * Render (and most PaaS hosts) give every deployment a free default
+ * subdomain (e.g. *.onrender.com) in addition to whatever custom domain is
+ * attached, and never disables it -- left alone, both hosts serve the
+ * identical app forever. That's exactly the duplicate-content indexing bug
+ * an external SEO audit once flagged: the platform default domain getting
+ * crawled and indexed as a second copy of the site. Redirect it
+ * unconditionally so it can never accumulate its own backlinks/index
+ * entries, independent of whether NEXT_PUBLIC_APP_URL/the app_url setting
+ * happen to be configured correctly elsewhere.
+ */
+export function redirectPlatformDefaultDomain(request: NextRequest): NextResponse | null {
+  const host = request.headers.get("host") || "";
+  if (!host.endsWith(".onrender.com")) return null;
+
+  const canonicalUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (!canonicalUrl) return null;
+
+  let canonicalHost: string;
+  try {
+    canonicalHost = new URL(canonicalUrl).host;
+  } catch {
+    return null;
+  }
+
+  // Guard against redirecting to itself if NEXT_PUBLIC_APP_URL is ALSO
+  // misconfigured to an onrender.com URL -- that would just loop.
+  if (canonicalHost.endsWith(".onrender.com")) return null;
+
+  const target = new URL(
+    request.nextUrl.pathname + request.nextUrl.search,
+    `https://${canonicalHost}`,
+  );
+  return NextResponse.redirect(target, 301);
+}
+
+/**
  * CSRF Protection for state-changing requests.
  * Returns a response block (NextResponse) if verification fails, or null if allowed.
  */
@@ -148,6 +184,12 @@ function handleRateLimiting(request: NextRequest, pathname: string): RateLimitRe
 export default async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const method = request.method;
+
+  // ─── Platform default-domain redirect ──────────────────
+  const platformDomainRedirect = redirectPlatformDefaultDomain(request);
+  if (platformDomainRedirect) {
+    return platformDomainRedirect;
+  }
 
   // Reuse an inbound x-request-id if one was already set upstream (e.g. by
   // a CDN/load balancer), otherwise mint one for this request.
