@@ -43,12 +43,14 @@ This guide walks you through deploying Param Adventures to a production or stagi
 
 Create your environment variables in the Render/AWS dashboard. **All variables are required** for full system functionality.
 
+> **`NEXT_PUBLIC_APP_URL` must always be the real custom domain (`https://paramadventures.in`), never the hosting platform's free default subdomain (e.g. Render's `*.onrender.com`).** This value seeds the `app_url` platform setting on first boot, and that setting drives `sitemap.xml`, `robots.txt`, and every page's canonical/Open Graph URL — if it's ever set to the onrender.com URL, the site starts telling search engines that URL is canonical, which causes real duplicate-content indexing. The seed only runs once, so if this was ever set wrong, fix it via **Admin → Settings → System → App URL** (not just the env var) after correcting it here.
+
 ```bash
 # ══════════════════════════════════════════
 # CORE & DATABASE
 # ══════════════════════════════════════════
 DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/db_name?sslmode=require"
-NEXT_PUBLIC_APP_URL="https://your-app.onrender.com"
+NEXT_PUBLIC_APP_URL="https://paramadventures.in"
 NODE_ENV="production"
 
 # ══════════════════════════════════════════
@@ -115,6 +117,7 @@ Render is used for current UAT and Staging environments.
 4. **Start Command**: `npm start` (from `render.yaml`).
 5. **Environment Variables**: Add all variables from the list above — these are secrets and are intentionally *not* in `render.yaml`.
 6. **Health Check Path**: `/api/health` (from `render.yaml`).
+7. **Custom Domain**: once you attach `paramadventures.in` as a custom domain in the Render dashboard, the app's default `*.onrender.com` URL keeps working and keeps serving the exact same app — Render does not disable or redirect it for you. The middleware redirects any request to `*.onrender.com` to the custom domain (see `src/proxy.ts`), but that only helps if `NEXT_PUBLIC_APP_URL`/the `app_url` setting is also correct (see the callout above) — otherwise the site's own canonical tags and sitemap will still point at the onrender.com host.
 
 ---
 
