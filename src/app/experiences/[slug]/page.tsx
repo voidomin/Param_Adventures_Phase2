@@ -42,8 +42,50 @@ import DifficultyMeter, { type DifficultyLevel } from "@/components/experiences/
 import RichTextRenderer from "@/components/blog/RichTextRenderer";
 import ShareButton from "@/components/ui/ShareButton";
 import type { RichTextNode } from "@/lib/utils/rich-text";
+import { buildTrekAltText } from "@/lib/seo/alt-text";
 
 export const revalidate = 60;
+
+/**
+ * Builds a meta description that always leads with the facts a searcher
+ * is actually deciding on (duration, difficulty, starting price) before
+ * falling back to an excerpt of the trek's own body copy if there's room
+ * left within a search-snippet-friendly length. Previously this page used
+ * the trek's body text (or a generic fallback) verbatim, so search results
+ * never surfaced duration/difficulty/price consistently across trips.
+ */
+function buildTrekMetaDescription(experience: {
+  title: string;
+  location: string | null;
+  durationDays: number | null;
+  difficulty: string | null;
+  basePrice: unknown;
+  bodyText: string;
+}): string {
+  const facts: string[] = [];
+  if (experience.durationDays) {
+    facts.push(`${experience.durationDays}-day`);
+  }
+  if (experience.difficulty) {
+    facts.push(`${experience.difficulty.toLowerCase()} difficulty`);
+  }
+  const factClause = facts.length > 0 ? ` (${facts.join(", ")})` : "";
+  const locationClause = experience.location ? ` in ${experience.location}` : "";
+
+  const price = Number(experience.basePrice);
+  const priceClause = price > 0 ? ` Starting from Rs ${price.toLocaleString("en-IN")}.` : "";
+
+  const summary = `${experience.title}${factClause}${locationClause} with Param Adventures.${priceClause}`;
+
+  const remaining = 155 - summary.length;
+  if (!experience.bodyText || remaining < 20) {
+    return summary;
+  }
+
+  const excerpt = experience.bodyText.slice(0, remaining).trim();
+  const truncated = excerpt.length < experience.bodyText.trim().length;
+  return `${summary} ${excerpt}${truncated ? "…" : ""}`;
+}
 
 export async function generateMetadata({
   params,
@@ -64,6 +106,9 @@ export async function generateMetadata({
           location: true,
           status: true,
           deletedAt: true,
+          durationDays: true,
+          difficulty: true,
+          basePrice: true,
         },
       }),
     null,
@@ -79,14 +124,19 @@ export async function generateMetadata({
     experience.images?.[0] ||
     "/param-logo.png";
 
-  const description =
+  const bodyText =
     experience.description && typeof experience.description === "object"
       ? getPlainTextFromJSON(experience.description as RichTextNode)
       : String(experience.description || "");
 
-  const finalDescription =
-    description ||
-    `Explore ${experience.title} in ${experience.location || "India"} with Param Adventures.`;
+  const finalDescription = buildTrekMetaDescription({
+    title: experience.title,
+    location: experience.location,
+    durationDays: experience.durationDays,
+    difficulty: experience.difficulty,
+    basePrice: experience.basePrice,
+    bodyText,
+  });
 
   return {
     title: experience.title,
@@ -104,7 +154,7 @@ export async function generateMetadata({
     openGraph: {
       title: experience.title,
       description: finalDescription,
-      images: [{ url: ogImage, alt: experience.title }],
+      images: [{ url: ogImage, alt: buildTrekAltText(experience.title, experience.location) }],
       type: "website",
       siteName: "Param Adventures",
     },
@@ -264,23 +314,43 @@ const iconMap: Record<string, LucideIcon> = {
   Shield,
 };
 
+interface UpcomingSlot {
+  date: Date | string;
+  remainingCapacity: number;
+}
+
 type ExperienceJsonLdProps = {
   experience: ExperienceWithInclusions;
   url: string;
   description: string;
+  upcomingSlots: UpcomingSlot[];
 };
 
+/**
+ * A single Product schema was the only structured data on trek pages --
+ * the audit's "Missing/Basic" schema finding. Adds, in the same JSON-LD
+ * block via @graph:
+ * - FAQPage, from the FAQs that already render on the page (exp.faqs) --
+ *   they existed with zero markup before this.
+ * - One Event per upcoming departure date, so search engines can surface
+ *   actual bookable dates (Google Rich Results supports Event directly;
+ *   there's no equivalent official support for a "TouristTrip" type, so
+ *   Product + Event covers the same intent through types Google actually
+ *   recognizes).
+ */
 function ExperienceJsonLd({
   experience,
   url,
   description,
+  upcomingSlots,
 }: Readonly<ExperienceJsonLdProps>) {
-  const jsonLd = {
-    "@context": "https://schema.org",
+  const image = experience.coverImage || experience.images[0];
+
+  const product = {
     "@type": "Product",
     name: experience.title,
     description: description,
-    image: experience.coverImage || experience.images[0],
+    image,
     offers: {
       "@type": "Offer",
       price: experience.basePrice,
@@ -296,6 +366,63 @@ function ExperienceJsonLd({
       "@type": "Place",
       name: experience.location,
     },
+  };
+
+  const faqPage =
+    Array.isArray(experience.faqs) && experience.faqs.length > 0
+      ? {
+          "@type": "FAQPage",
+          mainEntity: experience.faqs.map((faq) => ({
+            "@type": "Question",
+            name: faq.question,
+            acceptedAnswer: {
+              "@type": "Answer",
+              text: faq.answer,
+            },
+          })),
+        }
+      : null;
+
+  const events = upcomingSlots.map((slot) => {
+    const startDate = new Date(slot.date);
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + Math.max(0, experience.durationDays - 1));
+
+    return {
+      "@type": "Event",
+      name: experience.title,
+      description,
+      image,
+      startDate: startDate.toISOString(),
+      endDate: endDate.toISOString(),
+      eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+      eventStatus: "https://schema.org/EventScheduled",
+      location: {
+        "@type": "Place",
+        name: experience.location,
+        address: experience.location,
+      },
+      organizer: {
+        "@type": "Organization",
+        name: "Param Adventures",
+        url: process.env.NEXT_PUBLIC_APP_URL || undefined,
+      },
+      offers: {
+        "@type": "Offer",
+        price: experience.basePrice,
+        priceCurrency: "INR",
+        availability:
+          slot.remainingCapacity > 0
+            ? "https://schema.org/InStock"
+            : "https://schema.org/SoldOut",
+        url,
+      },
+    };
+  });
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [product, faqPage, ...events].filter(Boolean),
   };
 
   return (
@@ -592,9 +719,12 @@ function InclusionsExclusions({
     >
       {hasInclusions && (
         <div className="bg-green-500/5 border border-green-500/20 rounded-3xl p-8">
-          <h3 className="text-2xl font-bold mb-6 flex items-center gap-2 text-green-500/90">
+          {/* h2, not h3: this section sits between two other h2-level
+              sections (Itinerary, Things to Carry) with no parent heading
+              of its own -- it's a top-level topic, not a subsection. */}
+          <h2 className="text-2xl font-bold mb-6 flex items-center gap-2 text-green-500/90">
             <Check className="w-6 h-6" /> What&apos;s Included
-          </h3>
+          </h2>
           <ul className="space-y-4">
             {inclusions.map((item: string) => (
               <li
@@ -610,9 +740,9 @@ function InclusionsExclusions({
       )}
       {hasExclusions && (
         <div className="bg-red-500/5 border border-red-500/20 rounded-3xl p-8">
-          <h3 className="text-2xl font-bold mb-6 flex items-center gap-2 text-red-500/90">
+          <h2 className="text-2xl font-bold mb-6 flex items-center gap-2 text-red-500/90">
             <X className="w-6 h-6" /> What&apos;s Not Included
-          </h3>
+          </h2>
           <ul className="space-y-4">
             {exclusions.map((item: string) => (
               <li
@@ -853,6 +983,7 @@ export default async function ExperienceDetailPage({
         experience={exp}
         url={`${process.env.NEXT_PUBLIC_APP_URL || ""}/experiences/${slug}`}
         description={finalDescription}
+        upcomingSlots={experience.slots}
       />
       {/* Hero Section */}
       <section className="relative aspect-[16/9] md:aspect-auto md:h-[75vh] lg:h-[80vh] w-full mt-0 overflow-hidden">
@@ -890,7 +1021,7 @@ export default async function ExperienceDetailPage({
               {/* Main crisp contained image (no cropping on mobile, fills container on PC) */}
               <Image
                 src={heroMediaUrl}
-                alt={exp.title}
+                alt={buildTrekAltText(exp.title, exp.location)}
                 fill
                 priority
                 sizes="100vw"
@@ -922,9 +1053,14 @@ export default async function ExperienceDetailPage({
           <div className="h-4 md:h-8 lg:h-12 shrink-0" />
 
           <div className="hidden md:flex flex-1 flex-col justify-end pb-12">
-            <h1 className="text-4xl md:text-5xl lg:text-7xl font-heading font-black text-white leading-tight drop-shadow-2xl max-w-4xl">
+            {/* Demoted from h1: the mobile title block below is the page's
+                one true <h1> -- a page must not render two h1 elements in
+                the raw markup, even when only one is ever visible at a
+                given breakpoint (display:none doesn't remove it from the
+                markup a crawler parses). Visually identical either way. */}
+            <p className="text-4xl md:text-5xl lg:text-7xl font-heading font-black text-white leading-tight drop-shadow-2xl max-w-4xl">
               {exp.title}
-            </h1>
+            </p>
             <div className="flex flex-wrap items-center gap-6 mt-6 text-white font-medium text-lg drop-shadow-md">
               <div className="flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-primary" /> {exp.location}
@@ -1118,6 +1254,7 @@ export default async function ExperienceDetailPage({
                 images={exp.images}
                 mediaSettings={mediaSettings}
                 experienceTitle={exp.title}
+                location={exp.location}
               />
             </section>
           )}

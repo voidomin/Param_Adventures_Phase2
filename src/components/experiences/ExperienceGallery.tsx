@@ -5,18 +5,21 @@ import { X, ChevronLeft, ChevronRight, Maximize2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { getMediaUrl } from "@/lib/media/media-gateway";
+import { buildTrekAltText } from "@/lib/seo/alt-text";
 import type { MediaSettings } from "@/types/media";
 
 interface ExperienceGalleryProps {
   readonly images: string[];
   readonly mediaSettings: MediaSettings;
   readonly experienceTitle: string;
+  readonly location?: string | null;
 }
 
 export default function ExperienceGallery({
   images,
   mediaSettings,
   experienceTitle,
+  location,
 }: ExperienceGalleryProps) {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -141,7 +144,7 @@ export default function ExperienceGallery({
               ) : (
                 <Image
                   src={thumbnailUrl}
-                  alt={`${experienceTitle} - photo ${index + 1}`}
+                  alt={buildTrekAltText(experienceTitle, location, `photo ${index + 1}`)}
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                   loading="lazy"
                   fill
@@ -257,7 +260,7 @@ export default function ExperienceGallery({
                     <div className="relative w-full h-[80vh]">
                       <Image
                         src={fullUrl}
-                        alt={`${experienceTitle} - photo ${selectedIndex + 1} (full size)`}
+                        alt={buildTrekAltText(experienceTitle, location, `photo ${selectedIndex + 1}, full size`)}
                         fill
                         sizes="100vw"
                         className="object-contain"
