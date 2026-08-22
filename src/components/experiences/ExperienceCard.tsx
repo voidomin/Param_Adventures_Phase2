@@ -46,6 +46,7 @@ interface ExperienceCardProps {
     }[];
   };
   mediaSettings?: MediaSettings;
+  priority?: boolean;
 }
 
 function FlippingDatePill({
@@ -114,6 +115,7 @@ function FlippingDatePill({
 export default function ExperienceCard({
   experience,
   mediaSettings,
+  priority = false,
 }: Readonly<ExperienceCardProps>) {
 
   const getDifficultyColor = (diff: string) => {
@@ -240,6 +242,8 @@ export default function ExperienceCard({
               fill
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               className="object-cover group-hover/card:scale-105 transition-transform duration-700"
+              priority={priority}
+              loading={priority ? undefined : "lazy"}
             />
           )}
         </div>

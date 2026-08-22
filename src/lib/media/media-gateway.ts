@@ -112,22 +112,34 @@ export function getMediaUrl(
   }
 
   if ((detectedProvider === 'AWS_S3' || detectedProvider === 'S3') && settings.s3Bucket) {
-    return getS3Url(processedPath, settings.s3Bucket, settings.s3Region, settings.cdnUrl);
+    const rawUrl = getS3Url(processedPath, settings.s3Bucket, settings.s3Region, settings.cdnUrl);
+
+    // next.config.ts sets images.unoptimized: true (deliberately, so Next
+    // doesn't re-process already-transformed Cloudinary URLs) -- but that
+    // leaves S3-hosted originals with zero optimization anywhere. Rather
+    // than paying for on-demand server-side resizing on our own Render
+    // instance, reuse the Cloudinary account we already have via its
+    // "fetch" delivery type: Cloudinary fetches the S3 original once,
+    // transforms and caches it on ITS CDN, and every later request for the
+    // same size/format is served straight from that cache -- no Render CPU
+    // involved, ever. Only image files: this same gateway also serves PDFs
+    // (invoices, itineraries) and videos, neither of which should be
+    // rewritten into an image transform URL.
+    const isImage = /\.(jpe?g|png|webp|avif|gif|bmp|tiff?)$/i.test(rawUrl);
+    if (settings.cloudinaryCloudName && isImage) {
+      return getCloudinaryFetchUrl(rawUrl, settings.cloudinaryCloudName, quality, isHighFid, options);
+    }
+    return rawUrl;
   }
 
   return processedPath.startsWith('/') ? processedPath : `/${processedPath}`;
 }
 
-function getCloudinaryUrl(
-  path: string,
-  cloudName: string,
+function buildCloudinaryTransforms(
   quality: number,
   isHighFid: boolean,
   options: MediaOptions
-): string {
-  const isVideo = /\.(mp4|webm|ogv|mov)$/i.test(path);
-  const resourceType = isVideo ? 'video' : 'image';
-  const baseUrl = `https://res.cloudinary.com/${cloudName}/${resourceType}/upload`;
+): string[] {
   const transforms: string[] = [];
 
   if (isHighFid && quality >= 95) {
@@ -141,10 +153,45 @@ function getCloudinaryUrl(
   if (options.height) transforms.push(`h_${options.height}`);
   if (options.crop) transforms.push(`c_${options.crop}`);
 
+  return transforms;
+}
+
+function getCloudinaryUrl(
+  path: string,
+  cloudName: string,
+  quality: number,
+  isHighFid: boolean,
+  options: MediaOptions
+): string {
+  const isVideo = /\.(mp4|webm|ogv|mov)$/i.test(path);
+  const resourceType = isVideo ? 'video' : 'image';
+  const baseUrl = `https://res.cloudinary.com/${cloudName}/${resourceType}/upload`;
+  const transforms = buildCloudinaryTransforms(quality, isHighFid, options);
+
   const transformPath = transforms.length > 0 ? transforms.join(',') + '/' : '';
   const cleanPath = path.startsWith('/') ? path.substring(1) : path;
-  
+
   return `${baseUrl}/${transformPath}${cleanPath}`;
+}
+
+/**
+ * Wraps an already-public, fully-qualified image URL (e.g. an S3 object
+ * URL) in Cloudinary's "fetch" delivery type, so Cloudinary -- not our own
+ * server -- does the actual resize/format conversion and CDN caching.
+ * Requires "fetch" to be enabled for the Cloudinary account (on by
+ * default; check Settings -> Security -> Allowed fetch domains if it
+ * 401s, and allowlist the S3/CDN host there).
+ */
+function getCloudinaryFetchUrl(
+  remoteUrl: string,
+  cloudName: string,
+  quality: number,
+  isHighFid: boolean,
+  options: MediaOptions
+): string {
+  const transforms = buildCloudinaryTransforms(quality, isHighFid, options);
+  const transformPath = transforms.length > 0 ? transforms.join(',') + '/' : '';
+  return `https://res.cloudinary.com/${cloudName}/image/fetch/${transformPath}${encodeURIComponent(remoteUrl)}`;
 }
 
 function getS3Url(path: string, bucket: string, region: string = 'ap-south-1', cdnUrl?: string): string {
