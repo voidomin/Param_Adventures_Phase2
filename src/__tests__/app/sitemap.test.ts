@@ -54,4 +54,26 @@ describe("app/sitemap", () => {
       select: { slug: true, updatedAt: true },
     });
   });
+
+  it("includes one author page per distinct non-official author of a published post", async () => {
+    mockExperienceFindMany.mockResolvedValue([] as any);
+    mockBlogFindMany
+      .mockResolvedValueOnce([{ slug: "winter-treks", updatedAt: new Date("2026-01-02") }] as any)
+      .mockResolvedValueOnce([{ authorId: "author-1" }, { authorId: "author-2" }] as any);
+
+    const result = await sitemap();
+
+    expect(result.some((entry) => entry.url.endsWith("/authors/author-1"))).toBe(true);
+    expect(result.some((entry) => entry.url.endsWith("/authors/author-2"))).toBe(true);
+
+    expect(mockBlogFindMany).toHaveBeenLastCalledWith({
+      where: {
+        status: "PUBLISHED",
+        deletedAt: null,
+        author: { role: { name: { notIn: ["ADMIN", "SUPER_ADMIN", "MEDIA_UPLOADER"] } } },
+      },
+      select: { authorId: true },
+      distinct: ["authorId"],
+    });
+  });
 });

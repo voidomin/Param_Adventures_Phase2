@@ -17,6 +17,7 @@ import {
   Download,
   Trash2,
   X,
+  PenLine,
 } from "lucide-react";
 
 const COUNTRY_CODES = [
@@ -61,6 +62,7 @@ export default function SettingsPage() {
   const [gender, setGender] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState<string>("");
   const [bloodGroup, setBloodGroup] = useState("");
+  const [bio, setBio] = useState("");
 
   // Emergency Contact State
   const [ecName, setEcName] = useState("");
@@ -112,6 +114,7 @@ export default function SettingsPage() {
       setGender(user.gender || "");
       setDateOfBirth(user.dateOfBirth || "");
       setBloodGroup(user.bloodGroup || "");
+      setBio(user.bio || "");
       setEcName(user.emergencyContactName || "");
 
       const { code: ecc, number: ecn } = parsePhoneNumber(
@@ -184,6 +187,7 @@ export default function SettingsPage() {
             ? `${ecCountryCode} ${ecPhone.trim()}`
             : null,
           emergencyRelationship: ecRelationship,
+          bio,
         }),
       });
 
@@ -441,6 +445,43 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Author Bio Section */}
+            <div className="bg-card rounded-3xl border border-border p-8 shadow-sm">
+              <div className="flex items-center gap-3 mb-8">
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                  <PenLine className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold font-heading">
+                    Author Bio
+                  </h2>
+                  <p className="text-xs text-foreground/40 mt-0.5">
+                    Optional. Shown on your public author page if you write
+                    for the Param Adventures blog.
+                  </p>
+                </div>
+              </div>
+
+              <label
+                htmlFor="bio"
+                className="block text-sm font-bold text-foreground mb-2"
+              >
+                Bio
+              </label>
+              <textarea
+                id="bio"
+                value={bio}
+                onChange={(e) => setBio(e.target.value.slice(0, 500))}
+                maxLength={500}
+                rows={4}
+                placeholder="A couple of sentences about your trekking experience, favourite routes, or what draws you to the mountains."
+                className="w-full px-4 py-3 bg-background border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm resize-none"
+              />
+              <p className="text-xs text-foreground/40 mt-1.5 text-right">
+                {bio.length}/500
+              </p>
             </div>
 
             {/* Health & Safety Section */}

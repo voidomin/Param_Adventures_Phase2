@@ -86,7 +86,7 @@ export default async function RootLayout({
   const supportPhone = getSiteVal("support_phone", "+91 98765 43210");
   const siteTitle = getSiteVal("site_title", "Param Adventures");
 
-  const officeAddress = getSiteVal("office_address", "Kullu, Himachal Pradesh,\nIndia 175131");
+  const officeAddress = getSiteVal("office_address", "Bengaluru, Karnataka,\nIndia");
   const companyName = getPlatformVal("companyName", "");
   const gstNumber = getPlatformVal("gstNumber", "");
 

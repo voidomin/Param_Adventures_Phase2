@@ -206,7 +206,7 @@ export default function Footer({ supportEmail, supportPhone, officeAddress, site
               <li className="flex items-start gap-3">
                 <MapPin className="w-5 h-5 text-primary shrink-0" />
                 <span className="whitespace-pre-line">
-                  {officeAddress || "Kullu, Himachal Pradesh,\nIndia 175131"}
+                  {officeAddress || "Bengaluru, Karnataka,\nIndia"}
                 </span>
               </li>
               <li className="flex items-center gap-3">

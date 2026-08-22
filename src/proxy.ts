@@ -232,6 +232,7 @@ export default async function proxy(request: NextRequest) {
     "/api/experiences",
     "/api/blog",
     "/blog",
+    "/authors",
     "/our-story",
     "/api/admin/bootstrap",
     "/api/admin/bookings/cleanup",

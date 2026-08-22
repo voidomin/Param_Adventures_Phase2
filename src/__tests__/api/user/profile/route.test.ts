@@ -150,6 +150,45 @@ describe("PATCH /api/user/profile", () => {
     );
   });
 
+  it("trims and saves a provided bio", async () => {
+    setCookieToken("ok");
+    mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+    mockUserUpdate.mockResolvedValue({ id: "u1" } as any);
+
+    const response = await PATCH(
+      createRequest({ ...validBody, bio: "  Loves high-altitude treks.  " }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockUserUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ bio: "Loves high-altitude treks." }),
+      }),
+    );
+  });
+
+  it("saves a null bio when omitted", async () => {
+    setCookieToken("ok");
+    mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+    mockUserUpdate.mockResolvedValue({ id: "u1" } as any);
+
+    const response = await PATCH(createRequest(validBody));
+
+    expect(response.status).toBe(200);
+    expect(mockUserUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ bio: null }) }),
+    );
+  });
+
+  it("returns 400 when bio exceeds 500 characters", async () => {
+    setCookieToken("ok");
+    mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+
+    const response = await PATCH(createRequest({ ...validBody, bio: "a".repeat(501) }));
+
+    expect(response.status).toBe(400);
+  });
+
   it("returns 500 on unexpected error", async () => {
     setCookieToken("ok");
     mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);

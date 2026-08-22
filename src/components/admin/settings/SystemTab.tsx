@@ -139,7 +139,7 @@ export default function SystemTab(props: Readonly<TabProps>) {
             label="Office Address"
             value={getVal("SITE", "office_address")}
             onChange={(v: string) => updateSetting("SITE", "office_address", v)}
-            placeholder="123 Mountain View, Kullu, HP, India"
+            placeholder="123 Example Road, Bengaluru, Karnataka, India"
           />
         </div>
       </div>

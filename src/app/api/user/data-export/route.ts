@@ -36,6 +36,7 @@ export async function GET() {
         emergencyContactName: true,
         emergencyContactNumber: true,
         emergencyRelationship: true,
+        bio: true,
         createdAt: true,
         role: { select: { name: true } },
       },

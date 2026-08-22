@@ -31,6 +31,7 @@ const profileSchema = z.object({
   emergencyContactName: z.string().optional().nullable(),
   emergencyContactNumber: z.string().optional().nullable(),
   emergencyRelationship: z.string().optional().nullable(),
+  bio: z.string().max(500, "Bio must be 500 characters or fewer").optional().nullable(),
 });
 
 export async function PATCH(request: Request) {
@@ -67,6 +68,7 @@ export async function PATCH(request: Request) {
       emergencyContactName,
       emergencyContactNumber,
       emergencyRelationship,
+      bio,
     } = parseResult.data;
 
     if (emergencyContactNumber?.trim() === phoneNumber.trim()) {
@@ -89,6 +91,7 @@ export async function PATCH(request: Request) {
         emergencyContactName: emergencyContactName || null,
         emergencyContactNumber: emergencyContactNumber || null,
         emergencyRelationship: emergencyRelationship || null,
+        bio: bio?.trim() || null,
       },
       select: {
         id: true,
@@ -103,6 +106,7 @@ export async function PATCH(request: Request) {
         emergencyContactName: true,
         emergencyContactNumber: true,
         emergencyRelationship: true,
+        bio: true,
         role: true,
       },
     });

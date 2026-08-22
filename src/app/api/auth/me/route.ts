@@ -70,6 +70,7 @@ export async function GET(request: NextRequest) {
         emergencyContactName: user.emergencyContactName,
         emergencyContactNumber: user.emergencyContactNumber,
         emergencyRelationship: user.emergencyRelationship,
+        bio: user.bio,
         isVerified: user.isVerified,
         twoFactorEnabled: user.twoFactorEnabled,
         role: user.role.name,

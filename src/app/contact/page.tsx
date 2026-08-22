@@ -16,7 +16,7 @@ export default async function ContactPage() {
 
   const supportEmail = getSiteVal("support_email", "info@paramadventures.in");
   const supportPhone = getSiteVal("support_phone", "+91 98765 43210");
-  const officeAddress = getSiteVal("office_address", "Kullu, Himachal Pradesh,\nIndia 175131");
+  const officeAddress = getSiteVal("office_address", "Bengaluru, Karnataka,\nIndia");
 
   return (
     <div className="min-h-screen bg-background">
