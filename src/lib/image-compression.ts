@@ -22,7 +22,15 @@ export async function compressImageFile(
   file: File | Blob,
   options: { maxDimension?: number; quality?: number } = {}
 ): Promise<File | Blob> {
-  const { maxDimension = 2000, quality = 0.82 } = options;
+  // Hero and trip-detail images render full-width (sizes="100vw"); on a
+  // large, high-density display the browser wants more than a modest cap
+  // to still look crisp. 2560px + 90% quality keeps virtually all of the
+  // original's visual detail (WebP at this quality is not distinguishable
+  // from the source for photography) while still cutting file size
+  // dramatically versus a full-resolution phone/camera original --
+  // photography quality matters too much for this business to trade it
+  // for a marginally smaller file.
+  const { maxDimension = 2560, quality = 0.9 } = options;
 
   if (file.type === "image/gif" || !file.type.startsWith("image/")) {
     return file;
