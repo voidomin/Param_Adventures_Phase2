@@ -54,6 +54,7 @@ model User {
   emergencyContactNumber String?
   emergencyRelationship  String?
   gender                 String?
+  bio                    String?            @db.VarChar(500)
   resetToken             String?
   resetTokenExpiry       DateTime?
   tokenVersion           Int                @default(0)

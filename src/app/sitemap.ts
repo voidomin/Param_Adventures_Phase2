@@ -79,5 +79,29 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }));
 
-  return [...staticPages, ...experiencePages, ...blogPages];
+  // Community author bio pages. Official/staff bylines (ADMIN, SUPER_ADMIN,
+  // MEDIA_UPLOADER) render as the "Param Adventures" brand identity, not a
+  // linked person -- excluded here to match that, same as the blog byline
+  // itself only links out for non-official authors.
+  const authorIds = await withBuildSafety(
+    () =>
+      prisma.blog.findMany({
+        where: {
+          status: "PUBLISHED",
+          deletedAt: null,
+          author: { role: { name: { notIn: ["ADMIN", "SUPER_ADMIN", "MEDIA_UPLOADER"] } } },
+        },
+        select: { authorId: true },
+        distinct: ["authorId"],
+      }),
+    [],
+  );
+
+  const authorPages: MetadataRoute.Sitemap = authorIds.map(({ authorId }) => ({
+    url: `${BASE_URL}/authors/${authorId}`,
+    changeFrequency: "monthly" as const,
+    priority: 0.4,
+  }));
+
+  return [...staticPages, ...experiencePages, ...blogPages, ...authorPages];
 }

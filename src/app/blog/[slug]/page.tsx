@@ -105,6 +105,7 @@ export default async function BlogArticlePage({ params }: Props) {
         include: {
           author: {
             select: {
+              id: true,
               name: true,
               avatarUrl: true,
               role: { select: { name: true } },
@@ -201,10 +202,12 @@ export default async function BlogArticlePage({ params }: Props) {
             theme === "MINIMAL" && "border-none mb-4 pb-0 items-start flex-col",
           )}
         >
-          {/* Author */}
+          {/* Author -- links to the author's public bio page for
+              community contributors; the "Param Adventures" brand byline
+              on official posts isn't a person, so it stays plain text. */}
           <div className="flex items-center gap-3">
-            <div className="relative w-10 h-10 rounded-full overflow-hidden bg-primary/20 flex items-center justify-center text-primary font-bold shadow-inner">
-              {authorAvatar ? (
+            {(() => {
+              const avatarInner = authorAvatar ? (
                 <Image
                   src={authorAvatar}
                   alt={authorName}
@@ -213,12 +216,33 @@ export default async function BlogArticlePage({ params }: Props) {
                 />
               ) : (
                 authorName.charAt(0).toUpperCase()
-              )}
-            </div>
+              );
+              return isOfficial ? (
+                <div className="relative w-10 h-10 rounded-full overflow-hidden bg-primary/20 flex items-center justify-center text-primary font-bold shadow-inner">
+                  {avatarInner}
+                </div>
+              ) : (
+                <Link
+                  href={`/authors/${blog.author.id}`}
+                  className="relative w-10 h-10 rounded-full overflow-hidden bg-primary/20 flex items-center justify-center text-primary font-bold shadow-inner hover:ring-2 hover:ring-primary/40 transition-all"
+                >
+                  {avatarInner}
+                </Link>
+              );
+            })()}
             <div>
-              <p className="font-semibold text-foreground text-sm">
-                {authorName}
-              </p>
+              {isOfficial ? (
+                <p className="font-semibold text-foreground text-sm">
+                  {authorName}
+                </p>
+              ) : (
+                <Link
+                  href={`/authors/${blog.author.id}`}
+                  className="font-semibold text-foreground text-sm hover:text-primary transition-colors"
+                >
+                  {authorName}
+                </Link>
+              )}
               {!isOfficial && (socials.instagram || socials.twitter || socials.youtube) && (
                 <div className="flex items-center gap-3 mt-1">
                   {socials.instagram && (
