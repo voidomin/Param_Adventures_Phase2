@@ -73,36 +73,13 @@ describe("Media Gateway Utility Tests", () => {
 
     it("should auto-detect S3 provider from an AWS s3 URL", () => {
       const fullAwsUrl = "https://some-old-bucket.s3.amazonaws.com/legacy/trek.jpg";
-      const settingsWithoutCloudinary = { ...settings, cloudinaryCloudName: undefined };
-      const url = getMediaUrl(fullAwsUrl, "CLOUDINARY", settingsWithoutCloudinary);
+      const url = getMediaUrl(fullAwsUrl, "CLOUDINARY", settings);
 
-      // Should switch to S3 URL structure using settings bucket
+      // Should switch to S3 URL structure using settings bucket -- S3 URLs
+      // are returned as-is regardless of whether a Cloudinary cloud name
+      // happens to be configured; images are optimized client-side before
+      // upload instead (see src/lib/image-compression.ts), not per-request.
       expect(url).toBe("https://my-bucket.s3.us-west-2.amazonaws.com/legacy/trek.jpg");
-    });
-
-    it("should route an S3-hosted image through Cloudinary's fetch delivery when a cloud name is configured", () => {
-      const fullAwsUrl = "https://some-old-bucket.s3.amazonaws.com/legacy/trek.jpg";
-      const url = getMediaUrl(fullAwsUrl, "CLOUDINARY", settings, { width: 800 });
-
-      expect(url).toBe(
-        `https://res.cloudinary.com/my-cloud/image/fetch/q_80,f_auto,w_800/${encodeURIComponent(
-          "https://my-bucket.s3.us-west-2.amazonaws.com/legacy/trek.jpg",
-        )}`,
-      );
-    });
-
-    it("should not route S3-hosted PDFs through Cloudinary's image fetch delivery", () => {
-      const path = "uploads/invoice.pdf";
-      const url = getMediaUrl(path, "AWS_S3", settings);
-
-      expect(url).toBe("https://my-bucket.s3.us-west-2.amazonaws.com/uploads/invoice.pdf");
-    });
-
-    it("should not route S3-hosted videos through Cloudinary's image fetch delivery", () => {
-      const path = "videos/trek_highlights.mp4";
-      const url = getMediaUrl(path, "AWS_S3", settings);
-
-      expect(url).toBe("https://my-bucket.s3.us-west-2.amazonaws.com/videos/trek_highlights.mp4");
     });
   });
 

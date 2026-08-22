@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { UploadCloud, Loader2 } from "lucide-react";
 import ImageCropper from "./ImageCropper";
+import { compressImageFile } from "@/lib/image-compression";
 
 const EXTENSION_MIME_TYPES: Record<string, string> = {
   mp4: "video/mp4",
@@ -277,10 +278,17 @@ async function uploadSingleFile(
     throw new Error("Only images and videos are supported.");
   }
 
-  // 1. Compute file hash for deduplication
-  const fileHash = await computeFileHash(file);
+  // 1. Downscale/re-encode images client-side before they ever leave the
+  // browser -- new uploads land in S3 already optimized (see
+  // src/lib/image-compression.ts), at zero cost on our own server. Videos
+  // are left untouched.
+  const uploadFile = isImage ? await compressImageFile(file) : file;
 
-  // 2. Check duplicate
+  // 2. Compute file hash for deduplication (of the file we're actually
+  // going to upload, so dedup matches what ends up in S3)
+  const fileHash = await computeFileHash(uploadFile);
+
+  // 3. Check duplicate
   const duplicateUrl = await checkDuplicate(apiPrefix, fileHash);
   if (duplicateUrl) {
     onProgress?.(100);
@@ -288,11 +296,11 @@ async function uploadSingleFile(
     return duplicateUrl;
   }
 
-  // 3. Normal upload flow (no duplicate found)
-  const uploadedUrl = await executeDirectUpload(file, apiPrefix, onProgress);
+  // 4. Normal upload flow (no duplicate found)
+  const uploadedUrl = await executeDirectUpload(uploadFile, apiPrefix, onProgress);
   onProgress?.(100);
 
-  // 4. Register with hash so future uploads can be deduped
+  // 5. Register with hash so future uploads can be deduped
   await registerUploadedFile(apiPrefix, uploadedUrl, isVideo, fileHash);
 
   return uploadedUrl;
