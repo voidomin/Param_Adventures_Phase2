@@ -30,6 +30,7 @@ interface User {
   emergencyContactNumber?: string | null;
   emergencyRelationship?: string | null;
   bio?: string | null;
+  certifications?: string[];
   isVerified: boolean;
   twoFactorEnabled: boolean;
   permissions: string[];

@@ -71,6 +71,7 @@ export async function GET(request: NextRequest) {
         emergencyContactNumber: user.emergencyContactNumber,
         emergencyRelationship: user.emergencyRelationship,
         bio: user.bio,
+        certifications: user.certifications,
         isVerified: user.isVerified,
         twoFactorEnabled: user.twoFactorEnabled,
         role: user.role.name,

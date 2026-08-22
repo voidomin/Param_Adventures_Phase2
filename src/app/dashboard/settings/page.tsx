@@ -63,6 +63,8 @@ export default function SettingsPage() {
   const [dateOfBirth, setDateOfBirth] = useState<string>("");
   const [bloodGroup, setBloodGroup] = useState("");
   const [bio, setBio] = useState("");
+  const [certifications, setCertifications] = useState<string[]>([]);
+  const [newCertification, setNewCertification] = useState("");
 
   // Emergency Contact State
   const [ecName, setEcName] = useState("");
@@ -115,6 +117,7 @@ export default function SettingsPage() {
       setDateOfBirth(user.dateOfBirth || "");
       setBloodGroup(user.bloodGroup || "");
       setBio(user.bio || "");
+      setCertifications(user.certifications || []);
       setEcName(user.emergencyContactName || "");
 
       const { code: ecc, number: ecn } = parsePhoneNumber(
@@ -188,6 +191,7 @@ export default function SettingsPage() {
             : null,
           emergencyRelationship: ecRelationship,
           bio,
+          certifications,
         }),
       });
 
@@ -482,6 +486,81 @@ export default function SettingsPage() {
               <p className="text-xs text-foreground/40 mt-1.5 text-right">
                 {bio.length}/500
               </p>
+
+              <div className="mt-6 pt-6 border-t border-border/50">
+                <label
+                  htmlFor="newCertification"
+                  className="block text-sm font-bold text-foreground mb-2"
+                >
+                  Certifications
+                </label>
+                <p className="text-xs text-foreground/40 mb-3">
+                  Guide/first-aid/mountaineering certifications, e.g. &quot;IMF
+                  Basic Mountaineering Course&quot; or &quot;Wilderness First
+                  Responder&quot;.
+                </p>
+
+                {certifications.length > 0 && (
+                  <ul className="space-y-2 mb-3">
+                    {certifications.map((cert, index) => (
+                      <li
+                        key={`${cert}-${index}`}
+                        className="flex items-center justify-between gap-3 bg-background border border-border rounded-xl px-4 py-2.5 text-sm font-medium text-foreground"
+                      >
+                        <span>{cert}</span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCertifications((prev) =>
+                              prev.filter((_, i) => i !== index),
+                            )
+                          }
+                          aria-label={`Remove ${cert}`}
+                          className="text-foreground/40 hover:text-red-500 transition-colors shrink-0"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {certifications.length < 10 && (
+                  <div className="flex gap-2">
+                    <input
+                      id="newCertification"
+                      type="text"
+                      value={newCertification}
+                      onChange={(e) => setNewCertification(e.target.value.slice(0, 150))}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          const trimmed = newCertification.trim();
+                          if (trimmed) {
+                            setCertifications((prev) => [...prev, trimmed]);
+                            setNewCertification("");
+                          }
+                        }
+                      }}
+                      placeholder="e.g. IMF Basic Mountaineering Course"
+                      className="flex-1 px-4 py-2.5 bg-background border border-border rounded-xl focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary shadow-sm text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const trimmed = newCertification.trim();
+                        if (trimmed) {
+                          setCertifications((prev) => [...prev, trimmed]);
+                          setNewCertification("");
+                        }
+                      }}
+                      className="px-4 py-2.5 bg-foreground/5 hover:bg-foreground/10 text-foreground font-bold rounded-xl text-sm transition-colors"
+                    >
+                      Add
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Health & Safety Section */}

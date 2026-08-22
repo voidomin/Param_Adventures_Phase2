@@ -111,6 +111,7 @@ describe("GET /api/auth/me", () => {
       emergencyContactNumber: "8888888888",
       emergencyRelationship: "Sibling",
       bio: "Loves high-altitude treks.",
+      certifications: ["Wilderness First Aid"],
       isVerified: true,
       deletedAt: null,
       status: "ACTIVE",
@@ -131,6 +132,7 @@ describe("GET /api/auth/me", () => {
     expect(response.status).toBe(200);
     expect(data.user.id).toBe("u1");
     expect(data.user.bio).toBe("Loves high-altitude treks.");
+    expect(data.user.certifications).toEqual(["Wilderness First Aid"]);
     expect(data.user.permissions).toEqual(["user.read", "user.write"]);
   });
 

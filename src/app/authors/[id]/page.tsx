@@ -3,7 +3,7 @@ import { withBuildSafety } from "@/lib/db-utils";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { CalendarDays, Mountain } from "lucide-react";
+import { CalendarDays, Mountain, ShieldCheck } from "lucide-react";
 import type { Metadata } from "next";
 import { buildBlogAltText } from "@/lib/seo/alt-text";
 
@@ -21,6 +21,7 @@ async function getAuthor(id: string) {
           name: true,
           avatarUrl: true,
           bio: true,
+          certifications: true,
           deletedAt: true,
           status: true,
           role: { select: { name: true } },
@@ -38,8 +39,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     return { title: "Author Not Found" };
   }
 
+  const certifiedClause =
+    author.certifications.length > 0 ? ` Certified: ${author.certifications.join(", ")}.` : "";
   const description =
-    author.bio || `Read trekking stories and guides by ${author.name} on the Param Adventures blog.`;
+    (author.bio || `Read trekking stories and guides by ${author.name} on the Param Adventures blog.`) +
+    certifiedClause;
 
   return {
     title: `${author.name} | Param Adventures`,
@@ -117,6 +121,19 @@ export default async function AuthorPage({ params }: Props) {
               <p className="text-foreground/70 mt-3 leading-relaxed max-w-xl">
                 {author.bio}
               </p>
+            )}
+            {author.certifications.length > 0 && (
+              <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-4">
+                {author.certifications.map((cert) => (
+                  <span
+                    key={cert}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary/10 text-primary text-xs font-bold rounded-full border border-primary/20"
+                  >
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    {cert}
+                  </span>
+                ))}
+              </div>
             )}
           </div>
         </div>
