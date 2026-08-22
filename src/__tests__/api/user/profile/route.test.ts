@@ -189,6 +189,61 @@ describe("PATCH /api/user/profile", () => {
     expect(response.status).toBe(400);
   });
 
+  it("trims and saves provided certifications", async () => {
+    setCookieToken("ok");
+    mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+    mockUserUpdate.mockResolvedValue({ id: "u1" } as any);
+
+    const response = await PATCH(
+      createRequest({ ...validBody, certifications: ["  Wilderness First Aid  ", "NOLS"] }),
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockUserUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ certifications: ["Wilderness First Aid", "NOLS"] }),
+      }),
+    );
+  });
+
+  it("defaults certifications to an empty array when omitted", async () => {
+    setCookieToken("ok");
+    mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+    mockUserUpdate.mockResolvedValue({ id: "u1" } as any);
+
+    const response = await PATCH(createRequest(validBody));
+
+    expect(response.status).toBe(200);
+    expect(mockUserUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ certifications: [] }) }),
+    );
+  });
+
+  it("returns 400 when more than 10 certifications are provided", async () => {
+    setCookieToken("ok");
+    mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+
+    const response = await PATCH(
+      createRequest({
+        ...validBody,
+        certifications: Array.from({ length: 11 }, (_, i) => `Cert ${i}`),
+      }),
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it("returns 400 when a certification exceeds 150 characters", async () => {
+    setCookieToken("ok");
+    mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+
+    const response = await PATCH(
+      createRequest({ ...validBody, certifications: ["a".repeat(151)] }),
+    );
+
+    expect(response.status).toBe(400);
+  });
+
   it("returns 500 on unexpected error", async () => {
     setCookieToken("ok");
     mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);

@@ -55,6 +55,7 @@ model User {
   emergencyRelationship  String?
   gender                 String?
   bio                    String?            @db.VarChar(500)
+  certifications         String[]           @default([])
   resetToken             String?
   resetTokenExpiry       DateTime?
   tokenVersion           Int                @default(0)

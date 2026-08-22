@@ -220,8 +220,9 @@ describe("/api/admin/experiences/[id]/slots/[slotId]", () => {
       remainingCapacity: 8,
     } as any);
 
+    const futureDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
     const response = await PATCH(
-      createJsonRequest({ date: "2026-08-22T10:00:00.000Z" }),
+      createJsonRequest({ date: futureDate }),
       {
         params: Promise.resolve({ id: "exp-1", slotId: "slot-1" }),
       },
@@ -231,7 +232,7 @@ describe("/api/admin/experiences/[id]/slots/[slotId]", () => {
     expect(mockSlotUpdate).toHaveBeenCalledWith({
       where: { id: "slot-1" },
       data: {
-        date: new Date("2026-08-22T10:00:00.000Z"),
+        date: new Date(futureDate),
         capacity: 20,
         remainingCapacity: 8,
       },
