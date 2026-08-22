@@ -17,6 +17,8 @@ import {
   Minus,
   Image as ImageIcon,
   Video,
+  Link as LinkIcon,
+  Unlink,
   Undo,
   Redo,
 } from "lucide-react";
@@ -68,7 +70,13 @@ export default function TiptapEditor({
 }: Readonly<TiptapEditorProps>) {
   const editor = useEditor({
     extensions: [
-      StarterKit.configure(),
+      StarterKit.configure({
+        link: {
+          openOnClick: "whenNotEditable",
+          autolink: true,
+          HTMLAttributes: { rel: "noopener noreferrer" },
+        },
+      }),
       Placeholder.configure({ placeholder }),
       Image,
       Youtube.configure({
@@ -183,6 +191,31 @@ export default function TiptapEditor({
           >
             <Minus className="w-4 h-4" />
           </ToolbarButton>
+          <div className="w-px h-5 bg-border mx-1" />
+          <ToolbarButton
+            onClick={() => {
+              const previousUrl = editor.getAttributes("link").href as string | undefined;
+              const url = globalThis.prompt("Enter link URL (e.g. /experiences/trek-slug)", previousUrl || "");
+              if (url === null) return;
+              if (url.trim() === "") {
+                editor.chain().focus().extendMarkRange("link").unsetLink().run();
+                return;
+              }
+              editor.chain().focus().extendMarkRange("link").setLink({ href: url.trim() }).run();
+            }}
+            active={editor.isActive("link")}
+            title="Insert Link"
+          >
+            <LinkIcon className="w-4 h-4" />
+          </ToolbarButton>
+          {editor.isActive("link") && (
+            <ToolbarButton
+              onClick={() => editor.chain().focus().extendMarkRange("link").unsetLink().run()}
+              title="Remove Link"
+            >
+              <Unlink className="w-4 h-4" />
+            </ToolbarButton>
+          )}
           <div className="w-px h-5 bg-border mx-1" />
           <ToolbarButton
             onClick={() => {

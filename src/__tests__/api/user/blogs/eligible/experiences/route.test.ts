@@ -22,7 +22,7 @@ import { verifyAccessToken } from "@/lib/auth";
 
 const mockVerifyAccessToken = vi.mocked(verifyAccessToken);
 
-type ReqOpts = { token?: string };
+type ReqOpts = { token?: string; excludeBlogId?: string };
 
 const createRequest = (opts: ReqOpts = {}) =>
   ({
@@ -31,6 +31,11 @@ const createRequest = (opts: ReqOpts = {}) =>
         name === "accessToken" && opts.token
           ? { value: opts.token }
           : undefined,
+      ),
+    },
+    nextUrl: {
+      searchParams: new URLSearchParams(
+        opts.excludeBlogId ? { excludeBlogId: opts.excludeBlogId } : {},
       ),
     },
   }) as unknown as NextRequest;
@@ -72,6 +77,27 @@ describe("GET /api/user/blogs/eligible-experiences", () => {
         where: expect.objectContaining({
           userId: "u1",
           experienceId: { notIn: ["e1"] },
+        }),
+      }),
+    );
+  });
+
+  it("excludes the given blog from the already-blogged set via excludeBlogId", async () => {
+    mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+    mockUserFindUnique.mockResolvedValue({ id: "u1", role: { name: "REGISTERED_USER" } } as any);
+    mockBlogFindMany.mockResolvedValue([{ experienceId: "e1" }] as any);
+    mockBookingFindMany.mockResolvedValue([
+      { experience: { id: "e1", title: "Trip 1" } },
+    ] as any);
+
+    const response = await GET(createRequest({ token: "ok", excludeBlogId: "blog-1" }));
+
+    expect(response.status).toBe(200);
+    expect(mockBlogFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          authorId: "u1",
+          id: { not: "blog-1" },
         }),
       }),
     );

@@ -17,6 +17,8 @@ export async function GET(request: NextRequest) {
   if (!payload)
     return NextResponse.json({ error: "Invalid token." }, { status: 401 });
 
+  const excludeBlogId = request.nextUrl.searchParams.get("excludeBlogId");
+
   const user = await prisma.user.findUnique({
     where: { id: payload.userId },
     include: { role: { select: { name: true } } },
@@ -35,9 +37,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ experiences });
   }
 
-  // Get experienceIds already blogged about
+  // Get experienceIds already blogged about (excluding the blog being edited,
+  // if any, so its own attached experience stays selectable)
   const existingBlogs = await prisma.blog.findMany({
-    where: { authorId: payload.userId, deletedAt: null },
+    where: {
+      authorId: payload.userId,
+      deletedAt: null,
+      ...(excludeBlogId ? { id: { not: excludeBlogId } } : {}),
+    },
     select: { experienceId: true },
   });
   const bloggedIds = existingBlogs

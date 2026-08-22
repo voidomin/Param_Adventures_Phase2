@@ -9,6 +9,7 @@ import { z } from "zod";
 type Params = { params: Promise<{ id: string }> };
 
 const blogUpdateSchema = z.object({
+  experienceId: z.string().optional().nullable(),
   title: z.string().min(1).max(120).optional(),
   content: z.any().optional(), // JSON
   coverImageUrl: z.url().optional().nullable(),
@@ -22,6 +23,7 @@ const blogUpdateSchema = z.object({
 
 function buildBlogUpdateData(data: z.infer<typeof blogUpdateSchema>, isResubmission: boolean) {
   const {
+    experienceId,
     title,
     content,
     coverImageUrl,
@@ -36,6 +38,7 @@ function buildBlogUpdateData(data: z.infer<typeof blogUpdateSchema>, isResubmiss
   const sanitizedContent = content === undefined ? undefined : sanitizeEditorContent(content);
 
   return {
+    ...(experienceId === undefined ? {} : { experienceId: experienceId || null }),
     ...(title ? { title: title.trim() } : {}),
     ...(sanitizedContent === undefined ? {} : { content: sanitizedContent }),
     ...(coverImageUrl === undefined ? {} : { coverImageUrl: coverImageUrl || null }),
@@ -76,7 +79,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
       { status: result.status },
     );
   }
-  const { blog } = result;
+  const { blog, userId } = result;
 
   if (blog.status !== "DRAFT" && blog.status !== "PUBLISHED") {
     return NextResponse.json(
@@ -101,6 +104,79 @@ export async function PATCH(request: NextRequest, { params }: Params) {
         { status: 400 },
       );
     }
+
+    if (parseResult.data.experienceId !== undefined) {
+      const newExperienceId = parseResult.data.experienceId;
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: { role: { select: { name: true } } },
+      });
+      const isAdmin =
+        user?.role?.name === "ADMIN" ||
+        user?.role?.name === "SUPER_ADMIN" ||
+        user?.role?.name === "MEDIA_UPLOADER";
+
+      if (isAdmin) {
+        if (newExperienceId) {
+          const experience = await prisma.experience.findUnique({
+            where: { id: newExperienceId },
+            select: { id: true },
+          });
+          if (!experience) {
+            return NextResponse.json(
+              { error: "Selected experience does not exist." },
+              { status: 400 },
+            );
+          }
+        }
+      } else {
+        if (!newExperienceId) {
+          return NextResponse.json(
+            { error: "An experience is required for user blogs." },
+            { status: 400 },
+          );
+        }
+
+        const now = new Date();
+        const confirmedBooking = await prisma.booking.findFirst({
+          where: {
+            userId,
+            experienceId: newExperienceId,
+            bookingStatus: "CONFIRMED",
+            deletedAt: null,
+            slot: { date: { lt: now } },
+          },
+        });
+        if (!confirmedBooking) {
+          return NextResponse.json(
+            {
+              error:
+                "You can only write about experiences where your trip has been completed (trip date must have passed).",
+            },
+            { status: 403 },
+          );
+        }
+
+        const existing = await prisma.blog.findFirst({
+          where: {
+            authorId: userId,
+            experienceId: newExperienceId,
+            deletedAt: null,
+            id: { not: blog.id },
+          },
+        });
+        if (existing) {
+          return NextResponse.json(
+            {
+              error: "You have already written a blog about this experience.",
+              blogId: existing.id,
+            },
+            { status: 409 },
+          );
+        }
+      }
+    }
+
     const updated = await prisma.blog.update({
       where: { id },
       data: buildBlogUpdateData(parseResult.data, isResubmission),
