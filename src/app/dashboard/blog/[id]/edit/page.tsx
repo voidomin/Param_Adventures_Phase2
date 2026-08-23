@@ -31,15 +31,28 @@ interface Blog {
   readingTime?: number | null;
 }
 
+interface ExperienceOption {
+  id: string;
+  title: string;
+  slug: string;
+  location: string;
+}
+
 export default function EditBlogPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const id = params.id;
   const { user } = useAuth();
+  const isAdmin =
+    user?.role === "ADMIN" ||
+    user?.role === "SUPER_ADMIN" ||
+    user?.role === "MEDIA_UPLOADER";
 
   const [blog, setBlog] = useState<Blog | null>(null);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState<object>({ type: "doc", content: [] });
+  const [experiences, setExperiences] = useState<ExperienceOption[]>([]);
+  const [selectedExp, setSelectedExp] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -71,6 +84,7 @@ export default function EditBlogPage() {
         setBlog(found);
         setTitle(found.title);
         setContent(found.content as object);
+        setSelectedExp(found.experience?.id ?? "");
         setMetaTitle(found.metaTitle ?? "");
         setMetaDescription(found.metaDescription ?? "");
         setMetaKeywords(found.metaKeywords ?? "");
@@ -78,6 +92,21 @@ export default function EditBlogPage() {
       })
       .finally(() => setIsLoading(false));
   }, [id, router]);
+
+  useEffect(() => {
+    fetch(`/api/user/blogs/eligible-experiences?excludeBlogId=${id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.experiences) setExperiences(data.experiences);
+      });
+  }, [id]);
+
+  // Make sure the trek currently attached to this post always shows up as an
+  // option, even if it fell out of the "eligible" set (e.g. unpublished since).
+  const experienceOptions =
+    blog?.experience && !experiences.some((exp) => exp.id === blog.experience!.id)
+      ? [{ id: blog.experience.id, title: blog.experience.title, slug: "", location: "" }, ...experiences]
+      : experiences;
 
   const handleSave = async (): Promise<boolean> => {
     setError("");
@@ -87,6 +116,7 @@ export default function EditBlogPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          experienceId: selectedExp || null,
           title,
           content,
           metaTitle: metaTitle || null,
@@ -182,12 +212,32 @@ export default function EditBlogPage() {
           <h1 className="text-3xl font-heading font-black text-foreground">
             Edit Blog
           </h1>
-          {blog.experience && (
-            <p className="text-foreground/50 mt-1">
-              About: <strong>{blog.experience.title}</strong>
-            </p>
-          )}
         </div>
+
+        {blog.status !== "PENDING_REVIEW" && (
+          <div className="mb-6">
+            <label
+              htmlFor="edit-experience"
+              className="block text-sm font-semibold text-foreground/70 mb-2"
+            >
+              Which adventure is this about?
+            </label>
+            <select
+              id="edit-experience"
+              value={selectedExp}
+              onChange={(e) => setSelectedExp(e.target.value)}
+              className="w-full px-4 py-3 bg-background border border-border rounded-xl text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+            >
+              <option value="">{isAdmin ? "General Blog (No Experience)" : "Select an experience…"}</option>
+              {experienceOptions.map((exp) => (
+                <option key={exp.id} value={exp.id}>
+                  {exp.title}
+                  {exp.location ? ` — ${exp.location}` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Published Re-edit Warning Banner */}
         {blog.status === "PUBLISHED" && (

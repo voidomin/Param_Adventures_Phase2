@@ -9,7 +9,17 @@ vi.mock("@/lib/db", () => ({
   prisma: {
     blog: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       update: vi.fn(),
+    },
+    user: {
+      findUnique: vi.fn(),
+    },
+    booking: {
+      findFirst: vi.fn(),
+    },
+    experience: {
+      findUnique: vi.fn(),
     },
   },
 }));
@@ -26,7 +36,11 @@ const mockVerifyAccessToken = vi.mocked(verifyAccessToken);
 const mockSanitizeEditorContent = vi.mocked(sanitizeEditorContent);
 const mockLogActivity = vi.mocked(logActivity);
 const mockBlogFindUnique = vi.mocked(prisma.blog.findUnique);
+const mockBlogFindFirst = vi.mocked(prisma.blog.findFirst);
 const mockBlogUpdate = vi.mocked(prisma.blog.update);
+const mockUserFindUnique = vi.mocked(prisma.user.findUnique);
+const mockBookingFindFirst = vi.mocked(prisma.booking.findFirst);
+const mockExperienceFindUnique = vi.mocked(prisma.experience.findUnique);
 
 const patchRequest = (body: unknown, token?: string) =>
   new NextRequest("http://localhost/api/user/blogs/blog-1", {
@@ -217,6 +231,151 @@ describe("/api/user/blogs/[id] route", () => {
             authorSocials: { instagram: "@param" },
           }),
         }),
+      );
+    });
+
+    it("allows an admin to attach a valid experienceId", async () => {
+      mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+      mockBlogFindUnique.mockResolvedValue({
+        id: "blog-1",
+        authorId: "u1",
+        status: "DRAFT",
+      } as any);
+      mockUserFindUnique.mockResolvedValue({ role: { name: "ADMIN" } } as any);
+      mockExperienceFindUnique.mockResolvedValue({ id: "exp-1" } as any);
+      mockBlogUpdate.mockResolvedValue({ id: "blog-1" } as any);
+
+      const response = await PATCH(patchRequest({ experienceId: "exp-1" }, "t1"), {
+        params: Promise.resolve({ id: "blog-1" }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(mockExperienceFindUnique).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: "exp-1" } }),
+      );
+      expect(mockBlogUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ experienceId: "exp-1" }) }),
+      );
+    });
+
+    it("rejects an admin attaching a non-existent experienceId", async () => {
+      mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+      mockBlogFindUnique.mockResolvedValue({
+        id: "blog-1",
+        authorId: "u1",
+        status: "DRAFT",
+      } as any);
+      mockUserFindUnique.mockResolvedValue({ role: { name: "ADMIN" } } as any);
+      mockExperienceFindUnique.mockResolvedValue(null);
+
+      const response = await PATCH(patchRequest({ experienceId: "bad-exp" }, "t1"), {
+        params: Promise.resolve({ id: "blog-1" }),
+      });
+
+      expect(response.status).toBe(400);
+      expect(mockBlogUpdate).not.toHaveBeenCalled();
+    });
+
+    it("lets an admin clear experienceId back to null", async () => {
+      mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+      mockBlogFindUnique.mockResolvedValue({
+        id: "blog-1",
+        authorId: "u1",
+        status: "DRAFT",
+      } as any);
+      mockUserFindUnique.mockResolvedValue({ role: { name: "ADMIN" } } as any);
+      mockBlogUpdate.mockResolvedValue({ id: "blog-1" } as any);
+
+      const response = await PATCH(patchRequest({ experienceId: null }, "t1"), {
+        params: Promise.resolve({ id: "blog-1" }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(mockExperienceFindUnique).not.toHaveBeenCalled();
+      expect(mockBlogUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ experienceId: null }) }),
+      );
+    });
+
+    it("rejects a non-admin clearing their required experienceId", async () => {
+      mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+      mockBlogFindUnique.mockResolvedValue({
+        id: "blog-1",
+        authorId: "u1",
+        status: "DRAFT",
+      } as any);
+      mockUserFindUnique.mockResolvedValue({ role: { name: "REGISTERED_USER" } } as any);
+
+      const response = await PATCH(patchRequest({ experienceId: null }, "t1"), {
+        params: Promise.resolve({ id: "blog-1" }),
+      });
+
+      expect(response.status).toBe(400);
+      expect(mockBlogUpdate).not.toHaveBeenCalled();
+    });
+
+    it("rejects a non-admin changing to an experience without a completed booking", async () => {
+      mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+      mockBlogFindUnique.mockResolvedValue({
+        id: "blog-1",
+        authorId: "u1",
+        status: "DRAFT",
+      } as any);
+      mockUserFindUnique.mockResolvedValue({ role: { name: "REGISTERED_USER" } } as any);
+      mockBookingFindFirst.mockResolvedValue(null);
+
+      const response = await PATCH(patchRequest({ experienceId: "exp-2" }, "t1"), {
+        params: Promise.resolve({ id: "blog-1" }),
+      });
+
+      expect(response.status).toBe(403);
+      expect(mockBlogUpdate).not.toHaveBeenCalled();
+    });
+
+    it("rejects a non-admin changing to an experience they've already blogged about", async () => {
+      mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+      mockBlogFindUnique.mockResolvedValue({
+        id: "blog-1",
+        authorId: "u1",
+        status: "DRAFT",
+      } as any);
+      mockUserFindUnique.mockResolvedValue({ role: { name: "REGISTERED_USER" } } as any);
+      mockBookingFindFirst.mockResolvedValue({ id: "booking-1" } as any);
+      mockBlogFindFirst.mockResolvedValue({ id: "other-blog" } as any);
+
+      const response = await PATCH(patchRequest({ experienceId: "exp-2" }, "t1"), {
+        params: Promise.resolve({ id: "blog-1" }),
+      });
+      const data = await response.json();
+
+      expect(response.status).toBe(409);
+      expect(data.blogId).toBe("other-blog");
+      expect(mockBlogFindFirst).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ id: { not: "blog-1" } }),
+        }),
+      );
+    });
+
+    it("allows a non-admin to change to a different eligible experience", async () => {
+      mockVerifyAccessToken.mockResolvedValue({ userId: "u1" } as any);
+      mockBlogFindUnique.mockResolvedValue({
+        id: "blog-1",
+        authorId: "u1",
+        status: "DRAFT",
+      } as any);
+      mockUserFindUnique.mockResolvedValue({ role: { name: "REGISTERED_USER" } } as any);
+      mockBookingFindFirst.mockResolvedValue({ id: "booking-1" } as any);
+      mockBlogFindFirst.mockResolvedValue(null);
+      mockBlogUpdate.mockResolvedValue({ id: "blog-1" } as any);
+
+      const response = await PATCH(patchRequest({ experienceId: "exp-2" }, "t1"), {
+        params: Promise.resolve({ id: "blog-1" }),
+      });
+
+      expect(response.status).toBe(200);
+      expect(mockBlogUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ experienceId: "exp-2" }) }),
       );
     });
 

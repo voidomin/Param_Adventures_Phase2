@@ -42,7 +42,7 @@ import DifficultyMeter, { type DifficultyLevel } from "@/components/experiences/
 import RichTextRenderer from "@/components/blog/RichTextRenderer";
 import ShareButton from "@/components/ui/ShareButton";
 import type { RichTextNode } from "@/lib/utils/rich-text";
-import { buildTrekAltText } from "@/lib/seo/alt-text";
+import { buildTrekAltText, buildBlogAltText } from "@/lib/seo/alt-text";
 
 export const revalidate = 60;
 
@@ -918,6 +918,62 @@ function getNavSections(exp: ExperienceWithInclusions): { id: string; label: str
   return sections;
 }
 
+interface TrekBlogSummary {
+  id: string;
+  title: string;
+  slug: string;
+  coverImageUrl: string | null;
+  coverImage: { originalUrl: string } | null;
+  updatedAt: Date;
+  author: { name: string };
+}
+
+function TrekStoriesSection({ blogs }: Readonly<{ blogs: TrekBlogSummary[] }>) {
+  if (blogs.length === 0) return null;
+
+  return (
+    <section id="stories" className="pt-8 border-t border-border scroll-mt-32">
+      <h2 className="text-3xl font-heading font-bold mb-8 flex items-center gap-3">
+        <Mountain className="w-8 h-8 text-primary" />
+        Stories From This Trek
+      </h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        {blogs.map((blog) => {
+          const cover =
+            blog.coverImageUrl ||
+            blog.coverImage?.originalUrl ||
+            `https://picsum.photos/seed/${blog.id}/800/500`;
+
+          return (
+            <Link
+              key={blog.id}
+              href={`/blog/${blog.slug}`}
+              className="group bg-card border border-border rounded-2xl overflow-hidden hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 transition-all"
+            >
+              <div className="relative h-40 overflow-hidden">
+                <Image
+                  src={cover}
+                  alt={buildBlogAltText(blog.title)}
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+              </div>
+              <div className="p-4">
+                <h3 className="font-bold text-foreground text-base line-clamp-2 group-hover:text-primary transition-colors">
+                  {blog.title}
+                </h3>
+                <p className="text-xs text-foreground/40 mt-2">
+                  By {blog.author.name}
+                </p>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export default async function ExperienceDetailPage({
   params,
 }: Readonly<{
@@ -945,6 +1001,20 @@ export default async function ExperienceDetailPage({
           slots: {
             where: { date: { gte: new Date() }, status: "UPCOMING" },
             orderBy: { date: "asc" },
+          },
+          blogs: {
+            where: { status: "PUBLISHED", deletedAt: null },
+            select: {
+              id: true,
+              title: true,
+              slug: true,
+              coverImageUrl: true,
+              coverImage: { select: { originalUrl: true } },
+              updatedAt: true,
+              author: { select: { name: true } },
+            },
+            orderBy: { updatedAt: "desc" },
+            take: 6,
           },
         },
       }),
@@ -976,6 +1046,9 @@ export default async function ExperienceDetailPage({
 
   const nightsCount = exp.durationDays > 1 ? exp.durationDays - 1 : 0;
   const navSections = getNavSections(exp);
+  if (experience.blogs.length > 0) {
+    navSections.push({ id: "stories", label: "Stories" });
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground pb-20 pt-16">
@@ -1408,6 +1481,8 @@ export default async function ExperienceDetailPage({
           >
             <ExperienceReviews slug={exp.slug} />
           </section>
+
+          <TrekStoriesSection blogs={experience.blogs} />
         </div>
 
         {/* Right Column - Sticky Sidebar */}
