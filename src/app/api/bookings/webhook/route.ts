@@ -65,12 +65,12 @@ async function processWebhookEvent(eventType: string, eventBody: RazorpayWebhook
 
       await logActivity(
         "PAYMENT_WEBHOOK_PROCESSED",
-        "SYSTEM",
+        null,
         "Booking",
         bookingId,
-        { 
-          event: eventType, 
-          razorpay_order_id: order.id, 
+        {
+          event: eventType,
+          razorpay_order_id: order.id,
           razorpay_payment_id: payment.id,
           ip: forensicsIp
         }
@@ -108,12 +108,12 @@ async function processWebhookEvent(eventType: string, eventBody: RazorpayWebhook
 
       await logActivity(
         "PAYMENT_WEBHOOK_PROCESSED",
-        "SYSTEM",
+        null,
         "Booking",
         bookingId,
-        { 
-          event: eventType, 
-          razorpay_order_id: orderId, 
+        {
+          event: eventType,
+          razorpay_order_id: orderId,
           razorpay_payment_id: paymentId,
           ip: forensicsIp
         }
@@ -139,7 +139,7 @@ async function processWebhookEvent(eventType: string, eventBody: RazorpayWebhook
 
           await logActivity(
             "PAYMENT_WEBHOOK_FAILED",
-            "SYSTEM",
+            null,
             "Booking",
             paymentRecord.bookingId,
             {
@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
 
         await logActivity(
           "PAYMENT_WEBHOOK_SIGNATURE_INVALID",
-          "SYSTEM",
+          null,
           "Booking",
           eventBody?.id || null,
           {
