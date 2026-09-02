@@ -8,10 +8,12 @@ build:
       - npm run build
 run:
   runtime-version: 22
-  # `npm start` already runs `prisma migrate deploy` before `next start` (see
-  # package.json) -- same migration-on-boot approach render.yaml's
-  # preDeployCommand uses for staging, kept consistent across both targets.
-  command: npm start
+  # App Runner has no separate pre-deploy hook (unlike render.yaml's
+  # preDeployCommand), so `start:migrate` runs the migration check here,
+  # once, as part of boot. Render instead runs migrations only in
+  # preDeployCommand and starts via the plain `npm start`, so a restart
+  # that isn't a fresh deploy doesn't re-run migrations before listening.
+  command: npm run start:migrate
   network:
     port: 3000
     env: PORT

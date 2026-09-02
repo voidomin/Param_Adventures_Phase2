@@ -190,11 +190,12 @@ export const BookingService = {
 
         await cancelSupersededPendingBooking(tx, userId, data.slotId);
 
-      // Experience & Slot checks
-      const [experience, slot] = await Promise.all([
-        BookingRepo.findExperienceById(tx, data.experienceId),
-        BookingRepo.findSlotById(tx, data.slotId),
-      ]);
+      // Experience & Slot checks -- sequential, not Promise.all: an
+      // interactive transaction pins a single physical connection, and
+      // firing two queries at it concurrently isn't safe (pg doesn't
+      // support concurrent unpipelined queries on one client).
+      const experience = await BookingRepo.findExperienceById(tx, data.experienceId);
+      const slot = await BookingRepo.findSlotById(tx, data.slotId);
 
       const now = new Date();
       assertExperienceAvailable(experience);

@@ -146,7 +146,7 @@ describe("POST /api/bookings/webhook", () => {
     );
     expect(mockLogActivity).toHaveBeenCalledWith(
       "PAYMENT_WEBHOOK_PROCESSED",
-      "SYSTEM",
+      null,
       "Booking",
       bookingTestId,
       expect.objectContaining({
@@ -272,7 +272,7 @@ describe("POST /api/bookings/webhook", () => {
     });
     expect(mockLogActivity).toHaveBeenCalledWith(
       "PAYMENT_WEBHOOK_FAILED",
-      "SYSTEM",
+      null,
       "Booking",
       bookingFailedId,
       expect.objectContaining({
