@@ -272,7 +272,7 @@ jobs:
 
       - name: SonarCloud Scan
         if: env.SONAR_TOKEN != ''
-        uses: SonarSource/sonarqube-scan-action@ad8210318ac8bb816e41990d5af2b304f7a6c213
+        uses: SonarSource/sonarqube-scan-action@5bc5285b684b9f0e940031dc8ddc4b6387a2f493
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
