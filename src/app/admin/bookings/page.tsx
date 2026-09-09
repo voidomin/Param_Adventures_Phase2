@@ -75,6 +75,17 @@ interface Booking {
   }[];
 }
 
+interface CancelPreview {
+  baseFare: number;
+  gst: number;
+  convenienceFee: number;
+  cancellationPercent: number;
+  cancellationCharges: number;
+  finalRefundAmount: number;
+  daysBefore: number;
+  refundPercent: number;
+}
+
 const statusStyles: Record<BookingStatus, string> = {
   REQUESTED: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
   CONFIRMED: "bg-green-500/10 text-green-600 border-green-500/20",
@@ -148,6 +159,50 @@ function BookingDetailsModal({
   const [cancelReason, setCancelReason] = useState("");
   const [cancelPreference, setCancelPreference] = useState<"BANK_REFUND" | "COUPON" | "NO_REFUND">("BANK_REFUND");
   const [isCancelling, setIsCancelling] = useState(false);
+  const [cancelPreview, setCancelPreview] = useState<CancelPreview | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [overrideAmount, setOverrideAmount] = useState("");
+  const [previewRetryKey, setPreviewRetryKey] = useState(0);
+
+  // Live refund preview -- re-fetched whenever the confirm dialog opens or
+  // the refund method changes, since Bank Refund vs Coupon calculate
+  // different amounts (GST/convenience fee are only refundable via coupon).
+  // A manually-typed override amount is intentionally reset on every
+  // refetch: the number the admin typed was calculated against the old
+  // method, so carrying it over to a different method would silently show
+  // a stale figure.
+  useEffect(() => {
+    if (!showCancelConfirm) return;
+    let cancelled = false;
+    setPreviewLoading(true);
+    setPreviewError(null);
+    const previewPreference = cancelPreference === "NO_REFUND" ? "BANK_REFUND" : cancelPreference;
+
+    fetch(`/api/bookings/${booking.id}/cancel-preview?preference=${previewPreference}`)
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Failed to load refund preview.");
+        return data as CancelPreview;
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setCancelPreview(data);
+        setOverrideAmount(String(data.finalRefundAmount));
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setCancelPreview(null);
+        setPreviewError(err instanceof Error ? err.message : "Failed to load refund preview.");
+      })
+      .finally(() => {
+        if (!cancelled) setPreviewLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showCancelConfirm, cancelPreference, booking.id, previewRetryKey]);
 
   const payments = booking.payments;
   const isCancelled = booking.bookingStatus === "CANCELLED";
@@ -172,14 +227,14 @@ function BookingDetailsModal({
           <div className="space-y-3">
             <div>
               <label htmlFor="cancel-reason" className="block text-xs font-semibold text-foreground/60 mb-1">
-                Reason for Cancellation
+                Reason for Cancellation <span className="text-red-500">*</span>
               </label>
               <textarea
                 id="cancel-reason"
                 rows={2}
                 value={cancelReason}
                 onChange={(e) => setCancelReason(e.target.value)}
-                placeholder="e.g. Guest no-show / Late request"
+                placeholder="e.g. Guest no-show / Late request (required)"
                 className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500 text-foreground"
               />
             </div>
@@ -199,6 +254,70 @@ function BookingDetailsModal({
                 <option value="NO_REFUND">No Refund at all (Admin Decision)</option>
               </select>
             </div>
+
+            {/* Refund preview -- always fetched live, never assumed, so the
+                admin sees the real ₹ figure (per current cancellation
+                policy) before confirming rather than flying blind. */}
+            {previewLoading && (
+              <div className="flex items-center gap-2 text-xs text-foreground/50 py-2">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Calculating refund…
+              </div>
+            )}
+
+            {previewError && (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg space-y-1.5">
+                <p className="text-xs text-red-500">{previewError}</p>
+                <button
+                  type="button"
+                  onClick={() => setPreviewRetryKey((k) => k + 1)}
+                  className="text-xs font-bold text-red-500 hover:underline"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {cancelPreview && !previewLoading && !previewError && (
+              <div className="p-3 bg-foreground/5 border border-border rounded-lg space-y-1.5 text-xs">
+                <p className="text-foreground/60">
+                  {cancelPreview.daysBefore} day(s) before departure — policy allows{" "}
+                  <strong>{cancelPreview.refundPercent}%</strong> refund of base fare.
+                </p>
+                <div className="grid grid-cols-2 gap-1 text-foreground/75">
+                  <span>Base Fare</span><span className="text-right">₹{cancelPreview.baseFare.toLocaleString("en-IN")}</span>
+                  <span>GST</span><span className="text-right">₹{cancelPreview.gst.toLocaleString("en-IN")}</span>
+                  <span>Convenience Fee</span><span className="text-right">₹{cancelPreview.convenienceFee.toLocaleString("en-IN")}</span>
+                  <span>Cancellation Charges ({cancelPreview.cancellationPercent}%)</span>
+                  <span className="text-right">₹{cancelPreview.cancellationCharges.toLocaleString("en-IN")}</span>
+                </div>
+                <div className="flex justify-between items-center pt-1.5 border-t border-border/60 font-bold text-foreground">
+                  <span>{cancelPreference === "NO_REFUND" ? "Would-be Refund" : "Calculated Refund"}</span>
+                  <span>₹{cancelPreview.finalRefundAmount.toLocaleString("en-IN")}</span>
+                </div>
+
+                {cancelPreference === "NO_REFUND" ? (
+                  <p className="text-amber-500 pt-1">No refund will be issued — admin decision.</p>
+                ) : Number(booking.paidAmount) > 0 && (
+                  <div className="pt-2">
+                    <label htmlFor="override-amount" className="block text-xs font-semibold text-foreground/60 mb-1">
+                      Refund Amount to Grant (editable — goodwill/exception override)
+                    </label>
+                    <input
+                      id="override-amount"
+                      type="number"
+                      step="any"
+                      min="0"
+                      value={overrideAmount}
+                      onChange={(e) => setOverrideAmount(e.target.value)}
+                      className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500 text-foreground"
+                    />
+                    <p className="text-[10px] text-foreground/40 mt-1">
+                      Defaults to the policy-calculated amount above. Change it to grant a different amount (e.g. a goodwill exception) — cannot exceed what was actually paid.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex gap-3 justify-end pt-2">
@@ -211,7 +330,7 @@ function BookingDetailsModal({
             </button>
             <button
               type="button"
-              disabled={isCancelling}
+              disabled={isCancelling || previewLoading || !!previewError || !cancelReason.trim()}
               onClick={async () => {
                 setIsCancelling(true);
                 try {
@@ -219,13 +338,15 @@ function BookingDetailsModal({
                     .filter((p) => !p.isCancelled)
                     .map((p) => p.id);
 
+                  const parsedOverride = Number(overrideAmount);
                   const res = await fetch(`/api/bookings/${booking.id}/cancel-participants`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
                       participantIds: activePartIds,
-                      reason: cancelReason || "Cancelled by admin",
+                      reason: cancelReason.trim(),
                       preference: cancelPreference,
+                      overrideAmount: overrideAmount.trim() !== "" && !Number.isNaN(parsedOverride) ? parsedOverride : undefined,
                     }),
                   });
                   if (!res.ok) {

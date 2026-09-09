@@ -4,13 +4,18 @@ import { PaymentStatus, Prisma } from "@prisma/client";
 import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
 import { z } from "zod";
-import { getRefundPercentage, calculateRefundBreakdown, createRefundRequestForBreakdown } from "@/lib/refund-engine";
+import { getRefundPercentage, calculateRefundBreakdown, createRefundRequestForBreakdown, round2 } from "@/lib/refund-engine";
 import { restoreCouponsForBooking } from "@/lib/coupon-engine";
 
 const cancelSchema = z.object({
   participantIds: z.array(z.string()).min(1),
   reason: z.string().optional(),
   preference: z.enum(["BANK_REFUND", "COUPON", "NO_REFUND"]).optional().default("BANK_REFUND"),
+  // Admin-only: overrides the policy-calculated refund amount (e.g. a
+  // goodwill exception). Ignored entirely for a customer's own
+  // self-cancellation and for partial (non-full) cancellations -- see the
+  // isModerator/isFullCancellation gate in POST below.
+  overrideAmount: z.number().min(0).optional(),
 });
 
 interface CancelBookingInput {
@@ -46,50 +51,84 @@ async function processFullCancellation(params: {
   userId: string;
   reason?: string;
   preference: "COUPON" | "BANK_REFUND" | "NO_REFUND";
+  // Admin-only goodwill/exception override of the policy-calculated final
+  // refund amount -- validated against live paidAmount inside the
+  // transaction below, never against whatever a preview call showed
+  // earlier (that snapshot can go stale between the admin opening the
+  // cancel dialog and confirming it).
+  overrideAmount?: number;
 }) {
-  const { bookingId, booking, activeCount, userId, reason, preference } = params;
+  const { bookingId, booking, activeCount, userId, reason, preference, overrideAmount } = params;
 
-  // Resolve cancellation policy based on departure date
+  // Resolve cancellation policy based on departure date. This doesn't
+  // depend on the booking's financial fields, so it's safe to compute
+  // outside the transaction.
   const departureDate = booking.slot ? new Date(booking.slot.date) : new Date();
   const { refundPercent } = await getRefundPercentage(departureDate, new Date());
 
-  // Net out any refund already issued by an earlier partial cancellation on
-  // this same booking (booking.refundAmount is a running total, never reset
-  // between calls) -- paidAmount itself is never reduced by a partial
-  // cancellation, so computing straight from it here would recompute a
-  // refund against money that was already handed back, double-counting it.
-  const alreadyRefunded = Number(booking.refundAmount || 0);
-  const effectivePaidAmount = Math.max(0, Number(booking.paidAmount) - alreadyRefunded);
-
-  const breakdown = calculateRefundBreakdown({
-    baseFare: Number(booking.baseFare),
-    totalPrice: Number(booking.totalPrice),
-    paidAmount: effectivePaidAmount,
-    paymentType: booking.paymentType as "FULL" | "ADVANCE",
-    refundPercent,
-    taxBreakdown: booking.taxBreakdown,
-    refundPreference: preference === "NO_REFUND" ? "BANK_REFUND" : preference,
-  });
-
-  const finalRefund = preference === "NO_REFUND" ? 0 : breakdown.finalRefundAmount;
-  const totalRefundAmount = alreadyRefunded + finalRefund;
-
-  // If selecting coupon refund or bank refund, booking paymentStatus becomes REFUND_PENDING
-  let newPaymentStatus = booking.paymentStatus;
-  if ((preference === "BANK_REFUND" || preference === "COUPON") && (booking.paymentStatus === "PAID" || booking.paymentStatus === "PARTIALLY_PAID") && finalRefund > 0) {
-    newPaymentStatus = "REFUND_PENDING";
-  } else if (preference === "NO_REFUND") {
-    newPaymentStatus = "PAID";
-  }
-
-  await runWithRetry(() =>
+  const { breakdown, finalRefund } = await runWithRetry(() =>
     prisma.$transaction(async (tx) => {
+      // Re-read the financial fields fresh, inside the transaction, rather
+      // than trusting the `booking` snapshot fetched before this call --
+      // a payment webhook (or another admin action) landing in that window
+      // would otherwise silently compute the refund off stale paidAmount.
       const current = await tx.booking.findUnique({
         where: { id: bookingId },
-        select: { bookingStatus: true },
+        select: {
+          bookingStatus: true,
+          paymentStatus: true,
+          paidAmount: true,
+          refundAmount: true,
+          baseFare: true,
+          totalPrice: true,
+          taxBreakdown: true,
+          paymentType: true,
+        },
       });
       if (!current || current.bookingStatus === "CANCELLED") {
         throw new Error("Booking is already cancelled.");
+      }
+
+      // Net out any refund already issued by an earlier partial
+      // cancellation on this same booking (booking.refundAmount is a
+      // running total, never reset between calls) -- paidAmount itself is
+      // never reduced by a partial cancellation, so computing straight
+      // from it here would recompute a refund against money that was
+      // already handed back, double-counting it.
+      const alreadyRefunded = Number(current.refundAmount || 0);
+      const effectivePaidAmount = Math.max(0, Number(current.paidAmount) - alreadyRefunded);
+
+      const breakdown = calculateRefundBreakdown({
+        baseFare: Number(current.baseFare),
+        totalPrice: Number(current.totalPrice),
+        paidAmount: effectivePaidAmount,
+        paymentType: current.paymentType as "FULL" | "ADVANCE",
+        refundPercent,
+        taxBreakdown: current.taxBreakdown,
+        refundPreference: preference === "NO_REFUND" ? "BANK_REFUND" : preference,
+      });
+
+      let finalRefund: number;
+      if (preference === "NO_REFUND") {
+        finalRefund = 0;
+      } else if (overrideAmount !== undefined) {
+        if (overrideAmount > effectivePaidAmount) {
+          throw new Error(
+            `OVERRIDE_ERROR: Override amount (₹${overrideAmount}) cannot exceed the amount actually available to refund (₹${effectivePaidAmount}).`
+          );
+        }
+        finalRefund = round2(overrideAmount);
+      } else {
+        finalRefund = breakdown.finalRefundAmount;
+      }
+      const totalRefundAmount = alreadyRefunded + finalRefund;
+
+      // If selecting coupon refund or bank refund, booking paymentStatus becomes REFUND_PENDING
+      let newPaymentStatus = current.paymentStatus;
+      if ((preference === "BANK_REFUND" || preference === "COUPON") && (current.paymentStatus === "PAID" || current.paymentStatus === "PARTIALLY_PAID") && finalRefund > 0) {
+        newPaymentStatus = "REFUND_PENDING";
+      } else if (preference === "NO_REFUND") {
+        newPaymentStatus = "PAID";
       }
 
       let refundNote: string | null = null;
@@ -141,15 +180,22 @@ async function processFullCancellation(params: {
         tx,
       });
 
-      // Create refund request if refund is due
+      // Create refund request if refund is due. When an override was
+      // applied, the request records the actually-granted amount as
+      // finalRefundAmount while keeping the other fields (baseFare, gst,
+      // cancellationCharges, etc.) as what the policy itself calculated --
+      // so the row is a transparent record of "policy said X, Y was
+      // granted" rather than silently overwriting the policy figures.
       if (finalRefund > 0 && (preference === "COUPON" || preference === "BANK_REFUND")) {
         await createRefundRequestForBreakdown(tx, {
           bookingId,
           customerId: booking.userId,
           preference,
-          breakdown,
+          breakdown: overrideAmount !== undefined ? { ...breakdown, finalRefundAmount: finalRefund } : breakdown,
         });
       }
+
+      return { breakdown, finalRefund };
     })
   );
 
@@ -158,6 +204,8 @@ async function processFullCancellation(params: {
     reason: reason || "No reason provided",
     participantCount: activeCount,
     refundAmount: finalRefund,
+    calculatedAmount: breakdown.finalRefundAmount,
+    overrideApplied: overrideAmount !== undefined,
   });
 }
 
@@ -281,7 +329,8 @@ function validateBookingCancellation(params: {
 
   return {
     activeParticipants,
-    isFullCancellation: activeParticipants.length === participantIds.length
+    isFullCancellation: activeParticipants.length === participantIds.length,
+    isModerator,
   };
 }
 
@@ -302,7 +351,7 @@ export async function POST(
       return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 });
     }
 
-    const { participantIds, reason, preference } = parsed.data;
+    const { participantIds, reason, preference, overrideAmount } = parsed.data;
 
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
@@ -324,10 +373,28 @@ export async function POST(
       return NextResponse.json({ error: validation.error }, { status: validation.status });
     }
 
-    const { activeParticipants, isFullCancellation } = validation;
+    const { activeParticipants, isFullCancellation, isModerator } = validation;
+
+    // A moderator acting through this endpoint is always cancelling as
+    // staff -- whether it happens to be their own booking or not -- so a
+    // reason is always required, unlike a regular customer's optional one.
+    if (isModerator && !reason?.trim()) {
+      return NextResponse.json(
+        { error: "A reason is required when cancelling as an admin." },
+        { status: 400 }
+      );
+    }
+
     const dbBooking = booking!;
 
     if (isFullCancellation) {
+      // overrideAmount only ever applies to a moderator's full cancellation
+      // with an actual refund in play -- silently ignored otherwise (e.g. a
+      // customer's own request, a partial cancellation, or "No Refund")
+      // rather than erroring, since the field simply isn't meaningful there.
+      const effectiveOverride =
+        isModerator && preference !== "NO_REFUND" ? overrideAmount : undefined;
+
       await processFullCancellation({
         bookingId,
         booking: dbBooking,
@@ -335,6 +402,7 @@ export async function POST(
         userId,
         reason,
         preference,
+        overrideAmount: effectiveOverride,
       });
       return NextResponse.json({ success: true, message: "Booking fully cancelled." });
     }
@@ -436,6 +504,9 @@ export async function POST(
 
   } catch (error) {
     console.error("Cancel participants error:", error);
+    if (error instanceof Error && error.message.startsWith("OVERRIDE_ERROR: ")) {
+      return NextResponse.json({ error: error.message.replace("OVERRIDE_ERROR: ", "") }, { status: 400 });
+    }
     if (error instanceof Error && (error.message.includes("already cancelled") || error.message.includes("does not exist"))) {
       return NextResponse.json({ error: error.message }, { status: 409 });
     }

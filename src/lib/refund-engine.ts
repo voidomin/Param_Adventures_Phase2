@@ -65,7 +65,7 @@ export async function getRefundPercentage(
   return { refundPercent: 0, daysBefore };
 }
 
-const round2 = (num: number) => Number(num.toFixed(2));
+export const round2 = (num: number) => Number(num.toFixed(2));
 
 /**
  * Calculates the exact refund breakdown following Param Adventures business rules.
