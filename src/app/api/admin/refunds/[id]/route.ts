@@ -148,6 +148,8 @@ export async function PATCH(
             refundMethod,
             bankReferenceNote: refundMethod === "BANK_TRANSFER" ? (utrNumber || remarks) : undefined,
             adminId,
+            couponRestoreAmount: Number(refundRequest.couponRestoreAmount),
+            cancellationCharges: Number(refundRequest.cancellationCharges),
           });
           couponCode = applied.couponCode;
           creditNoteNumber = applied.creditNoteNumber;

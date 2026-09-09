@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 import { getRefundPercentage, calculateRefundBreakdown } from "@/lib/refund-engine";
+import { restoreCouponsForBooking } from "@/lib/coupon-engine";
 
 interface PreviewParticipant {
   id: string;
@@ -130,10 +131,21 @@ export async function GET(
       isCompanyCancellation: isAdmin,
     });
 
+    // Preview only -- nothing is written yet. If this booking redeemed a
+    // coupon, this shows what would be restored to it once an admin
+    // approves the refund; the actual restoration only happens then.
+    const { totalRestored: couponRestoreAmount } = await restoreCouponsForBooking({
+      bookingId,
+      cancellationCharges: Number(breakdown.cancellationCharges),
+      tx: prisma,
+      dryRun: true,
+    });
+
     return NextResponse.json({
       ...breakdown,
       daysBefore: Math.max(0, Math.floor(daysBefore)),
       refundPercent,
+      couponRestoreAmount,
     });
 
   } catch (error) {

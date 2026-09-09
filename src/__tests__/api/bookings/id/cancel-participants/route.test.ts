@@ -71,7 +71,7 @@ describe("POST /api/bookings/[id]/cancel-participants", () => {
       baseFare: 1000, gst: 0, convenienceFee: 0, cancellationPercent: 0,
       cancellationCharges: 0, finalRefundAmount: 1200,
     } as any);
-    vi.mocked(restoreCouponsForBooking).mockResolvedValue(undefined as any);
+    vi.mocked(restoreCouponsForBooking).mockResolvedValue({ totalRestored: 0 } as any);
     vi.mocked(prisma.booking.findUnique).mockResolvedValue(baseBooking as any);
     vi.mocked(prisma.bookingParticipant.count).mockResolvedValue(0);
   });
@@ -367,5 +367,56 @@ describe("POST /api/bookings/[id]/cancel-participants", () => {
     const response = await POST(createRequest({ participantIds: ["p1"] }), { params: Promise.resolve({ id: "b1" }) });
 
     expect(response.status).toBe(500);
+  });
+
+  it("creates a coupon-restore-only refund request even when the calculated cash refund is zero", async () => {
+    // 0%-tier cancellation: no cash refund due, but the customer used a
+    // coupon that's still owed some balance back -- that pending amount
+    // still needs a RefundRequest for an admin to approve.
+    mockCalculateRefundBreakdown.mockReturnValue({
+      baseFare: 1000, gst: 0, convenienceFee: 0, cancellationPercent: 100,
+      cancellationCharges: 1200, finalRefundAmount: 0,
+    } as any);
+    vi.mocked(restoreCouponsForBooking).mockResolvedValue({ totalRestored: 300 } as any);
+
+    const response = await POST(
+      createRequest({ participantIds: ["p1", "p2"], preference: "BANK_REFUND" }),
+      { params: Promise.resolve({ id: "b1" }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(prisma.refundRequest.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ finalRefundAmount: 0, couponRestoreAmount: 300 }),
+      }),
+    );
+  });
+
+  it("only previews the coupon restore at cancellation time (dryRun), never writes to the coupon balance", async () => {
+    const response = await POST(
+      createRequest({ participantIds: ["p1", "p2"], preference: "BANK_REFUND" }),
+      { params: Promise.resolve({ id: "b1" }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(restoreCouponsForBooking).toHaveBeenCalledWith(
+      expect.objectContaining({ dryRun: true }),
+    );
+  });
+
+  it("does not create a refund request when there's neither a cash refund nor a coupon-restore amount due", async () => {
+    mockCalculateRefundBreakdown.mockReturnValue({
+      baseFare: 1000, gst: 0, convenienceFee: 0, cancellationPercent: 100,
+      cancellationCharges: 1200, finalRefundAmount: 0,
+    } as any);
+    vi.mocked(restoreCouponsForBooking).mockResolvedValue({ totalRestored: 0 } as any);
+
+    const response = await POST(
+      createRequest({ participantIds: ["p1", "p2"], preference: "BANK_REFUND" }),
+      { params: Promise.resolve({ id: "b1" }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(prisma.refundRequest.create).not.toHaveBeenCalled();
   });
 });

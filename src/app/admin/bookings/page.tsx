@@ -41,6 +41,7 @@ interface Booking {
   refundNote?: string | null;
   cancellationReason?: string | null;
   refundAmount?: number | null;
+  refundRequest?: { couponRestoreAmount: number } | null;
   participants?: {
     id: string;
     name: string;

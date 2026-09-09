@@ -12,12 +12,15 @@ vi.mock("@/lib/db", () => {
     },
     travelCoupon: {
       create: vi.fn(),
+      update: vi.fn(),
     },
     couponTransaction: {
       create: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
     },
     refundRequest: {
       updateMany: vi.fn(),
+      findUnique: vi.fn().mockResolvedValue(null),
     },
     payment: {
       updateMany: vi.fn(),
@@ -47,6 +50,9 @@ const mockLogActivity = vi.mocked(logActivity);
 const mockSendRefundResolved = vi.mocked(sendRefundResolved);
 const mockBookingFindUnique = vi.mocked(prisma.booking.findUnique);
 const mockBookingUpdate = vi.mocked(prisma.booking.update);
+const mockRefundRequestFindUnique = vi.mocked(prisma.refundRequest.findUnique);
+const mockCouponUpdate = vi.mocked(prisma.travelCoupon.update);
+const mockCouponTransactionFindMany = vi.mocked(prisma.couponTransaction.findMany);
 
 const createRequest = (body: unknown) =>
   ({
@@ -432,5 +438,71 @@ describe("POST /api/admin/bookings/[id]/refund", () => {
 
     expect(response.status).toBe(400);
     expect(data.error).toContain("cannot exceed the paid amount");
+  });
+
+  it("restores the pending coupon balance when the booking's refund request has a couponRestoreAmount", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
+    mockBookingFindUnique.mockResolvedValue({
+      id: "b1",
+      bookingStatus: "CANCELLED",
+      paymentStatus: "REFUND_PENDING",
+      refundPreference: "BANK_TRANSFER",
+      totalPrice: 2500,
+      paidAmount: 2500,
+      refundAmount: null,
+      slot: { date: new Date("2026-04-01T00:00:00.000Z") },
+      user: { name: "Akash", email: "akash@example.com" },
+      experience: { title: "Everest Base Camp" },
+    } as any);
+    mockRefundRequestFindUnique.mockResolvedValue({
+      id: "r1",
+      couponRestoreAmount: 300,
+      cancellationCharges: 0,
+    } as any);
+    const futureExpiry = new Date();
+    futureExpiry.setDate(futureExpiry.getDate() + 30);
+    mockCouponTransactionFindMany.mockResolvedValueOnce([
+      {
+        id: "ct1",
+        couponId: "c1",
+        type: "REDEEMED",
+        amount: 300,
+        coupon: { id: "c1", balance: 0, originalValue: 300, expiryDate: futureExpiry },
+      },
+    ] as any);
+
+    const response = await POST(createRequest({ refundNote: "UTR123" }), {
+      params: Promise.resolve({ id: "b1" }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(mockCouponUpdate).toHaveBeenCalledWith({
+      where: { id: "c1" },
+      data: { balance: 300, status: "ACTIVE" },
+    });
+  });
+
+  it("does not touch any coupon balance when the booking has no pending RefundRequest", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "a1" } as any);
+    mockBookingFindUnique.mockResolvedValue({
+      id: "b1",
+      bookingStatus: "CANCELLED",
+      paymentStatus: "REFUND_PENDING",
+      refundPreference: "BANK_TRANSFER",
+      totalPrice: 2500,
+      paidAmount: 2500,
+      refundAmount: null,
+      slot: { date: new Date("2026-04-01T00:00:00.000Z") },
+      user: { name: "Akash", email: "akash@example.com" },
+      experience: { title: "Everest Base Camp" },
+    } as any);
+    mockRefundRequestFindUnique.mockResolvedValue(null);
+
+    const response = await POST(createRequest({ refundNote: "UTR123" }), {
+      params: Promise.resolve({ id: "b1" }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(mockCouponUpdate).not.toHaveBeenCalled();
   });
 });

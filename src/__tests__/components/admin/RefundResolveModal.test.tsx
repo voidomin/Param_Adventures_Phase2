@@ -68,4 +68,24 @@ describe("RefundResolveModal", () => {
     expect(await screen.findByText(/Refund amount exceeds paid amount\./i)).toBeInTheDocument();
     expect(onSuccess).not.toHaveBeenCalled();
   });
+
+  it("shows a note about the pending coupon restore when the booking's refund request has one", () => {
+    render(
+      <RefundResolveModal
+        booking={{ ...bankBooking, refundRequest: { couponRestoreAmount: 300 } } as any}
+        onClose={onClose}
+        onSuccess={onSuccess}
+      />,
+    );
+
+    const note = screen.getByText(/travel coupon this customer had already redeemed/i);
+    expect(note.parentElement?.textContent).toMatch(/restore/i);
+    expect(note.parentElement?.textContent).toContain("₹300");
+  });
+
+  it("does not show a coupon-restore note when there is nothing pending", () => {
+    render(<RefundResolveModal booking={bankBooking as any} onClose={onClose} onSuccess={onSuccess} />);
+
+    expect(screen.queryByText(/travel coupon this customer had already redeemed/i)).not.toBeInTheDocument();
+  });
 });

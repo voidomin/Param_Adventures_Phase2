@@ -175,11 +175,19 @@ export async function createRefundRequestForBreakdown(
   params: {
     bookingId: string;
     customerId: string;
-    preference: "COUPON" | "BANK_REFUND";
+    // NO_REFUND is accepted because a refund request can now exist purely
+    // to hold a pending coupon-restore amount (couponRestoreAmount below)
+    // even when the customer/admin declined a cash refund -- refundMethod
+    // is meaningless in that case and just defaults to BANK_TRANSFER.
+    preference: "COUPON" | "BANK_REFUND" | "NO_REFUND";
     breakdown: RefundBreakdown;
+    // Balance owed back to a previously-redeemed coupon on this booking,
+    // pending the same admin approval as the cash refund -- see
+    // restoreCouponsForBooking's dryRun mode in coupon-engine.ts.
+    couponRestoreAmount?: number;
   }
 ): Promise<void> {
-  const { bookingId, customerId, preference, breakdown } = params;
+  const { bookingId, customerId, preference, breakdown, couponRestoreAmount = 0 } = params;
   await tx.refundRequest.create({
     data: {
       bookingId,
@@ -191,6 +199,7 @@ export async function createRefundRequestForBreakdown(
       cancellationPercent: breakdown.cancellationPercent,
       cancellationCharges: breakdown.cancellationCharges,
       finalRefundAmount: breakdown.finalRefundAmount,
+      couponRestoreAmount,
       status: "REQUESTED",
     },
   });

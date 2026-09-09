@@ -85,6 +85,13 @@ export async function POST(
 
         const refundMethod = booking.refundPreference === "COUPON" ? "TRAVEL_COUPON" : "BANK_TRANSFER";
 
+        // A booking has at most one RefundRequest (bookingId is @unique) --
+        // it may hold a pending coupon-restore amount (see couponRestoreAmount
+        // in refund-engine.ts) that also needs this same admin approval to
+        // actually apply. Not every REFUND_PENDING booking has one (e.g. a
+        // 0%-tier cancellation with no coupon involved), so this is optional.
+        const pendingRequest = await tx.refundRequest.findUnique({ where: { bookingId } });
+
         // Every dollar amount here was already validated above (capped at
         // what was actually paid), so the credit note inside this helper
         // only fires for a genuine refund, never speculatively.
@@ -94,6 +101,8 @@ export async function POST(
           refundMethod,
           bankReferenceNote: refundMethod === "BANK_TRANSFER" ? refundNote : undefined,
           adminId,
+          couponRestoreAmount: Number(pendingRequest?.couponRestoreAmount ?? 0),
+          cancellationCharges: Number(pendingRequest?.cancellationCharges ?? 0),
         });
 
         // Update any associated RefundRequest to COMPLETED

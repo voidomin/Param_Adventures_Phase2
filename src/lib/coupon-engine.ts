@@ -159,12 +159,17 @@ function summarizeRedemptionsByCoupon(transactions: RedemptionTx[]): RedemptionE
  * Restores one coupon's outstanding redemption, applying whatever cancellation
  * charge is still remaining first. Returns the updated remaining charge and how
  * much (if anything) was actually restored to the coupon's balance.
+ *
+ * With `dryRun: true`, computes the same numbers but skips every write --
+ * used to preview the amount pending admin approval without touching the
+ * coupon's balance yet.
  */
 async function restoreOneCoupon(
   entry: RedemptionEntry,
   bookingId: string,
   remainingChargeToApply: number,
-  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  dryRun: boolean
 ): Promise<{ remainingChargeToApply: number; restored: number }> {
   const coupon = entry.coupon;
   const outstanding = Math.max(0, entry.redeemed - entry.alreadyRestored);
@@ -173,17 +178,19 @@ async function restoreOneCoupon(
   // Scenario 6: Do not restore if coupon has expired
   if (isExpiredIST(coupon.expiryDate)) {
     // Keep transaction logs but don't restore balance
-    await tx.couponTransaction.create({
-      data: {
-        couponId: coupon.id,
-        bookingId,
-        type: "EXPIRED",
-        amount: 0,
-        previousBalance: coupon.balance,
-        newBalance: coupon.balance,
-        remarks: `Coupon was expired at cancellation time. Restoration skipped.`,
-      },
-    });
+    if (!dryRun) {
+      await tx.couponTransaction.create({
+        data: {
+          couponId: coupon.id,
+          bookingId,
+          type: "EXPIRED",
+          amount: 0,
+          previousBalance: coupon.balance,
+          newBalance: coupon.balance,
+          remarks: `Coupon was expired at cancellation time. Restoration skipped.`,
+        },
+      });
+    }
     return { remainingChargeToApply, restored: 0 };
   }
 
@@ -198,42 +205,48 @@ async function restoreOneCoupon(
 
   if (restorationAmount <= 0) return { remainingChargeToApply: remaining, restored: 0 };
 
-  const currentBalance = Number(coupon.balance);
-  const newBalance = Math.min(Number(coupon.originalValue), currentBalance + restorationAmount);
-  const newStatus = newBalance === Number(coupon.originalValue) ? CouponStatus.ACTIVE : CouponStatus.PARTIALLY_USED;
+  if (!dryRun) {
+    const currentBalance = Number(coupon.balance);
+    const newBalance = Math.min(Number(coupon.originalValue), currentBalance + restorationAmount);
+    const newStatus = newBalance === Number(coupon.originalValue) ? CouponStatus.ACTIVE : CouponStatus.PARTIALLY_USED;
 
-  await tx.travelCoupon.update({
-    where: { id: coupon.id },
-    data: {
-      balance: newBalance,
-      status: newStatus,
-    },
-  });
+    await tx.travelCoupon.update({
+      where: { id: coupon.id },
+      data: {
+        balance: newBalance,
+        status: newStatus,
+      },
+    });
 
-  await tx.couponTransaction.create({
-    data: {
-      couponId: coupon.id,
-      bookingId,
-      type: "RESTORED",
-      amount: restorationAmount,
-      previousBalance: currentBalance,
-      newBalance,
-      remarks: `Restored ${restorationAmount} from cancelled booking ${bookingId.substring(0, 8)}...`,
-    },
-  });
+    await tx.couponTransaction.create({
+      data: {
+        couponId: coupon.id,
+        bookingId,
+        type: "RESTORED",
+        amount: restorationAmount,
+        previousBalance: currentBalance,
+        newBalance,
+        remarks: `Restored ${restorationAmount} from cancelled booking ${bookingId.substring(0, 8)}...`,
+      },
+    });
+  }
 
   return { remainingChargeToApply: remaining, restored: restorationAmount };
 }
 
 /**
- * Restores any coupon values redeemed on a booking, respecting cancellation policy.
+ * Restores any coupon values redeemed on a booking, respecting cancellation
+ * policy. Pass `dryRun: true` to compute the amount that *would* be
+ * restored without writing anything -- used to preview the pending amount
+ * at cancellation time, before an admin has approved it.
  */
 export async function restoreCouponsForBooking(params: {
   bookingId: string;
   cancellationCharges: number;
   tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+  dryRun?: boolean;
 }): Promise<{ totalRestored: number }> {
-  const { bookingId, cancellationCharges, tx } = params;
+  const { bookingId, cancellationCharges, tx, dryRun = false } = params;
 
   const transactions = await tx.couponTransaction.findMany({
     where: {
@@ -254,7 +267,7 @@ export async function restoreCouponsForBooking(params: {
   let totalRestored = 0;
 
   for (const entry of redemptions) {
-    const result = await restoreOneCoupon(entry, bookingId, remainingChargeToApply, tx);
+    const result = await restoreOneCoupon(entry, bookingId, remainingChargeToApply, tx, dryRun);
     remainingChargeToApply = result.remainingChargeToApply;
     totalRestored += result.restored;
   }

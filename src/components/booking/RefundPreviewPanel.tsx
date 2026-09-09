@@ -8,6 +8,11 @@ interface RefundPreviewPanelProps {
   isPreviewLoading: boolean;
   preference: "COUPON" | "BANK_REFUND";
   errorMessage?: string | null;
+  // Balance that would be restored to a coupon already redeemed on this
+  // booking. Shown as a heads-up only -- restoring it isn't automatic,
+  // it happens once an admin approves the refund, same as the cash amount
+  // above.
+  couponRestoreAmount?: number;
 }
 
 /**
@@ -29,6 +34,7 @@ export function RefundPreviewPanel({
   isPreviewLoading,
   preference,
   errorMessage,
+  couponRestoreAmount,
 }: Readonly<RefundPreviewPanelProps>) {
   return (
     <div className="bg-foreground/5 border border-border/80 rounded-2xl p-5 text-left space-y-3">
@@ -79,6 +85,13 @@ export function RefundPreviewPanel({
             <strong>₹{previewData.finalRefundAmount.toLocaleString("en-IN")}</strong>{" "}
             {preference === "COUPON" ? "as a Travel Coupon" : "via Bank Transfer"}.
           </div>
+
+          {!!couponRestoreAmount && couponRestoreAmount > 0 && (
+            <p className="text-[10px] text-foreground/45 leading-normal pt-1 italic">
+              * Your coupon credit of ₹{couponRestoreAmount.toLocaleString("en-IN")} will be restored to your
+              wallet once this refund is approved -- not immediately.
+            </p>
+          )}
         </div>
       )}
     </div>

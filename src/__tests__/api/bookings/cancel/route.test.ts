@@ -133,6 +133,7 @@ describe("POST /api/bookings/[id]/cancel", () => {
       cb({
         booking: { update: updateBooking },
         slot: { update: updateSlot },
+        couponTransaction: { findMany: vi.fn().mockResolvedValue([]) },
       }),
     );
 
@@ -200,6 +201,7 @@ describe("POST /api/bookings/[id]/cancel", () => {
       cb({
         booking: { update: updateBooking },
         slot: { update: updateSlot },
+        couponTransaction: { findMany: vi.fn().mockResolvedValue([]) },
       }),
     );
 
@@ -234,6 +236,7 @@ describe("POST /api/bookings/[id]/cancel", () => {
       cb({
         booking: { update: updateBooking },
         slot: { update: updateSlot },
+        couponTransaction: { findMany: vi.fn().mockResolvedValue([]) },
       }),
     );
 

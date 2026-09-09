@@ -5,6 +5,7 @@ import { logActivity } from "@/lib/audit-logger";
 import { sendBookingCancellation } from "@/lib/email";
 import { z } from "zod";
 import { getRefundPercentage, calculateRefundBreakdown, createRefundRequestForBreakdown } from "@/lib/refund-engine";
+import { restoreCouponsForBooking } from "@/lib/coupon-engine";
 import { logError } from "@/lib/monitoring";
 
 const cancelSchema = z.object({
@@ -143,12 +144,28 @@ export async function POST(
           });
         }
 
-        if (newPaymentStatus === "REFUND_PENDING" && finalRefund > 0) {
+        // Preview how much (if anything) would be restored to a
+        // previously-redeemed coupon on this booking -- restoring it is
+        // gated behind the same admin approval as the cash refund (see
+        // couponRestoreAmount below), rather than happening automatically.
+        // This booking never had automatic coupon restoration wired up at
+        // all before, so this also fixes that gap: previously, a customer
+        // who used a coupon and cancelled their whole booking through this
+        // route never got the coupon's value back either way.
+        const { totalRestored: couponRestorePreview } = await restoreCouponsForBooking({
+          bookingId,
+          cancellationCharges: Number(breakdown.cancellationCharges),
+          tx,
+          dryRun: true,
+        });
+
+        if (finalRefund > 0 || couponRestorePreview > 0) {
           await createRefundRequestForBreakdown(tx, {
             bookingId,
             customerId: booking.userId,
             preference,
             breakdown,
+            couponRestoreAmount: couponRestorePreview,
           });
         }
       })

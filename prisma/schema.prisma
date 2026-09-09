@@ -589,6 +589,11 @@ model RefundRequest {
   cancellationPercent Int                @default(0)
   cancellationCharges Decimal            @db.Decimal(10, 2)
   finalRefundAmount   Decimal            @db.Decimal(10, 2)
+  // Balance owed back to a travel coupon the customer had already redeemed
+  // on this booking (separate from finalRefundAmount, which is the cash/new-
+  // coupon refund) -- held here, pending the same admin approval, instead
+  // of being restored automatically at cancellation time.
+  couponRestoreAmount Decimal            @default(0) @db.Decimal(10, 2)
   status              RefundStatus       @default(REQUESTED)
   requestedAt         DateTime           @default(now())
   approvedAt          DateTime?
