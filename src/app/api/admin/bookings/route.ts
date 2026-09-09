@@ -147,6 +147,7 @@ export async function GET(request: NextRequest) {
           payments: {
             select: { id: true, status: true, amount: true, providerPaymentId: true, provider: true, fullPayload: true, createdAt: true },
           },
+          refundRequest: { select: { couponRestoreAmount: true } },
         },
       }),
       prisma.booking.count({ where: whereClause })

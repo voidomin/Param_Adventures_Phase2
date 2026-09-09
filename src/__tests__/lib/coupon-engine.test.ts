@@ -372,6 +372,75 @@ describe("Coupon Engine Unit Tests", () => {
         expect.objectContaining({ orderBy: { createdAt: "asc" } }),
       );
     });
+
+    it("computes the same restorable amount under dryRun but writes nothing", async () => {
+      const futureDate = new Date();
+      futureDate.setDate(futureDate.getDate() + 10);
+
+      const mockTx = {
+        couponTransaction: {
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: "t1",
+              couponId: "c1",
+              type: "REDEEMED",
+              amount: 500,
+              coupon: { id: "c1", balance: 200, originalValue: 1000, expiryDate: futureDate },
+            },
+          ]),
+          create: vi.fn(),
+        },
+        travelCoupon: {
+          update: vi.fn(),
+        },
+      };
+
+      const result = await restoreCouponsForBooking({
+        bookingId: "b1",
+        cancellationCharges: 100,
+        tx: mockTx as any,
+        dryRun: true,
+      });
+
+      // Same math as the non-dry-run test above (500 redeemed - 100
+      // cancellation charge = 400 restorable), but neither write happens.
+      expect(result.totalRestored).toBe(400);
+      expect(mockTx.travelCoupon.update).not.toHaveBeenCalled();
+      expect(mockTx.couponTransaction.create).not.toHaveBeenCalled();
+    });
+
+    it("skips the EXPIRED log write under dryRun for an expired coupon", async () => {
+      const pastDate = new Date();
+      pastDate.setDate(pastDate.getDate() - 2);
+
+      const mockTx = {
+        couponTransaction: {
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: "t1",
+              couponId: "c1",
+              type: "REDEEMED",
+              amount: 500,
+              coupon: { id: "c1", balance: 0, originalValue: 500, expiryDate: pastDate },
+            },
+          ]),
+          create: vi.fn(),
+        },
+        travelCoupon: {
+          update: vi.fn(),
+        },
+      };
+
+      const result = await restoreCouponsForBooking({
+        bookingId: "b1",
+        cancellationCharges: 0,
+        tx: mockTx as any,
+        dryRun: true,
+      });
+
+      expect(result.totalRestored).toBe(0);
+      expect(mockTx.couponTransaction.create).not.toHaveBeenCalled();
+    });
   });
 
   describe("isExpiredIST", () => {

@@ -20,9 +20,11 @@ vi.mock("@/lib/db", () => {
     },
     travelCoupon: {
       create: vi.fn(),
+      update: vi.fn(),
     },
     couponTransaction: {
       create: vi.fn(),
+      findMany: vi.fn().mockResolvedValue([]),
     },
     payment: {
       updateMany: vi.fn(),
@@ -52,6 +54,8 @@ const mockFindUnique = vi.mocked(prisma.refundRequest.findUnique);
 const mockRefundUpdate = vi.mocked(prisma.refundRequest.update);
 const mockBookingUpdate = vi.mocked(prisma.booking.update);
 const mockCouponCreate = vi.mocked(prisma.travelCoupon.create);
+const mockCouponUpdate = vi.mocked(prisma.travelCoupon.update);
+const mockCouponTransactionFindMany = vi.mocked(prisma.couponTransaction.findMany);
 
 const createRequest = (body: unknown) =>
   ({ json: vi.fn().mockResolvedValue(body) }) as unknown as NextRequest;
@@ -240,5 +244,47 @@ describe("PATCH /api/admin/refunds/[id]", () => {
 
     expect(response.status).toBe(409);
     expect(mockBookingUpdate).not.toHaveBeenCalled();
+  });
+
+  it("restores the pending coupon balance when approving a refund that has a couponRestoreAmount", async () => {
+    const futureExpiry = new Date();
+    futureExpiry.setDate(futureExpiry.getDate() + 30);
+    mockFindUnique.mockResolvedValue({
+      ...baseRefundRequest,
+      couponRestoreAmount: 300,
+      cancellationCharges: 0,
+    } as any);
+    mockCouponTransactionFindMany.mockResolvedValueOnce([
+      {
+        id: "ct1",
+        couponId: "c1",
+        type: "REDEEMED",
+        amount: 300,
+        coupon: { id: "c1", balance: 0, originalValue: 300, expiryDate: futureExpiry },
+      },
+    ] as any);
+
+    const response = await PATCH(
+      createRequest({ status: "TRANSFER_COMPLETED", utrNumber: "UTR-COUPON-RESTORE" }),
+      { params: Promise.resolve({ id: "r1" }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockCouponUpdate).toHaveBeenCalledWith({
+      where: { id: "c1" },
+      data: { balance: 300, status: "ACTIVE" },
+    });
+  });
+
+  it("does not touch any coupon balance when couponRestoreAmount is zero", async () => {
+    mockFindUnique.mockResolvedValue({ ...baseRefundRequest, couponRestoreAmount: 0 } as any);
+
+    const response = await PATCH(
+      createRequest({ status: "TRANSFER_COMPLETED", utrNumber: "UTR-NO-COUPON" }),
+      { params: Promise.resolve({ id: "r1" }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockCouponUpdate).not.toHaveBeenCalled();
   });
 });

@@ -83,7 +83,7 @@ function CancelModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [previewData, setPreviewData] = useState<RefundBreakdown | null>(null);
+  const [previewData, setPreviewData] = useState<(RefundBreakdown & { couponRestoreAmount?: number }) | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
@@ -224,6 +224,7 @@ function CancelModal({
               isPreviewLoading={isPreviewLoading}
               preference={preference}
               errorMessage={previewError}
+              couponRestoreAmount={previewData?.couponRestoreAmount}
             />
           )}
 

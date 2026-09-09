@@ -22,6 +22,10 @@ interface RefundRequest {
   cancellationPercent: number;
   cancellationCharges: number;
   finalRefundAmount: number;
+  // Balance owed back to a coupon the customer had already redeemed on
+  // this booking -- separate from finalRefundAmount, and only actually
+  // restored once this refund request is resolved below.
+  couponRestoreAmount: number;
   status: RefundStatus;
   utrNumber: string | null;
   remarks: string | null;
@@ -196,6 +200,11 @@ export default function AdminRefundRequestsPage() {
                     </td>
                     <td className="px-6 py-5 text-center text-green-500 font-black text-base">
                       ₹{Number(refund.finalRefundAmount).toLocaleString("en-IN")}
+                      {Number(refund.couponRestoreAmount) > 0 && (
+                        <span className="block text-[10px] font-bold text-blue-500 normal-case mt-0.5">
+                          + ₹{Number(refund.couponRestoreAmount).toLocaleString("en-IN")} coupon restore
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-5 text-center">
                       <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${statusStyles[refund.status]}`}>
@@ -307,6 +316,14 @@ export default function AdminRefundRequestsPage() {
                   <span className="text-sm font-black text-green-500 block">₹{Number(selectedRefund.finalRefundAmount).toLocaleString()}</span>
                 </div>
               </div>
+
+              {Number(selectedRefund.couponRestoreAmount) > 0 && (
+                <div className="p-3 bg-blue-500/5 border border-blue-500/20 rounded-xl">
+                  <p className="text-xs text-blue-500 leading-relaxed">
+                    🎟️ Approving this will also restore <strong>₹{Number(selectedRefund.couponRestoreAmount).toLocaleString()}</strong> back to the travel coupon this customer had already redeemed on this booking.
+                  </p>
+                </div>
+              )}
 
               {/* Status Update Fields */}
               <div className="space-y-4">

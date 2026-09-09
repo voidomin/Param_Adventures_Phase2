@@ -109,7 +109,7 @@ export default function EditParticipantsClient({
   const [cancelReason, setCancelReason] = useState("");
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [isCancelSubmitting, setIsCancelSubmitting] = useState(false);
-  const [previewData, setPreviewData] = useState<RefundBreakdown | null>(null);
+  const [previewData, setPreviewData] = useState<(RefundBreakdown & { couponRestoreAmount?: number }) | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
@@ -906,7 +906,7 @@ interface CancelGuestModalProps {
   onClose: () => void;
   cancelPreference: "COUPON" | "BANK_REFUND";
   setCancelPreference: (v: "COUPON" | "BANK_REFUND") => void;
-  previewData: RefundBreakdown | null;
+  previewData: (RefundBreakdown & { couponRestoreAmount?: number }) | null;
   isPreviewLoading: boolean;
   previewError: string | null;
   cancelReason: string;
@@ -1013,6 +1013,7 @@ function CancelGuestModal({
             isPreviewLoading={isPreviewLoading}
             preference={cancelPreference}
             errorMessage={previewError}
+            couponRestoreAmount={previewData?.couponRestoreAmount}
           />
 
           <div className="space-y-1.5 text-left">

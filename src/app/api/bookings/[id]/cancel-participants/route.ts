@@ -183,25 +183,32 @@ async function processFullCancellation(params: {
         });
       }
 
-      // Restore coupons originally used in the booking
-      await restoreCouponsForBooking({
+      // Preview how much (if anything) would be restored to a previously-
+      // redeemed coupon on this booking -- restoring it is now gated
+      // behind the same admin approval as the cash refund (see
+      // couponRestoreAmount below), rather than happening automatically.
+      const { totalRestored: couponRestorePreview } = await restoreCouponsForBooking({
         bookingId,
         cancellationCharges: Number(breakdown.cancellationCharges),
         tx,
+        dryRun: true,
       });
 
-      // Create refund request if refund is due. When an override was
+      // Create a refund request if a cash refund is due, OR if there's a
+      // coupon-restore amount pending -- either way, something now needs
+      // an admin's approval before it's settled. When an override was
       // applied, the request records the actually-granted amount as
       // finalRefundAmount while keeping the other fields (baseFare, gst,
       // cancellationCharges, etc.) as what the policy itself calculated --
       // so the row is a transparent record of "policy said X, Y was
       // granted" rather than silently overwriting the policy figures.
-      if (finalRefund > 0 && (preference === "COUPON" || preference === "BANK_REFUND")) {
+      if (finalRefund > 0 || couponRestorePreview > 0) {
         await createRefundRequestForBreakdown(tx, {
           bookingId,
           customerId: booking.userId,
           preference,
           breakdown: overrideAmount !== undefined ? { ...breakdown, finalRefundAmount: finalRefund } : breakdown,
+          couponRestoreAmount: couponRestorePreview,
         });
       }
 
@@ -489,20 +496,26 @@ export async function POST(
           });
         }
 
-        // Restore coupons originally used in the booking
-        await restoreCouponsForBooking({
+        // Preview how much (if anything) would be restored to a
+        // previously-redeemed coupon on this booking -- gated behind the
+        // same admin approval as the cash refund (see couponRestoreAmount
+        // below) rather than happening automatically.
+        const { totalRestored: couponRestorePreview } = await restoreCouponsForBooking({
           bookingId,
           cancellationCharges: Number(financials.breakdown.cancellationCharges),
           tx,
+          dryRun: true,
         });
 
-        // Create Refund Request if refund is due
-        if (financials.refundAmount > 0 && (preference === "COUPON" || preference === "BANK_REFUND")) {
+        // Create a refund request if a cash refund is due, OR if there's a
+        // coupon-restore amount pending
+        if (financials.refundAmount > 0 || couponRestorePreview > 0) {
           await createRefundRequestForBreakdown(tx, {
             bookingId,
             customerId: dbBooking.userId,
             preference,
             breakdown: financials.breakdown,
+            couponRestoreAmount: couponRestorePreview,
           });
         }
       });

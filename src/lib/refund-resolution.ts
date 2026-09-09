@@ -1,5 +1,5 @@
 import { Prisma } from "@prisma/client";
-import { issueCancellationCoupon } from "@/lib/coupon-engine";
+import { issueCancellationCoupon, restoreCouponsForBooking } from "@/lib/coupon-engine";
 import { issueCreditNote } from "@/lib/invoice-numbering";
 
 export type RefundMethod = "TRAVEL_COUPON" | "BANK_TRANSFER";
@@ -39,9 +39,15 @@ export async function applyRefundCompletion(
     refundMethod: RefundMethod;
     bankReferenceNote: string | undefined;
     adminId: string;
+    // Balance owed back to a coupon the customer had already redeemed on
+    // this booking -- separate from refundAmount (the cash/new-coupon
+    // refund) and only actually restored once this same admin approval
+    // fires, per couponRestoreAmount on the RefundRequest row.
+    couponRestoreAmount?: number;
+    cancellationCharges?: number;
   },
 ): Promise<RefundCompletionResult> {
-  const { booking, refundAmount, refundMethod, bankReferenceNote, adminId } = params;
+  const { booking, refundAmount, refundMethod, bankReferenceNote, adminId, couponRestoreAmount = 0, cancellationCharges = 0 } = params;
 
   const newPaidAmount = Math.max(0, Number(booking.paidAmount) - refundAmount);
   const remainingBalance = Number(booking.totalPrice) - newPaidAmount;
@@ -103,6 +109,20 @@ export async function applyRefundCompletion(
         reason: booking.cancellationReason || "Booking cancellation/refund",
       })
     : null;
+
+  // Only now -- with the admin's approval actually committing -- does the
+  // customer's previously-redeemed coupon get its balance back. Before
+  // this, cancellation only ever computed a preview (dryRun) of this
+  // amount; restoreCouponsForBooking's own ledger math makes this safe to
+  // call even if some of it turns out already restored or the coupon has
+  // since expired.
+  if (couponRestoreAmount > 0) {
+    await restoreCouponsForBooking({
+      bookingId: booking.id,
+      cancellationCharges,
+      tx,
+    });
+  }
 
   return { couponCode, creditNoteNumber, newPaymentStatus };
 }

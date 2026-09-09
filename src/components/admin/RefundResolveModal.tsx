@@ -8,6 +8,7 @@ interface RefundResolveBooking {
   refundAmount?: number | null;
   refundPreference?: string | null;
   cancellationReason?: string | null;
+  refundRequest?: { couponRestoreAmount: number } | null;
   user: { name: string };
   experience: { title: string };
 }
@@ -22,6 +23,7 @@ export function RefundResolveModal({
   onSuccess: (creditNoteNumber?: string | null) => void;
 }>) {
   const isCoupon = booking.refundPreference === "COUPON";
+  const couponRestoreAmount = Number(booking.refundRequest?.couponRestoreAmount ?? 0);
   const [note, setNote] = useState(isCoupon ? "AUTO_GENERATE" : "");
   const [customAmount, setCustomAmount] = useState(
     String(booking.refundAmount ?? booking.paidAmount)
@@ -93,6 +95,14 @@ export function RefundResolveModal({
               </p>
             )}
           </div>
+
+          {couponRestoreAmount > 0 && (
+            <div className="p-3 bg-blue-500/5 border border-blue-500/20 rounded-xl">
+              <p className="text-xs text-blue-500 leading-relaxed">
+                🎟️ Resolving this will also restore <strong>₹{couponRestoreAmount.toLocaleString()}</strong> back to the travel coupon this customer had already redeemed on this booking.
+              </p>
+            </div>
+          )}
 
           {isCoupon ? (
             <div className="space-y-4">
