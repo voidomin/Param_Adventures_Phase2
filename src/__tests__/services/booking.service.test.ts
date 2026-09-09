@@ -50,6 +50,9 @@ import { BookingService } from "@/services/booking.service";
 import { prisma } from "@/lib/db";
 import { BookingRepo } from "@/repositories/booking.repo";
 import { getRazorpay } from "@/lib/razorpay";
+import { sendBookingConfirmation } from "@/lib/email";
+
+const flushMicrotasks = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 describe("BookingService.calculatePricing", () => {
   it("calculates pricing when extraAmenities is object/array instead of string", async () => {
@@ -518,6 +521,36 @@ describe("BookingService.confirmPayment", () => {
 
     expect(result).toEqual(baseBooking);
     expect(mockTx.booking.update).not.toHaveBeenCalled();
+  });
+
+  it("does not send a duplicate confirmation email on an idempotent replay (e.g. order.paid + payment.captured for the same payment)", async () => {
+    mockTx.payment.findFirst.mockResolvedValue({ id: "payment-1", amount: 1000, status: "PAID" });
+
+    await BookingService.confirmPayment("booking-1", "order_1", "pay_1", {});
+    await flushMicrotasks();
+
+    expect(sendBookingConfirmation).not.toHaveBeenCalled();
+  });
+
+  it("sends the confirmation email when this call actually confirms the booking", async () => {
+    vi.mocked(prisma.booking.findUnique).mockResolvedValue({
+      id: "booking-1",
+      slot: { date: new Date("2027-01-01") },
+      user: { name: "Jane", email: "jane@example.com" },
+      experience: { title: "Everest Base Camp", advancePaymentDeadlineDays: 7 },
+      participantCount: 2,
+      totalPrice: 1000,
+      baseFare: 900,
+      taxBreakdown: [],
+      paymentType: "FULL",
+      paidAmount: 1000,
+      remainingBalance: 0,
+    } as any);
+
+    await BookingService.confirmPayment("booking-1", "order_1", "pay_1", {});
+    await flushMicrotasks();
+
+    expect(sendBookingConfirmation).toHaveBeenCalledTimes(1);
   });
 
   it("confirms the booking and marks the payment PAID -- capacity was already reserved at booking creation, not decremented here", async () => {

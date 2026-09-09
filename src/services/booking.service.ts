@@ -431,8 +431,16 @@ export const BookingService = {
    * Shared by both the frontend-verify API and the Webhook handler.
    */
   async confirmPayment(bookingId: string, razorpayOrderId: string, razorpayPaymentId: string, payload: Record<string, unknown>) {
+    // Razorpay sends both order.paid and payment.captured for the same
+    // payment (and the client-side verify endpoint can also race in), so
+    // this runs more than once per booking. Only the call that actually
+    // performs the confirmation should send the email -- reset per
+    // transaction attempt, not just once, since a retry can re-run this
+    // callback from scratch.
+    let alreadyConfirmed = false;
     try {
       const updatedBooking = await runWithRetry(() => prisma.$transaction(async (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => {
+        alreadyConfirmed = false;
         const booking = await tx.booking.findUnique({
           where: { id: bookingId },
           select: { id: true, userId: true, bookingStatus: true, participantCount: true, slotId: true, totalPrice: true, paidAmount: true },
@@ -464,6 +472,7 @@ export const BookingService = {
 
         // If this specific payment is already PAID, return the booking (idempotency)
         if (paymentRecord.status === "PAID") {
+          alreadyConfirmed = true;
           return booking;
         }
 
@@ -532,10 +541,13 @@ export const BookingService = {
       // Revalidate entire layout to refresh slot capacities
       revalidatePath("/", "layout");
 
-      // Send confirmation email (fire-and-forget)
-      this.sendBookingConfirmationWithDetails(bookingId).catch((err) =>
-        console.error("[BookingService] Background email error:", err),
-      );
+      // Send confirmation email (fire-and-forget) -- only for the call that
+      // actually confirmed the booking, not a repeat/idempotent one.
+      if (!alreadyConfirmed) {
+        this.sendBookingConfirmationWithDetails(bookingId).catch((err) =>
+          console.error("[BookingService] Background email error:", err),
+        );
+      }
 
       return updatedBooking;
     } catch (error: unknown) {
