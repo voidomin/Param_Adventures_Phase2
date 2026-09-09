@@ -27,10 +27,16 @@ vi.mock("@/lib/db", () => {
     payment: {
       updateMany: vi.fn(),
     },
+    creditNoteSequence: {
+      upsert: vi.fn().mockResolvedValue({ fiscalYear: "26-27", lastNumber: 1 }),
+    },
+    creditNote: {
+      create: vi.fn(),
+    },
     $transaction: vi.fn(),
   };
   mockPrisma.$transaction = vi.fn().mockImplementation(async (callback) => callback(mockPrisma));
-  return { prisma: mockPrisma };
+  return { prisma: mockPrisma, runWithRetry: vi.fn((fn) => fn()) };
 });
 
 import { PATCH } from "@/app/api/admin/refunds/[id]/route";
@@ -190,5 +196,49 @@ describe("PATCH /api/admin/refunds/[id]", () => {
     });
 
     expect(response.status).toBe(500);
+  });
+
+  it("issues a GST credit note when a cash refund resolves", async () => {
+    mockFindUnique.mockResolvedValue(baseRefundRequest as any);
+
+    const response = await PATCH(
+      createRequest({ status: "TRANSFER_COMPLETED", utrNumber: "UTR12345" }),
+      { params: Promise.resolve({ id: "r1" }) },
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.creditNoteNumber).toBe("PARAM/CN/26/0001");
+    expect(prisma.creditNote.create).toHaveBeenCalledWith({
+      data: { bookingId: "b1", creditNoteNumber: "PARAM/CN/26/0001", amount: 500, reason: "Booking cancellation/refund" },
+    });
+  });
+
+  it("rejects re-completing an already-COMPLETED refund instead of re-issuing it (double-payout guard)", async () => {
+    mockFindUnique.mockResolvedValue({ ...baseRefundRequest, status: "COMPLETED" } as any);
+
+    const response = await PATCH(
+      createRequest({ status: "COMPLETED", utrNumber: "UTR-RETRY" }),
+      { params: Promise.resolve({ id: "r1" }) },
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(data.error).toMatch(/already been resolved/i);
+    expect(mockCouponCreate).not.toHaveBeenCalled();
+    expect(mockBookingUpdate).not.toHaveBeenCalled();
+    expect(prisma.creditNote.create).not.toHaveBeenCalled();
+  });
+
+  it("rejects re-completing a refund already marked TRANSFER_COMPLETED", async () => {
+    mockFindUnique.mockResolvedValue({ ...baseRefundRequest, status: "TRANSFER_COMPLETED" } as any);
+
+    const response = await PATCH(
+      createRequest({ status: "TRANSFER_COMPLETED", utrNumber: "UTR-RETRY-2" }),
+      { params: Promise.resolve({ id: "r1" }) },
+    );
+
+    expect(response.status).toBe(409);
+    expect(mockBookingUpdate).not.toHaveBeenCalled();
   });
 });

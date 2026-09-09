@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { PrismaClient, RefundStatus, Prisma } from "@prisma/client";
+import { prisma, runWithRetry } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
 import { sendRefundResolved } from "@/lib/email";
-import { RefundStatus, Prisma } from "@prisma/client";
-import { issueCancellationCoupon } from "@/lib/coupon-engine";
 import { logError } from "@/lib/monitoring";
+import { applyRefundCompletion, RefundMethod } from "@/lib/refund-resolution";
 
 type RefundRequestWithBooking = Prisma.RefundRequestGetPayload<{
   include: {
@@ -19,67 +19,7 @@ type RefundRequestWithBooking = Prisma.RefundRequestGetPayload<{
   };
 }>;
 
-/**
- * Applies a completed refund inside the transaction: issues a travel coupon
- * (or records the bank-transfer reference) and settles the parent booking's
- * payment totals. Returns the coupon code / refund note to display and email.
- */
-async function applyCompletedRefund(
-  tx: Prisma.TransactionClient,
-  refundRequest: RefundRequestWithBooking,
-  adminId: string,
-  utrNumber: string | undefined,
-  remarks: string | undefined,
-): Promise<string> {
-  const booking = refundRequest.booking;
-  const refundAmt = Number(refundRequest.finalRefundAmount);
-  const newPaidAmount = Math.max(0, Number(booking.paidAmount) - refundAmt);
-  const remainingBalance = Number(booking.totalPrice) - newPaidAmount;
-
-  let newPaymentStatus: "REFUNDED" | "PARTIALLY_PAID" | "PAID" = "PAID";
-  if (booking.bookingStatus === "CANCELLED") {
-    newPaymentStatus = "REFUNDED";
-  } else if (remainingBalance > 0.01) {
-    newPaymentStatus = "PARTIALLY_PAID";
-  }
-
-  let couponCode: string;
-  if (refundRequest.refundMethod === "TRAVEL_COUPON") {
-    couponCode = await issueCancellationCoupon(tx, {
-      bookingId: booking.id,
-      customerId: booking.userId,
-      amount: refundAmt,
-      issuedById: adminId,
-      reason: `Refund for cancelled booking ${booking.id.substring(0, 8)}`,
-    });
-  } else {
-    couponCode = utrNumber || remarks || "Bank Transfer Refund Completed";
-  }
-
-  await tx.booking.update({
-    where: { id: booking.id },
-    data: {
-      paymentStatus: newPaymentStatus,
-      paidAmount: newPaidAmount,
-      remainingBalance: Math.max(0, remainingBalance),
-      refundNote: couponCode,
-      refundAmount: null, // Clear transient refund field as it's fully settled
-    },
-  });
-
-  // See the identical comment in /api/admin/bookings/[id]/refund -- once a
-  // booking is fully REFUNDED, its underlying Payment rows (still PAID from
-  // whenever the money was originally collected) are stale and need to be
-  // flipped too, or they'd say PAID forever with no trace of the refund.
-  if (newPaymentStatus === "REFUNDED") {
-    await tx.payment.updateMany({
-      where: { bookingId: booking.id, status: "PAID" },
-      data: { status: "REFUNDED" },
-    });
-  }
-
-  return couponCode;
-}
+const TERMINAL_STATUSES: RefundStatus[] = ["COMPLETED", "TRANSFER_COMPLETED"];
 
 /**
  * Logs the resolution and emails the customer once a refund transaction has
@@ -89,6 +29,7 @@ async function notifyRefundCompletion(
   refundRequest: RefundRequestWithBooking,
   adminId: string,
   couponCode: string,
+  creditNoteNumber: string | null,
   utrNumber: string | undefined,
   remarks: string | undefined,
 ) {
@@ -99,6 +40,7 @@ async function notifyRefundCompletion(
     refundNote: couponCode,
     refundPreference: isCoupon ? "COUPON" : "BANK_REFUND",
     refundAmount: Number(refundRequest.finalRefundAmount),
+    creditNoteNumber,
     utrNumber: isCoupon ? undefined : utrNumber,
   });
 
@@ -112,6 +54,7 @@ async function notifyRefundCompletion(
       refundNote: isCoupon ? couponCode : (utrNumber || remarks || "Processed successfully via Bank Transfer"),
       totalPrice: Number(refundRequest.finalRefundAmount),
       bookingId: booking.id,
+      creditNoteNumber,
     });
   } catch (emailErr) {
     console.error("[RefundAPI] Failed to send email confirmation:", emailErr);
@@ -140,56 +83,90 @@ export async function PATCH(
       return NextResponse.json({ error: "Invalid status value provided." }, { status: 400 });
     }
 
-    const refundRequest = await prisma.refundRequest.findUnique({
-      where: { id: refundId },
-      include: {
-        booking: {
+    const isCompleted = TERMINAL_STATUSES.includes(status as RefundStatus);
+
+    // The whole read-validate-write sequence runs inside one Serializable
+    // transaction, re-reading the refund request fresh rather than trusting
+    // a pre-transaction snapshot -- a duplicate submission (double-click,
+    // retry, two admin tabs) racing this request can't both apply the
+    // payout: Postgres aborts one of the two conflicting transactions and
+    // runWithRetry retries it against fresh data, where the idempotency
+    // guard below then blocks it outright.
+    const result = await runWithRetry(() =>
+      prisma.$transaction(async (rawTx) => {
+        const tx = rawTx as unknown as PrismaClient;
+
+        const refundRequest = await tx.refundRequest.findUnique({
+          where: { id: refundId },
           include: {
-            experience: { select: { title: true } },
-            slot: { select: { date: true } },
-            user: { select: { name: true, email: true } },
+            booking: {
+              include: {
+                experience: { select: { title: true } },
+                slot: { select: { date: true } },
+                user: { select: { name: true, email: true } },
+              },
+            },
           },
-        },
-      },
-    });
+        });
 
-    if (!refundRequest) {
-      return NextResponse.json({ error: "Refund request not found." }, { status: 404 });
-    }
+        if (!refundRequest) {
+          throw new Error("REFUND_NOT_FOUND");
+        }
 
-    // Build update payload for RefundRequest
-    const refundUpdateData: Record<string, unknown> = {
-      status: status as RefundStatus,
-      remarks: remarks !== undefined ? remarks : refundRequest.remarks,
-      utrNumber: utrNumber !== undefined ? utrNumber : refundRequest.utrNumber,
-    };
+        // Once a refund has already been resolved (coupon issued or bank
+        // transfer recorded), re-applying it must be blocked outright --
+        // otherwise a double-click, network retry, or two admin tabs open
+        // on the same refund would silently issue a second coupon / deduct
+        // paidAmount a second time.
+        if (isCompleted && TERMINAL_STATUSES.includes(refundRequest.status)) {
+          throw new Error("ALREADY_RESOLVED");
+        }
 
-    const isCompleted = status === "COMPLETED" || status === "TRANSFER_COMPLETED";
+        const refundUpdateData: Record<string, unknown> = {
+          status: status as RefundStatus,
+          remarks: remarks !== undefined ? remarks : refundRequest.remarks,
+          utrNumber: utrNumber !== undefined ? utrNumber : refundRequest.utrNumber,
+        };
 
-    if (status === "APPROVED" && !refundRequest.approvedAt) {
-      refundUpdateData.approvedAt = new Date();
-    }
-    if (isCompleted && !refundRequest.processedAt) {
-      refundUpdateData.processedAt = new Date();
-    }
+        if (status === "APPROVED" && !refundRequest.approvedAt) {
+          refundUpdateData.approvedAt = new Date();
+        }
+        if (isCompleted && !refundRequest.processedAt) {
+          refundUpdateData.processedAt = new Date();
+        }
 
-    let couponCode = "";
+        let couponCode = "";
+        let creditNoteNumber: string | null = null;
 
-    // Atomic transaction for completing refund
-    await prisma.$transaction(async (tx) => {
-      await tx.refundRequest.update({
-        where: { id: refundId },
-        data: refundUpdateData,
-      });
+        if (isCompleted) {
+          const refundMethod: RefundMethod =
+            refundRequest.refundMethod === "TRAVEL_COUPON" ? "TRAVEL_COUPON" : "BANK_TRANSFER";
 
-      if (isCompleted) {
-        couponCode = await applyCompletedRefund(tx, refundRequest, adminId, utrNumber, remarks);
-      }
-    });
+          const applied = await applyRefundCompletion(tx, {
+            booking: refundRequest.booking,
+            refundAmount: Number(refundRequest.finalRefundAmount),
+            refundMethod,
+            bankReferenceNote: refundMethod === "BANK_TRANSFER" ? (utrNumber || remarks) : undefined,
+            adminId,
+          });
+          couponCode = applied.couponCode;
+          creditNoteNumber = applied.creditNoteNumber;
+        }
+
+        await tx.refundRequest.update({
+          where: { id: refundId },
+          data: refundUpdateData,
+        });
+
+        return { refundRequest, couponCode, creditNoteNumber };
+      }, { isolationLevel: "Serializable" }),
+    );
+
+    const { refundRequest, couponCode, creditNoteNumber } = result;
 
     // Audit logs & email on completed
     if (isCompleted) {
-      await notifyRefundCompletion(refundRequest, adminId, couponCode, utrNumber, remarks);
+      await notifyRefundCompletion(refundRequest, adminId, couponCode, creditNoteNumber, utrNumber, remarks);
     } else {
       await logActivity("REFUND_STATUS_UPDATED", adminId, "RefundRequest", refundId, {
         status,
@@ -197,9 +174,16 @@ export async function PATCH(
       });
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, creditNoteNumber });
 
   } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (message === "REFUND_NOT_FOUND") {
+      return NextResponse.json({ error: "Refund request not found." }, { status: 404 });
+    }
+    if (message === "ALREADY_RESOLVED") {
+      return NextResponse.json({ error: "This refund has already been resolved." }, { status: 409 });
+    }
     console.error("Update refund error:", error);
     await logError(error instanceof Error ? error : new Error(String(error)), {
       route: "PATCH /api/admin/refunds/[id]",

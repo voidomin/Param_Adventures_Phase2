@@ -6,8 +6,7 @@ import { logActivity } from "@/lib/audit-logger";
 import { sendRefundResolved } from "@/lib/email";
 import { z } from "zod";
 
-import { issueCancellationCoupon } from "@/lib/coupon-engine";
-import { issueCreditNote } from "@/lib/invoice-numbering";
+import { applyRefundCompletion } from "@/lib/refund-resolution";
 
 const refundSchema = z.object({
   refundNote: z.string().min(1, "Refund note is required (coupon code or UTR number)"),
@@ -84,66 +83,18 @@ export async function POST(
           throw new Error(`REFUND_ERROR: Refund amount (₹${refundAmt}) cannot exceed the paid amount (₹${effectivePaidCap}).`);
         }
 
-        const newPaidAmount = Math.max(0, Number(booking.paidAmount) - refundAmt);
-        const remainingBalance = Number(booking.totalPrice) - newPaidAmount;
+        const refundMethod = booking.refundPreference === "COUPON" ? "TRAVEL_COUPON" : "BANK_TRANSFER";
 
-        let newPaymentStatus: "REFUNDED" | "PARTIALLY_PAID" | "PAID" = "PAID";
-        if (booking.bookingStatus === "CANCELLED") {
-          newPaymentStatus = "REFUNDED";
-        } else if (remainingBalance > 0.01) {
-          newPaymentStatus = "PARTIALLY_PAID";
-        }
-
-        let couponCode = refundNote;
-        if (booking.refundPreference === "COUPON") {
-          couponCode = await issueCancellationCoupon(tx, {
-            bookingId,
-            customerId: booking.userId,
-            amount: refundAmt,
-            issuedById: adminId,
-            reason: `Refund for cancelled booking ${bookingId.substring(0, 8)}`,
-          });
-        }
-
-        await tx.booking.update({
-          where: { id: bookingId },
-          data: {
-            paymentStatus: newPaymentStatus,
-            paidAmount: newPaidAmount,
-            remainingBalance: Math.max(0, remainingBalance),
-            refundNote: couponCode,
-            refundAmount: null,
-          },
+        // Every dollar amount here was already validated above (capped at
+        // what was actually paid), so the credit note inside this helper
+        // only fires for a genuine refund, never speculatively.
+        const { couponCode, creditNoteNumber } = await applyRefundCompletion(tx, {
+          booking,
+          refundAmount: refundAmt,
+          refundMethod,
+          bankReferenceNote: refundMethod === "BANK_TRANSFER" ? refundNote : undefined,
+          adminId,
         });
-
-        // A booking's individual Payment rows (each charge attempt --
-        // Razorpay, manual bank-transfer verification, coupon settlement)
-        // are written PAID at collection time and never revisited. Once the
-        // booking itself is fully REFUNDED, those rows are stale: they'd
-        // otherwise say PAID forever with nothing on the payment record
-        // itself showing the money went back. Only applies to a full
-        // refund -- a partial refund still legitimately kept some of what
-        // was collected, so there's no single row to flip to REFUNDED.
-        if (newPaymentStatus === "REFUNDED") {
-          await tx.payment.updateMany({
-            where: { bookingId, status: "PAID" },
-            data: { status: "REFUNDED" },
-          });
-        }
-
-        // Real money (or coupon credit) is being handed back against a
-        // previously invoiced booking -- GST requires a credit note for
-        // that, referencing the original invoice, in its own sequential
-        // series (see lib/invoice-numbering.ts). Every dollar amount here
-        // was already validated above (capped at what was actually paid),
-        // so this only fires for a genuine refund, never speculatively.
-        const creditNoteNumber = refundAmt > 0
-          ? await issueCreditNote(tx, {
-              bookingId,
-              amount: refundAmt,
-              reason: booking.cancellationReason || "Booking cancellation/refund",
-            })
-          : null;
 
         // Update any associated RefundRequest to COMPLETED
         if (tx.refundRequest) {
