@@ -113,11 +113,129 @@ describe("POST /api/bookings/[id]/cancel-participants", () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "admin-1", roleName: "ADMIN" } as any);
 
     const response = await POST(
-      createRequest({ participantIds: ["p1", "p2"], preference: "NO_REFUND" }),
+      createRequest({ participantIds: ["p1", "p2"], preference: "NO_REFUND", reason: "Customer requested by phone" }),
       { params: Promise.resolve({ id: "b1" }) },
     );
 
     expect(response.status).toBe(200);
+  });
+
+  it("returns 400 when an ADMIN cancels without providing a reason", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "admin-1", roleName: "ADMIN" } as any);
+
+    const response = await POST(
+      createRequest({ participantIds: ["p1", "p2"], preference: "NO_REFUND" }),
+      { params: Promise.resolve({ id: "b1" }) },
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it("applies an admin's override amount instead of the calculated refund", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "admin-1", roleName: "ADMIN" } as any);
+
+    const response = await POST(
+      createRequest({
+        participantIds: ["p1", "p2"],
+        preference: "BANK_REFUND",
+        reason: "Goodwill exception",
+        overrideAmount: 900,
+      }),
+      { params: Promise.resolve({ id: "b1" }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(prisma.refundRequest.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ finalRefundAmount: 900 }) }),
+    );
+    expect(prisma.booking.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ refundAmount: 900 }) }),
+    );
+    expect(logActivity).toHaveBeenCalledWith(
+      "BOOKING_CANCELLED",
+      "admin-1",
+      "Booking",
+      "b1",
+      expect.objectContaining({ refundAmount: 900, calculatedAmount: 1200, overrideApplied: true }),
+    );
+  });
+
+  it("rejects an override amount that exceeds what's actually available to refund", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "admin-1", roleName: "ADMIN" } as any);
+
+    const response = await POST(
+      createRequest({
+        participantIds: ["p1", "p2"],
+        preference: "BANK_REFUND",
+        reason: "Goodwill exception",
+        overrideAmount: 5000,
+      }),
+      { params: Promise.resolve({ id: "b1" }) },
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(data.error).toContain("cannot exceed");
+    expect(prisma.booking.update).not.toHaveBeenCalled();
+  });
+
+  it("validates the override against a fresh paidAmount read inside the transaction, not the pre-transaction snapshot", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "admin-1", roleName: "ADMIN" } as any);
+    // First call = the pre-validation read in the route handler (stale,
+    // pretend a payment hadn't landed yet). Second call = the re-read
+    // inside the transaction (fresh, payment has since landed).
+    vi.mocked(prisma.booking.findUnique)
+      .mockResolvedValueOnce({ ...baseBooking, paidAmount: 600 } as any)
+      .mockResolvedValueOnce({ ...baseBooking, paidAmount: 1200 } as any);
+
+    const response = await POST(
+      createRequest({
+        participantIds: ["p1", "p2"],
+        preference: "BANK_REFUND",
+        reason: "Goodwill exception",
+        overrideAmount: 900,
+      }),
+      { params: Promise.resolve({ id: "b1" }) },
+    );
+
+    // 900 is within the fresh 1200 paid, even though it exceeded the stale
+    // 600 snapshot -- proves the override was checked against the live read.
+    expect(response.status).toBe(200);
+    expect(mockCalculateRefundBreakdown).toHaveBeenCalledWith(
+      expect.objectContaining({ paidAmount: 1200 }),
+    );
+  });
+
+  it("ignores overrideAmount from a non-admin caller cancelling their own booking", async () => {
+    const response = await POST(
+      createRequest({ participantIds: ["p1", "p2"], preference: "BANK_REFUND", overrideAmount: 1 }),
+      { params: Promise.resolve({ id: "b1" }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(prisma.refundRequest.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ finalRefundAmount: 1200 }) }),
+    );
+  });
+
+  it("ignores overrideAmount when the admin selects No Refund", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "admin-1", roleName: "ADMIN" } as any);
+
+    const response = await POST(
+      createRequest({
+        participantIds: ["p1", "p2"],
+        preference: "NO_REFUND",
+        reason: "Guest no-show",
+        overrideAmount: 900,
+      }),
+      { params: Promise.resolve({ id: "b1" }) },
+    );
+
+    expect(response.status).toBe(200);
+    expect(prisma.refundRequest.create).not.toHaveBeenCalled();
+    expect(prisma.booking.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ refundAmount: null }) }),
+    );
   });
 
   it("returns 409 for an already-cancelled booking", async () => {
