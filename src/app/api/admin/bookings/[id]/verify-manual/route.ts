@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
+import { Prisma } from "@prisma/client";
 import { prisma, runWithRetry } from "@/lib/db";
 import { authorizeRequest } from "@/lib/api-auth";
 import { sendBookingConfirmation } from "@/lib/email";
@@ -152,12 +153,19 @@ function mapManualVerifyError(error: unknown) {
     );
   }
 
-  // Catch unique constraint violation on providerPaymentId
-  const err = error as { code?: string; meta?: { target?: string[] } };
-  if (err.code === "P2002" && err.meta?.target?.includes("providerPaymentId")) {
-    return NextResponse.json({
-      error: "This Transaction ID / Reference has already been registered for another payment. Please verify the Reference ID and try again."
-    }, { status: 400 });
+  // Catch unique constraint violation on providerPaymentId. `meta`'s shape
+  // differs by Prisma driver: the classic engine puts a flat `target`
+  // array on it, while the @prisma/adapter-pg driver used here nests it
+  // under meta.driverAdapterError.cause.constraint.fields instead --
+  // scanning the serialized meta (plus the message) for the column name is
+  // robust to both.
+  if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+    const haystack = JSON.stringify(error.meta ?? {}) + error.message;
+    if (haystack.includes("providerPaymentId")) {
+      return NextResponse.json({
+        error: "This Transaction ID / Reference has already been registered for another payment. Please verify the Reference ID and try again."
+      }, { status: 400 });
+    }
   }
 
   return NextResponse.json({
