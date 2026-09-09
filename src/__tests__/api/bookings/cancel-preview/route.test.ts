@@ -31,10 +31,12 @@ vi.mock("@/lib/refund-engine", () => ({
 import { GET } from "@/app/api/bookings/[id]/cancel-preview/route";
 import { authorizeRequest } from "@/lib/api-auth";
 import { prisma } from "@/lib/db";
+import { calculateRefundBreakdown } from "@/lib/refund-engine";
 
 const mockAuthorizeRequest = vi.mocked(authorizeRequest);
 const mockFindBooking = vi.mocked(prisma.booking.findUnique);
 const mockFindUser = vi.mocked(prisma.user.findUnique);
+const mockCalculateRefundBreakdown = vi.mocked(calculateRefundBreakdown);
 
 const createRequest = (url: string) =>
   new NextRequest(url, { method: "GET" });
@@ -112,5 +114,49 @@ describe("GET /api/bookings/[id]/cancel-preview", () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.finalRefundAmount).toBe(1000);
+  });
+
+  it("passes isCompanyCancellation: false when the booking's own customer previews it", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "u1" } as any);
+    mockFindUser.mockResolvedValue({ id: "u1", role: { name: "REGISTERED_USER" } } as any);
+    mockFindBooking.mockResolvedValue({
+      id: "b1",
+      userId: "u1",
+      totalPrice: 2000,
+      paidAmount: 2000,
+      paymentType: "FULL",
+      experience: { basePrice: 1000 },
+      participants: [{ id: "p1", isCancelled: false, name: "Leela" }],
+    } as any);
+
+    await GET(createRequest("http://localhost/api/bookings/b1/cancel-preview"), {
+      params: Promise.resolve({ id: "b1" }),
+    });
+
+    expect(mockCalculateRefundBreakdown).toHaveBeenCalledWith(
+      expect.objectContaining({ isCompanyCancellation: false }),
+    );
+  });
+
+  it("passes isCompanyCancellation: true when an admin previews someone else's booking", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "admin-1" } as any);
+    mockFindUser.mockResolvedValue({ id: "admin-1", role: { name: "ADMIN" } } as any);
+    mockFindBooking.mockResolvedValue({
+      id: "b1",
+      userId: "u1",
+      totalPrice: 2000,
+      paidAmount: 2000,
+      paymentType: "FULL",
+      experience: { basePrice: 1000 },
+      participants: [{ id: "p1", isCancelled: false, name: "Leela" }],
+    } as any);
+
+    await GET(createRequest("http://localhost/api/bookings/b1/cancel-preview"), {
+      params: Promise.resolve({ id: "b1" }),
+    });
+
+    expect(mockCalculateRefundBreakdown).toHaveBeenCalledWith(
+      expect.objectContaining({ isCompanyCancellation: true }),
+    );
   });
 });

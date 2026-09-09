@@ -57,8 +57,17 @@ async function processFullCancellation(params: {
   // earlier (that snapshot can go stale between the admin opening the
   // cancel dialog and confirming it).
   overrideAmount?: number;
+  // True whenever the caller is staff (ADMIN/SUPER_ADMIN), regardless of
+  // whether it's their own booking -- an admin-initiated cancellation
+  // isn't the customer choosing to walk away, so it defaults to a full
+  // refund of whatever was paid instead of the day-based cancellation
+  // tiers. overrideAmount above still lets the admin dial it down (e.g.
+  // a genuine no-show) or leave it at full (an operational-issue
+  // cancellation) -- this only changes the default the preview/override
+  // starts from.
+  isCompanyCancellation: boolean;
 }) {
-  const { bookingId, booking, activeCount, userId, reason, preference, overrideAmount } = params;
+  const { bookingId, booking, activeCount, userId, reason, preference, overrideAmount, isCompanyCancellation } = params;
 
   // Resolve cancellation policy based on departure date. This doesn't
   // depend on the booking's financial fields, so it's safe to compute
@@ -106,6 +115,7 @@ async function processFullCancellation(params: {
         refundPercent,
         taxBreakdown: current.taxBreakdown,
         refundPreference: preference === "NO_REFUND" ? "BANK_REFUND" : preference,
+        isCompanyCancellation,
       });
 
       let finalRefund: number;
@@ -215,8 +225,9 @@ async function calculateRefundProportional(params: {
   activeParticipants: CancelParticipantInput[];
   participantIds: string[];
   preference: "COUPON" | "BANK_REFUND" | "NO_REFUND";
+  isCompanyCancellation: boolean;
 }) {
-  const { booking, activeParticipants, participantIds, preference } = params;
+  const { booking, activeParticipants, participantIds, preference, isCompanyCancellation } = params;
   const experienceBasePrice = Number(booking.experience?.basePrice || 0);
 
   let totalCancelledBase = 0;
@@ -260,6 +271,7 @@ async function calculateRefundProportional(params: {
     refundPercent,
     taxBreakdown: booking.taxBreakdown,
     refundPreference: preference === "NO_REFUND" ? "BANK_REFUND" : preference,
+    isCompanyCancellation,
   });
 
   const refundAmount = preference === "NO_REFUND" ? 0 : breakdown.finalRefundAmount;
@@ -403,6 +415,7 @@ export async function POST(
         reason,
         preference,
         overrideAmount: effectiveOverride,
+        isCompanyCancellation: isModerator,
       });
       return NextResponse.json({ success: true, message: "Booking fully cancelled." });
     }
@@ -413,6 +426,7 @@ export async function POST(
       activeParticipants,
       participantIds,
       preference,
+      isCompanyCancellation: isModerator,
     });
 
       // Execute atomic transaction for partial cancellation

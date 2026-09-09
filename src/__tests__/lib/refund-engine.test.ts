@@ -96,6 +96,54 @@ describe("Refund Calculation Engine Tests", () => {
     expect(breakdown.finalRefundAmount).toBe(0);
   });
 
+  it("Scenario 5b: No Refund (0%) applies to Coupon too, not just Bank Refund", () => {
+    // Before the fix, a coupon refund at the 0%-tier still handed back
+    // GST + convenience fee (paidAmount - cancellationCharges, where
+    // cancellationCharges only ever deducts from the base fare) --
+    // a customer cancelling last-minute shouldn't get a different answer
+    // depending on which payout method they pick.
+    const couponAt0 = calculateRefundBreakdown({
+      baseFare: 10000,
+      totalPrice: 10600,
+      paidAmount: 10600,
+      paymentType: "FULL",
+      refundPercent: 0,
+      taxBreakdown,
+      refundPreference: "COUPON",
+    });
+    expect(couponAt0.finalRefundAmount).toBe(0);
+
+    const bankAt0 = calculateRefundBreakdown({
+      baseFare: 10000,
+      totalPrice: 10600,
+      paidAmount: 10600,
+      paymentType: "FULL",
+      refundPercent: 0,
+      taxBreakdown,
+      refundPreference: "BANK_REFUND",
+    });
+    expect(bankAt0.finalRefundAmount).toBe(0);
+  });
+
+  it("Scenario 7b: Company-initiated cancellation still gives a full refund even inside the 0%-refund window", () => {
+    // isCompanyCancellation must be checked before the 0%-tier short
+    // circuit -- an admin cancelling the day before departure for an
+    // operational reason shouldn't be penalized by the customer-facing
+    // last-minute policy.
+    const breakdown = calculateRefundBreakdown({
+      baseFare: 10000,
+      totalPrice: 10600,
+      paidAmount: 10600,
+      paymentType: "FULL",
+      refundPercent: 0,
+      taxBreakdown,
+      isCompanyCancellation: true,
+    });
+
+    expect(breakdown.cancellationCharges).toBe(0);
+    expect(breakdown.finalRefundAmount).toBe(10600);
+  });
+
   it("Scenario 6: Partial Payment / Seat Block Advance Booking", () => {
     // 100% Refund on Advance
     const fullAdvanceRefund = calculateRefundBreakdown({
