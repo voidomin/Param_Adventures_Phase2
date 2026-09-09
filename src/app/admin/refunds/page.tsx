@@ -23,7 +23,8 @@ interface RefundRequest {
   cancellationCharges: number;
   finalRefundAmount: number;
   status: RefundStatus;
-  adminNotes: string | null;
+  utrNumber: string | null;
+  remarks: string | null;
   createdAt: string;
   booking: {
     paidAmount: number;
@@ -66,7 +67,7 @@ export default function AdminRefundRequestsPage() {
       const res = await fetch(`/api/admin/refunds?status=${filterStatus}`);
       if (!res.ok) throw new Error("Failed to load refund requests");
       const data = await res.json();
-      setRefunds(data.refundRequests || []);
+      setRefunds(data.refunds || []);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load refund requests");
     } finally {
@@ -81,19 +82,25 @@ export default function AdminRefundRequestsPage() {
   const handleOpenReview = (refund: RefundRequest) => {
     setSelectedRefund(refund);
     setNewStatus(refund.status);
-    setAdminNotes(refund.adminNotes || "");
+    setAdminNotes(refund.remarks || refund.utrNumber || "");
   };
 
   const handleUpdateStatus = async () => {
     if (!selectedRefund) return;
     setIsUpdating(true);
     try {
+      // The route stores this free-text box under two separate fields --
+      // utrNumber (used verbatim as the bank-transfer reference shown to
+      // the customer) and remarks (internal notes) -- so it's sent as both
+      // rather than under a key ("adminNotes") the backend never reads,
+      // which used to silently discard whatever was typed here.
       const res = await fetch(`/api/admin/refunds/${selectedRefund.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           status: newStatus,
-          adminNotes,
+          utrNumber: adminNotes,
+          remarks: adminNotes,
         }),
       });
 
