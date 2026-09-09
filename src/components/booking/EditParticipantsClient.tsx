@@ -2,8 +2,10 @@
 
 import React, { useState, useEffect, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { MapPin, User, X, AlertTriangle, Edit2, ShieldAlert, CheckCircle2, Loader2 } from "lucide-react";
+import { MapPin, User, X, AlertTriangle, Edit2, ShieldAlert, CheckCircle2 } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
+import { RefundPreviewPanel } from "@/components/booking/RefundPreviewPanel";
+import type { RefundBreakdown } from "@/lib/refund-engine";
 
 interface SelectedAmenity {
   groupId: string;
@@ -11,15 +13,6 @@ interface SelectedAmenity {
   optionId: string;
   optionName: string;
   price: number;
-}
-
-interface RefundPreview {
-  baseFare: number;
-  gst: number;
-  convenienceFee: number;
-  cancellationPercent: number;
-  cancellationCharges: number;
-  finalRefundAmount: number;
 }
 
 type NullableString = string | null;
@@ -116,7 +109,7 @@ export default function EditParticipantsClient({
   const [cancelReason, setCancelReason] = useState("");
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [isCancelSubmitting, setIsCancelSubmitting] = useState(false);
-  const [previewData, setPreviewData] = useState<RefundPreview | null>(null);
+  const [previewData, setPreviewData] = useState<RefundBreakdown | null>(null);
   const [isPreviewLoading, setIsPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
@@ -913,7 +906,7 @@ interface CancelGuestModalProps {
   onClose: () => void;
   cancelPreference: "COUPON" | "BANK_REFUND";
   setCancelPreference: (v: "COUPON" | "BANK_REFUND") => void;
-  previewData: RefundPreview | null;
+  previewData: RefundBreakdown | null;
   isPreviewLoading: boolean;
   previewError: string | null;
   cancelReason: string;
@@ -1015,59 +1008,12 @@ function CancelGuestModal({
             </div>
           </div>
 
-          {/* Refund Breakdown Panel */}
-          <div className="bg-foreground/5 border border-border/80 rounded-2xl p-5 text-left space-y-3">
-            <span className="text-[10px] font-black text-foreground/45 uppercase tracking-widest block">Refund Breakdown Preview</span>
-            {isPreviewLoading && (
-              <div className="flex items-center gap-2 text-xs text-foreground/50 py-2">
-                <Loader2 className="w-4 h-4 animate-spin text-primary" /> Calculating eligible refund details...
-              </div>
-            )}
-            {!isPreviewLoading && previewData && (
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-foreground/60">Trip Cost (Base Fare):</span>
-                  <span className="font-bold text-foreground">₹{previewData.baseFare.toLocaleString("en-IN")}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-foreground/60">
-                    {cancelPreference === "COUPON" ? "GST Component (Refunded as Coupon):" : "GST Component (Non-Refundable):"}
-                  </span>
-                  <span className="font-bold text-foreground">₹{previewData.gst.toLocaleString("en-IN")}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-foreground/60">
-                    {cancelPreference === "COUPON" ? "Convenience Fee (Refunded as Coupon):" : "Convenience Fee (Non-Refundable):"}
-                  </span>
-                  <span className="font-bold text-foreground">₹{previewData.convenienceFee.toLocaleString("en-IN")}</span>
-                </div>
-                <div className="flex justify-between text-red-400">
-                  <span>Cancellation Charges ({previewData.cancellationPercent}%):</span>
-                  <span className="font-bold">-₹{previewData.cancellationCharges.toLocaleString("en-IN")}</span>
-                </div>
-                
-                <div className="border-t border-border/50 pt-2 flex justify-between font-black text-base">
-                  <span className="text-foreground">Net Refund Amount:</span>
-                  <span className="text-green-500">₹{previewData.finalRefundAmount.toLocaleString("en-IN")}</span>
-                </div>
-                
-                <p className="text-[10px] text-foreground/45 leading-normal pt-1 italic">
-                  {cancelPreference === "COUPON"
-                    ? "* GST and Convenience Fee are fully refunded in the form of a travel coupon."
-                    : "* GST and Convenience Fee are non-refundable for guest-initiated bank refund cancellations."}
-                </p>
-
-                <div className="mt-4 p-3 bg-primary/10 border border-primary/20 rounded-xl text-xs text-primary font-bold text-center animate-in fade-in duration-200">
-                  Confirming: You will receive <strong>₹{previewData.finalRefundAmount.toLocaleString("en-IN")}</strong> {cancelPreference === "COUPON" ? "as a Travel Coupon" : "via Bank Transfer"}.
-                </div>
-              </div>
-            )}
-            {!isPreviewLoading && !previewData && (
-              <div className="text-xs text-red-400">
-                {previewError || "Failed to load breakdown. Using policy defaults on submit."}
-              </div>
-            )}
-          </div>
+          <RefundPreviewPanel
+            previewData={previewData}
+            isPreviewLoading={isPreviewLoading}
+            preference={cancelPreference}
+            errorMessage={previewError}
+          />
 
           <div className="space-y-1.5 text-left">
             <label htmlFor="cancel-reason" className="text-xs font-bold text-foreground/60 uppercase">Reason (Optional)</label>
