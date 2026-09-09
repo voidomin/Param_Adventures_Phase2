@@ -131,6 +131,43 @@ describe("POST /api/bookings/[id]/cancel-participants", () => {
     expect(response.status).toBe(400);
   });
 
+  it("passes isCompanyCancellation: true when an ADMIN cancels (full cancellation)", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "admin-1", roleName: "ADMIN" } as any);
+
+    await POST(
+      createRequest({ participantIds: ["p1", "p2"], preference: "BANK_REFUND", reason: "Operational issue" }),
+      { params: Promise.resolve({ id: "b1" }) },
+    );
+
+    expect(mockCalculateRefundBreakdown).toHaveBeenCalledWith(
+      expect.objectContaining({ isCompanyCancellation: true }),
+    );
+  });
+
+  it("passes isCompanyCancellation: false when a customer cancels their own booking (full cancellation)", async () => {
+    await POST(
+      createRequest({ participantIds: ["p1", "p2"], preference: "BANK_REFUND" }),
+      { params: Promise.resolve({ id: "b1" }) },
+    );
+
+    expect(mockCalculateRefundBreakdown).toHaveBeenCalledWith(
+      expect.objectContaining({ isCompanyCancellation: false }),
+    );
+  });
+
+  it("passes isCompanyCancellation: true when an ADMIN partially cancels", async () => {
+    mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "admin-1", roleName: "ADMIN" } as any);
+
+    await POST(
+      createRequest({ participantIds: ["p1"], preference: "BANK_REFUND", reason: "Operational issue" }),
+      { params: Promise.resolve({ id: "b1" }) },
+    );
+
+    expect(mockCalculateRefundBreakdown).toHaveBeenCalledWith(
+      expect.objectContaining({ isCompanyCancellation: true }),
+    );
+  });
+
   it("applies an admin's override amount instead of the calculated refund", async () => {
     mockAuthorizeRequest.mockResolvedValue({ authorized: true, userId: "admin-1", roleName: "ADMIN" } as any);
 

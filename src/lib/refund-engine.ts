@@ -113,6 +113,25 @@ export function calculateRefundBreakdown(params: {
     };
   }
 
+  // At the 0%-refund tier, nothing comes back regardless of payout
+  // method. Without this, the coupon branch below would still hand back
+  // the GST + convenience fee portion even on a last-minute cancellation
+  // (it only deducts cancellation charges from the base fare, not from
+  // the tax/fee), which doesn't match the plain "no refund in this
+  // window" a customer sees stated in the cancellation policy -- a bank
+  // refund and a coupon at the same last-minute timing should mean the
+  // same thing.
+  if (refundPercent === 0) {
+    return {
+      baseFare: round2(baseFare),
+      gst,
+      convenienceFee,
+      cancellationPercent: 100,
+      cancellationCharges: round2(baseFare),
+      finalRefundAmount: 0,
+    };
+  }
+
   const cancellationPercent = 100 - refundPercent;
   const cancellationCharges = round2((baseFare * cancellationPercent) / 100);
   const refundableBaseFare = Math.max(0, baseFare - cancellationCharges);

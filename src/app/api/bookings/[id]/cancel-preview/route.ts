@@ -121,6 +121,13 @@ export async function GET(
       refundPercent,
       taxBreakdown: booking.taxBreakdown,
       refundPreference: preference,
+      // An admin-initiated cancellation isn't the customer choosing to
+      // walk away, so it isn't bound by the day-based cancellation-charge
+      // tiers -- it defaults to a full refund of whatever was actually
+      // paid, same as the automated company-side cancellation paths.
+      // This is a preview only: the admin can still override the amount
+      // before confirming (see cancel-participants).
+      isCompanyCancellation: isAdmin,
     });
 
     return NextResponse.json({

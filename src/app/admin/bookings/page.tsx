@@ -280,8 +280,9 @@ function BookingDetailsModal({
             {cancelPreview && !previewLoading && !previewError && (
               <div className="p-3 bg-foreground/5 border border-border rounded-lg space-y-1.5 text-xs">
                 <p className="text-foreground/60">
-                  {cancelPreview.daysBefore} day(s) before departure — policy allows{" "}
-                  <strong>{cancelPreview.refundPercent}%</strong> refund of base fare.
+                  {cancelPreview.daysBefore} day(s) before departure. Admin-initiated cancellations default to a{" "}
+                  <strong>full refund</strong> of what was paid — not bound by the customer&apos;s day-based
+                  cancellation policy. Use the field below to reduce it if the situation calls for it.
                 </p>
                 <div className="grid grid-cols-2 gap-1 text-foreground/75">
                   <span>Base Fare</span><span className="text-right">₹{cancelPreview.baseFare.toLocaleString("en-IN")}</span>
