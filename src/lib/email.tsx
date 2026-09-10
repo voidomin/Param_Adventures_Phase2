@@ -9,6 +9,7 @@ import PasswordResetEmail from "@/components/emails/PasswordResetEmail";
 import VerifyEmailEmail from "@/components/emails/VerifyEmailEmail";
 import AdminInviteEmail from "@/components/emails/AdminInviteEmail";
 import CustomTripAcknowledgmentEmail from "@/components/emails/CustomTripAcknowledgmentEmail";
+import BalancePaymentReminderEmail from "@/components/emails/BalancePaymentReminderEmail";
 import React from "react";
 import { emailFactory } from "./email/factory";
 import { maskEmail } from "@/lib/utils";
@@ -29,6 +30,18 @@ export interface BookingEmailData {
   paidAmount?: number;
   remainingBalance?: number;
   advancePaymentDeadlineDays?: number;
+}
+
+export interface BalancePaymentReminderData {
+  userName: string;
+  userEmail: string;
+  experienceTitle: string;
+  bookingId: string;
+  paidAmount: number;
+  remainingBalance: number;
+  totalPrice: number;
+  deadlineDate: Date;
+  isFinalReminder: boolean;
 }
 
 export interface BookingCancelledData {
@@ -303,5 +316,37 @@ export async function sendCustomTripAcknowledgmentEmail(data: CustomTripData) {
     });
   } catch (err) {
     console.error("Email layout error (CustomTrip):", err);
+  }
+}
+
+export async function sendBalancePaymentReminder(data: BalancePaymentReminderData) {
+  try {
+    const deadlineStr = data.deadlineDate.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+
+    const html = await render(
+      <BalancePaymentReminderEmail
+        userName={data.userName}
+        tripName={data.experienceTitle}
+        bookingId={data.bookingId}
+        remainingBalance={data.remainingBalance}
+        paidAmount={data.paidAmount}
+        totalPrice={data.totalPrice}
+        deadlineDate={deadlineStr}
+        isFinalReminder={data.isFinalReminder}
+      />,
+    );
+    await sendEmail({
+      to: data.userEmail,
+      subject: data.isFinalReminder
+        ? `Final Reminder: Balance Due for ${data.experienceTitle}`
+        : `Payment Reminder: Balance Due for ${data.experienceTitle}`,
+      html,
+    });
+  } catch (err) {
+    console.error("Email layout error (BalancePaymentReminder):", err);
   }
 }

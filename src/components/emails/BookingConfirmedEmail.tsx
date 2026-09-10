@@ -1,5 +1,5 @@
 import { Section, Text, Link, Hr, Row, Column } from "@react-email/components";
-import { EmailBase, commonStyles } from "./EmailBase";
+import { EmailBase, commonStyles, priceStyles } from "./EmailBase";
 
 export interface BookingConfirmedEmailProps {
   userName: string;
@@ -46,38 +46,38 @@ export const BookingConfirmedEmail = ({
       </Text>
 
       {/* Pricing Summary Section */}
-      <Section style={priceContainer}>
-         <Text style={sectionTitle}>Payment Summary</Text>
-         <Hr style={hr} />
-         
-         <Row style={priceRow}>
-            <Column><Text style={priceLabel}>Adventure Base Fare (x{participantCount})</Text></Column>
-            <Column align="right"><Text style={priceValue}>₹{Number(baseFare).toLocaleString("en-IN")}</Text></Column>
+      <Section style={priceStyles.container}>
+         <Text style={priceStyles.sectionTitle}>Payment Summary</Text>
+         <Hr style={priceStyles.hr} />
+
+         <Row style={priceStyles.row}>
+            <Column><Text style={priceStyles.label}>Adventure Base Fare (x{participantCount})</Text></Column>
+            <Column align="right"><Text style={priceStyles.value}>₹{Number(baseFare).toLocaleString("en-IN")}</Text></Column>
          </Row>
 
          {taxBreakdown.map((tax) => (
-            <Row key={tax.name} style={priceRow}>
-               <Column><Text style={priceLabel}>{tax.name} ({tax.percentage}%)</Text></Column>
-               <Column align="right"><Text style={priceValue}>₹{Number(tax.amount).toLocaleString("en-IN")}</Text></Column>
+            <Row key={tax.name} style={priceStyles.row}>
+               <Column><Text style={priceStyles.label}>{tax.name} ({tax.percentage}%)</Text></Column>
+               <Column align="right"><Text style={priceStyles.value}>₹{Number(tax.amount).toLocaleString("en-IN")}</Text></Column>
             </Row>
          ))}
 
-         <Hr style={hr} />
-         <Row style={totalRow}>
-            <Column><Text style={totalLabel}>{isAdvance ? "Advance Paid" : "Total Paid"}</Text></Column>
-            <Column align="right"><Text style={totalValue}>₹{Number(isAdvance ? paidAmount : totalPrice).toLocaleString("en-IN")}</Text></Column>
+         <Hr style={priceStyles.hr} />
+         <Row style={priceStyles.totalRow}>
+            <Column><Text style={priceStyles.totalLabel}>{isAdvance ? "Advance Paid" : "Total Paid"}</Text></Column>
+            <Column align="right"><Text style={priceStyles.totalValue}>₹{Number(isAdvance ? paidAmount : totalPrice).toLocaleString("en-IN")}</Text></Column>
          </Row>
          {isAdvance && (
-            <Row style={priceRow}>
-               <Column><Text style={priceLabel}>Remaining Balance</Text></Column>
-               <Column align="right"><Text style={priceValue}>₹{Number(remainingBalance).toLocaleString("en-IN")}</Text></Column>
+            <Row style={priceStyles.row}>
+               <Column><Text style={priceStyles.label}>Remaining Balance</Text></Column>
+               <Column align="right"><Text style={priceStyles.value}>₹{Number(remainingBalance).toLocaleString("en-IN")}</Text></Column>
             </Row>
          )}
       </Section>
 
       {isAdvance && advanceDeadline && (
-        <Section style={noticeContainer}>
-          <Text style={noticeText}>
+        <Section style={priceStyles.noticeContainer}>
+          <Text style={priceStyles.noticeText}>
             ⏰ Please pay your remaining balance of ₹{Number(remainingBalance).toLocaleString("en-IN")} by{" "}
             <strong>{advanceDeadline}</strong> to keep your seat. Bookings not fully
             paid by then are automatically cancelled, and the advance becomes eligible for a refund pending
@@ -101,78 +101,6 @@ export const BookingConfirmedEmail = ({
       </Text>
     </EmailBase>
   );
-};
-
-const priceContainer = {
-   backgroundColor: "#f9fafb",
-   padding: "24px",
-   borderRadius: "16px",
-   margin: "20px 0",
-   border: "1px solid #e5e7eb",
-};
-
-const sectionTitle = {
-   fontSize: "14px",
-   fontWeight: "900",
-   textTransform: "uppercase" as const,
-   letterSpacing: "0.05em",
-   color: "#4b5563",
-   margin: "0 0 12px 0",
-};
-
-const hr = {
-   borderColor: "#e5e7eb",
-   margin: "12px 0",
-};
-
-const priceRow = {
-   margin: "4px 0",
-};
-
-const priceLabel = {
-   fontSize: "13px",
-   color: "#6b7280",
-   margin: "0",
-};
-
-const priceValue = {
-   fontSize: "13px",
-   color: "#111827",
-   margin: "0",
-   fontWeight: "600",
-};
-
-const totalRow = {
-   marginTop: "8px",
-};
-
-const totalLabel = {
-   fontSize: "15px",
-   fontWeight: "900",
-   color: "#111827",
-   margin: "0",
-};
-
-const totalValue = {
-   fontSize: "18px",
-   fontWeight: "900",
-   color: "#f97316",
-   margin: "0",
-};
-
-const noticeContainer = {
-   backgroundColor: "#fffbeb",
-   padding: "16px 20px",
-   borderRadius: "12px",
-   margin: "16px 0",
-   border: "1px solid #fde68a",
-};
-
-const noticeText = {
-   fontSize: "13px",
-   color: "#92400e",
-   margin: "0",
-   lineHeight: "1.5",
 };
 
 export default BookingConfirmedEmail;

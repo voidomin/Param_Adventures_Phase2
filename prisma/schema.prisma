@@ -211,6 +211,10 @@ model Booking {
   paidAmount         Decimal              @default(0) @db.Decimal(10, 2)
   remainingBalance   Decimal              @default(0) @db.Decimal(10, 2)
   refundAmount       Decimal?             @db.Decimal(10, 2)
+  // Tracks whether each balance-due reminder email has already gone out
+  // for this booking, so the daily cron never sends either one twice.
+  balanceReminderSentAt      DateTime?
+  finalBalanceReminderSentAt DateTime?
   deletedAt          DateTime?
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt

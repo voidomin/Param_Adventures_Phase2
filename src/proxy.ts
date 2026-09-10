@@ -78,7 +78,8 @@ function verifyCsrf(request: NextRequest, pathname: string, method: string): Nex
     pathname.startsWith("/api/admin/bookings/cleanup") ||
     pathname.startsWith("/api/admin/audit-logs/purge") ||
     pathname.startsWith("/api/admin/trips/auto-complete") ||
-    pathname.startsWith("/api/admin/bookings/cancel-unpaid-advance");
+    pathname.startsWith("/api/admin/bookings/cancel-unpaid-advance") ||
+    pathname.startsWith("/api/admin/bookings/send-balance-reminders");
   if (isWebhook || isCronEndpoint) {
     return null;
   }

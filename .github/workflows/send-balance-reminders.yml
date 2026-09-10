@@ -1,0 +1,33 @@
+name: Send Balance Payment Reminders
+
+# Sends balance-payment reminder emails for CONFIRMED advance-payment
+# bookings approaching their balance-payment deadline: a first reminder at
+# 3 days or less remaining, a final one at 1 day or less -- via
+# /api/admin/bookings/send-balance-reminders. Each reminder fires at most
+# once per booking. Purely a notification -- never touches money, booking
+# status, or slot capacity.
+on:
+  schedule:
+    - cron: "0 3 * * *" # once daily at 03:00 UTC (~08:30 IST)
+  workflow_dispatch:
+
+jobs:
+  send-balance-reminders:
+    name: Trigger Balance Reminders
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call send-balance-reminders endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ vars.PROD_APP_URL || 'https://www.paramadventures.in' }}
+        run: |
+          status=$(curl -s -o response.json -w "%{http_code}" -X POST \
+            "$APP_URL/api/admin/bookings/send-balance-reminders" \
+            -H "x-cron-secret: $CRON_SECRET")
+          echo "HTTP status: $status"
+          cat response.json
+          if [ "$status" -ge 400 ]; then
+            echo "Send balance reminders request failed."
+            exit 1
+          fi

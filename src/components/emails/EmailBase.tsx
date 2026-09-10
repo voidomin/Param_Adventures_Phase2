@@ -93,6 +93,76 @@ export const commonStyles = {
   },
 };
 
+/**
+ * Shared styling for the "Payment Summary" price-breakdown box used by any
+ * email that itemizes an amount (booking confirmation, balance-due
+ * reminders, etc.) -- kept in one place so those templates don't each carry
+ * their own copy of the same style objects.
+ */
+export const priceStyles = {
+  container: {
+    backgroundColor: "#f9fafb",
+    padding: "24px",
+    borderRadius: "16px",
+    margin: "20px 0",
+    border: "1px solid #e5e7eb",
+  },
+  sectionTitle: {
+    fontSize: "14px",
+    fontWeight: "900",
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.05em",
+    color: "#4b5563",
+    margin: "0 0 12px 0",
+  },
+  hr: {
+    borderColor: "#e5e7eb",
+    margin: "12px 0",
+  },
+  row: {
+    margin: "4px 0",
+  },
+  label: {
+    fontSize: "13px",
+    color: "#6b7280",
+    margin: "0",
+  },
+  value: {
+    fontSize: "13px",
+    color: "#111827",
+    margin: "0",
+    fontWeight: "600",
+  },
+  totalRow: {
+    marginTop: "8px",
+  },
+  totalLabel: {
+    fontSize: "15px",
+    fontWeight: "900",
+    color: "#111827",
+    margin: "0",
+  },
+  totalValue: {
+    fontSize: "18px",
+    fontWeight: "900",
+    color: "#f97316",
+    margin: "0",
+  },
+  noticeContainer: {
+    backgroundColor: "#fffbeb",
+    padding: "16px 20px",
+    borderRadius: "12px",
+    margin: "16px 0",
+    border: "1px solid #fde68a",
+  },
+  noticeText: {
+    fontSize: "13px",
+    color: "#92400e",
+    margin: "0",
+    lineHeight: "1.5",
+  },
+};
+
 const main = {
   backgroundColor: "#0a0a0a",
   fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",
