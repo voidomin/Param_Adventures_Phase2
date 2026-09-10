@@ -1,6 +1,6 @@
 import MosaicGridSection from "./MosaicGridSection";
 import SpotlightManifestSection from "./SpotlightManifestSection";
-import PilgrimageTrailSection from "./PilgrimageTrailSection";
+import TripListSection from "./TripListSection";
 import SpecPanelsSection from "./SpecPanelsSection";
 import AltitudeTickerSection from "./AltitudeTickerSection";
 import type { HomepageSectionWithExperiences } from "@/lib/homepage-sections";
@@ -23,7 +23,7 @@ export default function HomepageSectionRenderer({
     case "SPOTLIGHT_MANIFEST":
       return <SpotlightManifestSection section={section} mediaSettings={mediaSettings} />;
     case "PILGRIMAGE_TRAIL":
-      return <PilgrimageTrailSection section={section} mediaSettings={mediaSettings} />;
+      return <TripListSection section={section} mediaSettings={mediaSettings} />;
     case "SPEC_PANELS":
       return <SpecPanelsSection section={section} mediaSettings={mediaSettings} />;
     case "ALTITUDE_TICKER":

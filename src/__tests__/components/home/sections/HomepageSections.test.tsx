@@ -11,9 +11,6 @@ vi.mock("framer-motion", () => ({
 vi.mock("@/components/experiences/SaveButton", () => ({
   default: () => <button data-testid="save-button">Save</button>,
 }));
-vi.mock("@/components/ui/ShareButton", () => ({
-  default: () => <button data-testid="share-button">Share</button>,
-}));
 
 const mediaSettings = {
   provider: "CLOUDINARY" as const,
@@ -57,10 +54,18 @@ describe("HomepageSectionRenderer", () => {
     expect(screen.getByText("Trek Two")).toBeInTheDocument();
   });
 
-  it("renders PILGRIMAGE_TRAIL with numbered stops", () => {
-    const section = mockSection("PILGRIMAGE_TRAIL", [mockExperience({ id: "e1" })]);
+  it("renders PILGRIMAGE_TRAIL as a plain list, with no narrative-specific framing", () => {
+    const section = mockSection("PILGRIMAGE_TRAIL", [
+      mockExperience({ id: "e1", title: "Char Dham Yatra" }),
+      mockExperience({ id: "e2", title: "Amarnath Yatra Trail" }),
+    ]);
     render(<HomepageSectionRenderer section={section as any} mediaSettings={mediaSettings as any} />);
-    expect(screen.getByText("Stop 01")).toBeInTheDocument();
+    expect(screen.getByText("Char Dham Yatra")).toBeInTheDocument();
+    expect(screen.getByText("Amarnath Yatra Trail")).toBeInTheDocument();
+    // The old design's "Stop 01/02" labels were tied to a pilgrimage
+    // narrative that breaks once the section is renamed -- confirm they're
+    // gone entirely, not just hidden.
+    expect(screen.queryByText(/^Stop \d+/)).not.toBeInTheDocument();
   });
 
   it("renders ALTITUDE_TICKER with the maxAltitude badge when present", () => {

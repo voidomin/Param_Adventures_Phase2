@@ -1,5 +1,5 @@
 import ScrollReveal from "@/components/ui/ScrollReveal";
-import ExperienceCard from "@/components/experiences/ExperienceCard";
+import CompactExperienceCard from "./CompactExperienceCard";
 import SectionHeading from "./SectionHeading";
 import type { HomepageSectionWithExperiences } from "@/lib/homepage-sections";
 import type { MediaSettings } from "@/types/media";
@@ -13,7 +13,9 @@ const MOOD_STYLE = { "--primary": "#3aa7c9" } as CSSProperties;
 /**
  * Extreme Adventure Challenges: a dense horizontal strip, each trip tagged
  * with its own peak altitude (Experience.maxAltitude) so the difficulty
- * reads as a real number, not just a badge. Reuses the real ExperienceCard.
+ * reads as a real number, not just a badge. Deliberately near-black
+ * regardless of site theme -- this section commits to a rugged, low-light
+ * mood (see CompactExperienceCard's darkTheme prop).
  */
 export default function AltitudeTickerSection({
   section,
@@ -28,14 +30,13 @@ export default function AltitudeTickerSection({
       <ScrollReveal>
         <div className="flex gap-4 overflow-x-auto pb-4">
           {section.experiences.map((exp) => (
-            <div key={exp.id} className="relative shrink-0 w-[85vw] sm:w-87.5 md:w-100">
+            <div key={exp.id} className="relative shrink-0 w-[70vw] sm:w-70">
               {exp.maxAltitude && (
-                <span className="absolute top-2.5 left-2.5 z-10 bg-primary text-primary-foreground text-[11px] font-black rounded-md px-2 py-0.5 tracking-wide">
+                <span className="absolute top-2.5 right-2.5 z-10 bg-primary text-primary-foreground text-[10px] font-black rounded-md px-2 py-0.5 tracking-wide">
                   {exp.maxAltitude}
                 </span>
               )}
-              {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-              <ExperienceCard experience={exp as any} mediaSettings={mediaSettings} />
+              <CompactExperienceCard experience={exp} mediaSettings={mediaSettings} darkTheme />
             </div>
           ))}
         </div>

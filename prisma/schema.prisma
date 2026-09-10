@@ -103,7 +103,9 @@ model Category {
 enum HomepageSectionLayout {
   MOSAIC_GRID // Weekend Getaways
   SPOTLIGHT_MANIFEST // International Expeditions
-  PILGRIMAGE_TRAIL // Spiritual Journeys
+  PILGRIMAGE_TRAIL // seed default name: "Spiritual Journeys" -- renders as
+                    // TripListSection, a narrative-free vertical list, so
+                    // this reads fine under any admin-chosen name
   SPEC_PANELS // Educational Expeditions
   ALTITUDE_TICKER // Extreme Adventure Challenges
 }
