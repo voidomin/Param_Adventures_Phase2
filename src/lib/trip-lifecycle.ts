@@ -1,4 +1,7 @@
 import { prisma, runWithRetry } from "@/lib/db";
+import { sendManagerUnassignedAlert, sendTrekLeadUnassignedAlert } from "@/lib/email";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Evaluates UPCOMING slots whose departure date has arrived and starts
@@ -51,6 +54,134 @@ export async function autoStartTrips(): Promise<{ startedCount: number; skippedU
   } catch (error) {
     console.error("[TripLifecycle] Error auto-starting trips:", error);
     return { startedCount: 0, skippedUnstaffedCount: 0 };
+  }
+}
+
+/**
+ * Escalates two staffing gaps on UPCOMING slots as departure approaches,
+ * each firing at most once per slot (tracked via managerEscalationSentAt /
+ * trekLeadEscalationSentAt, same one-shot idempotency as
+ * Booking.balanceReminderSentAt):
+ *
+ *  - No Trip Manager assigned at all (managerId is null), at 3 days or
+ *    less to departure -- emailed to every active Admin/Super Admin,
+ *    since only they can assign one (see PATCH /api/admin/trips/[id]/assign).
+ *  - A Trip Manager is assigned but no Trek Lead is, at 1 day or less to
+ *    departure -- emailed to that manager, since they (or an admin) are
+ *    the only ones who can assign a Trek Lead. This is the same gap
+ *    autoStartTrips already silently declines to paper over; this is
+ *    what actually tells a human about it.
+ *
+ * Both thresholds use "days remaining <= N" rather than a tight window,
+ * so an already-overdue unstaffed slot still fires on the next run
+ * instead of silently missing its one shot.
+ */
+export async function sendStaffingEscalationAlerts(): Promise<{
+  managerAlertsSent: number;
+  trekLeadAlertsSent: number;
+}> {
+  try {
+    const now = new Date();
+    const managerThreshold = new Date(now.getTime() + 3 * DAY_MS);
+    const trekLeadThreshold = new Date(now.getTime() + 1 * DAY_MS);
+
+    let managerAlertsSent = 0;
+    let trekLeadAlertsSent = 0;
+
+    const unmanagedSlots = await prisma.slot.findMany({
+      where: {
+        status: "UPCOMING",
+        managerId: null,
+        managerEscalationSentAt: null,
+        date: { lte: managerThreshold },
+      },
+      select: {
+        id: true,
+        date: true,
+        experience: { select: { title: true } },
+      },
+    });
+
+    if (unmanagedSlots.length > 0) {
+      const admins = await prisma.user.findMany({
+        where: {
+          status: "ACTIVE",
+          role: { name: { in: ["ADMIN", "SUPER_ADMIN"] } },
+        },
+        select: { email: true },
+      });
+
+      for (const slot of unmanagedSlots) {
+        const daysUntilDeparture = Math.max(
+          0,
+          Math.ceil((slot.date.getTime() - now.getTime()) / DAY_MS),
+        );
+
+        for (const admin of admins) {
+          await sendManagerUnassignedAlert({
+            userEmail: admin.email,
+            tripName: slot.experience.title,
+            slotDate: slot.date,
+            daysUntilDeparture,
+          });
+        }
+
+        await runWithRetry(() =>
+          prisma.slot.update({
+            where: { id: slot.id },
+            data: { managerEscalationSentAt: now },
+          })
+        );
+        managerAlertsSent++;
+      }
+    }
+
+    const unstaffedManagedSlots = await prisma.slot.findMany({
+      where: {
+        status: "UPCOMING",
+        managerId: { not: null },
+        trekLeadEscalationSentAt: null,
+        date: { lte: trekLeadThreshold },
+        assignments: { none: {} },
+      },
+      select: {
+        id: true,
+        date: true,
+        experience: { select: { title: true } },
+        manager: { select: { name: true, email: true } },
+      },
+    });
+
+    for (const slot of unstaffedManagedSlots) {
+      if (!slot.manager) continue;
+
+      const daysUntilDeparture = Math.max(
+        0,
+        Math.ceil((slot.date.getTime() - now.getTime()) / DAY_MS),
+      );
+
+      await sendTrekLeadUnassignedAlert({
+        userEmail: slot.manager.email,
+        managerName: slot.manager.name || "Manager",
+        tripName: slot.experience.title,
+        slotDate: slot.date,
+        daysUntilDeparture,
+        slotId: slot.id,
+      });
+
+      await runWithRetry(() =>
+        prisma.slot.update({
+          where: { id: slot.id },
+          data: { trekLeadEscalationSentAt: now },
+        })
+      );
+      trekLeadAlertsSent++;
+    }
+
+    return { managerAlertsSent, trekLeadAlertsSent };
+  } catch (error) {
+    console.error("[TripLifecycle] Error sending staffing escalation alerts:", error);
+    return { managerAlertsSent: 0, trekLeadAlertsSent: 0 };
   }
 }
 

@@ -10,6 +10,8 @@ import VerifyEmailEmail from "@/components/emails/VerifyEmailEmail";
 import AdminInviteEmail from "@/components/emails/AdminInviteEmail";
 import CustomTripAcknowledgmentEmail from "@/components/emails/CustomTripAcknowledgmentEmail";
 import BalancePaymentReminderEmail from "@/components/emails/BalancePaymentReminderEmail";
+import ManagerUnassignedEmail from "@/components/emails/ManagerUnassignedEmail";
+import TrekLeadUnassignedEmail from "@/components/emails/TrekLeadUnassignedEmail";
 import React from "react";
 import { emailFactory } from "./email/factory";
 import { maskEmail } from "@/lib/utils";
@@ -42,6 +44,22 @@ export interface BalancePaymentReminderData {
   totalPrice: number;
   deadlineDate: Date;
   isFinalReminder: boolean;
+}
+
+export interface ManagerUnassignedData {
+  userEmail: string;
+  tripName: string;
+  slotDate: Date;
+  daysUntilDeparture: number;
+}
+
+export interface TrekLeadUnassignedData {
+  userEmail: string;
+  managerName: string;
+  tripName: string;
+  slotDate: Date;
+  daysUntilDeparture: number;
+  slotId: string;
 }
 
 export interface BookingCancelledData {
@@ -348,5 +366,57 @@ export async function sendBalancePaymentReminder(data: BalancePaymentReminderDat
     });
   } catch (err) {
     console.error("Email layout error (BalancePaymentReminder):", err);
+  }
+}
+
+export async function sendManagerUnassignedAlert(data: ManagerUnassignedData) {
+  try {
+    const slotDateStr = data.slotDate.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+
+    const html = await render(
+      <ManagerUnassignedEmail
+        tripName={data.tripName}
+        slotDate={slotDateStr}
+        daysUntilDeparture={data.daysUntilDeparture}
+      />,
+    );
+    await sendEmail({
+      to: data.userEmail,
+      subject: `Unstaffed Trip: No Trip Manager assigned for ${data.tripName}`,
+      html,
+    });
+  } catch (err) {
+    console.error("Email layout error (ManagerUnassigned):", err);
+  }
+}
+
+export async function sendTrekLeadUnassignedAlert(data: TrekLeadUnassignedData) {
+  try {
+    const slotDateStr = data.slotDate.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+
+    const html = await render(
+      <TrekLeadUnassignedEmail
+        managerName={data.managerName}
+        tripName={data.tripName}
+        slotDate={slotDateStr}
+        daysUntilDeparture={data.daysUntilDeparture}
+        slotId={data.slotId}
+      />,
+    );
+    await sendEmail({
+      to: data.userEmail,
+      subject: `Unstaffed Trip: No Trek Lead assigned for ${data.tripName}`,
+      html,
+    });
+  } catch (err) {
+    console.error("Email layout error (TrekLeadUnassigned):", err);
   }
 }

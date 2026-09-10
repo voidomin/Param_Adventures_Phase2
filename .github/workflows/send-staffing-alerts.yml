@@ -1,0 +1,32 @@
+name: Send Trip Staffing Alerts
+
+# Escalates unstaffed UPCOMING trips as departure approaches, via
+# /api/admin/trips/send-staffing-alerts: no Trip Manager assigned (3 days
+# or less out) alerts every Admin/Super Admin, a Trip Manager assigned but
+# no Trek Lead (1 day or less out) alerts that manager. Each alert fires
+# at most once per slot.
+on:
+  schedule:
+    - cron: "0 3 * * *" # once daily at 03:00 UTC (~08:30 IST)
+  workflow_dispatch:
+
+jobs:
+  send-staffing-alerts:
+    name: Trigger Staffing Alerts
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call send-staffing-alerts endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ vars.PROD_APP_URL || 'https://www.paramadventures.in' }}
+        run: |
+          status=$(curl -s -o response.json -w "%{http_code}" -X POST \
+            "$APP_URL/api/admin/trips/send-staffing-alerts" \
+            -H "x-cron-secret: $CRON_SECRET")
+          echo "HTTP status: $status"
+          cat response.json
+          if [ "$status" -ge 400 ]; then
+            echo "Send staffing alerts request failed."
+            exit 1
+          fi

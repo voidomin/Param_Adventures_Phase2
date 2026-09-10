@@ -219,6 +219,10 @@ model Slot {
   managerId         String?
   startedAt         DateTime?
   status            TripStatus       @default(UPCOMING)
+  // Tracks whether each staffing-gap escalation email has already gone out
+  // for this slot, so the daily cron never sends either one twice.
+  managerEscalationSentAt  DateTime?
+  trekLeadEscalationSentAt DateTime?
   trekEndedAt       DateTime?
   trekStartedAt     DateTime?
   vendorContacts    Json?

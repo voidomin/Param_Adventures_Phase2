@@ -12,6 +12,9 @@ vi.mock("@/lib/db", () => {
     bookingParticipant: {
       updateMany: vi.fn(),
     },
+    user: {
+      findMany: vi.fn(),
+    },
     $transaction: vi.fn(),
   };
   return {
@@ -20,12 +23,25 @@ vi.mock("@/lib/db", () => {
   };
 });
 
-import { autoCompletePastTrips, autoStartTrips } from "@/lib/trip-lifecycle";
+vi.mock("@/lib/email", () => ({
+  sendManagerUnassignedAlert: vi.fn(),
+  sendTrekLeadUnassignedAlert: vi.fn(),
+}));
+
+import {
+  autoCompletePastTrips,
+  autoStartTrips,
+  sendStaffingEscalationAlerts,
+} from "@/lib/trip-lifecycle";
 import { prisma } from "@/lib/db";
+import { sendManagerUnassignedAlert, sendTrekLeadUnassignedAlert } from "@/lib/email";
 
 const mockFindMany = vi.mocked(prisma.slot.findMany);
 const mockTransaction = vi.mocked(prisma.$transaction);
 const mockSlotUpdateDirect = vi.mocked(prisma.slot.update);
+const mockUserFindMany = vi.mocked(prisma.user.findMany);
+const mockSendManagerAlert = vi.mocked(sendManagerUnassignedAlert);
+const mockSendTrekLeadAlert = vi.mocked(sendTrekLeadUnassignedAlert);
 
 describe("Trip Lifecycle Module - autoCompletePastTrips", () => {
   beforeEach(() => {
@@ -201,5 +217,127 @@ describe("Trip Lifecycle Module - autoStartTrips", () => {
     const result = await autoStartTrips();
 
     expect(result).toEqual({ startedCount: 0, skippedUnstaffedCount: 0 });
+  });
+});
+
+describe("Trip Lifecycle Module - sendStaffingEscalationAlerts", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns zeros when no candidates in either tier", async () => {
+    mockFindMany.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+
+    const result = await sendStaffingEscalationAlerts();
+
+    expect(result).toEqual({ managerAlertsSent: 0, trekLeadAlertsSent: 0 });
+    expect(mockFindMany).toHaveBeenCalledTimes(2);
+    expect(mockUserFindMany).not.toHaveBeenCalled();
+    expect(mockSendManagerAlert).not.toHaveBeenCalled();
+    expect(mockSendTrekLeadAlert).not.toHaveBeenCalled();
+    expect(mockSlotUpdateDirect).not.toHaveBeenCalled();
+  });
+
+  it("emails every active admin for an unmanaged slot and stamps managerEscalationSentAt", async () => {
+    const slotDate = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
+    mockFindMany
+      .mockResolvedValueOnce([
+        { id: "slot-1", date: slotDate, experience: { title: "Kodachadri Trek" } },
+      ] as any)
+      .mockResolvedValueOnce([]);
+    mockUserFindMany.mockResolvedValue([
+      { email: "admin1@paramadventures.in" },
+      { email: "admin2@paramadventures.in" },
+    ] as any);
+    mockSlotUpdateDirect.mockResolvedValue({} as any);
+
+    const result = await sendStaffingEscalationAlerts();
+
+    expect(result).toEqual({ managerAlertsSent: 1, trekLeadAlertsSent: 0 });
+    expect(mockUserFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { status: "ACTIVE", role: { name: { in: ["ADMIN", "SUPER_ADMIN"] } } },
+      }),
+    );
+    expect(mockSendManagerAlert).toHaveBeenCalledTimes(2);
+    expect(mockSendManagerAlert).toHaveBeenCalledWith(
+      expect.objectContaining({ userEmail: "admin1@paramadventures.in", tripName: "Kodachadri Trek" }),
+    );
+    expect(mockSlotUpdateDirect).toHaveBeenCalledWith({
+      where: { id: "slot-1" },
+      data: { managerEscalationSentAt: expect.any(Date) },
+    });
+  });
+
+  it("emails the assigned manager for a staffed-but-leaderless slot and stamps trekLeadEscalationSentAt", async () => {
+    const slotDate = new Date(Date.now() + 12 * 60 * 60 * 1000);
+    mockFindMany.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      {
+        id: "slot-2",
+        date: slotDate,
+        experience: { title: "Kudremukh Trek" },
+        manager: { name: "Priya", email: "priya@paramadventures.in" },
+      },
+    ] as any);
+    mockSlotUpdateDirect.mockResolvedValue({} as any);
+
+    const result = await sendStaffingEscalationAlerts();
+
+    expect(result).toEqual({ managerAlertsSent: 0, trekLeadAlertsSent: 1 });
+    expect(mockUserFindMany).not.toHaveBeenCalled();
+    expect(mockSendTrekLeadAlert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userEmail: "priya@paramadventures.in",
+        managerName: "Priya",
+        tripName: "Kudremukh Trek",
+        slotId: "slot-2",
+      }),
+    );
+    expect(mockSlotUpdateDirect).toHaveBeenCalledWith({
+      where: { id: "slot-2" },
+      data: { trekLeadEscalationSentAt: expect.any(Date) },
+    });
+  });
+
+  it("skips a tier-2 candidate defensively if it somehow has no manager relation loaded", async () => {
+    mockFindMany.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      { id: "slot-3", date: new Date(), experience: { title: "Orphaned Slot" }, manager: null },
+    ] as any);
+
+    const result = await sendStaffingEscalationAlerts();
+
+    expect(result).toEqual({ managerAlertsSent: 0, trekLeadAlertsSent: 0 });
+    expect(mockSendTrekLeadAlert).not.toHaveBeenCalled();
+    expect(mockSlotUpdateDirect).not.toHaveBeenCalled();
+  });
+
+  it("processes both tiers independently in the same run", async () => {
+    mockFindMany
+      .mockResolvedValueOnce([
+        { id: "slot-unmanaged", date: new Date(), experience: { title: "Trip A" } },
+      ] as any)
+      .mockResolvedValueOnce([
+        {
+          id: "slot-unstaffed",
+          date: new Date(),
+          experience: { title: "Trip B" },
+          manager: { name: "Raj", email: "raj@paramadventures.in" },
+        },
+      ] as any);
+    mockUserFindMany.mockResolvedValue([{ email: "admin@paramadventures.in" }] as any);
+    mockSlotUpdateDirect.mockResolvedValue({} as any);
+
+    const result = await sendStaffingEscalationAlerts();
+
+    expect(result).toEqual({ managerAlertsSent: 1, trekLeadAlertsSent: 1 });
+    expect(mockSlotUpdateDirect).toHaveBeenCalledTimes(2);
+  });
+
+  it("handles catch block gracefully and returns zeros on error", async () => {
+    mockFindMany.mockRejectedValue(new Error("Database connection error"));
+
+    const result = await sendStaffingEscalationAlerts();
+
+    expect(result).toEqual({ managerAlertsSent: 0, trekLeadAlertsSent: 0 });
   });
 });
