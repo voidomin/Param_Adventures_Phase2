@@ -1,0 +1,32 @@
+name: Auto-Start Trips
+
+# Marks UPCOMING slots ACTIVE once their departure date arrives, via
+# /api/admin/trips/auto-start -- the same effect as a manager clicking
+# "Start Trip" manually. Previously trip start was 100% manual, unlike
+# completion (auto-complete-trips.yml), which already ran on a schedule
+# regardless of whether the trip was ever manually started.
+on:
+  schedule:
+    - cron: "0 * * * *" # every hour
+  workflow_dispatch:
+
+jobs:
+  auto-start:
+    name: Trigger Auto-Start
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call auto-start endpoint
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          APP_URL: ${{ vars.PROD_APP_URL || 'https://www.paramadventures.in' }}
+        run: |
+          status=$(curl -s -o response.json -w "%{http_code}" -X POST \
+            "$APP_URL/api/admin/trips/auto-start" \
+            -H "x-cron-secret: $CRON_SECRET")
+          echo "HTTP status: $status"
+          cat response.json
+          if [ "$status" -ge 400 ]; then
+            echo "Auto-start request failed."
+            exit 1
+          fi

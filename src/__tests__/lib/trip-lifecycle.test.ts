@@ -20,11 +20,12 @@ vi.mock("@/lib/db", () => {
   };
 });
 
-import { autoCompletePastTrips } from "@/lib/trip-lifecycle";
+import { autoCompletePastTrips, autoStartTrips } from "@/lib/trip-lifecycle";
 import { prisma } from "@/lib/db";
 
 const mockFindMany = vi.mocked(prisma.slot.findMany);
 const mockTransaction = vi.mocked(prisma.$transaction);
+const mockSlotUpdateDirect = vi.mocked(prisma.slot.update);
 
 describe("Trip Lifecycle Module - autoCompletePastTrips", () => {
   beforeEach(() => {
@@ -134,5 +135,71 @@ describe("Trip Lifecycle Module - autoCompletePastTrips", () => {
     const result = await autoCompletePastTrips();
 
     expect(result).toEqual({ completedCount: 0, unlockedBookingsCount: 0 });
+  });
+});
+
+describe("Trip Lifecycle Module - autoStartTrips", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns 0 startedCount when no candidate slots match criteria", async () => {
+    mockFindMany.mockResolvedValue([]);
+
+    const result = await autoStartTrips();
+
+    expect(result).toEqual({ startedCount: 0, skippedUnstaffedCount: 0 });
+    expect(mockFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { status: "UPCOMING", date: { lte: expect.any(Date) } } }),
+    );
+    expect(mockSlotUpdateDirect).not.toHaveBeenCalled();
+  });
+
+  it("starts a staffed UPCOMING slot whose date has arrived", async () => {
+    mockFindMany.mockResolvedValue([
+      { id: "slot-1", assignments: [{ id: "assignment-1" }] },
+    ] as any);
+    mockSlotUpdateDirect.mockResolvedValue({} as any);
+
+    const result = await autoStartTrips();
+
+    expect(result).toEqual({ startedCount: 1, skippedUnstaffedCount: 0 });
+    expect(mockSlotUpdateDirect).toHaveBeenCalledWith({
+      where: { id: "slot-1" },
+      data: expect.objectContaining({ status: "ACTIVE", startedAt: expect.any(Date) }),
+    });
+  });
+
+  it("skips a slot with no Trek Lead assigned, leaving it at UPCOMING", async () => {
+    mockFindMany.mockResolvedValue([
+      { id: "slot-unstaffed", assignments: [] },
+    ] as any);
+
+    const result = await autoStartTrips();
+
+    expect(result).toEqual({ startedCount: 0, skippedUnstaffedCount: 1 });
+    expect(mockSlotUpdateDirect).not.toHaveBeenCalled();
+  });
+
+  it("processes a mix of staffed and unstaffed slots independently", async () => {
+    mockFindMany.mockResolvedValue([
+      { id: "slot-staffed", assignments: [{ id: "a1" }] },
+      { id: "slot-unstaffed", assignments: [] },
+      { id: "slot-staffed-2", assignments: [{ id: "a2" }] },
+    ] as any);
+    mockSlotUpdateDirect.mockResolvedValue({} as any);
+
+    const result = await autoStartTrips();
+
+    expect(result).toEqual({ startedCount: 2, skippedUnstaffedCount: 1 });
+    expect(mockSlotUpdateDirect).toHaveBeenCalledTimes(2);
+  });
+
+  it("handles catch block gracefully and returns zeros on error", async () => {
+    mockFindMany.mockRejectedValue(new Error("Database connection error"));
+
+    const result = await autoStartTrips();
+
+    expect(result).toEqual({ startedCount: 0, skippedUnstaffedCount: 0 });
   });
 });

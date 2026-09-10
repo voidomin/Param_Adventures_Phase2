@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { NextRequest } from "next/server";
-import { redirectPlatformDefaultDomain } from "@/proxy";
+import proxy, { redirectPlatformDefaultDomain, CRON_ENDPOINT_PREFIXES } from "@/proxy";
 
 const originalAppUrl = process.env.NEXT_PUBLIC_APP_URL;
 
@@ -50,4 +50,29 @@ describe("redirectPlatformDefaultDomain", () => {
     expect(response).not.toBeNull();
     expect(response!.headers.get("location")).toContain("www.paramadventures.in");
   });
+});
+
+describe("cron endpoints: CSRF and accessToken exemptions stay in sync", () => {
+  // Regression test for a real bug: /api/admin/bookings/send-balance-reminders
+  // was added to the CSRF exemption list but not to publicPaths (the
+  // accessToken cookie gate), so the cron caller -- no browser Origin
+  // header, no session cookie -- got a 401 from this proxy on every single
+  // scheduled run, never reaching the route's own x-cron-secret check.
+  // Both lists are now derived from one shared array (CRON_ENDPOINT_PREFIXES);
+  // this test calls the actual proxy for every entry in it and fails if
+  // either exemption is missing for any of them.
+  it.each(CRON_ENDPOINT_PREFIXES)(
+    "allows an unauthenticated, cookie-less POST through to %s",
+    async (path) => {
+      const request = new NextRequest(`https://www.paramadventures.in${path}`, {
+        method: "POST",
+        headers: { host: "www.paramadventures.in" },
+      });
+
+      const response = await proxy(request);
+
+      expect(response.status).not.toBe(401);
+      expect(response.status).not.toBe(403);
+    },
+  );
 });
