@@ -37,6 +37,7 @@ interface BookingParticipant {
   phoneNumber: string | null;
   gender: string | null;
   age: number | null;
+  dateOfBirth: string | null;
   bloodGroup: string | null;
   emergencyContactName: string | null;
   emergencyContactNumber: string | null;
@@ -146,6 +147,7 @@ export default function TripManifestPage() {
               "Phone Number": booking.user.phoneNumber || "",
               "Gender": "",
               "Age": "",
+              "Date of Birth": "",
               "Blood Group": "",
               "Emergency Contact Name": "",
               "Emergency Contact Phone": "",
@@ -171,6 +173,7 @@ export default function TripManifestPage() {
           "Phone Number": p.phoneNumber || "",
           "Gender": p.gender || "",
           "Age": p.age !== null && p.age !== undefined ? String(p.age) : "",
+          "Date of Birth": p.dateOfBirth ? new Date(p.dateOfBirth) : "",
           "Blood Group": p.bloodGroup || "",
           "Emergency Contact Name": p.emergencyContactName || "",
           "Emergency Contact Phone": p.emergencyContactNumber || "",
