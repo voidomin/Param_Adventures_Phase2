@@ -106,6 +106,12 @@ describe("ExperienceForm Comprehensive Smoke Test", () => {
           json: () => Promise.resolve({ settings: { taxConfig: [] } }),
         });
       }
+      if (url === "/api/admin/homepage-sections") {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ sections: [{ id: "sec-1", name: "Weekend Getaways" }] }),
+        });
+      }
       return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
     });
     
@@ -233,6 +239,62 @@ describe("ExperienceForm Comprehensive Smoke Test", () => {
       expect(screen.getByText(/API Server Error/i)).toBeInTheDocument();
     }, { timeout: 10000 });
   }, 15000);
+
+  it("lets an admin assign a trip to a homepage section, independent of Featured", async () => {
+    render(<ExperienceForm />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Homepage Section/i)).toBeInTheDocument();
+    });
+    expect(screen.getByRole("option", { name: "Weekend Getaways" })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/Title/i), { target: { value: "Valid Trip" } });
+    fireEvent.change(screen.getByLabelText(/Location/i), { target: { value: "Manali" } });
+    fireEvent.change(screen.getByLabelText(/Duration/i), { target: { value: "5" } });
+    fireEvent.change(screen.getByLabelText(/Homepage Section/i), { target: { value: "sec-1" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /Booking & Amenities/i }));
+    fireEvent.change(screen.getByLabelText(/Base Price/i), { target: { value: "1000" } });
+    fireEvent.change(screen.getByLabelText(/Total Capacity/i), { target: { value: "10" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /Media & Assets/i }));
+    const coverInput = screen.getByTestId("cover-image-upload").querySelector('input[type="file"]');
+    if (coverInput) fireEvent.change(coverInput, { target: { files: [] } });
+
+    fireEvent.submit(screen.getByRole("form", { name: /Experience Form/i }));
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/api/admin/experiences"),
+        expect.objectContaining({
+          method: "POST",
+          body: expect.stringContaining("\"homepageSectionId\":\"sec-1\""),
+        }),
+      );
+    }, { timeout: 10000 });
+  }, 15000);
+
+  it("defaults Homepage Section to None and omits isFeatured coupling", async () => {
+    const mockExperience: any = {
+      id: "exp-1",
+      title: "Editing Mode",
+      location: "Leh",
+      basePrice: 2000,
+      capacity: 5,
+      durationDays: 3,
+      coverImage: "img.jpg",
+      description: { type: "doc", content: [] },
+      difficulty: "MODERATE",
+      status: "DRAFT",
+      isFeatured: true,
+      homepageSectionId: null,
+      categories: [],
+    };
+    render(<ExperienceForm initialData={mockExperience} />);
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Homepage Section/i)).toHaveValue("");
+    });
+    expect(screen.getByRole("checkbox", { name: /Featured Trip/i })).toBeChecked();
+  });
 
   it("renders form even when category fetch fails", async () => {
     vi.spyOn(console, "error").mockImplementation(() => {});

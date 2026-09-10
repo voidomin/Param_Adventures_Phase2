@@ -9,6 +9,7 @@ export const experienceSchema = z.object({
   location: z.string().trim().min(1, "Location is required"),
   difficulty: z.enum(["EASY", "MODERATE", "HARD", "EXTREME"]).optional(),
   isFeatured: z.boolean().optional(),
+  homepageSectionId: z.string().uuid().nullable().optional(),
   coverImage: z.string().min(1, "Cover Image is required").nullable(),
   cardImage: z.string().optional().nullable(),
   images: z.array(z.string().trim()).transform(arr => arr.filter(Boolean)).optional(),
