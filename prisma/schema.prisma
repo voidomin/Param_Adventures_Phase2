@@ -144,6 +144,11 @@ model Experience {
   advancePaymentAmount Decimal?            @db.Decimal(10, 2)
   advancePaymentDeadlineDays Int          @default(7)
   extraAmenities      Json?                @default("[]")
+  // Which day-tier cancellation policy applies to bookings on this
+  // experience -- see CancellationPolicyGroup and getRefundPercentage()
+  // in src/lib/refund-engine.ts. Distinct from cancellationPolicy above,
+  // which is just the free-text blurb shown on the experience page.
+  cancellationPolicyGroup CancellationPolicyGroup @default(MULTI_DAY)
   blogs               Blog[]
   bookings            Booking[]
   categories          ExperienceCategory[]
@@ -501,6 +506,12 @@ enum Difficulty {
   MODERATE
   HARD
   EXTREME
+}
+
+enum CancellationPolicyGroup {
+  SHORT_TRIP
+  MULTI_DAY
+  INTERNATIONAL
 }
 
 enum BookingStatus {

@@ -79,6 +79,7 @@ export interface ExperienceFormData {
   thingsToKeepInMind?: string[];
   faqs?: FAQ[];
   cancellationPolicy?: string;
+  cancellationPolicyGroup?: "SHORT_TRIP" | "MULTI_DAY" | "INTERNATIONAL";
   meetingPoint?: string;
   minAge?: number | string | null;
   maxAltitude?: string;
@@ -307,6 +308,14 @@ export default function ExperienceForm({
   const [selectedPolicies, setSelectedPolicies] = useState<string[]>(
     initialPolicy.selectedPolicies || []
   );
+  // Which day-tier cancellation policy actually applies to bookings on this
+  // experience (drives the live refund calculation) -- distinct from the
+  // "Cancellation Policy Template" above, which only controls which table
+  // renders in the downloadable itinerary PDF. Defaults to a sensible guess
+  // from duration for a brand-new experience; always editable.
+  const [cancellationPolicyGroup, setCancellationPolicyGroup] = useState<
+    "SHORT_TRIP" | "MULTI_DAY" | "INTERNATIONAL"
+  >(initialData?.cancellationPolicyGroup || (durationDays <= 2 ? "SHORT_TRIP" : "MULTI_DAY"));
   const [meetingPoint, setMeetingPoint] = useState(
     initialData?.meetingPoint || "",
   );
@@ -636,6 +645,7 @@ export default function ExperienceForm({
       .filter((faq) => faq.question.trim() !== "" && faq.answer.trim() !== "")
       .map(({ question, answer }) => ({ question, answer })),
     cancellationPolicy: JSON.stringify({ template: cancelPolicyType, text: cancelPolicyText, selectedPolicies }),
+    cancellationPolicyGroup,
     meetingPoint,
     minAge: minAge ? Number(minAge) : null,
     maxAltitude,
@@ -951,6 +961,7 @@ export default function ExperienceForm({
     dropPoints: dropPoints.map((i) => i.text),
     faqs,
     cancellationPolicy: JSON.stringify({ template: cancelPolicyType, text: cancelPolicyText, selectedPolicies }),
+    cancellationPolicyGroup,
     meetingPoint,
     minAge,
     maxAltitude,
@@ -1154,6 +1165,7 @@ export default function ExperienceForm({
         { Key: "dropoffTime", Value: dropoffTime },
         { Key: "meetingPoint", Value: meetingPoint },
         { Key: "cancellationPolicy", Value: JSON.stringify({ template: cancelPolicyType, text: cancelPolicyText, selectedPolicies }) },
+        { Key: "cancellationPolicyGroup", Value: cancellationPolicyGroup },
         { Key: "allowAdvancePayment", Value: allowAdvancePayment },
         { Key: "advancePaymentAmount", Value: advancePaymentAmount },
         { Key: "advancePaymentDeadlineDays", Value: advancePaymentDeadlineDays },
@@ -2049,6 +2061,31 @@ export default function ExperienceForm({
                       <option value="multi_days">Multiple Days Treks/Trips Policy Table</option>
                       <option value="international">International Treks/Trips Policy Table</option>
                     </select>
+                    <p className="text-[10px] text-foreground/40 mt-1">
+                      Only controls which table renders in the downloadable itinerary PDF -- has no effect on the refund actually calculated.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="cancellationPolicyGroup"
+                      className="block text-sm font-bold text-foreground/80 mb-1"
+                    >
+                      Cancellation Refund Policy Group
+                    </label>
+                    <select
+                      id="cancellationPolicyGroup"
+                      value={cancellationPolicyGroup}
+                      onChange={(e) => setCancellationPolicyGroup(e.target.value as typeof cancellationPolicyGroup)}
+                      className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground text-sm focus:outline-none focus:border-primary/50"
+                    >
+                      <option value="SHORT_TRIP">Short Trip (1-2 days)</option>
+                      <option value="MULTI_DAY">Multi-Day Trek</option>
+                      <option value="INTERNATIONAL">International Trek</option>
+                    </select>
+                    <p className="text-[10px] text-foreground/40 mt-1">
+                      Determines which day-tier refund percentages (Settings &rarr; Finance) apply when a customer cancels a booking on this experience.
+                    </p>
                   </div>
 
                   <div className="space-y-1">

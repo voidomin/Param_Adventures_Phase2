@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { CancellationPolicyGroup } from "@prisma/client";
 
 export interface RefundBreakdown {
   baseFare: number;
@@ -15,13 +16,72 @@ export interface PolicyTier {
   refundPercent: number;
 }
 
+// Fallback tiers per trek-length group, used until an admin configures
+// their own via Settings -> Finance. Derived from this project's own
+// published cancellation policy (src/app/refunds/page.tsx), inverting its
+// "cancellation charge %" into the refund % this engine actually works in.
+const DEFAULT_POLICY_TIERS: Record<CancellationPolicyGroup, PolicyTier[]> = {
+  SHORT_TRIP: [
+    { minDays: 21, maxDays: null, refundPercent: 100 },
+    { minDays: 16, maxDays: 20, refundPercent: 75 },
+    { minDays: 6, maxDays: 15, refundPercent: 50 },
+    { minDays: 0, maxDays: 5, refundPercent: 0 },
+  ],
+  MULTI_DAY: [
+    { minDays: 46, maxDays: null, refundPercent: 100 },
+    { minDays: 31, maxDays: 45, refundPercent: 50 },
+    { minDays: 21, maxDays: 30, refundPercent: 25 },
+    { minDays: 0, maxDays: 20, refundPercent: 0 },
+  ],
+  INTERNATIONAL: [
+    { minDays: 61, maxDays: null, refundPercent: 100 },
+    { minDays: 46, maxDays: 60, refundPercent: 50 },
+    { minDays: 31, maxDays: 45, refundPercent: 25 },
+    { minDays: 0, maxDays: 30, refundPercent: 0 },
+  ],
+};
+
 /**
- * Resolves the applicable cancellation refund percentage based on days before departure.
- * Reads tiers from PlatformSetting `cancellation_policy_rules`.
+ * Resolves the tier list actually in effect for a trek-length group --
+ * whatever an admin configured in Settings -> Finance, or this group's
+ * hardcoded default if nothing's configured yet. Sorted descending by
+ * minDays, so the caller can just take the first tier whose minDays a
+ * given day-count satisfies.
+ *
+ * This is the single source of truth for "what tiers apply to group X" --
+ * used both by getRefundPercentage below (to actually calculate a refund)
+ * and by the public /refunds page (to publish the same numbers customers
+ * would actually get), so the two can never drift apart again.
+ */
+export async function getPolicyTiersForGroup(policyGroup: CancellationPolicyGroup): Promise<PolicyTier[]> {
+  let rules: PolicyTier[] = DEFAULT_POLICY_TIERS[policyGroup];
+
+  try {
+    const setting = await prisma.platformSetting.findUnique({
+      where: { key: "cancellation_policy_rules" }
+    });
+    if (setting?.value) {
+      const parsed = JSON.parse(setting.value);
+      const groupRules = parsed?.[policyGroup];
+      if (Array.isArray(groupRules)) {
+        rules = groupRules;
+      }
+    }
+  } catch (e) {
+    console.error("[RefundEngine] Error loading cancellation rules, using defaults:", e);
+  }
+
+  return [...rules].sort((a, b) => b.minDays - a.minDays);
+}
+
+/**
+ * Resolves the applicable cancellation refund percentage based on days
+ * before departure and the experience's trek-length group.
  */
 export async function getRefundPercentage(
   departureDate: Date,
-  cancellationDate: Date = new Date()
+  cancellationDate: Date = new Date(),
+  policyGroup: CancellationPolicyGroup
 ): Promise<{ refundPercent: number; daysBefore: number }> {
   const timeDiff = departureDate.getTime() - cancellationDate.getTime();
   const daysBefore = timeDiff / (1000 * 60 * 60 * 24);
@@ -30,31 +90,7 @@ export async function getRefundPercentage(
     return { refundPercent: 0, daysBefore };
   }
 
-  // Default fallback rules
-  let rules: PolicyTier[] = [
-    { minDays: 30, maxDays: null, refundPercent: 100 },
-    { minDays: 15, maxDays: 29, refundPercent: 75 },
-    { minDays: 7, maxDays: 14, refundPercent: 50 },
-    { minDays: 3, maxDays: 6, refundPercent: 25 },
-    { minDays: 0, maxDays: 2, refundPercent: 0 }
-  ];
-
-  try {
-    const setting = await prisma.platformSetting.findUnique({
-      where: { key: "cancellation_policy_rules" }
-    });
-    if (setting?.value) {
-      const parsed = JSON.parse(setting.value);
-      if (Array.isArray(parsed)) {
-        rules = parsed;
-      }
-    }
-  } catch (e) {
-    console.error("[RefundEngine] Error loading cancellation rules, using defaults:", e);
-  }
-
-  // Sort descending by minDays to ensure we match the largest window first
-  const sortedRules = [...rules].sort((a, b) => b.minDays - a.minDays);
+  const sortedRules = await getPolicyTiersForGroup(policyGroup);
 
   for (const rule of sortedRules) {
     if (daysBefore >= rule.minDays) {

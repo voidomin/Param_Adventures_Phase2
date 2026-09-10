@@ -62,6 +62,7 @@ const updateExperienceSchema = z.object({
   thingsToKeepInMind: z.any().optional(),
   faqs: z.any().optional(),
   cancellationPolicy: z.string().optional().nullable(),
+  cancellationPolicyGroup: z.enum(["SHORT_TRIP", "MULTI_DAY", "INTERNATIONAL"]).optional(),
   meetingPoint: z.string().optional().nullable(),
   minAge: z.number().int().optional().nullable(),
   maxAltitude: z.string().optional().nullable(),
