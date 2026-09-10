@@ -869,6 +869,7 @@ export default function AdminBookingsPage() {
     return (
       b.user.name.toLowerCase().includes(q) ||
       b.user.email.toLowerCase().includes(q) ||
+      (b.user.phoneNumber?.toLowerCase().includes(q) ?? false) ||
       b.experience.title.toLowerCase().includes(q) ||
       b.id.toLowerCase().includes(q)
     );
@@ -1495,7 +1496,7 @@ export default function AdminBookingsPage() {
             <Search className="absolute left-3 top-3.5 w-4 h-4 text-foreground/30" />
             <input
               type="text"
-              placeholder="Search by name, email, experience..."
+              placeholder="Search by name, email, phone, experience..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-9 pr-4 py-2.5 bg-card border border-border rounded-xl text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
