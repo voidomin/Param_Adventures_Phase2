@@ -57,6 +57,24 @@ export function redirectPlatformDefaultDomain(request: NextRequest): NextRespons
   return NextResponse.redirect(target, 301);
 }
 
+// Path prefixes for server-to-server cron/scheduled endpoints. Each one
+// needs BOTH exemptions below (CSRF, and the accessToken cookie gate
+// further down in publicPaths) since a cron caller has neither a browser
+// Origin header nor a session cookie -- it carries its own strong auth (a
+// timing-safe x-cron-secret comparison) instead. Kept as one shared list
+// so a new cron route can't end up exempted from only one of the two --
+// that's exactly what happened to send-balance-reminders, which shipped
+// missing from publicPaths and 401'd on every scheduled run until this
+// was unified.
+export const CRON_ENDPOINT_PREFIXES = [
+  "/api/admin/bookings/cleanup",
+  "/api/admin/audit-logs/purge",
+  "/api/admin/trips/auto-complete",
+  "/api/admin/trips/auto-start",
+  "/api/admin/bookings/cancel-unpaid-advance",
+  "/api/admin/bookings/send-balance-reminders",
+];
+
 /**
  * CSRF Protection for state-changing requests.
  * Returns a response block (NextResponse) if verification fails, or null if allowed.
@@ -74,12 +92,7 @@ function verifyCsrf(request: NextRequest, pathname: string, method: string): Nex
   // header to check) and carry their own strong auth -- a timing-safe
   // x-cron-secret comparison, same security model as the webhook's HMAC
   // signature check above.
-  const isCronEndpoint =
-    pathname.startsWith("/api/admin/bookings/cleanup") ||
-    pathname.startsWith("/api/admin/audit-logs/purge") ||
-    pathname.startsWith("/api/admin/trips/auto-complete") ||
-    pathname.startsWith("/api/admin/bookings/cancel-unpaid-advance") ||
-    pathname.startsWith("/api/admin/bookings/send-balance-reminders");
+  const isCronEndpoint = CRON_ENDPOINT_PREFIXES.some((prefix) => pathname.startsWith(prefix));
   if (isWebhook || isCronEndpoint) {
     return null;
   }
@@ -236,10 +249,7 @@ export default async function proxy(request: NextRequest) {
     "/authors",
     "/our-story",
     "/api/admin/bootstrap",
-    "/api/admin/bookings/cleanup",
-    "/api/admin/audit-logs/purge",
-    "/api/admin/trips/auto-complete",
-    "/api/admin/bookings/cancel-unpaid-advance",
+    ...CRON_ENDPOINT_PREFIXES,
     "/api/bookings/webhook",
     "/api/webhooks/email",
     "/api/health",

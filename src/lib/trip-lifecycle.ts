@@ -1,6 +1,60 @@
 import { prisma, runWithRetry } from "@/lib/db";
 
 /**
+ * Evaluates UPCOMING slots whose departure date has arrived and starts
+ * them (status ACTIVE, startedAt set) -- the same effect as a manager
+ * clicking "Start Trip" (see /api/manager/trips/[id]/start), just on a
+ * schedule instead of waiting for someone to notice. Mirrors that manual
+ * endpoint's one real safety check: a slot with no Trek Lead assigned is
+ * left alone at UPCOMING (a genuine staffing gap, not something a cron
+ * job should paper over) rather than silently marked active with nobody
+ * assigned to run it.
+ */
+export async function autoStartTrips(): Promise<{ startedCount: number; skippedUnstaffedCount: number }> {
+  try {
+    const now = new Date();
+
+    const candidateSlots = await prisma.slot.findMany({
+      where: {
+        status: "UPCOMING",
+        date: { lte: now },
+      },
+      select: {
+        id: true,
+        assignments: { select: { id: true }, take: 1 },
+      },
+    });
+
+    if (candidateSlots.length === 0) {
+      return { startedCount: 0, skippedUnstaffedCount: 0 };
+    }
+
+    let startedCount = 0;
+    let skippedUnstaffedCount = 0;
+
+    for (const slot of candidateSlots) {
+      if (slot.assignments.length === 0) {
+        skippedUnstaffedCount++;
+        continue;
+      }
+
+      await runWithRetry(() =>
+        prisma.slot.update({
+          where: { id: slot.id },
+          data: { status: "ACTIVE", startedAt: now },
+        })
+      );
+      startedCount++;
+    }
+
+    return { startedCount, skippedUnstaffedCount };
+  } catch (error) {
+    console.error("[TripLifecycle] Error auto-starting trips:", error);
+    return { startedCount: 0, skippedUnstaffedCount: 0 };
+  }
+}
+
+/**
  * Evaluates past slots and auto-completes them if the trek end date has passed.
  * Multi-day aware: endTimestamp = slot.date + (durationDays - 1) * 86400s.
  * Unlocks customer review eligibility (canReview = true) for active bookings.
