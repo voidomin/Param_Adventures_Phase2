@@ -8,6 +8,7 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
+  Legend,
   ResponsiveContainer,
   PieChart,
   Pie,
@@ -20,6 +21,7 @@ interface ChartData {
   bookingsByStatus: { status: string; count: number; color: string }[];
   topExperiences: { name: string; bookings: number }[];
   userGrowth: { month: string; users: number }[];
+  categoryBreakdown: { category: string; bookings: number; revenue: number }[];
 }
 
 type TooltipPayload = {
@@ -70,13 +72,36 @@ function PieTooltip({
   if (active === false || !payload || payload.length === 0 || !payload[0].payload) {
     return null;
   }
-  
+
   return (
     <div className="bg-card border border-border rounded-xl px-4 py-2.5 shadow-xl text-sm">
       <p className="font-bold text-foreground">{payload[0].name}</p>
       <p className="font-black" style={{ color: payload[0].payload.color }}>
         {payload[0].value ?? 0}
       </p>
+    </div>
+  );
+}
+
+// Two series on two different scales (revenue in rupees, bookings as a
+// small count) -- the shared CustomTooltip only shows one value, so this
+// shows both, labeled, instead of the second series being unreadable.
+function CategoryTooltip({
+  active,
+  payload,
+  label,
+}: Readonly<{ active?: boolean; payload?: TooltipPayload[]; label?: string }>) {
+  if (active === false || !payload || payload.length === 0) {
+    return null;
+  }
+  const revenue = payload.find((p) => p.name === "Revenue")?.value ?? 0;
+  const bookings = payload.find((p) => p.name === "Bookings")?.value ?? 0;
+
+  return (
+    <div className="bg-card border border-border rounded-xl px-4 py-2.5 shadow-xl text-sm">
+      <p className="font-bold text-foreground mb-1">{label}</p>
+      <p className="text-primary font-black">₹{revenue.toLocaleString("en-IN")}</p>
+      <p className="text-[#8b5cf6] font-black">{bookings.toLocaleString("en-IN")} bookings</p>
     </div>
   );
 }
@@ -92,13 +117,27 @@ const NoData = ({ message }: { message: string }) => (
 );
 
 // ── Common Chart Layout Wrapper ──
-// The "Absolute Measurement" trick for Recharts in CSS Grid
-const ChartWrapper = ({ children, title }: { children: React.ReactNode, title: string }) => (
+// The "Absolute Measurement" trick for Recharts in CSS Grid. `subtitle` is
+// rendered in normal flow (not the absolute-positioned chart slot below),
+// so it's safe for a chart that needs a one-line caveat without changing
+// the fixed height every other chart here relies on.
+const ChartWrapper = ({
+  children,
+  title,
+  subtitle,
+}: {
+  children: React.ReactNode;
+  title: string;
+  subtitle?: string;
+}) => (
   <div className="bg-card border border-border rounded-2xl p-6 shadow-sm overflow-hidden min-h-[350px] flex flex-col">
-    <h3 className="text-sm font-bold text-foreground/60 uppercase tracking-wider mb-4 shrink-0">
+    <h3 className="text-sm font-bold text-foreground/60 uppercase tracking-wider mb-1 shrink-0">
       {title}
     </h3>
-    <div className="flex-1 w-full relative min-h-[280px]">
+    {subtitle && (
+      <p className="text-[11px] text-foreground/40 mb-3 shrink-0">{subtitle}</p>
+    )}
+    <div className={`flex-1 w-full relative min-h-[280px] ${subtitle ? "" : "mt-3"}`}>
       <div className="absolute inset-0">
         {children}
       </div>
@@ -131,7 +170,7 @@ export default function DashboardCharts({
   if (mounted === false) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-8">
-        {[1, 2, 3, 4].map((i) => (
+        {[1, 2, 3, 4, 5].map((i) => (
           <div key={i} className="bg-card border border-border rounded-2xl p-6 shadow-sm min-h-[350px]">
             <div className="h-4 w-32 bg-foreground/5 animate-pulse rounded mb-4" />
             <ChartSkeleton />
@@ -234,6 +273,40 @@ export default function DashboardCharts({
               />
               <Tooltip content={<CustomTooltip suffix=" bookings" />} />
               <Bar dataKey="bookings" fill="#8b5cf6" radius={[0, 8, 8, 0]} maxBarSize={32} />
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </ChartWrapper>
+
+      {/* Category Breakdown Chart */}
+      <ChartWrapper
+        title="Bookings & Revenue by Category"
+        subtitle="A trip counts toward every category it belongs to, so totals may not add up to the figures above."
+      >
+        {charts.categoryBreakdown.length === 0 ? (
+          <NoData message="No category data yet" />
+        ) : (
+          <ResponsiveContainer width="99.9%" height={280} minWidth={0} minHeight={0}>
+            <BarChart data={charts.categoryBreakdown} margin={{ top: 5, right: 5, bottom: 5, left: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="category" tick={{ fontSize: 11, fill: "var(--foreground)" }} axisLine={false} tickLine={false} />
+              <YAxis
+                yAxisId="revenue"
+                tick={{ fontSize: 11, fill: "var(--foreground)" }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(v) => (v >= 1000 ? `₹${(v / 1000).toFixed(0)}k` : `₹${v}`)}
+              />
+              <YAxis yAxisId="bookings" orientation="right" tick={{ fontSize: 11, fill: "var(--foreground)" }} axisLine={false} tickLine={false} allowDecimals={false} />
+              <Tooltip content={<CategoryTooltip />} />
+              <Legend
+                verticalAlign="top"
+                height={28}
+                iconType="circle"
+                wrapperStyle={{ fontSize: 12, color: "var(--foreground)" }}
+              />
+              <Bar yAxisId="revenue" dataKey="revenue" name="Revenue" fill="var(--primary)" radius={[8, 8, 0, 0]} maxBarSize={28} />
+              <Bar yAxisId="bookings" dataKey="bookings" name="Bookings" fill="#8b5cf6" radius={[8, 8, 0, 0]} maxBarSize={28} />
             </BarChart>
           </ResponsiveContainer>
         )}

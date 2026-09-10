@@ -127,6 +127,30 @@ export async function GET(request: NextRequest) {
       bookings: e._count.bookings,
     }));
 
+    // ─── Bookings & Revenue by Category (all-time) ────────
+    // An Experience can belong to multiple categories (many-to-many via
+    // ExperienceCategory), so a booking counts toward every category its
+    // experience belongs to -- category totals intentionally don't sum
+    // to the overall booking/revenue figures shown elsewhere. Aggregated
+    // in the database via a join, same reasoning as the raw queries above.
+    const categoryBreakdownRows = await prisma.$queryRaw<
+      { name: string; bookings: bigint; revenue: number }[]
+    >`
+      SELECT c."name" as name, COUNT(b."id") as bookings, COALESCE(SUM(b."totalPrice"), 0)::float as revenue
+      FROM "Booking" b
+      JOIN "Experience" e ON e."id" = b."experienceId"
+      JOIN "ExperienceCategory" ec ON ec."experienceId" = e."id"
+      JOIN "Category" c ON c."id" = ec."categoryId"
+      WHERE b."bookingStatus" = 'CONFIRMED'
+      GROUP BY c."id", c."name"
+      ORDER BY revenue DESC
+    `;
+    const categoryBreakdown = categoryBreakdownRows.map((r) => ({
+      category: r.name,
+      bookings: Number(r.bookings),
+      revenue: Number(r.revenue),
+    }));
+
     // ─── User Growth (last 6 months) ─────────────────────
     const userGrowthRows = await prisma.$queryRaw<{ month: Date; count: bigint }[]>`
       SELECT date_trunc('month', "createdAt") as month, COUNT(*) as count
@@ -181,6 +205,7 @@ export async function GET(request: NextRequest) {
         bookingsByStatus,
         topExperiences,
         userGrowth,
+        categoryBreakdown,
       },
     });
   } catch (error) {

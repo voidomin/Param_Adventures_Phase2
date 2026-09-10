@@ -123,6 +123,10 @@ describe("GET /api/admin/dashboard", () => {
         { month: lastMonth, revenue: 3000 },
       ] as any)
       .mockResolvedValueOnce([
+        { name: "Trekking", bookings: BigInt(15), revenue: 45000 },
+        { name: "Camping", bookings: BigInt(8), revenue: 20000 },
+      ] as any)
+      .mockResolvedValueOnce([
         { month: now, count: 2 },
         { month: lastMonth, count: 1 },
       ] as any);
@@ -185,6 +189,11 @@ describe("GET /api/admin/dashboard", () => {
     expect(data.charts.topExperiences[0].name.length).toBeLessThanOrEqual(26);
     expect(data.charts.topExperiences[0].name.endsWith("…")).toBe(true);
     expect(data.charts.userGrowth).toHaveLength(6);
+
+    expect(data.charts.categoryBreakdown).toEqual([
+      { category: "Trekking", bookings: 15, revenue: 45000 },
+      { category: "Camping", bookings: 8, revenue: 20000 },
+    ]);
   });
 
   it("defaults revenue to 0 when aggregate sum is null", async () => {
@@ -216,6 +225,7 @@ describe("GET /api/admin/dashboard", () => {
 
     expect(response.status).toBe(200);
     expect(data.metrics.totalRevenue30d).toBe(0);
+    expect(data.charts.categoryBreakdown).toEqual([]);
   });
 
   it("returns 500 on unexpected failure", async () => {

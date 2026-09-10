@@ -25,17 +25,19 @@ describe("DashboardCharts Component", () => {
     bookingsByStatus: [{ status: "CONFIRMED", count: 10, color: "#000" }],
     topExperiences: [{ name: "Trek", bookings: 5 }],
     userGrowth: [{ month: "Jan", users: 50 }],
+    categoryBreakdown: [{ category: "Trekking", bookings: 8, revenue: 40000 }],
   };
 
   it("renders correctly with data", async () => {
     render(<DashboardCharts charts={mockData} />);
-    
+
     // Use findByText to wait for the 1.2s mount delay to settle
     // Increase timeout to 3000ms since delay is 1200ms
     expect(await screen.findByText("Revenue Trend (6 Months)", {}, { timeout: 3000 })).toBeInTheDocument();
     expect(screen.getByText("Booking Distribution")).toBeInTheDocument();
     expect(screen.getByText("Top Experiences by Bookings")).toBeInTheDocument();
     expect(screen.getByText("User Registration Trend")).toBeInTheDocument();
+    expect(screen.getByText("Bookings & Revenue by Category")).toBeInTheDocument();
 
     // Check custom labels that show up in DOM
     expect(screen.getByText("CONFIRMED")).toBeInTheDocument();
@@ -47,11 +49,13 @@ describe("DashboardCharts Component", () => {
       bookingsByStatus: [],
       topExperiences: [],
       userGrowth: [],
+      categoryBreakdown: [],
     };
     render(<DashboardCharts charts={emptyData} />);
-    
+
     // Wait for mount delay with increased timeout
     expect(await screen.findByText("No bookings yet", {}, { timeout: 3000 })).toBeInTheDocument();
     expect(screen.getByText("No data yet")).toBeInTheDocument();
+    expect(screen.getByText("No category data yet")).toBeInTheDocument();
   });
 });
