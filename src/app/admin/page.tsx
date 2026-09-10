@@ -17,7 +17,7 @@ const DashboardCharts = dynamic(() => import("@/components/admin/DashboardCharts
   ssr: false,
   loading: () => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {["chart-1", "chart-2", "chart-3", "chart-4"].map((key) => (
+      {["chart-1", "chart-2", "chart-3", "chart-4", "chart-5"].map((key) => (
         <div key={key} className="h-64 rounded-2xl bg-muted animate-pulse" />
       ))}
     </div>
@@ -50,6 +50,7 @@ interface AdminDashboardData {
     bookingsByStatus: { status: string; count: number; color: string }[];
     topExperiences: { name: string; bookings: number }[];
     userGrowth: { month: string; users: number }[];
+    categoryBreakdown: { category: string; bookings: number; revenue: number }[];
   };
 }
 
