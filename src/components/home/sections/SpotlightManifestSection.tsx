@@ -8,6 +8,11 @@ import SectionHeading from "./SectionHeading";
 import { resolveExperienceImageUrl } from "@/lib/serialize-experience-card";
 import type { HomepageSectionWithExperiences } from "@/lib/homepage-sections";
 import type { MediaSettings } from "@/types/media";
+import type { CSSProperties } from "react";
+
+// See MosaicGridSection.tsx for why this works -- overrides --primary for
+// just this section. Matches the mockup's "International" mood color.
+const MOOD_STYLE = { "--primary": "#5b6ee1" } as CSSProperties;
 
 function resolveImage(
   exp: HomepageSectionWithExperiences["experiences"][number],
@@ -31,7 +36,7 @@ export default function SpotlightManifestSection({
   if (!hero) return null;
 
   return (
-    <div className="pt-12 pb-4 px-4 md:px-12 lg:px-16 relative z-10">
+    <div className="pt-12 pb-4 px-4 md:px-12 lg:px-16 relative z-10" style={MOOD_STYLE}>
       <SectionHeading heading={section.heading} subheading={section.subheading} />
       <ScrollReveal>
         <div className="grid md:grid-cols-[1.3fr_1fr] gap-5 items-stretch">

@@ -7,6 +7,13 @@ import SectionHeading from "./SectionHeading";
 import { resolveExperienceImageUrl } from "@/lib/serialize-experience-card";
 import type { HomepageSectionWithExperiences } from "@/lib/homepage-sections";
 import type { MediaSettings } from "@/types/media";
+import type { CSSProperties } from "react";
+
+// See MosaicGridSection.tsx for why this works -- overrides --primary for
+// just this section. Matches the mockup's "Educational" mood color, close
+// to the emerald-500 the top border already used (now driven by the same
+// variable instead of two independent green definitions).
+const MOOD_STYLE = { "--primary": "#4f9d6e" } as CSSProperties;
 
 /**
  * Educational Expeditions: parents and schools compare these like a course
@@ -23,7 +30,7 @@ export default function SpecPanelsSection({
   mediaSettings: MediaSettings;
 }>) {
   return (
-    <div className="pt-12 pb-4 px-4 md:px-12 lg:px-16 relative z-10">
+    <div className="pt-12 pb-4 px-4 md:px-12 lg:px-16 relative z-10" style={MOOD_STYLE}>
       <SectionHeading heading={section.heading} subheading={section.subheading} />
       <ScrollReveal>
         <div className="grid md:grid-cols-3 gap-4.5">
@@ -34,7 +41,7 @@ export default function SpecPanelsSection({
               <Link
                 key={exp.id}
                 href={`/experiences/${exp.slug}`}
-                className="flex flex-col bg-card border-t-3 border-t-emerald-500 border-x border-b border-border rounded-2xl overflow-hidden hover:shadow-xl transition-shadow"
+                className="flex flex-col bg-card border-t-3 border-t-primary border-x border-b border-border rounded-2xl overflow-hidden hover:shadow-xl transition-shadow"
               >
                 <div className="relative aspect-16/10 w-full bg-foreground/5">
                   <Image
