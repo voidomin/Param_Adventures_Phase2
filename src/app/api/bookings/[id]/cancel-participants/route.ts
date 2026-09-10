@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma, runWithRetry } from "@/lib/db";
-import { PaymentStatus, Prisma } from "@prisma/client";
+import { PaymentStatus, Prisma, CancellationPolicyGroup } from "@prisma/client";
 import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
 import { z } from "zod";
@@ -31,7 +31,7 @@ interface CancelBookingInput {
   participantCount: number;
   refundAmount?: unknown;
   taxBreakdown: unknown;
-  experience?: { basePrice: unknown } | null;
+  experience?: { basePrice: unknown; cancellationPolicyGroup: CancellationPolicyGroup } | null;
 }
 
 interface CancelParticipantInput {
@@ -73,7 +73,7 @@ async function processFullCancellation(params: {
   // depend on the booking's financial fields, so it's safe to compute
   // outside the transaction.
   const departureDate = booking.slot ? new Date(booking.slot.date) : new Date();
-  const { refundPercent } = await getRefundPercentage(departureDate, new Date());
+  const { refundPercent } = await getRefundPercentage(departureDate, new Date(), booking.experience?.cancellationPolicyGroup ?? "MULTI_DAY");
 
   const { breakdown, finalRefund } = await runWithRetry(() =>
     prisma.$transaction(async (tx) => {
@@ -268,7 +268,7 @@ async function calculateRefundProportional(params: {
 
   // Resolve cancellation policy based on departure date
   const departureDate = booking.slot ? new Date(booking.slot.date) : new Date();
-  const { refundPercent } = await getRefundPercentage(departureDate, new Date());
+  const { refundPercent } = await getRefundPercentage(departureDate, new Date(), booking.experience?.cancellationPolicyGroup ?? "MULTI_DAY");
 
   const breakdown = calculateRefundBreakdown({
     baseFare: totalCancelledBase,

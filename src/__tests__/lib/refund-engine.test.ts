@@ -205,18 +205,38 @@ describe("Refund Calculation Engine Tests", () => {
     const departure = new Date();
     departure.setDate(departure.getDate() + 32); // 32 days from now
 
-    const res = await getRefundPercentage(departure, new Date());
+    const res = await getRefundPercentage(departure, new Date(), "SHORT_TRIP");
     expect(res.refundPercent).toBe(100);
 
     const departure75 = new Date();
     departure75.setDate(departure75.getDate() + 20); // 20 days from now
-    const res75 = await getRefundPercentage(departure75, new Date());
+    const res75 = await getRefundPercentage(departure75, new Date(), "SHORT_TRIP");
     expect(res75.refundPercent).toBe(75);
 
     const departureExpired = new Date();
     departureExpired.setDate(departureExpired.getDate() - 1); // Started yesterday
-    const resExpired = await getRefundPercentage(departureExpired, new Date());
+    const resExpired = await getRefundPercentage(departureExpired, new Date(), "SHORT_TRIP");
     expect(resExpired.refundPercent).toBe(0);
+  });
+
+  it("resolves a different refund percentage for the same date depending on the trek-length policy group", async () => {
+    vi.mocked(prisma.platformSetting.findUnique).mockResolvedValue(null);
+
+    // 35 days out: SHORT_TRIP's top tier starts at 21 days (100%), but
+    // MULTI_DAY's top tier only starts at 46 days, so 35 days falls into
+    // its 31-45 (50%) tier instead -- same date, different group, different
+    // outcome, proving the group actually drives the calculation.
+    const departure = new Date();
+    departure.setDate(departure.getDate() + 35);
+
+    const shortTrip = await getRefundPercentage(departure, new Date(), "SHORT_TRIP");
+    expect(shortTrip.refundPercent).toBe(100);
+
+    const multiDay = await getRefundPercentage(departure, new Date(), "MULTI_DAY");
+    expect(multiDay.refundPercent).toBe(50);
+
+    const international = await getRefundPercentage(departure, new Date(), "INTERNATIONAL");
+    expect(international.refundPercent).toBe(25);
   });
 
   it("Scenario 8: Coupon Refund vs Bank Transfer Refund policies", () => {
@@ -282,41 +302,38 @@ describe("Refund Calculation Engine Tests", () => {
   });
 
   describe("getRefundPercentage", () => {
-    it("returns correct refund percentage based on default rules", async () => {
+    it("returns correct refund percentage based on default rules for the MULTI_DAY group", async () => {
       vi.mocked(prisma.platformSetting.findUnique).mockResolvedValue(null);
 
       const departure = new Date();
-      departure.setDate(departure.getDate() + 35); // 35 days before
+      departure.setDate(departure.getDate() + 50); // 50 days before -> 46+ tier
 
-      const result = await getRefundPercentage(departure, new Date());
+      const result = await getRefundPercentage(departure, new Date(), "MULTI_DAY");
       expect(result.refundPercent).toBe(100);
 
       const departure2 = new Date();
-      departure2.setDate(departure2.getDate() + 20); // 20 days before
-      const result2 = await getRefundPercentage(departure2, new Date());
-      expect(result2.refundPercent).toBe(75);
+      departure2.setDate(departure2.getDate() + 35); // 35 days before -> 31-45 tier
+      const result2 = await getRefundPercentage(departure2, new Date(), "MULTI_DAY");
+      expect(result2.refundPercent).toBe(50);
 
       const departure3 = new Date();
-      departure3.setDate(departure3.getDate() + 10); // 10 days before
-      const result3 = await getRefundPercentage(departure3, new Date());
-      expect(result3.refundPercent).toBe(50);
+      departure3.setDate(departure3.getDate() + 25); // 25 days before -> 21-30 tier
+      const result3 = await getRefundPercentage(departure3, new Date(), "MULTI_DAY");
+      expect(result3.refundPercent).toBe(25);
 
       const departure4 = new Date();
-      departure4.setDate(departure4.getDate() + 5); // 5 days before
-      const result4 = await getRefundPercentage(departure4, new Date());
-      expect(result4.refundPercent).toBe(25);
-
-      const departure5 = new Date();
-      departure5.setDate(departure5.getDate() + 1); // 1 day before
-      const result5 = await getRefundPercentage(departure5, new Date());
-      expect(result5.refundPercent).toBe(0);
+      departure4.setDate(departure4.getDate() + 10); // 10 days before -> 0-20 tier
+      const result4 = await getRefundPercentage(departure4, new Date(), "MULTI_DAY");
+      expect(result4.refundPercent).toBe(0);
     });
 
-    it("uses custom platform setting cancellation rules if defined", async () => {
-      const customRules = JSON.stringify([
-        { minDays: 10, maxDays: null, refundPercent: 90 },
-        { minDays: 0, maxDays: 9, refundPercent: 10 },
-      ]);
+    it("uses custom platform setting cancellation rules for the requested group if defined", async () => {
+      const customRules = JSON.stringify({
+        MULTI_DAY: [
+          { minDays: 10, maxDays: null, refundPercent: 90 },
+          { minDays: 0, maxDays: 9, refundPercent: 10 },
+        ],
+      });
       vi.mocked(prisma.platformSetting.findUnique).mockResolvedValue({
         key: "cancellation_policy_rules",
         value: customRules,
@@ -325,13 +342,31 @@ describe("Refund Calculation Engine Tests", () => {
       const departure = new Date();
       departure.setDate(departure.getDate() + 12); // 12 days before
 
-      const result = await getRefundPercentage(departure, new Date());
+      const result = await getRefundPercentage(departure, new Date(), "MULTI_DAY");
       expect(result.refundPercent).toBe(90);
 
       const departure2 = new Date();
       departure2.setDate(departure2.getDate() + 5); // 5 days before
-      const result2 = await getRefundPercentage(departure2, new Date());
+      const result2 = await getRefundPercentage(departure2, new Date(), "MULTI_DAY");
       expect(result2.refundPercent).toBe(10);
+    });
+
+    it("falls back to that group's default rules if the requested group's custom rules are missing", async () => {
+      // Custom rules only cover MULTI_DAY -- requesting SHORT_TRIP should
+      // fall back to SHORT_TRIP's own hardcoded default, not MULTI_DAY's.
+      const customRules = JSON.stringify({
+        MULTI_DAY: [{ minDays: 0, maxDays: null, refundPercent: 10 }],
+      });
+      vi.mocked(prisma.platformSetting.findUnique).mockResolvedValue({
+        key: "cancellation_policy_rules",
+        value: customRules,
+      } as any);
+
+      const departure = new Date();
+      departure.setDate(departure.getDate() + 32); // SHORT_TRIP's 21+ tier
+
+      const result = await getRefundPercentage(departure, new Date(), "SHORT_TRIP");
+      expect(result.refundPercent).toBe(100);
     });
 
     it("falls back to default rules if platform setting json is invalid", async () => {
@@ -343,7 +378,7 @@ describe("Refund Calculation Engine Tests", () => {
       const departure = new Date();
       departure.setDate(departure.getDate() + 35); // 35 days before
 
-      const result = await getRefundPercentage(departure, new Date());
+      const result = await getRefundPercentage(departure, new Date(), "SHORT_TRIP");
       expect(result.refundPercent).toBe(100);
     });
   });
