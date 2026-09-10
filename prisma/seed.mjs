@@ -541,6 +541,60 @@ export async function seedSiteSettings() {
   console.log("   ✓ Done");
 }
 
+// Exactly 5 rows, one per fixed homepage showcase layout -- never added to
+// or removed from afterward. name/heading/subheading are admin-editable
+// (see the Homepage Sections admin tab), so `update: {}` below is
+// deliberate: re-running the seed must never clobber an admin's edits.
+const HOMEPAGE_SECTIONS = [
+  {
+    layout: "MOSAIC_GRID",
+    name: "Weekend Getaways",
+    heading: "Weekend Getaways",
+    subheading: "Short escapes near the city — pack light, back by Monday.",
+    displayOrder: 1,
+  },
+  {
+    layout: "SPOTLIGHT_MANIFEST",
+    name: "International Expeditions",
+    heading: "International Expeditions",
+    subheading: "Beyond the border — visas, flights and altitude included.",
+    displayOrder: 2,
+  },
+  {
+    layout: "PILGRIMAGE_TRAIL",
+    name: "Spiritual Journeys",
+    heading: "Spiritual Journeys",
+    subheading: "Sacred routes, walked at a slower, steadier pace.",
+    displayOrder: 3,
+  },
+  {
+    layout: "SPEC_PANELS",
+    name: "Educational Expeditions",
+    heading: "Educational Expeditions",
+    subheading: "Curriculum-aligned field trips for schools and student groups.",
+    displayOrder: 4,
+  },
+  {
+    layout: "ALTITUDE_TICKER",
+    name: "Extreme Adventure Challenges",
+    heading: "Extreme Adventure Challenges",
+    subheading: "High altitude, high stakes — for trekkers who've earned the badges.",
+    displayOrder: 5,
+  },
+];
+
+export async function seedHomepageSections() {
+  console.log("🏔️ Seeding homepage sections...");
+  for (const section of HOMEPAGE_SECTIONS) {
+    await prisma.homepageSection.upsert({
+      where: { layout: section.layout },
+      update: {},
+      create: section,
+    });
+  }
+  console.log("   ✓ Done");
+}
+
 // ─── MAIN ─────────────────────────────────────────────────
 
 /**
@@ -557,6 +611,7 @@ export async function main(existingPrisma) {
     await seedHeroSlides();
     await seedPlatformSettings();
     await seedSiteSettings();
+    await seedHomepageSections();
     console.log("\n🚀 Seeding completed successfully!");
     return { success: true };
   } catch (err) {

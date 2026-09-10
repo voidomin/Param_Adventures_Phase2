@@ -97,6 +97,35 @@ model Category {
   experiences ExperienceCategory[]
 }
 
+// Which of the 5 fixed homepage showcase designs a section renders as --
+// immutable identity, never edited (unlike name/heading/subheading below,
+// which admins can freely change). See src/components/home/sections/.
+enum HomepageSectionLayout {
+  MOSAIC_GRID // Weekend Getaways
+  SPOTLIGHT_MANIFEST // International Expeditions
+  PILGRIMAGE_TRAIL // Spiritual Journeys
+  SPEC_PANELS // Educational Expeditions
+  ALTITUDE_TICKER // Extreme Adventure Challenges
+}
+
+// Exactly 5 rows, seeded once and never created/deleted afterward -- see
+// seedHomepageSections() in prisma/seed.mjs. Distinct from Category above:
+// Category is an unlimited, freely-addable filter taxonomy powering
+// /experiences; a HomepageSection is one of a fixed set of homepage
+// showcase slots, each with its own layout, and an Experience belongs to
+// at most one.
+model HomepageSection {
+  id           String                @id @default(uuid())
+  layout       HomepageSectionLayout @unique
+  name         String
+  heading      String
+  subheading   String?
+  displayOrder Int                   @default(0)
+  isActive     Boolean               @default(true)
+  updatedAt    DateTime              @updatedAt
+  experiences  Experience[]
+}
+
 model Experience {
   id                  String               @id @default(uuid())
   title               String
@@ -149,6 +178,11 @@ model Experience {
   // in src/lib/refund-engine.ts. Distinct from cancellationPolicy above,
   // which is just the free-text blurb shown on the experience page.
   cancellationPolicyGroup CancellationPolicyGroup @default(MULTI_DAY)
+  // At most one homepage showcase section, independent of isFeatured --
+  // a trip can be featured, sectioned, both, or neither. See
+  // HomepageSection above.
+  homepageSectionId   String?
+  homepageSection     HomepageSection?    @relation(fields: [homepageSectionId], references: [id])
   blogs               Blog[]
   bookings            Booking[]
   categories          ExperienceCategory[]
@@ -159,6 +193,7 @@ model Experience {
   @@index([status])
   @@index([isFeatured])
   @@index([deletedAt])
+  @@index([homepageSectionId])
 }
 
 model ExperienceCategory {
