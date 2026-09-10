@@ -73,6 +73,7 @@ export const CRON_ENDPOINT_PREFIXES = [
   "/api/admin/trips/auto-start",
   "/api/admin/bookings/cancel-unpaid-advance",
   "/api/admin/bookings/send-balance-reminders",
+  "/api/admin/trips/send-staffing-alerts",
 ];
 
 /**
