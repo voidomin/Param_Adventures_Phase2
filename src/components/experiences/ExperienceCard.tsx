@@ -135,25 +135,28 @@ export default function ExperienceCard({
   };
 
   const rawImage =
-    experience.cardImage ||
-    experience.coverImage ||
-    experience.images[0] ||
-    "https://picsum.photos/seed/placeholder/800/600";
+    experience.cardImage || experience.coverImage || experience.images[0] || null;
 
-  const primaryImage = getMediaUrl(
-    rawImage,
-    mediaSettings?.provider || "CLOUDINARY",
-    {
-      cloudinaryCloudName: mediaSettings?.cloudinaryCloudName,
-      s3Bucket: mediaSettings?.s3Bucket,
-      s3Region: mediaSettings?.s3Region,
-      globalQuality: mediaSettings?.globalQuality || 100,
-      highFidelity: mediaSettings?.highFidelity ?? true
-    },
-    { width: 800, crop: "fill" }
-  );
+  // A trek with no uploaded photo yet gets the local branded placeholder
+  // directly -- never routed through getMediaUrl, since that assumes a
+  // cloud-hosted path (Cloudinary/S3) and would mangle a same-origin
+  // static asset.
+  const primaryImage = rawImage
+    ? getMediaUrl(
+        rawImage,
+        mediaSettings?.provider || "CLOUDINARY",
+        {
+          cloudinaryCloudName: mediaSettings?.cloudinaryCloudName,
+          s3Bucket: mediaSettings?.s3Bucket,
+          s3Region: mediaSettings?.s3Region,
+          globalQuality: mediaSettings?.globalQuality || 100,
+          highFidelity: mediaSettings?.highFidelity ?? true
+        },
+        { width: 800, crop: "fill" }
+      )
+    : "/images/experience-placeholder.svg";
 
-  const isVideo = /\.(mp4|webm)$/i.test(rawImage);
+  const isVideo = !!rawImage && /\.(mp4|webm)$/i.test(rawImage);
 
   const upcomingDatesContent = (() => {
     if (experience.upcomingSlots && experience.upcomingSlots.length > 0) {

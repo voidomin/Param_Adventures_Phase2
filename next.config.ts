@@ -113,7 +113,7 @@ const nextConfig: NextConfig = {
               "default-src 'self'",
               `script-src ${scriptSrcPolicy}`,
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              `img-src 'self' data: blob: https://res.cloudinary.com https://picsum.photos https://images.unsplash.com https://lh3.googleusercontent.com https://checkout.razorpay.com https://www.google-analytics.com ${allowedHostsStr}`,
+              `img-src 'self' data: blob: https://res.cloudinary.com https://picsum.photos https://fastly.picsum.photos https://images.unsplash.com https://lh3.googleusercontent.com https://checkout.razorpay.com https://www.google-analytics.com ${allowedHostsStr}`,
               "font-src 'self' https://fonts.gstatic.com",
               `connect-src 'self' https://res.cloudinary.com https://api.cloudinary.com https://api.razorpay.com https://lumberjack.razorpay.com https://*.sentry.io https://www.google-analytics.com https://accounts.google.com ${allowedHostsStr}`,
               "frame-src 'self' https://www.youtube.com https://api.razorpay.com https://checkout.razorpay.com https://accounts.google.com",
