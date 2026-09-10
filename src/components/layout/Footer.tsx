@@ -194,6 +194,14 @@ export default function Footer({ supportEmail, supportPhone, officeAddress, site
                   Cancellation Policy
                 </Link>
               </li>
+              <li>
+                <Link
+                  href="/voucher-policy"
+                  className="hover:text-primary transition-colors"
+                >
+                  Voucher Policy
+                </Link>
+              </li>
             </ul>
           </div>
 
