@@ -51,6 +51,7 @@ const updateExperienceSchema = z.object({
   difficulty: z.enum(["EASY", "MODERATE", "HARD", "EXTREME"]).optional(),
   status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).optional(),
   isFeatured: z.boolean().optional(),
+  homepageSectionId: z.string().uuid().nullable().optional(),
   coverImage: z.union([z.url({ message: "Invalid cover image URL" }), z.literal("")]).transform(val => val === "" ? null : val).optional().nullable(),
   cardImage: z.union([z.url({ message: "Invalid card image URL" }), z.literal("")]).transform(val => val === "" ? null : val).optional().nullable(),
   images: z.array(z.url({ message: "Invalid image URL" }).trim()).transform(arr => arr.filter(Boolean)).optional(),

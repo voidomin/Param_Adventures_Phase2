@@ -3,10 +3,11 @@
 import { Suspense, useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
-import { MonitorPlay, BookOpen, Tags, AlertCircle, Loader2 } from "lucide-react";
+import { MonitorPlay, BookOpen, Tags, LayoutGrid, AlertCircle, Loader2 } from "lucide-react";
 import HeroTab from "@/components/admin/HeroTab";
 import StoryTab from "@/components/admin/StoryTab";
 import CategoriesTab from "@/components/admin/CategoriesTab";
+import HomepageSectionsTab from "@/components/admin/HomepageSectionsTab";
 
 function CustomizationContent() {
   const { user, hasPermission } = useAuth();
@@ -35,6 +36,13 @@ function CustomizationContent() {
         label: "Categories",
         icon: Tags,
         component: CategoriesTab,
+        permission: "trip:manage-categories",
+      },
+      {
+        id: "homepage-sections",
+        label: "Homepage Sections",
+        icon: LayoutGrid,
+        component: HomepageSectionsTab,
         permission: "trip:manage-categories",
       },
     ];

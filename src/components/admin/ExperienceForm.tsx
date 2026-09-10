@@ -30,6 +30,11 @@ interface Category {
   name: string;
 }
 
+interface HomepageSectionOption {
+  id: string;
+  name: string;
+}
+
 export interface ItineraryDay {
   _id?: string;
   title: string;
@@ -73,6 +78,7 @@ export interface ExperienceFormData {
   images: string[];
   itinerary: ItineraryDay[];
   categories?: { categoryId: string }[];
+  homepageSectionId?: string | null;
   inclusions?: string[];
   exclusions?: string[];
   thingsToCarry?: string[];
@@ -199,6 +205,7 @@ export default function ExperienceForm({
   const isEditing = !!initialData;
 
   const [categories, setCategories] = useState<Category[]>([]);
+  const [homepageSections, setHomepageSections] = useState<HomepageSectionOption[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(""); // General error
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -226,6 +233,9 @@ export default function ExperienceForm({
   );
   const [selectedCategories, setSelectedCategories] = useState<string[]>(
     initialData?.categories?.map((c) => c.categoryId) || [],
+  );
+  const [homepageSectionId, setHomepageSectionId] = useState<string | null>(
+    initialData?.homepageSectionId ?? null,
   );
 
   // Images
@@ -472,6 +482,17 @@ export default function ExperienceForm({
       }
     };
 
+    // Fetch the 5 fixed homepage sections (for the assignment dropdown)
+    const fetchHomepageSections = async () => {
+      try {
+        const res = await fetch("/api/admin/homepage-sections");
+        const data = await res.json();
+        setHomepageSections(data.sections || []);
+      } catch (err) {
+        console.error("Failed to load homepage sections:", err);
+      }
+    };
+
     // Fetch Taxes
     const fetchSettings = async () => {
       try {
@@ -498,6 +519,7 @@ export default function ExperienceForm({
     };
 
     fetchCats();
+    fetchHomepageSections();
     fetchSettings();
   }, []);
 
@@ -616,6 +638,7 @@ export default function ExperienceForm({
     difficulty,
     status,
     isFeatured,
+    homepageSectionId,
     coverImage,
     cardImage,
     images: images.filter((url) => url.trim() !== ""),
@@ -880,6 +903,7 @@ export default function ExperienceForm({
     if (data.difficulty) setDifficulty(data.difficulty);
     if (data.status) setStatus(data.status);
     if (data.isFeatured !== undefined) setIsFeatured(data.isFeatured);
+    if (data.homepageSectionId !== undefined) setHomepageSectionId(data.homepageSectionId ?? null);
     if (data.categories) setSelectedCategories(data.categories.map((c) => c.categoryId));
     applyImageData(data);
     applyPaymentData(data);
@@ -948,6 +972,7 @@ export default function ExperienceForm({
     difficulty,
     status,
     isFeatured,
+    homepageSectionId,
     coverImage,
     cardImage,
     images,
@@ -2605,6 +2630,30 @@ export default function ExperienceForm({
                       </span>
                     </div>
                   </label>
+                  <div>
+                    <label
+                      htmlFor="homepageSection"
+                      className="block text-sm font-medium text-foreground/80 mb-1"
+                    >
+                      Homepage Section
+                    </label>
+                    <select
+                      id="homepageSection"
+                      value={homepageSectionId ?? ""}
+                      onChange={(e) => setHomepageSectionId(e.target.value || null)}
+                      className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:border-primary/50 text-sm"
+                    >
+                      <option value="">None</option>
+                      {homepageSections.map((section) => (
+                        <option key={section.id} value={section.id}>
+                          {section.name}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-foreground/60 mt-1">
+                      Optional, independent of Featured -- shows this trip in one of the 5 homepage showcase sections.
+                    </p>
+                  </div>
                 </div>
 
                 <div className="bg-card border border-border rounded-2xl p-6 space-y-4">

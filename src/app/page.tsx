@@ -5,7 +5,10 @@ import ImpactStats from "@/components/home/ImpactStats";
 import Testimonials from "@/components/home/Testimonials";
 import { prisma } from "@/lib/db";
 import { withBuildSafety } from "@/lib/db-utils";
+import { serializeExperienceForCard } from "@/lib/serialize-experience-card";
 import ExperienceCard from "@/components/experiences/ExperienceCard";
+import HomepageSectionRenderer from "@/components/home/sections/HomepageSectionRenderer";
+import { fetchHomepageSections } from "@/lib/homepage-sections";
 import CustomTripForm from "@/components/home/CustomTripForm";
 import { format } from "date-fns";
 import Link from "next/link";
@@ -72,44 +75,14 @@ export default async function Home() {
 
 
   // Serialize Decimal and Date objects for Client Component compatibility
-  const featuredExperiences = featuredExperiencesRaw.map((exp) => {
-    const validSlots = exp.slots.filter((slot) => {
-      if (!slot.date) return false;
-      const d = slot.date instanceof Date ? slot.date : new Date(slot.date);
-      return !Number.isNaN(d.getTime());
-    });
+  const featuredExperiences = featuredExperiencesRaw.map(serializeExperienceForCard);
 
-    const firstSlot = validSlots[0];
-    let nextDeparture: string | null = null;
-    let nextDepartureSlot = null;
-
-    if (firstSlot?.date) {
-      const dateObj = firstSlot.date instanceof Date ? firstSlot.date : new Date(firstSlot.date);
-      const isoDate = dateObj.toISOString();
-      nextDeparture = isoDate;
-      nextDepartureSlot = {
-        date: isoDate,
-        capacity: firstSlot.capacity ?? exp.capacity,
-        remainingCapacity: firstSlot.remainingCapacity ?? exp.capacity,
-      };
-    }
-
-    return {
-      ...exp,
-      basePrice: Number(exp.basePrice),
-      advancePaymentAmount: exp.advancePaymentAmount ? Number(exp.advancePaymentAmount) : null,
-      nextDeparture,
-      nextDepartureSlot,
-      upcomingSlots: validSlots.map((slot) => {
-        const slotDate = slot.date instanceof Date ? slot.date : new Date(slot.date);
-        return {
-          date: slotDate.toISOString(),
-          capacity: slot.capacity ?? exp.capacity,
-          remainingCapacity: slot.remainingCapacity ?? exp.capacity,
-        };
-      }),
-    };
-  });
+  // Fetch the 5 fixed homepage showcase sections, each with its own
+  // assigned (published) experiences -- see src/lib/homepage-sections.ts
+  const homepageSections = await withBuildSafety(
+    () => fetchHomepageSections(),
+    [],
+  );
 
   const recentBlogs = await withBuildSafety(
     () =>
@@ -249,6 +222,14 @@ export default async function Home() {
           </div>
         )}
       </div>
+
+      {homepageSections.map((section) => (
+        <HomepageSectionRenderer
+          key={section.id}
+          section={section}
+          mediaSettings={mediaSettings}
+        />
+      ))}
 
       <div className="relative">
         <ImpactStats dynamicData={dynamicStats} />
