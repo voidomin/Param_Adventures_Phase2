@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { CancellationPolicyGroup } from "@prisma/client";
 
 export interface RefundBreakdown {
   baseFare: number;
@@ -15,13 +16,41 @@ export interface PolicyTier {
   refundPercent: number;
 }
 
+// Fallback tiers per trek-length group, used until an admin configures
+// their own via Settings -> Finance. Derived from this project's own
+// published cancellation policy (src/app/refunds/page.tsx), inverting its
+// "cancellation charge %" into the refund % this engine actually works in.
+const DEFAULT_POLICY_TIERS: Record<CancellationPolicyGroup, PolicyTier[]> = {
+  SHORT_TRIP: [
+    { minDays: 21, maxDays: null, refundPercent: 100 },
+    { minDays: 16, maxDays: 20, refundPercent: 75 },
+    { minDays: 6, maxDays: 15, refundPercent: 50 },
+    { minDays: 0, maxDays: 5, refundPercent: 0 },
+  ],
+  MULTI_DAY: [
+    { minDays: 46, maxDays: null, refundPercent: 100 },
+    { minDays: 31, maxDays: 45, refundPercent: 50 },
+    { minDays: 21, maxDays: 30, refundPercent: 25 },
+    { minDays: 0, maxDays: 20, refundPercent: 0 },
+  ],
+  INTERNATIONAL: [
+    { minDays: 61, maxDays: null, refundPercent: 100 },
+    { minDays: 46, maxDays: 60, refundPercent: 50 },
+    { minDays: 31, maxDays: 45, refundPercent: 25 },
+    { minDays: 0, maxDays: 30, refundPercent: 0 },
+  ],
+};
+
 /**
- * Resolves the applicable cancellation refund percentage based on days before departure.
- * Reads tiers from PlatformSetting `cancellation_policy_rules`.
+ * Resolves the applicable cancellation refund percentage based on days
+ * before departure and the experience's trek-length group. Reads
+ * per-group tiers from PlatformSetting `cancellation_policy_rules`
+ * (shape: Record<CancellationPolicyGroup, PolicyTier[]>).
  */
 export async function getRefundPercentage(
   departureDate: Date,
-  cancellationDate: Date = new Date()
+  cancellationDate: Date = new Date(),
+  policyGroup: CancellationPolicyGroup
 ): Promise<{ refundPercent: number; daysBefore: number }> {
   const timeDiff = departureDate.getTime() - cancellationDate.getTime();
   const daysBefore = timeDiff / (1000 * 60 * 60 * 24);
@@ -30,14 +59,7 @@ export async function getRefundPercentage(
     return { refundPercent: 0, daysBefore };
   }
 
-  // Default fallback rules
-  let rules: PolicyTier[] = [
-    { minDays: 30, maxDays: null, refundPercent: 100 },
-    { minDays: 15, maxDays: 29, refundPercent: 75 },
-    { minDays: 7, maxDays: 14, refundPercent: 50 },
-    { minDays: 3, maxDays: 6, refundPercent: 25 },
-    { minDays: 0, maxDays: 2, refundPercent: 0 }
-  ];
+  let rules: PolicyTier[] = DEFAULT_POLICY_TIERS[policyGroup];
 
   try {
     const setting = await prisma.platformSetting.findUnique({
@@ -45,8 +67,9 @@ export async function getRefundPercentage(
     });
     if (setting?.value) {
       const parsed = JSON.parse(setting.value);
-      if (Array.isArray(parsed)) {
-        rules = parsed;
+      const groupRules = parsed?.[policyGroup];
+      if (Array.isArray(groupRules)) {
+        rules = groupRules;
       }
     }
   } catch (e) {

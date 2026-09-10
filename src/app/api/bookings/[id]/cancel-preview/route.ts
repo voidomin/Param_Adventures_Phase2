@@ -109,7 +109,7 @@ export async function GET(
 
     // Determine policy percentage based on departure slot date
     const departureDate = booking.slot ? new Date(booking.slot.date) : new Date();
-    const { refundPercent, daysBefore } = await getRefundPercentage(departureDate, new Date());
+    const { refundPercent, daysBefore } = await getRefundPercentage(departureDate, new Date(), booking.experience.cancellationPolicyGroup);
 
     const preference = (searchParams.get("preference") as "COUPON" | "BANK_REFUND" | null) || "COUPON";
 

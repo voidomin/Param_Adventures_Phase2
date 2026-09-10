@@ -123,7 +123,7 @@ describe("POST /api/bookings/[id]/cancel", () => {
       bookingStatus: "CONFIRMED",
       paymentStatus: "PAID",
       user: { name: "User", email: "u@example.com" },
-      experience: { title: "Trip" },
+      experience: { title: "Trip", cancellationPolicyGroup: "MULTI_DAY" },
       slot: { date: futureDate, status: "UPCOMING" },
     } as any);
 
@@ -191,7 +191,7 @@ describe("POST /api/bookings/[id]/cancel", () => {
       bookingStatus: "REQUESTED",
       paymentStatus: "PENDING",
       user: { name: "", email: "u@example.com" },
-      experience: { title: "Trip" },
+      experience: { title: "Trip", cancellationPolicyGroup: "MULTI_DAY" },
       slot: null,
     } as any);
 
@@ -226,7 +226,7 @@ describe("POST /api/bookings/[id]/cancel", () => {
       bookingStatus: "REQUESTED",
       paymentStatus: "PENDING",
       user: { name: "", email: "u@example.com" },
-      experience: { title: "Trip" },
+      experience: { title: "Trip", cancellationPolicyGroup: "MULTI_DAY" },
       slot: { date: new Date(Date.now() + 30 * 86400 * 1000), status: "UPCOMING" },
     } as any);
 

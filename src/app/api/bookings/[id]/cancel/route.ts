@@ -43,7 +43,7 @@ export async function POST(
       where: { id: bookingId },
       include: {
         slot: true,
-        experience: { select: { title: true } },
+        experience: { select: { title: true, cancellationPolicyGroup: true } },
         user: { select: { name: true, email: true } },
       },
     });
@@ -90,7 +90,7 @@ export async function POST(
 
     // Resolve cancellation policy based on departure date
     const departureDate = booking.slot ? new Date(booking.slot.date) : new Date();
-    const { refundPercent } = await getRefundPercentage(departureDate, new Date());
+    const { refundPercent } = await getRefundPercentage(departureDate, new Date(), booking.experience.cancellationPolicyGroup);
 
     // Net out any refund already issued by an earlier partial cancellation
     // on this booking (via /cancel-participants) -- booking.refundAmount is
