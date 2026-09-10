@@ -944,6 +944,25 @@ export default function BookingsPage() {
                           </div>
                         )}
 
+                        {activeTab === "upcoming" && b.slot?.whatsAppUrl && (
+                          <div className="mb-4 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-500/20 rounded-lg px-3 py-2.5 flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <MessageCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                              <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 truncate">
+                                Trip group chat is live
+                              </p>
+                            </div>
+                            <a
+                              href={b.slot.whatsAppUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="shrink-0 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors"
+                            >
+                              Join
+                            </a>
+                          </div>
+                        )}
+
                         {/* Cancelled tab: show richer info */}
                         {activeTab === "cancelled" && (
                           <div className="space-y-2 mb-4">
@@ -1033,17 +1052,6 @@ export default function BookingsPage() {
                             // upcoming
                             return (
                               <>
-                                {b.slot?.whatsAppUrl && (
-                                  <a
-                                    href={b.slot.whatsAppUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="w-full py-2.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-500/20 dark:hover:bg-emerald-950/45 transition-colors text-sm font-bold rounded-xl flex items-center justify-center gap-2 shadow-xs"
-                                  >
-                                    <MessageCircle className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                                    Join WhatsApp Group
-                                  </a>
-                                )}
                                 {b.paymentStatus === "PARTIALLY_PAID" && (
                                   <button
                                     type="button"

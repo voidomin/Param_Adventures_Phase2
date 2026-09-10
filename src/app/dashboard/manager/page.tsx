@@ -61,6 +61,7 @@ interface ExportParticipant {
   isPrimary: boolean;
   gender?: string | null;
   age?: number | null;
+  dateOfBirth?: string | null;
   bloodGroup?: string | null;
   emergencyContactName?: string | null;
   emergencyContactNumber?: string | null;
@@ -116,6 +117,7 @@ async function exportTripManifestExcel(
             "Phone Number": booking.user.phoneNumber || "",
             "Gender": "",
             "Age": "",
+            "Date of Birth": "",
             "Blood Group": "",
             "Emergency Contact Name": "",
             "Emergency Contact Phone": "",
@@ -141,6 +143,7 @@ async function exportTripManifestExcel(
         "Phone Number": p.phoneNumber || "",
         "Gender": p.gender || "",
         "Age": p.age !== null && p.age !== undefined ? String(p.age) : "",
+        "Date of Birth": p.dateOfBirth ? new Date(p.dateOfBirth) : "",
         "Blood Group": p.bloodGroup || "",
         "Emergency Contact Name": p.emergencyContactName || "",
         "Emergency Contact Phone": p.emergencyContactNumber || "",
