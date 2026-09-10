@@ -21,46 +21,78 @@ export default function FinanceTab(props: Readonly<TabProps>) {
     updateSetting("PLATFORM", "taxConfig", JSON.stringify(config));
   };
 
-  const [localPolicyRules, setLocalPolicyRules] = useState<{ id: string; minDays: number; maxDays: number | null; refundPercent: number }[]>(() => {
+  type PolicyRule = { id: string; minDays: number; maxDays: number | null; refundPercent: number };
+  type PolicyGroupKey = "SHORT_TRIP" | "MULTI_DAY" | "INTERNATIONAL";
+  const EMPTY_POLICY_RULES: Record<PolicyGroupKey, PolicyRule[]> = {
+    SHORT_TRIP: [],
+    MULTI_DAY: [],
+    INTERNATIONAL: [],
+  };
+
+  const [localPolicyRules, setLocalPolicyRules] = useState<Record<PolicyGroupKey, PolicyRule[]>>(() => {
     const raw = getVal("PLATFORM", "cancellation_policy_rules");
-    if (!raw) return [];
+    if (!raw) return EMPTY_POLICY_RULES;
     try {
       const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return [];
-      // Backfill an id for rules saved before this field existed.
-      return parsed.map((rule) => ({ id: rule.id ?? `policy-${crypto.randomUUID().slice(0, 6)}`, ...rule }));
+      // Rules saved before the per-trek-length groups existed are a flat
+      // array, not keyed by group -- there's no way to know which group
+      // they were meant for, so they're intentionally not carried over
+      // (the refund engine already falls back to its own per-group
+      // defaults in that case; this UI starts empty, prompting re-entry).
+      if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") return EMPTY_POLICY_RULES;
+      const result = { ...EMPTY_POLICY_RULES };
+      for (const key of Object.keys(EMPTY_POLICY_RULES) as PolicyGroupKey[]) {
+        const groupRules = parsed[key];
+        if (Array.isArray(groupRules)) {
+          result[key] = groupRules.map((rule) => ({ id: rule.id ?? `policy-${crypto.randomUUID().slice(0, 6)}`, ...rule }));
+        }
+      }
+      return result;
     } catch {
-      return [];
+      return EMPTY_POLICY_RULES;
     }
   });
 
-  const savePolicyRules = (rules: { id: string; minDays: number; maxDays: number | null; refundPercent: number }[]) => {
-    const sorted = [...rules].sort((a, b) => b.minDays - a.minDays);
+  const savePolicyRules = (rules: Record<PolicyGroupKey, PolicyRule[]>) => {
+    const sorted = { ...rules };
+    for (const key of Object.keys(sorted) as PolicyGroupKey[]) {
+      sorted[key] = [...sorted[key]].sort((a, b) => b.minDays - a.minDays);
+    }
     updateSetting("PLATFORM", "cancellation_policy_rules", JSON.stringify(sorted));
   };
 
-  const addPolicyRule = () => {
-    const newRules = [
+  const addPolicyRule = (group: PolicyGroupKey) => {
+    const newRules = {
       ...localPolicyRules,
-      { id: `policy-${crypto.randomUUID().slice(0, 6)}`, minDays: 0, maxDays: null, refundPercent: 0 }
-    ];
+      [group]: [
+        ...localPolicyRules[group],
+        { id: `policy-${crypto.randomUUID().slice(0, 6)}`, minDays: 0, maxDays: null, refundPercent: 0 },
+      ],
+    };
     setLocalPolicyRules(newRules);
     savePolicyRules(newRules);
   };
 
-  const removePolicyRule = (id: string) => {
-    const newRules = localPolicyRules.filter((rule) => rule.id !== id);
+  const removePolicyRule = (group: PolicyGroupKey, id: string) => {
+    const newRules = { ...localPolicyRules, [group]: localPolicyRules[group].filter((rule) => rule.id !== id) };
     setLocalPolicyRules(newRules);
     savePolicyRules(newRules);
   };
 
-  const updatePolicyRule = (id: string, field: "minDays" | "refundPercent", value: number) => {
-    const newRules = localPolicyRules.map((rule) =>
-      rule.id === id ? { ...rule, [field]: value } : rule
-    );
+  const updatePolicyRule = (group: PolicyGroupKey, id: string, field: "minDays" | "refundPercent", value: number) => {
+    const newRules = {
+      ...localPolicyRules,
+      [group]: localPolicyRules[group].map((rule) => (rule.id === id ? { ...rule, [field]: value } : rule)),
+    };
     setLocalPolicyRules(newRules);
     savePolicyRules(newRules);
   };
+
+  const POLICY_GROUPS: { key: PolicyGroupKey; label: string }[] = [
+    { key: "SHORT_TRIP", label: "Short Trip (1-2 Days)" },
+    { key: "MULTI_DAY", label: "Multi-Day Trek" },
+    { key: "INTERNATIONAL", label: "International Trek" },
+  ];
 
   const addTaxItem = () => {
     const newConfig = [
@@ -155,75 +187,80 @@ export default function FinanceTab(props: Readonly<TabProps>) {
       </div>
 
       <div className="space-y-8 pt-8 border-t border-border/20">
-        <SectionTitle 
-          title="Cancellation Policy Rules" 
-          subtitle="Define refund percentages based on the number of days prior to departure." 
-          icon={ShieldAlert} 
+        <SectionTitle
+          title="Cancellation Policy Rules"
+          subtitle="Define refund percentages based on the number of days prior to departure -- separately for each trek-length group. Which group an experience belongs to is set on the experience itself."
+          icon={ShieldAlert}
         />
 
-        <div className="bg-card border border-border rounded-3xl overflow-hidden">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-foreground/5 border-b border-border">
-                <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-foreground/40">Minimum Days Before Departure</th>
-                <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-foreground/40 text-center">Refund Percentage (%)</th>
-                <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-foreground/40 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/50">
-              {localPolicyRules.length === 0 ? (
-                <tr>
-                  <td colSpan={3} className="px-6 py-12 text-center text-sm text-foreground/30 italic">No rules configured. Click add to begin.</td>
+        {POLICY_GROUPS.map(({ key: group, label }) => (
+          <div key={group} className="bg-card border border-border rounded-3xl overflow-hidden">
+            <div className="px-6 py-3 bg-foreground/5 border-b border-border">
+              <span className="text-sm font-black text-foreground">{label}</span>
+            </div>
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-foreground/5 border-b border-border">
+                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-foreground/40">Minimum Days Before Departure</th>
+                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-foreground/40 text-center">Refund Percentage (%)</th>
+                  <th className="px-6 py-4 text-xs font-black uppercase tracking-widest text-foreground/40 text-right">Actions</th>
                 </tr>
-              ) : (
-                localPolicyRules.map((rule) => (
-                  <tr key={rule.id} className="group hover:bg-foreground/5 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          value={rule.minDays}
-                          onChange={(e) => updatePolicyRule(rule.id, "minDays", Number.parseInt(e.target.value) || 0)}
-                          className="bg-foreground/5 border border-border rounded-lg px-3 py-1.5 w-24 text-center font-bold focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                        />
-                        <span className="text-xs text-foreground/50">Days or more before departure</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <input
-                          type="number"
-                          value={rule.refundPercent}
-                          onChange={(e) => updatePolicyRule(rule.id, "refundPercent", Number.parseInt(e.target.value) || 0)}
-                          className="bg-foreground/5 border border-border rounded-lg px-3 py-1.5 w-20 text-center font-bold focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-                        />
-                        <span className="text-xs text-foreground/50">%</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <button
-                        type="button"
-                        onClick={() => removePolicyRule(rule.id)}
-                        className="p-2 text-foreground/20 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
+              </thead>
+              <tbody className="divide-y divide-border/50">
+                {localPolicyRules[group].length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="px-6 py-12 text-center text-sm text-foreground/30 italic">No rules configured. Click add to begin.</td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-          <div className="p-4 bg-foreground/5 border-t border-border">
-            <button
-              type="button" 
-              onClick={addPolicyRule}
-              className="w-full py-3 flex items-center justify-center gap-2 text-sm font-bold text-primary hover:bg-primary/5 rounded-xl transition-all border border-dashed border-primary/20"
-            >
-              <Plus className="w-4 h-4" /> Add Cancellation Tier
-            </button>
+                ) : (
+                  localPolicyRules[group].map((rule) => (
+                    <tr key={rule.id} className="group hover:bg-foreground/5 transition-colors">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            value={rule.minDays}
+                            onChange={(e) => updatePolicyRule(group, rule.id, "minDays", Number.parseInt(e.target.value) || 0)}
+                            className="bg-foreground/5 border border-border rounded-lg px-3 py-1.5 w-24 text-center font-bold focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                          />
+                          <span className="text-xs text-foreground/50">Days or more before departure</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <input
+                            type="number"
+                            value={rule.refundPercent}
+                            onChange={(e) => updatePolicyRule(group, rule.id, "refundPercent", Number.parseInt(e.target.value) || 0)}
+                            className="bg-foreground/5 border border-border rounded-lg px-3 py-1.5 w-20 text-center font-bold focus:ring-2 focus:ring-primary/20 outline-none transition-all"
+                          />
+                          <span className="text-xs text-foreground/50">%</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => removePolicyRule(group, rule.id)}
+                          className="p-2 text-foreground/20 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+            <div className="p-4 bg-foreground/5 border-t border-border">
+              <button
+                type="button"
+                onClick={() => addPolicyRule(group)}
+                className="w-full py-3 flex items-center justify-center gap-2 text-sm font-bold text-primary hover:bg-primary/5 rounded-xl transition-all border border-dashed border-primary/20"
+              >
+                <Plus className="w-4 h-4" /> Add Cancellation Tier
+              </button>
+            </div>
           </div>
-        </div>
+        ))}
       </div>
 
       <div className="space-y-8 pt-8 border-t border-border/20">

@@ -42,23 +42,18 @@ const DEFAULT_POLICY_TIERS: Record<CancellationPolicyGroup, PolicyTier[]> = {
 };
 
 /**
- * Resolves the applicable cancellation refund percentage based on days
- * before departure and the experience's trek-length group. Reads
- * per-group tiers from PlatformSetting `cancellation_policy_rules`
- * (shape: Record<CancellationPolicyGroup, PolicyTier[]>).
+ * Resolves the tier list actually in effect for a trek-length group --
+ * whatever an admin configured in Settings -> Finance, or this group's
+ * hardcoded default if nothing's configured yet. Sorted descending by
+ * minDays, so the caller can just take the first tier whose minDays a
+ * given day-count satisfies.
+ *
+ * This is the single source of truth for "what tiers apply to group X" --
+ * used both by getRefundPercentage below (to actually calculate a refund)
+ * and by the public /refunds page (to publish the same numbers customers
+ * would actually get), so the two can never drift apart again.
  */
-export async function getRefundPercentage(
-  departureDate: Date,
-  cancellationDate: Date = new Date(),
-  policyGroup: CancellationPolicyGroup
-): Promise<{ refundPercent: number; daysBefore: number }> {
-  const timeDiff = departureDate.getTime() - cancellationDate.getTime();
-  const daysBefore = timeDiff / (1000 * 60 * 60 * 24);
-
-  if (daysBefore < 0) {
-    return { refundPercent: 0, daysBefore };
-  }
-
+export async function getPolicyTiersForGroup(policyGroup: CancellationPolicyGroup): Promise<PolicyTier[]> {
   let rules: PolicyTier[] = DEFAULT_POLICY_TIERS[policyGroup];
 
   try {
@@ -76,8 +71,26 @@ export async function getRefundPercentage(
     console.error("[RefundEngine] Error loading cancellation rules, using defaults:", e);
   }
 
-  // Sort descending by minDays to ensure we match the largest window first
-  const sortedRules = [...rules].sort((a, b) => b.minDays - a.minDays);
+  return [...rules].sort((a, b) => b.minDays - a.minDays);
+}
+
+/**
+ * Resolves the applicable cancellation refund percentage based on days
+ * before departure and the experience's trek-length group.
+ */
+export async function getRefundPercentage(
+  departureDate: Date,
+  cancellationDate: Date = new Date(),
+  policyGroup: CancellationPolicyGroup
+): Promise<{ refundPercent: number; daysBefore: number }> {
+  const timeDiff = departureDate.getTime() - cancellationDate.getTime();
+  const daysBefore = timeDiff / (1000 * 60 * 60 * 24);
+
+  if (daysBefore < 0) {
+    return { refundPercent: 0, daysBefore };
+  }
+
+  const sortedRules = await getPolicyTiersForGroup(policyGroup);
 
   for (const rule of sortedRules) {
     if (daysBefore >= rule.minDays) {
