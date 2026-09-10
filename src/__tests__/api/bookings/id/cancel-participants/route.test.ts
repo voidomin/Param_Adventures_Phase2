@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest, NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 
 vi.mock("@/lib/api-auth", () => ({ authorizeRequest: vi.fn() }));
 vi.mock("@/lib/audit-logger", () => ({ logActivity: vi.fn() }));
@@ -418,5 +419,65 @@ describe("POST /api/bookings/[id]/cancel-participants", () => {
 
     expect(response.status).toBe(200);
     expect(prisma.refundRequest.create).not.toHaveBeenCalled();
+  });
+
+  it("computes the partial-cancellation breakdown from a fresh paidAmount read inside the transaction, not the pre-transaction snapshot", async () => {
+    // First call = the pre-validation read in the route handler (stale --
+    // pretend a payment hadn't landed yet). Second call = the re-read
+    // inside the transaction (fresh, payment has since landed).
+    vi.mocked(prisma.booking.findUnique)
+      .mockResolvedValueOnce({ ...baseBooking, paidAmount: 100 } as any)
+      .mockResolvedValueOnce({ ...baseBooking, paidAmount: 1200 } as any);
+
+    const response = await POST(
+      createRequest({ participantIds: ["p1"], preference: "BANK_REFUND" }),
+      { params: Promise.resolve({ id: "b1" }) },
+    );
+
+    expect(response.status).toBe(200);
+    // Cancelling 1 of 2 participants -> ratio 0.5. If it had used the stale
+    // 100 snapshot, proportionalPaidAmount would be 50; the fresh 1200
+    // snapshot gives 600.
+    expect(mockCalculateRefundBreakdown).toHaveBeenCalledWith(
+      expect.objectContaining({ paidAmount: 600 }),
+    );
+  });
+
+  it("returns 409 when a full cancellation would create a second RefundRequest for a booking that already has one pending", async () => {
+    vi.mocked(prisma.refundRequest.create).mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError("Unique constraint failed on the fields: (`bookingId`)", {
+        code: "P2002",
+        clientVersion: "7.0.0",
+        meta: { target: ["bookingId"] },
+      }),
+    );
+
+    const response = await POST(
+      createRequest({ participantIds: ["p1", "p2"], preference: "BANK_REFUND" }),
+      { params: Promise.resolve({ id: "b1" }) },
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(data.error).toMatch(/already has a refund pending admin review/i);
+  });
+
+  it("returns 409 when a partial cancellation would create a second RefundRequest for a booking that already has one pending", async () => {
+    vi.mocked(prisma.refundRequest.create).mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError("Unique constraint failed on the fields: (`bookingId`)", {
+        code: "P2002",
+        clientVersion: "7.0.0",
+        meta: { target: ["bookingId"] },
+      }),
+    );
+
+    const response = await POST(
+      createRequest({ participantIds: ["p1"], preference: "BANK_REFUND" }),
+      { params: Promise.resolve({ id: "b1" }) },
+    );
+    const data = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(data.error).toMatch(/already has a refund pending admin review/i);
   });
 });

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma, runWithRetry } from "@/lib/db";
-import { PaymentStatus, Prisma } from "@prisma/client";
+import { PaymentStatus, Prisma, CancellationPolicyGroup } from "@prisma/client";
 import { authorizeRequest } from "@/lib/api-auth";
 import { logActivity } from "@/lib/audit-logger";
 import { z } from "zod";
@@ -31,7 +31,7 @@ interface CancelBookingInput {
   participantCount: number;
   refundAmount?: unknown;
   taxBreakdown: unknown;
-  experience?: { basePrice: unknown } | null;
+  experience?: { basePrice: unknown; cancellationPolicyGroup: CancellationPolicyGroup } | null;
 }
 
 interface CancelParticipantInput {
@@ -41,6 +41,24 @@ interface CancelParticipantInput {
 
 interface AmenityInput {
   price: unknown;
+}
+
+// A booking can only ever have one unresolved RefundRequest at a time
+// (RefundRequest.bookingId is @unique) -- if this booking already has one
+// pending admin review from an earlier cancellation, a second cancellation
+// attempt hits that constraint. Detected here so it can surface as a clear
+// 409 instead of an unhandled 500.
+function isDuplicateRefundRequestError(err: unknown): boolean {
+  if (!(err instanceof Prisma.PrismaClientKnownRequestError) || err.code !== "P2002") {
+    return false;
+  }
+  // Shape of `meta` differs by Prisma driver: the classic engine puts a
+  // flat `target` array/string on it, while the @prisma/adapter-pg driver
+  // used here nests it under meta.driverAdapterError.cause.constraint.fields
+  // instead. Scanning the serialized meta (plus the message, as a last
+  // resort) for the column name is robust to both.
+  const haystack = JSON.stringify(err.meta ?? {}) + err.message;
+  return haystack.includes("bookingId");
 }
 
 // Helper to perform full booking cancellation using refund-engine
@@ -73,7 +91,7 @@ async function processFullCancellation(params: {
   // depend on the booking's financial fields, so it's safe to compute
   // outside the transaction.
   const departureDate = booking.slot ? new Date(booking.slot.date) : new Date();
-  const { refundPercent } = await getRefundPercentage(departureDate, new Date());
+  const { refundPercent } = await getRefundPercentage(departureDate, new Date(), booking.experience?.cancellationPolicyGroup ?? "MULTI_DAY");
 
   const { breakdown, finalRefund } = await runWithRetry(() =>
     prisma.$transaction(async (tx) => {
@@ -203,13 +221,20 @@ async function processFullCancellation(params: {
       // so the row is a transparent record of "policy said X, Y was
       // granted" rather than silently overwriting the policy figures.
       if (finalRefund > 0 || couponRestorePreview > 0) {
-        await createRefundRequestForBreakdown(tx, {
-          bookingId,
-          customerId: booking.userId,
-          preference,
-          breakdown: overrideAmount !== undefined ? { ...breakdown, finalRefundAmount: finalRefund } : breakdown,
-          couponRestoreAmount: couponRestorePreview,
-        });
+        try {
+          await createRefundRequestForBreakdown(tx, {
+            bookingId,
+            customerId: booking.userId,
+            preference,
+            breakdown: overrideAmount !== undefined ? { ...breakdown, finalRefundAmount: finalRefund } : breakdown,
+            couponRestoreAmount: couponRestorePreview,
+          });
+        } catch (err) {
+          if (isDuplicateRefundRequestError(err)) {
+            throw new Error("REFUND_ALREADY_PENDING");
+          }
+          throw err;
+        }
       }
 
       return { breakdown, finalRefund };
@@ -268,7 +293,7 @@ async function calculateRefundProportional(params: {
 
   // Resolve cancellation policy based on departure date
   const departureDate = booking.slot ? new Date(booking.slot.date) : new Date();
-  const { refundPercent } = await getRefundPercentage(departureDate, new Date());
+  const { refundPercent } = await getRefundPercentage(departureDate, new Date(), booking.experience?.cancellationPolicyGroup ?? "MULTI_DAY");
 
   const breakdown = calculateRefundBreakdown({
     baseFare: totalCancelledBase,
@@ -427,17 +452,27 @@ export async function POST(
       return NextResponse.json({ success: true, message: "Booking fully cancelled." });
     }
 
-    // Process partial cancellation
-    const financials = await calculateRefundProportional({
-      booking: dbBooking,
-      activeParticipants,
-      participantIds,
-      preference,
-      isCompanyCancellation: isModerator,
-    });
+    // Process partial cancellation. The whole read-validate-write sequence
+    // runs inside one transaction, re-reading the booking (and its live
+    // participant list) fresh rather than trusting the `dbBooking` snapshot
+    // fetched before this call -- a concurrent cancellation on this same
+    // booking (another tab, or a second request racing this one) would
+    // otherwise compute the proportional split off a stale paidAmount or
+    // participant count.
+    const financials = await runWithRetry(() =>
+      prisma.$transaction(async (tx) => {
+        const current = await tx.booking.findUnique({
+          where: { id: bookingId },
+          include: {
+            participants: true,
+            experience: { select: { basePrice: true, cancellationPolicyGroup: true } },
+            slot: { select: { date: true } },
+          },
+        });
+        if (!current || current.bookingStatus === "CANCELLED") {
+          throw new Error("Booking is already cancelled.");
+        }
 
-      // Execute atomic transaction for partial cancellation
-      await prisma.$transaction(async (tx) => {
         const cancelledCount = await tx.bookingParticipant.count({
           where: {
             id: { in: participantIds },
@@ -448,6 +483,16 @@ export async function POST(
           throw new Error("One or more participants are already cancelled.");
         }
 
+        const currentActiveParticipants = current.participants.filter((p) => !p.isCancelled);
+
+        const financials = await calculateRefundProportional({
+          booking: current,
+          activeParticipants: currentActiveParticipants,
+          participantIds,
+          preference,
+          isCompanyCancellation: isModerator,
+        });
+
         await tx.bookingParticipant.updateMany({
           where: { id: { in: participantIds } },
           data: {
@@ -456,15 +501,15 @@ export async function POST(
           },
         });
 
-        let newPaymentStatus = dbBooking.paymentStatus;
+        let newPaymentStatus = current.paymentStatus;
         if ((preference === "BANK_REFUND" || preference === "COUPON") && financials.refundAmount > 0) {
           newPaymentStatus = "REFUND_PENDING";
         }
 
-        let newTaxBreakdown = dbBooking.taxBreakdown;
-        if (Array.isArray(dbBooking.taxBreakdown) && Number(dbBooking.baseFare) > 0) {
-          const ratio = financials.newBaseFare / Number(dbBooking.baseFare);
-          newTaxBreakdown = (dbBooking.taxBreakdown as Array<{ name: string; percentage: number; amount: number }>).map((item) => ({
+        let newTaxBreakdown = current.taxBreakdown;
+        if (Array.isArray(current.taxBreakdown) && Number(current.baseFare) > 0) {
+          const ratio = financials.newBaseFare / Number(current.baseFare);
+          newTaxBreakdown = (current.taxBreakdown as Array<{ name: string; percentage: number; amount: number }>).map((item) => ({
             ...item,
             amount: Number(((item.amount || 0) * ratio).toFixed(2)),
           }));
@@ -487,9 +532,9 @@ export async function POST(
 
         // Capacity is reserved from booking creation (REQUESTED) onward,
         // not just once CONFIRMED -- see processBooking in booking.service.ts.
-        if (dbBooking.slotId) {
+        if (current.slotId) {
           await tx.slot.update({
-            where: { id: dbBooking.slotId },
+            where: { id: current.slotId },
             data: {
               remainingCapacity: { increment: participantIds.length },
             },
@@ -510,15 +555,25 @@ export async function POST(
         // Create a refund request if a cash refund is due, OR if there's a
         // coupon-restore amount pending
         if (financials.refundAmount > 0 || couponRestorePreview > 0) {
-          await createRefundRequestForBreakdown(tx, {
-            bookingId,
-            customerId: dbBooking.userId,
-            preference,
-            breakdown: financials.breakdown,
-            couponRestoreAmount: couponRestorePreview,
-          });
+          try {
+            await createRefundRequestForBreakdown(tx, {
+              bookingId,
+              customerId: current.userId,
+              preference,
+              breakdown: financials.breakdown,
+              couponRestoreAmount: couponRestorePreview,
+            });
+          } catch (err) {
+            if (isDuplicateRefundRequestError(err)) {
+              throw new Error("REFUND_ALREADY_PENDING");
+            }
+            throw err;
+          }
         }
-      });
+
+        return financials;
+      })
+    );
 
     await logActivity("BOOKING_PARTIAL_CANCEL", userId, "Booking", bookingId, {
       preference,
@@ -536,6 +591,12 @@ export async function POST(
     }
     if (error instanceof Error && (error.message.includes("already cancelled") || error.message.includes("does not exist"))) {
       return NextResponse.json({ error: error.message }, { status: 409 });
+    }
+    if (error instanceof Error && error.message === "REFUND_ALREADY_PENDING") {
+      return NextResponse.json(
+        { error: "This booking already has a refund pending admin review. Please wait for it to be resolved before cancelling further participants." },
+        { status: 409 }
+      );
     }
     return NextResponse.json({ error: "Failed to cancel participants." }, { status: 500 });
   }

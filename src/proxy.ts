@@ -250,6 +250,7 @@ export default async function proxy(request: NextRequest) {
     "/privacy",
     "/terms",
     "/refunds",
+    "/voucher-policy",
     "/why-param-adventures",
   ];
 
