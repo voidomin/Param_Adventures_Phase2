@@ -1,4 +1,8 @@
 import type { Experience, Slot } from "@prisma/client";
+import { getMediaUrl } from "@/lib/media/media-gateway";
+import type { MediaSettings } from "@/types/media";
+
+export const EXPERIENCE_PLACEHOLDER_IMAGE = "/images/experience-placeholder.svg";
 
 type ExperienceWithCardRelations = Experience & {
   categories: { category: { id: string; name: string; slug: string } }[];
@@ -50,4 +54,33 @@ export function serializeExperienceForCard(exp: ExperienceWithCardRelations) {
       };
     }),
   };
+}
+
+/**
+ * Resolves a card/section image src for an experience -- a real uploaded
+ * image (run through the configured media provider), or the local branded
+ * placeholder for a trek with none. The placeholder is never routed
+ * through getMediaUrl, which assumes a cloud-hosted path (Cloudinary/S3)
+ * and would mangle a same-origin static asset.
+ */
+export function resolveExperienceImageUrl(
+  exp: { cardImage?: string | null; coverImage?: string | null; images: string[] },
+  mediaSettings: MediaSettings,
+  options: { width: number; crop: "fill" },
+): string {
+  const raw = exp.cardImage || exp.coverImage || exp.images[0] || null;
+  if (!raw) return EXPERIENCE_PLACEHOLDER_IMAGE;
+
+  return getMediaUrl(
+    raw,
+    mediaSettings.provider || "CLOUDINARY",
+    {
+      cloudinaryCloudName: mediaSettings.cloudinaryCloudName,
+      s3Bucket: mediaSettings.s3Bucket,
+      s3Region: mediaSettings.s3Region,
+      globalQuality: mediaSettings.globalQuality || 100,
+      highFidelity: mediaSettings.highFidelity ?? true,
+    },
+    options,
+  );
 }

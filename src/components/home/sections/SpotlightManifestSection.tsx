@@ -3,9 +3,9 @@ import Image from "next/image";
 import { Clock, MapPin, IndianRupee } from "lucide-react";
 import ScrollReveal from "@/components/ui/ScrollReveal";
 import SaveButton from "@/components/experiences/SaveButton";
-import { getMediaUrl } from "@/lib/media/media-gateway";
 import { buildTrekAltText } from "@/lib/seo/alt-text";
 import SectionHeading from "./SectionHeading";
+import { resolveExperienceImageUrl } from "@/lib/serialize-experience-card";
 import type { HomepageSectionWithExperiences } from "@/lib/homepage-sections";
 import type { MediaSettings } from "@/types/media";
 
@@ -13,19 +13,7 @@ function resolveImage(
   exp: HomepageSectionWithExperiences["experiences"][number],
   mediaSettings: MediaSettings,
 ) {
-  const raw = exp.cardImage || exp.coverImage || exp.images[0] || "https://picsum.photos/seed/placeholder/800/600";
-  return getMediaUrl(
-    raw,
-    mediaSettings.provider || "CLOUDINARY",
-    {
-      cloudinaryCloudName: mediaSettings.cloudinaryCloudName,
-      s3Bucket: mediaSettings.s3Bucket,
-      s3Region: mediaSettings.s3Region,
-      globalQuality: mediaSettings.globalQuality || 100,
-      highFidelity: mediaSettings.highFidelity ?? true,
-    },
-    { width: 800, crop: "fill" },
-  );
+  return resolveExperienceImageUrl(exp, mediaSettings, { width: 800, crop: "fill" });
 }
 
 /**

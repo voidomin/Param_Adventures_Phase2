@@ -75,4 +75,18 @@ describe("fetchHomepageSections", () => {
     expect(calls[0][0]).toMatchObject({ where: { homepageSectionId: "s1", status: "PUBLISHED" }, take: 6 });
     expect(calls[1][0]).toMatchObject({ where: { homepageSectionId: "s2", status: "PUBLISHED" }, take: 3 });
   });
+
+  it("orders SPOTLIGHT_MANIFEST by basePrice desc (deterministic hero pick), other layouts by createdAt desc", async () => {
+    vi.mocked(prisma.homepageSection.findMany).mockResolvedValue([
+      mockSection({ id: "s1", layout: "SPOTLIGHT_MANIFEST" }),
+      mockSection({ id: "s2", layout: "MOSAIC_GRID" }),
+    ] as any);
+    vi.mocked(prisma.experience.findMany).mockResolvedValue([mockExperience("e1")] as any);
+
+    await fetchHomepageSections();
+
+    const calls = vi.mocked(prisma.experience.findMany).mock.calls;
+    expect(calls[0][0]).toMatchObject({ orderBy: { basePrice: "desc" } });
+    expect(calls[1][0]).toMatchObject({ orderBy: { createdAt: "desc" } });
+  });
 });

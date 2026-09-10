@@ -2,9 +2,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { IndianRupee } from "lucide-react";
 import ScrollReveal from "@/components/ui/ScrollReveal";
-import { getMediaUrl } from "@/lib/media/media-gateway";
 import { buildTrekAltText } from "@/lib/seo/alt-text";
 import SectionHeading from "./SectionHeading";
+import { resolveExperienceImageUrl } from "@/lib/serialize-experience-card";
 import type { HomepageSectionWithExperiences } from "@/lib/homepage-sections";
 import type { MediaSettings } from "@/types/media";
 
@@ -28,18 +28,7 @@ export default function SpecPanelsSection({
       <ScrollReveal>
         <div className="grid md:grid-cols-3 gap-4.5">
           {section.experiences.map((exp) => {
-            const image = getMediaUrl(
-              exp.cardImage || exp.coverImage || exp.images[0] || "https://picsum.photos/seed/placeholder/800/600",
-              mediaSettings.provider || "CLOUDINARY",
-              {
-                cloudinaryCloudName: mediaSettings.cloudinaryCloudName,
-                s3Bucket: mediaSettings.s3Bucket,
-                s3Region: mediaSettings.s3Region,
-                globalQuality: mediaSettings.globalQuality || 100,
-                highFidelity: mediaSettings.highFidelity ?? true,
-              },
-              { width: 700, crop: "fill" },
-            );
+            const image = resolveExperienceImageUrl(exp, mediaSettings, { width: 700, crop: "fill" });
 
             return (
               <Link

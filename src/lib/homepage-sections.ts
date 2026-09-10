@@ -13,6 +13,20 @@ const SECTION_CAPS: Record<HomepageSectionLayout, number> = {
   ALTITUDE_TICKER: 6,
 };
 
+// Spotlight's hero slot goes to the highest-value trip in the section --
+// a deterministic, meaningful pick (the flagship the section is meant to
+// sell), rather than "whichever was assigned to the section most
+// recently," which is what plain recency ordering would produce. Every
+// other layout is an undifferentiated grid/track, so recency (most
+// recently assigned first) is a fine default there.
+const SECTION_ORDER_BY: Record<HomepageSectionLayout, { basePrice: "desc" } | { createdAt: "desc" }> = {
+  MOSAIC_GRID: { createdAt: "desc" },
+  SPOTLIGHT_MANIFEST: { basePrice: "desc" },
+  PILGRIMAGE_TRAIL: { createdAt: "desc" },
+  SPEC_PANELS: { createdAt: "desc" },
+  ALTITUDE_TICKER: { createdAt: "desc" },
+};
+
 /**
  * Loads the active homepage showcase sections (fixed set of 5, ordered by
  * displayOrder) along with each one's assigned, published experiences,
@@ -40,7 +54,7 @@ export async function fetchHomepageSections() {
           },
         },
         take: SECTION_CAPS[section.layout] ?? 4,
-        orderBy: { createdAt: "desc" },
+        orderBy: SECTION_ORDER_BY[section.layout] ?? { createdAt: "desc" },
       });
 
       return {
