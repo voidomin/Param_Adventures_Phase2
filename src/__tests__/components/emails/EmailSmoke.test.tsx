@@ -10,6 +10,7 @@ import RoleAssignedEmail from "@/components/emails/RoleAssignedEmail";
 import TripCompletedEmail from "@/components/emails/TripCompletedEmail";
 import PasswordResetEmail from "@/components/emails/PasswordResetEmail";
 import AdminInviteEmail from "@/components/emails/AdminInviteEmail";
+import BalancePaymentReminderEmail from "@/components/emails/BalancePaymentReminderEmail";
 import { EmailBase } from "@/components/emails/EmailBase";
 
 describe("email components", () => {
@@ -35,6 +36,26 @@ describe("email components", () => {
       React.createElement(TripCompletedEmail, { userName: "A", tripName: "B" }),
       React.createElement(PasswordResetEmail, { userName: "A", resetLink: "https://example.com/reset" }),
       React.createElement(AdminInviteEmail, { userName: "A", setupLink: "https://example.com/setup" }),
+      React.createElement(BalancePaymentReminderEmail, {
+        userName: "A",
+        tripName: "B",
+        bookingId: "C",
+        remainingBalance: 1000,
+        paidAmount: 500,
+        totalPrice: 1500,
+        deadlineDate: "10 Sep 2026",
+        isFinalReminder: false,
+      }),
+      React.createElement(BalancePaymentReminderEmail, {
+        userName: "A",
+        tripName: "B",
+        bookingId: "C",
+        remainingBalance: 1000,
+        paidAmount: 500,
+        totalPrice: 1500,
+        deadlineDate: "10 Sep 2026",
+        isFinalReminder: true,
+      }),
     ];
 
     for (const template of templates) {

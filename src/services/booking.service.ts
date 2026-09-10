@@ -8,6 +8,7 @@ import { BookingInput } from "@/lib/validators/booking.schema";
 import { isExpiredIST, redeemCoupon } from "@/lib/coupon-engine";
 import { assignInvoiceNumberIfNeeded } from "@/lib/invoice-numbering";
 import { calculateRefundBreakdown } from "@/lib/refund-engine";
+import { sendBalancePaymentReminder } from "@/lib/email";
 
 interface ExtraAmenityOption {
   id: string;
@@ -786,5 +787,88 @@ export const BookingService = {
     }
 
     return candidates.length;
+  },
+
+  /**
+   * Sends balance-payment reminder emails for CONFIRMED advance-payment
+   * bookings approaching their balance-payment deadline: a first reminder
+   * once 3 days or less remain, and a final reminder once 1 day or less
+   * remains. Each fires at most once per booking no matter how many times
+   * this runs (tracked via balanceReminderSentAt/finalBalanceReminderSentAt).
+   * If both thresholds are met in the same run (e.g. this job was down for
+   * a few days), only the more urgent final reminder goes out, and both
+   * timestamps are recorded together. This never touches money or booking
+   * status -- purely a notification.
+   */
+  async sendBalancePaymentReminders(): Promise<{ firstSent: number; finalSent: number }> {
+    const openAdvanceBookings = await prisma.booking.findMany({
+      where: {
+        paymentType: "ADVANCE",
+        paymentStatus: "PARTIALLY_PAID",
+        bookingStatus: "CONFIRMED",
+        slot: {
+          status: { in: ["UPCOMING", "ACTIVE"] },
+        },
+      },
+      select: {
+        id: true,
+        paidAmount: true,
+        totalPrice: true,
+        remainingBalance: true,
+        balanceReminderSentAt: true,
+        finalBalanceReminderSentAt: true,
+        slot: { select: { date: true } },
+        experience: { select: { title: true, advancePaymentDeadlineDays: true } },
+        user: { select: { name: true, email: true } },
+      },
+    });
+
+    const now = Date.now();
+    let firstSent = 0;
+    let finalSent = 0;
+
+    for (const booking of openAdvanceBookings) {
+      if (!booking.slot) continue;
+      const deadlineDays = booking.experience.advancePaymentDeadlineDays || 7;
+      const deadline = booking.slot.date.getTime() - deadlineDays * 24 * 60 * 60 * 1000;
+      const daysUntilDeadline = (deadline - now) / (24 * 60 * 60 * 1000);
+
+      // Already past its deadline -- the auto-cancel cron handles this one,
+      // a reminder to pay would be misleading at this point.
+      if (daysUntilDeadline < 0) continue;
+
+      const deadlineDate = new Date(deadline);
+      const emailPayload = {
+        userName: booking.user.name || "Adventurer",
+        userEmail: booking.user.email,
+        experienceTitle: booking.experience.title,
+        bookingId: booking.id,
+        paidAmount: Number(booking.paidAmount),
+        remainingBalance: Number(booking.remainingBalance),
+        totalPrice: Number(booking.totalPrice),
+        deadlineDate,
+      };
+
+      if (daysUntilDeadline <= 1 && !booking.finalBalanceReminderSentAt) {
+        await sendBalancePaymentReminder({ ...emailPayload, isFinalReminder: true });
+        await prisma.booking.update({
+          where: { id: booking.id },
+          data: {
+            finalBalanceReminderSentAt: new Date(),
+            balanceReminderSentAt: booking.balanceReminderSentAt ?? new Date(),
+          },
+        });
+        finalSent++;
+      } else if (daysUntilDeadline <= 3 && !booking.balanceReminderSentAt) {
+        await sendBalancePaymentReminder({ ...emailPayload, isFinalReminder: false });
+        await prisma.booking.update({
+          where: { id: booking.id },
+          data: { balanceReminderSentAt: new Date() },
+        });
+        firstSent++;
+      }
+    }
+
+    return { firstSent, finalSent };
   },
 };

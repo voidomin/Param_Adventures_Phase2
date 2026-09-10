@@ -5,7 +5,7 @@ vi.mock("@/lib/db", () => {
   const mockPrisma = {
     experience: { findUnique: vi.fn() },
     payment: { updateMany: vi.fn() },
-    booking: { findUnique: vi.fn(), updateMany: vi.fn(), findMany: vi.fn() },
+    booking: { findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn(), findMany: vi.fn() },
     $transaction: vi.fn(),
   };
   return {
@@ -44,13 +44,14 @@ vi.mock("next/cache", () => ({
 
 vi.mock("@/lib/email", () => ({
   sendBookingConfirmation: vi.fn(),
+  sendBalancePaymentReminder: vi.fn(),
 }));
 
 import { BookingService } from "@/services/booking.service";
 import { prisma } from "@/lib/db";
 import { BookingRepo } from "@/repositories/booking.repo";
 import { getRazorpay } from "@/lib/razorpay";
-import { sendBookingConfirmation } from "@/lib/email";
+import { sendBookingConfirmation, sendBalancePaymentReminder } from "@/lib/email";
 
 const flushMicrotasks = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -810,5 +811,130 @@ describe("BookingService.autoCancelUnpaidAdvanceBookings", () => {
     expect(mockTx.booking.update).toHaveBeenCalledWith(
       expect.objectContaining({ where: { id: "due" } }),
     );
+  });
+});
+
+describe("BookingService.sendBalancePaymentReminders", () => {
+  const baseBooking = {
+    id: "b1",
+    paidAmount: 3000,
+    totalPrice: 10000,
+    remainingBalance: 7000,
+    balanceReminderSentAt: null,
+    finalBalanceReminderSentAt: null,
+    slot: { date: null as Date | null },
+    experience: { title: "Goechala", advancePaymentDeadlineDays: 7 },
+    user: { name: "Alice", email: "alice@test.com" },
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(prisma.booking.update).mockResolvedValue({} as any);
+  });
+
+  it("queries only CONFIRMED, PARTIALLY_PAID, ADVANCE bookings on upcoming/active slots", async () => {
+    vi.mocked(prisma.booking.findMany).mockResolvedValue([]);
+
+    await BookingService.sendBalancePaymentReminders();
+
+    expect(prisma.booking.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          paymentType: "ADVANCE",
+          paymentStatus: "PARTIALLY_PAID",
+          bookingStatus: "CONFIRMED",
+        }),
+      }),
+    );
+  });
+
+  it("sends the first reminder at 3 days before the deadline and records it", async () => {
+    // deadline = departure - 7 days. Departing in 10 days -> deadline in 3
+    // days from now.
+    const departingIn10Days = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
+    vi.mocked(prisma.booking.findMany).mockResolvedValue([
+      { ...baseBooking, slot: { date: departingIn10Days } },
+    ] as any);
+
+    const result = await BookingService.sendBalancePaymentReminders();
+
+    expect(result).toEqual({ firstSent: 1, finalSent: 0 });
+    expect(sendBalancePaymentReminder).toHaveBeenCalledWith(
+      expect.objectContaining({ userEmail: "alice@test.com", isFinalReminder: false }),
+    );
+    expect(prisma.booking.update).toHaveBeenCalledWith({
+      where: { id: "b1" },
+      data: { balanceReminderSentAt: expect.any(Date) },
+    });
+  });
+
+  it("sends the final reminder at 1 day before the deadline and records both timestamps", async () => {
+    // Departing in 8 days, deadline 7 days before -> deadline in 1 day.
+    const departingIn8Days = new Date(Date.now() + 8 * 24 * 60 * 60 * 1000);
+    vi.mocked(prisma.booking.findMany).mockResolvedValue([
+      { ...baseBooking, slot: { date: departingIn8Days } },
+    ] as any);
+
+    const result = await BookingService.sendBalancePaymentReminders();
+
+    expect(result).toEqual({ firstSent: 0, finalSent: 1 });
+    expect(sendBalancePaymentReminder).toHaveBeenCalledWith(
+      expect.objectContaining({ userEmail: "alice@test.com", isFinalReminder: true }),
+    );
+    expect(prisma.booking.update).toHaveBeenCalledWith({
+      where: { id: "b1" },
+      data: { finalBalanceReminderSentAt: expect.any(Date), balanceReminderSentAt: expect.any(Date) },
+    });
+  });
+
+  it("does not send the first reminder again once it's already been sent", async () => {
+    const departingIn10Days = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
+    vi.mocked(prisma.booking.findMany).mockResolvedValue([
+      { ...baseBooking, slot: { date: departingIn10Days }, balanceReminderSentAt: new Date() },
+    ] as any);
+
+    const result = await BookingService.sendBalancePaymentReminders();
+
+    expect(result).toEqual({ firstSent: 0, finalSent: 0 });
+    expect(sendBalancePaymentReminder).not.toHaveBeenCalled();
+  });
+
+  it("does not send the final reminder again once it's already been sent", async () => {
+    // Sending the final reminder always records both timestamps together
+    // (see the "records both timestamps" test above), so this is the only
+    // realistic "already sent" state for the final reminder.
+    const departingIn8Days = new Date(Date.now() + 8 * 24 * 60 * 60 * 1000);
+    vi.mocked(prisma.booking.findMany).mockResolvedValue([
+      { ...baseBooking, slot: { date: departingIn8Days }, balanceReminderSentAt: new Date(), finalBalanceReminderSentAt: new Date() },
+    ] as any);
+
+    const result = await BookingService.sendBalancePaymentReminders();
+
+    expect(result).toEqual({ firstSent: 0, finalSent: 0 });
+    expect(sendBalancePaymentReminder).not.toHaveBeenCalled();
+  });
+
+  it("skips a booking whose deadline has already passed (the auto-cancel cron handles it)", async () => {
+    const departedAlready = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000);
+    vi.mocked(prisma.booking.findMany).mockResolvedValue([
+      { ...baseBooking, slot: { date: departedAlready }, experience: { title: "Goechala", advancePaymentDeadlineDays: 1 } },
+    ] as any);
+
+    const result = await BookingService.sendBalancePaymentReminders();
+
+    expect(result).toEqual({ firstSent: 0, finalSent: 0 });
+    expect(sendBalancePaymentReminder).not.toHaveBeenCalled();
+  });
+
+  it("does not send anything when more than 3 days remain before the deadline", async () => {
+    const departingIn20Days = new Date(Date.now() + 20 * 24 * 60 * 60 * 1000);
+    vi.mocked(prisma.booking.findMany).mockResolvedValue([
+      { ...baseBooking, slot: { date: departingIn20Days } },
+    ] as any);
+
+    const result = await BookingService.sendBalancePaymentReminders();
+
+    expect(result).toEqual({ firstSent: 0, finalSent: 0 });
+    expect(sendBalancePaymentReminder).not.toHaveBeenCalled();
   });
 });

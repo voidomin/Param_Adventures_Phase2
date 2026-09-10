@@ -8,6 +8,7 @@ import {
   sendTripCompletedEmail,
   sendResetPasswordEmail,
   sendAdminInviteEmail,
+  sendBalancePaymentReminder,
 } from "@/lib/email";
 
 // Mock the rendering engine to prevent React components from rendering real HTML
@@ -144,6 +145,44 @@ describe("Email Utilities", () => {
     await sendCustomTripAcknowledgmentEmail({ userName: "Alice", userEmail: "alice@test.com" });
     expect(mockProvider.send).toHaveBeenCalledWith(expect.objectContaining({
       subject: expect.stringContaining("We've received your custom trip request!"),
+    }));
+  });
+
+  it("sends the first (non-final) balance payment reminder email", async () => {
+    await sendBalancePaymentReminder({
+      userName: "Alice",
+      userEmail: "alice@test.com",
+      experienceTitle: "Goechala",
+      bookingId: "b-123",
+      paidAmount: 3000,
+      remainingBalance: 7000,
+      totalPrice: 10000,
+      deadlineDate: new Date("2026-09-15T00:00:00.000Z"),
+      isFinalReminder: false,
+    });
+
+    expect(mockProvider.send).toHaveBeenCalledWith(expect.objectContaining({
+      to: "alice@test.com",
+      subject: expect.stringMatching(/^Payment Reminder:/),
+    }));
+  });
+
+  it("sends the final balance payment reminder email with distinct subject", async () => {
+    await sendBalancePaymentReminder({
+      userName: "Alice",
+      userEmail: "alice@test.com",
+      experienceTitle: "Goechala",
+      bookingId: "b-123",
+      paidAmount: 3000,
+      remainingBalance: 7000,
+      totalPrice: 10000,
+      deadlineDate: new Date("2026-09-15T00:00:00.000Z"),
+      isFinalReminder: true,
+    });
+
+    expect(mockProvider.send).toHaveBeenCalledWith(expect.objectContaining({
+      to: "alice@test.com",
+      subject: expect.stringMatching(/^Final Reminder:/),
     }));
   });
 
