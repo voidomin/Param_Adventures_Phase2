@@ -28,9 +28,9 @@ export default function AltitudeTickerSection({
     <div className="pt-12 pb-4 px-4 md:px-12 lg:px-16 relative z-10" style={MOOD_STYLE}>
       <SectionHeading heading={section.heading} subheading={section.subheading} />
       <ScrollReveal>
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory no-scrollbar">
           {section.experiences.map((exp) => (
-            <div key={exp.id} className="relative shrink-0 w-[70vw] sm:w-70">
+            <div key={exp.id} className="relative shrink-0 w-[70vw] sm:w-70 snap-start">
               {exp.maxAltitude && (
                 <span className="absolute top-2.5 right-2.5 z-10 bg-primary text-primary-foreground text-[10px] font-black rounded-md px-2 py-0.5 tracking-wide">
                   {exp.maxAltitude}

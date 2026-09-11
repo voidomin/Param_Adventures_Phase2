@@ -33,7 +33,7 @@ export default function SpecPanelsSection({
     <div className="pt-12 pb-4 px-4 md:px-12 lg:px-16 relative z-10" style={MOOD_STYLE}>
       <SectionHeading heading={section.heading} subheading={section.subheading} />
       <ScrollReveal>
-        <div className="flex gap-4.5 overflow-x-auto pb-4">
+        <div className="flex gap-4.5 overflow-x-auto pb-4 snap-x snap-mandatory no-scrollbar">
           {section.experiences.map((exp) => {
             const image = resolveExperienceImageUrl(exp, mediaSettings, { width: 700, crop: "fill" });
 
@@ -41,7 +41,7 @@ export default function SpecPanelsSection({
               <Link
                 key={exp.id}
                 href={`/experiences/${exp.slug}`}
-                className="flex flex-col shrink-0 w-[85vw] sm:w-80 bg-card border-t-3 border-t-primary border-x border-b border-border rounded-2xl overflow-hidden hover:shadow-xl transition-shadow"
+                className="flex flex-col shrink-0 w-[85vw] sm:w-80 snap-start bg-card border-t-3 border-t-primary border-x border-b border-border rounded-2xl overflow-hidden hover:shadow-xl transition-shadow"
               >
                 <div className="relative aspect-16/10 w-full bg-foreground/5">
                   <Image

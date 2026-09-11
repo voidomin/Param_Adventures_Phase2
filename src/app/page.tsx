@@ -190,7 +190,7 @@ export default async function Home() {
 
       <div className="pt-12 pb-4 px-4 md:px-12 lg:px-16 relative z-10">
         <ScrollReveal variant="blur" stagger>
-          <h2 className="text-4xl font-heading font-black text-foreground mb-4 text-center">
+          <h2 className="text-3xl sm:text-4xl font-heading font-black text-foreground mb-4 text-center">
             Featured Experiences
           </h2>
           <p className="text-foreground/60 max-w-2xl mx-auto text-center mb-12">
@@ -241,7 +241,7 @@ export default async function Home() {
           <ScrollReveal direction="left" variant="blur">
             <div className="flex flex-col md:flex-row justify-between items-center md:items-end mb-12 gap-6">
               <div className="text-center md:text-left">
-                <h2 className="text-4xl font-heading font-black text-foreground mb-4">
+                <h2 className="text-3xl sm:text-4xl font-heading font-black text-foreground mb-4">
                   Latest Stories & Guides
                 </h2>
                 <p className="text-foreground/60 max-w-2xl">
