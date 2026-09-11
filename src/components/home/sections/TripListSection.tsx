@@ -40,37 +40,39 @@ export default function TripListSection({
               <Link
                 key={exp.id}
                 href={`/experiences/${exp.slug}`}
-                className={`group/row flex items-center gap-4 py-4 transition-colors hover:bg-foreground/5 rounded-xl px-2 -mx-2 ${
+                className={`group/row flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 py-4 transition-colors hover:bg-foreground/5 rounded-xl px-2 -mx-2 ${
                   i > 0 ? "border-t border-border" : ""
                 }`}
               >
-                <div className="relative w-20 h-20 sm:w-27.5 sm:h-27.5 rounded-xl overflow-hidden shrink-0 bg-foreground/5">
-                  <Image
-                    src={image}
-                    alt={buildTrekAltText(exp.title, exp.location)}
-                    fill
-                    sizes="110px"
-                    className="object-cover group-hover/row:scale-105 transition-transform duration-700"
-                  />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <span className="inline-block px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest bg-primary/10 text-primary mb-1.5">
-                    {exp.difficulty}
-                  </span>
-                  <h3 className="font-heading font-bold text-base leading-tight truncate">{exp.title}</h3>
-                  <div className="flex items-center gap-2 text-xs text-foreground/60 font-semibold mt-1">
-                    <span className="flex items-center gap-1 min-w-0 truncate">
-                      <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
-                      <span className="truncate">{exp.location}</span>
+                <div className="flex items-center gap-4 min-w-0 flex-1">
+                  <div className="relative w-20 h-20 sm:w-27.5 sm:h-27.5 rounded-xl overflow-hidden shrink-0 bg-foreground/5">
+                    <Image
+                      src={image}
+                      alt={buildTrekAltText(exp.title, exp.location)}
+                      fill
+                      sizes="110px"
+                      className="object-cover group-hover/row:scale-105 transition-transform duration-700"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="inline-block px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-widest bg-primary/10 text-primary mb-1.5">
+                      {exp.difficulty}
                     </span>
-                    <span className="opacity-40">·</span>
-                    <span className="flex items-center gap-1 shrink-0">
-                      <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
-                      {exp.durationDays}D / {Math.max(exp.durationDays - 1, 0)}N
-                    </span>
+                    <h3 className="font-heading font-bold text-base leading-tight truncate">{exp.title}</h3>
+                    <div className="flex items-center gap-2 text-xs text-foreground/60 font-semibold mt-1">
+                      <span className="flex items-center gap-1 min-w-0 truncate">
+                        <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
+                        <span className="truncate">{exp.location}</span>
+                      </span>
+                      <span className="opacity-40">·</span>
+                      <span className="flex items-center gap-1 shrink-0">
+                        <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
+                        {exp.durationDays}D / {Math.max(exp.durationDays - 1, 0)}N
+                      </span>
+                    </div>
                   </div>
                 </div>
-                <div className="text-right shrink-0">
+                <div className="text-right shrink-0 pl-24 sm:pl-0">
                   <span className="block text-[9px] font-black uppercase tracking-widest text-foreground/40 mb-0.5">From</span>
                   <span className="font-heading font-black text-base sm:text-lg flex items-center justify-end">
                     <IndianRupee className="w-3.5 h-3.5 mr-0.5 text-primary" />

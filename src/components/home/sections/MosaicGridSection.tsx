@@ -29,9 +29,9 @@ export default function MosaicGridSection({
     <div className="pt-12 pb-4 px-4 md:px-12 lg:px-16 relative z-10" style={MOOD_STYLE}>
       <SectionHeading heading={section.heading} subheading={section.subheading} />
       <ScrollReveal>
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="flex gap-4 overflow-x-auto pb-4 snap-x snap-mandatory no-scrollbar">
           {section.experiences.map((exp) => (
-            <div key={exp.id} className="shrink-0 w-[70vw] sm:w-70">
+            <div key={exp.id} className="shrink-0 w-[70vw] sm:w-70 snap-start">
               <CompactExperienceCard experience={exp} mediaSettings={mediaSettings} />
             </div>
           ))}

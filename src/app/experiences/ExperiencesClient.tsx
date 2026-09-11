@@ -482,8 +482,8 @@ export default function ExperiencesClient({
             </div>
           </div>
 
-          {/* Row 2: Search + Filters + Sort (tight row) */}
-          <div className="flex items-center gap-2 py-2">
+          {/* Row 2: Search + Filters + Sort (stacks on mobile so Search isn't squeezed by the two buttons) */}
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 py-2">
             {/* Search — grows to fill available space */}
             <div className="relative flex-1 min-w-0">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-foreground/40" />
@@ -507,82 +507,84 @@ export default function ExperiencesClient({
               )}
             </div>
 
-            {/* Filters Toggle */}
-            <button
-              type="button"
-              suppressHydrationWarning
-              onClick={() => setShowFilters((v) => !v)}
-              className={`shrink-0 flex items-center justify-center gap-2 px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all border border-border/50 ${
-                showFilters || activeFilterCount > 0
-                  ? "bg-primary/10 text-primary border-primary/30"
-                  : "bg-foreground/5 text-foreground/70 hover:bg-foreground/10"
-              }`}
-            >
-              <SlidersHorizontal className="w-4 h-4" />
-              <span className="hidden sm:inline">Filters</span>
-              {activeFilterCount > 0 && (
-                <span className="w-5 h-5 bg-primary text-primary-foreground rounded-full text-[10px] font-black flex items-center justify-center">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
-
-            {/* Sort Button */}
-            <div className="relative shrink-0">
+            <div className="flex items-center gap-2">
+              {/* Filters Toggle */}
               <button
                 type="button"
                 suppressHydrationWarning
-                onClick={() => setShowSortMenu((v) => !v)}
-                className="flex items-center justify-center gap-2 px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap bg-foreground/5 text-foreground/70 hover:bg-foreground/10 transition-all border border-border/50"
+                onClick={() => setShowFilters((v) => !v)}
+                className={`shrink-0 flex items-center justify-center gap-2 px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all border border-border/50 ${
+                  showFilters || activeFilterCount > 0
+                    ? "bg-primary/10 text-primary border-primary/30"
+                    : "bg-foreground/5 text-foreground/70 hover:bg-foreground/10"
+                }`}
               >
-                <ArrowUpDown className="w-4 h-4" />
-                <span className="hidden sm:inline">
-                  {SORT_OPTIONS.find((o) => o.value === sortBy)?.label}
-                </span>
-                <ChevronDown className="w-3.5 h-3.5" />
+                <SlidersHorizontal className="w-4 h-4" />
+                <span className="hidden sm:inline">Filters</span>
+                {activeFilterCount > 0 && (
+                  <span className="w-5 h-5 bg-primary text-primary-foreground rounded-full text-[10px] font-black flex items-center justify-center">
+                    {activeFilterCount}
+                  </span>
+                )}
               </button>
-              {showSortMenu && (
-                <>
-                  <button
-                    suppressHydrationWarning
-                    type="button"
-                    aria-label="Close sort menu"
-                    className="fixed inset-0 z-40 w-full h-full bg-transparent cursor-default"
-                    onClick={() => setShowSortMenu(false)}
-                  />
-                  <div className="absolute right-0 mt-2 bg-card border border-border rounded-xl shadow-xl z-50 py-2 min-w-[200px]">
-                    {SORT_OPTIONS.map((opt) => (
-                      <button
-                        type="button"
-                        suppressHydrationWarning
-                        key={opt.value}
-                        onClick={() => {
-                          setSortBy(opt.value);
-                          setShowSortMenu(false);
-                        }}
-                        className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
-                          sortBy === opt.value
-                            ? "bg-primary/10 text-primary font-bold"
-                            : "text-foreground/70 hover:bg-foreground/5"
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
 
-            {/* Results count */}
-            <motion.div
-              key={filteredExperiences.length}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="hidden sm:block text-sm text-foreground/60 font-semibold shrink-0 ml-auto"
-            >
-              {filteredExperiences.length} trip{filteredExperiences.length !== 1 && "s"}
-            </motion.div>
+              {/* Sort Button */}
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  suppressHydrationWarning
+                  onClick={() => setShowSortMenu((v) => !v)}
+                  className="flex items-center justify-center gap-2 px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap bg-foreground/5 text-foreground/70 hover:bg-foreground/10 transition-all border border-border/50"
+                >
+                  <ArrowUpDown className="w-4 h-4" />
+                  <span className="hidden sm:inline">
+                    {SORT_OPTIONS.find((o) => o.value === sortBy)?.label}
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
+                {showSortMenu && (
+                  <>
+                    <button
+                      suppressHydrationWarning
+                      type="button"
+                      aria-label="Close sort menu"
+                      className="fixed inset-0 z-40 w-full h-full bg-transparent cursor-default"
+                      onClick={() => setShowSortMenu(false)}
+                    />
+                    <div className="absolute right-0 mt-2 bg-card border border-border rounded-xl shadow-xl z-50 py-2 min-w-[200px]">
+                      {SORT_OPTIONS.map((opt) => (
+                        <button
+                          type="button"
+                          suppressHydrationWarning
+                          key={opt.value}
+                          onClick={() => {
+                            setSortBy(opt.value);
+                            setShowSortMenu(false);
+                          }}
+                          className={`w-full text-left px-4 py-2.5 text-sm transition-colors ${
+                            sortBy === opt.value
+                              ? "bg-primary/10 text-primary font-bold"
+                              : "text-foreground/70 hover:bg-foreground/5"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Results count */}
+              <motion.div
+                key={filteredExperiences.length}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="hidden sm:block text-sm text-foreground/60 font-semibold shrink-0 ml-auto"
+              >
+                {filteredExperiences.length} trip{filteredExperiences.length !== 1 && "s"}
+              </motion.div>
+            </div>
           </div>
 
           {/* Row 3: Advanced Filters (collapsible) */}

@@ -12,7 +12,7 @@ export default function SectionHeading({
 }: Readonly<{ heading: string; subheading?: string | null }>) {
   return (
     <ScrollReveal variant="blur" stagger>
-      <h2 className="text-4xl font-heading font-black text-foreground mb-4 text-center">
+      <h2 className="text-3xl sm:text-4xl font-heading font-black text-foreground mb-4 text-center">
         {heading}
       </h2>
       {subheading && (
