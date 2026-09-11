@@ -604,6 +604,7 @@ enum TripStatus {
   TREK_STARTED
   TREK_ENDED
   COMPLETED
+  CANCELLED
 }
 
 enum MediaType {
