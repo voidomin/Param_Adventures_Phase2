@@ -1,5 +1,5 @@
 import { prisma, runWithRetry } from "@/lib/db";
-import { Prisma } from "@prisma/client";
+import { Prisma, PaymentStatus } from "@prisma/client";
 import { getRazorpay } from "@/lib/razorpay";
 import { logActivity } from "@/lib/audit-logger";
 import { revalidatePath } from "next/cache";
@@ -7,8 +7,9 @@ import { BookingRepo, BookingPricing } from "@/repositories/booking.repo";
 import { BookingInput } from "@/lib/validators/booking.schema";
 import { isExpiredIST, redeemCoupon } from "@/lib/coupon-engine";
 import { assignInvoiceNumberIfNeeded } from "@/lib/invoice-numbering";
-import { calculateRefundBreakdown } from "@/lib/refund-engine";
-import { sendBalancePaymentReminder } from "@/lib/email";
+import { calculateRefundBreakdown, createRefundRequestForBreakdown } from "@/lib/refund-engine";
+import { restoreCouponsForBooking } from "@/lib/coupon-engine";
+import { sendBalancePaymentReminder, sendBookingCancellation } from "@/lib/email";
 
 interface ExtraAmenityOption {
   id: string;
@@ -787,6 +788,182 @@ export const BookingService = {
     }
 
     return candidates.length;
+  },
+
+  /**
+   * Cancels every REQUESTED/CONFIRMED booking on one Slot at once -- for
+   * when the whole trip gets called off (weather, too few bookings), not
+   * a customer backing out of their own seat. Same refund treatment as an
+   * admin cancelling a single booking (isCompanyCancellation: true --
+   * full refund of whatever was paid, day-based tiers don't apply), but
+   * each refund is only ever queued as a REQUESTED RefundRequest here --
+   * disbursing it stays a separate, deliberate step through the existing
+   * /admin/bookings/pending queue, exactly like every other refund path.
+   * Also marks the Slot itself CANCELLED so the auto-start and
+   * staffing-escalation crons stop treating it as a live upcoming trip.
+   * Only allowed while the slot is still UPCOMING -- a trip already
+   * underway or finished isn't "called off", it needs a different
+   * conversation than a bulk cancel.
+   */
+  async cancelAllBookingsForSlot(
+    slotId: string,
+    params: { reason: string; cancelledByUserId: string },
+  ): Promise<{ cancelledCount: number; refundsQueuedCount: number }> {
+    const { reason, cancelledByUserId } = params;
+
+    const slot = await prisma.slot.findUnique({
+      where: { id: slotId },
+      select: { id: true, status: true },
+    });
+    if (!slot) {
+      throw new Error("SLOT_NOT_FOUND");
+    }
+    if (slot.status !== "UPCOMING") {
+      throw new Error("SLOT_NOT_CANCELLABLE");
+    }
+
+    const bookings = await prisma.booking.findMany({
+      where: {
+        slotId,
+        bookingStatus: { in: ["REQUESTED", "CONFIRMED"] },
+      },
+      include: {
+        participants: true,
+        user: { select: { name: true, email: true } },
+        experience: { select: { title: true } },
+        slot: { select: { date: true } },
+      },
+    });
+
+    let cancelledCount = 0;
+    let refundsQueuedCount = 0;
+
+    for (const booking of bookings) {
+      const activeCount = booking.participants.filter((p) => !p.isCancelled).length;
+
+      let cancelled = false;
+      let refundQueued = false;
+      try {
+        ({ cancelled, refundQueued } = await runWithRetry(() =>
+          prisma.$transaction(async (tx) => {
+            const current = await tx.booking.findUnique({
+              where: { id: booking.id },
+              select: {
+                bookingStatus: true,
+                paymentStatus: true,
+                paidAmount: true,
+                refundAmount: true,
+                baseFare: true,
+                totalPrice: true,
+                taxBreakdown: true,
+                paymentType: true,
+              },
+            });
+            if (!current || current.bookingStatus === "CANCELLED") {
+              return { cancelled: false, refundQueued: false };
+            }
+
+            const alreadyRefunded = Number(current.refundAmount || 0);
+            const effectivePaidAmount = Math.max(0, Number(current.paidAmount) - alreadyRefunded);
+
+            const breakdown = calculateRefundBreakdown({
+              baseFare: Number(current.baseFare),
+              totalPrice: Number(current.totalPrice),
+              paidAmount: effectivePaidAmount,
+              paymentType: current.paymentType as "FULL" | "ADVANCE",
+              refundPercent: 100, // irrelevant here -- isCompanyCancellation always forces a full refund
+              taxBreakdown: current.taxBreakdown,
+              refundPreference: "BANK_REFUND",
+              isCompanyCancellation: true,
+            });
+            const finalRefund = breakdown.finalRefundAmount;
+            const totalRefundAmount = alreadyRefunded + finalRefund;
+
+            let newPaymentStatus: PaymentStatus = current.paymentStatus;
+            if ((current.paymentStatus === "PAID" || current.paymentStatus === "PARTIALLY_PAID") && finalRefund > 0) {
+              newPaymentStatus = "REFUND_PENDING";
+            }
+
+            await tx.booking.update({
+              where: { id: booking.id },
+              data: {
+                bookingStatus: "CANCELLED",
+                paymentStatus: newPaymentStatus,
+                cancelledAt: new Date(),
+                cancelledByUserId,
+                cancellationReason: reason,
+                refundPreference: "BANK_REFUND",
+                refundAmount: totalRefundAmount > 0 ? totalRefundAmount : null,
+              },
+            });
+
+            await tx.bookingParticipant.updateMany({
+              where: { bookingId: booking.id, isCancelled: false },
+              data: { isCancelled: true, cancelledAt: new Date() },
+            });
+
+            if (booking.slotId) {
+              await BookingRepo.incrementSlotCapacity(tx, booking.slotId, activeCount);
+            }
+
+            const { totalRestored: couponRestorePreview } = await restoreCouponsForBooking({
+              bookingId: booking.id,
+              cancellationCharges: Number(breakdown.cancellationCharges),
+              tx,
+              dryRun: true,
+            });
+
+            let queued = false;
+            if (finalRefund > 0 || couponRestorePreview > 0) {
+              await createRefundRequestForBreakdown(tx, {
+                bookingId: booking.id,
+                customerId: booking.userId,
+                preference: "BANK_REFUND",
+                breakdown,
+                couponRestoreAmount: couponRestorePreview,
+              });
+              queued = true;
+            }
+
+            return { cancelled: true, refundQueued: queued };
+          }),
+        ));
+      } catch (error) {
+        // A booking that already has an unresolved RefundRequest from an
+        // earlier partial cancellation (RefundRequest.bookingId is
+        // @unique) fails this one booking's transaction rather than
+        // aborting the whole batch -- log it and move on to the rest.
+        console.error(`[BatchCancel] Failed to cancel booking ${booking.id}:`, error);
+        continue;
+      }
+
+      if (cancelled) {
+        cancelledCount++;
+        if (refundQueued) refundsQueuedCount++;
+        if (booking.user.email) {
+          await sendBookingCancellation({
+            userName: booking.user.name || "Adventurer",
+            userEmail: booking.user.email,
+            experienceTitle: booking.experience.title,
+            slotDate: booking.slot?.date.toISOString() ?? "",
+            refundPreference: "BANK_REFUND",
+          });
+        }
+      }
+    }
+
+    await prisma.slot.update({
+      where: { id: slotId },
+      data: { status: "CANCELLED" },
+    });
+
+    await logActivity("TRIP_BATCH_CANCELLED", cancelledByUserId, "Slot", slotId, {
+      cancelledCount,
+      refundsQueuedCount,
+      reason,
+    });
+
+    return { cancelledCount, refundsQueuedCount };
   },
 
   /**

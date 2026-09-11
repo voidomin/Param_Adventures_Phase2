@@ -6,6 +6,7 @@ vi.mock("@/lib/db", () => {
     experience: { findUnique: vi.fn() },
     payment: { updateMany: vi.fn() },
     booking: { findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn(), findMany: vi.fn() },
+    slot: { findUnique: vi.fn(), update: vi.fn() },
     $transaction: vi.fn(),
   };
   return {
@@ -45,13 +46,14 @@ vi.mock("next/cache", () => ({
 vi.mock("@/lib/email", () => ({
   sendBookingConfirmation: vi.fn(),
   sendBalancePaymentReminder: vi.fn(),
+  sendBookingCancellation: vi.fn(),
 }));
 
 import { BookingService } from "@/services/booking.service";
 import { prisma } from "@/lib/db";
 import { BookingRepo } from "@/repositories/booking.repo";
 import { getRazorpay } from "@/lib/razorpay";
-import { sendBookingConfirmation, sendBalancePaymentReminder } from "@/lib/email";
+import { sendBookingConfirmation, sendBalancePaymentReminder, sendBookingCancellation } from "@/lib/email";
 
 const flushMicrotasks = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -936,5 +938,182 @@ describe("BookingService.sendBalancePaymentReminders", () => {
 
     expect(result).toEqual({ firstSent: 0, finalSent: 0 });
     expect(sendBalancePaymentReminder).not.toHaveBeenCalled();
+  });
+});
+
+describe("BookingService.cancelAllBookingsForSlot", () => {
+  const mockTx = {
+    booking: { findUnique: vi.fn(), update: vi.fn() },
+    bookingParticipant: { updateMany: vi.fn() },
+    couponTransaction: { findMany: vi.fn() },
+    refundRequest: { create: vi.fn() },
+  };
+
+  const paidBooking = {
+    id: "b-paid",
+    slotId: "slot-1",
+    userId: "u1",
+    user: { name: "Asha", email: "asha@example.com" },
+    experience: { title: "Kodachadri Trek" },
+    slot: { date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000) },
+    participants: [{ isCancelled: false }, { isCancelled: false }],
+  };
+  const paidBookingCurrent = {
+    bookingStatus: "CONFIRMED",
+    paymentStatus: "PAID",
+    paidAmount: 5000,
+    refundAmount: 0,
+    baseFare: 4500,
+    totalPrice: 5000,
+    taxBreakdown: [],
+    paymentType: "FULL",
+  };
+
+  const unpaidBooking = {
+    id: "b-unpaid",
+    slotId: "slot-1",
+    userId: "u2",
+    user: { name: "Ravi", email: "ravi@example.com" },
+    experience: { title: "Kodachadri Trek" },
+    slot: { date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000) },
+    participants: [{ isCancelled: false }],
+  };
+  const unpaidBookingCurrent = {
+    bookingStatus: "REQUESTED",
+    paymentStatus: "PENDING",
+    paidAmount: 0,
+    refundAmount: 0,
+    baseFare: 2700,
+    totalPrice: 3000,
+    taxBreakdown: [],
+    paymentType: "FULL",
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(prisma.$transaction).mockImplementation(async (cb: any) => cb(mockTx));
+    vi.mocked(mockTx.couponTransaction.findMany).mockResolvedValue([]);
+    vi.mocked(prisma.slot.update).mockResolvedValue({} as any);
+    vi.mocked(BookingRepo.incrementSlotCapacity).mockResolvedValue({} as any);
+  });
+
+  it("throws SLOT_NOT_FOUND when the slot doesn't exist", async () => {
+    vi.mocked(prisma.slot.findUnique).mockResolvedValue(null);
+
+    await expect(
+      BookingService.cancelAllBookingsForSlot("nope", { reason: "weather", cancelledByUserId: "admin-1" }),
+    ).rejects.toThrow("SLOT_NOT_FOUND");
+    expect(prisma.booking.findMany).not.toHaveBeenCalled();
+  });
+
+  it("throws SLOT_NOT_CANCELLABLE when the slot isn't UPCOMING", async () => {
+    vi.mocked(prisma.slot.findUnique).mockResolvedValue({ id: "slot-1", status: "ACTIVE" } as any);
+
+    await expect(
+      BookingService.cancelAllBookingsForSlot("slot-1", { reason: "weather", cancelledByUserId: "admin-1" }),
+    ).rejects.toThrow("SLOT_NOT_CANCELLABLE");
+  });
+
+  it("cancels a paid and an unpaid booking, queuing a refund only for the paid one", async () => {
+    vi.mocked(prisma.slot.findUnique).mockResolvedValue({ id: "slot-1", status: "UPCOMING" } as any);
+    vi.mocked(prisma.booking.findMany).mockResolvedValue([paidBooking, unpaidBooking] as any);
+    vi.mocked(mockTx.booking.findUnique)
+      .mockResolvedValueOnce(paidBookingCurrent as any)
+      .mockResolvedValueOnce(unpaidBookingCurrent as any);
+
+    const result = await BookingService.cancelAllBookingsForSlot("slot-1", {
+      reason: "Trip cancelled due to poor weather forecast",
+      cancelledByUserId: "admin-1",
+    });
+
+    expect(result).toEqual({ cancelledCount: 2, refundsQueuedCount: 1 });
+
+    expect(mockTx.booking.update).toHaveBeenCalledWith({
+      where: { id: "b-paid" },
+      data: expect.objectContaining({
+        bookingStatus: "CANCELLED",
+        paymentStatus: "REFUND_PENDING",
+        refundAmount: 5000,
+        cancellationReason: "Trip cancelled due to poor weather forecast",
+        cancelledByUserId: "admin-1",
+      }),
+    });
+    expect(mockTx.booking.update).toHaveBeenCalledWith({
+      where: { id: "b-unpaid" },
+      data: expect.objectContaining({
+        bookingStatus: "CANCELLED",
+        paymentStatus: "PENDING",
+        refundAmount: null,
+      }),
+    });
+
+    expect(mockTx.refundRequest.create).toHaveBeenCalledTimes(1);
+    expect(mockTx.refundRequest.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ bookingId: "b-paid", finalRefundAmount: 5000 }) }),
+    );
+
+    expect(BookingRepo.incrementSlotCapacity).toHaveBeenCalledWith(mockTx, "slot-1", 2);
+    expect(BookingRepo.incrementSlotCapacity).toHaveBeenCalledWith(mockTx, "slot-1", 1);
+
+    // Every cancelled booking gets emailed, paid or not.
+    expect(sendBookingCancellation).toHaveBeenCalledTimes(2);
+    expect(sendBookingCancellation).toHaveBeenCalledWith(
+      expect.objectContaining({ userEmail: "asha@example.com", experienceTitle: "Kodachadri Trek" }),
+    );
+    expect(sendBookingCancellation).toHaveBeenCalledWith(
+      expect.objectContaining({ userEmail: "ravi@example.com" }),
+    );
+
+    expect(prisma.slot.update).toHaveBeenCalledWith({ where: { id: "slot-1" }, data: { status: "CANCELLED" } });
+  });
+
+  it("skips a booking that raced to already-CANCELLED without aborting the rest of the batch", async () => {
+    vi.mocked(prisma.slot.findUnique).mockResolvedValue({ id: "slot-1", status: "UPCOMING" } as any);
+    vi.mocked(prisma.booking.findMany).mockResolvedValue([paidBooking, unpaidBooking] as any);
+    vi.mocked(mockTx.booking.findUnique)
+      .mockResolvedValueOnce({ ...paidBookingCurrent, bookingStatus: "CANCELLED" } as any)
+      .mockResolvedValueOnce(unpaidBookingCurrent as any);
+
+    const result = await BookingService.cancelAllBookingsForSlot("slot-1", {
+      reason: "weather",
+      cancelledByUserId: "admin-1",
+    });
+
+    expect(result).toEqual({ cancelledCount: 1, refundsQueuedCount: 0 });
+    expect(sendBookingCancellation).toHaveBeenCalledTimes(1);
+    expect(sendBookingCancellation).toHaveBeenCalledWith(expect.objectContaining({ userEmail: "ravi@example.com" }));
+  });
+
+  it("continues the batch when one booking's refund-request creation fails (e.g. already has a pending refund)", async () => {
+    vi.mocked(prisma.slot.findUnique).mockResolvedValue({ id: "slot-1", status: "UPCOMING" } as any);
+    vi.mocked(prisma.booking.findMany).mockResolvedValue([paidBooking, unpaidBooking] as any);
+    vi.mocked(mockTx.booking.findUnique)
+      .mockResolvedValueOnce(paidBookingCurrent as any)
+      .mockResolvedValueOnce(unpaidBookingCurrent as any);
+    vi.mocked(mockTx.refundRequest.create).mockRejectedValueOnce(new Error("P2002"));
+
+    const result = await BookingService.cancelAllBookingsForSlot("slot-1", {
+      reason: "weather",
+      cancelledByUserId: "admin-1",
+    });
+
+    // The paid booking's whole transaction (including its own cancellation)
+    // rolled back with the refund-request failure; the unpaid one still
+    // went through, and the slot still ends up CANCELLED either way.
+    expect(result).toEqual({ cancelledCount: 1, refundsQueuedCount: 0 });
+    expect(prisma.slot.update).toHaveBeenCalledWith({ where: { id: "slot-1" }, data: { status: "CANCELLED" } });
+  });
+
+  it("marks the slot CANCELLED and logs activity even when there are no bookings to cancel", async () => {
+    vi.mocked(prisma.slot.findUnique).mockResolvedValue({ id: "slot-1", status: "UPCOMING" } as any);
+    vi.mocked(prisma.booking.findMany).mockResolvedValue([]);
+
+    const result = await BookingService.cancelAllBookingsForSlot("slot-1", {
+      reason: "weather",
+      cancelledByUserId: "admin-1",
+    });
+
+    expect(result).toEqual({ cancelledCount: 0, refundsQueuedCount: 0 });
+    expect(prisma.slot.update).toHaveBeenCalledWith({ where: { id: "slot-1" }, data: { status: "CANCELLED" } });
   });
 });

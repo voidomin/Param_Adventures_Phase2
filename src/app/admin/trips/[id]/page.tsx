@@ -18,10 +18,14 @@ import {
   Check,
   Save,
   ChevronDown,
+  Ban,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import BookingDetailsCollapse from "@/components/admin/BookingDetailsCollapse";
 import { exportRowsToExcel } from "@/lib/utils";
+import { useAuth } from "@/lib/AuthContext";
+import { useToast } from "@/components/ui/Toast";
+import { Modal } from "@/components/ui/Modal";
 
 interface TrekLead {
   id: string;
@@ -81,6 +85,8 @@ interface TripSlot {
 export default function TripManifestPage() {
   const params = useParams();
   const tripId = params.id as string;
+  const { user } = useAuth();
+  const toast = useToast();
 
   const [trip, setTrip] = useState<TripSlot | null>(null);
   const [manifest, setManifest] = useState<Participant[]>([]);
@@ -113,6 +119,35 @@ export default function TripManifestPage() {
       setError(err instanceof Error ? err.message : "Failed to complete trip.");
     } finally {
       setIsCompleting(false);
+    }
+  };
+
+  // Cancel Entire Trip (SUPER_ADMIN only)
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [isCancellingBatch, setIsCancellingBatch] = useState(false);
+
+  const handleCancelEntireTrip = async () => {
+    if (!cancelReason.trim()) return;
+
+    setIsCancellingBatch(true);
+    try {
+      const res = await fetch(`/api/admin/trips/${tripId}/cancel-batch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: cancelReason.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to cancel this trip.");
+
+      toast.success(data.message || "Trip cancelled.");
+      setIsCancelModalOpen(false);
+      setCancelReason("");
+      fetchTripDetails();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to cancel this trip.");
+    } finally {
+      setIsCancellingBatch(false);
     }
   };
 
@@ -492,14 +527,22 @@ export default function TripManifestPage() {
                 Trip Status
               </h3>
               <div className="flex items-center gap-2">
-                <span className={`w-2.5 h-2.5 rounded-full ${trip.status === "COMPLETED" ? "bg-green-500" : "bg-blue-500 animate-pulse"}`} />
+                <span
+                  className={`w-2.5 h-2.5 rounded-full ${
+                    trip.status === "COMPLETED"
+                      ? "bg-green-500"
+                      : trip.status === "CANCELLED"
+                        ? "bg-red-500"
+                        : "bg-blue-500 animate-pulse"
+                  }`}
+                />
                 <span className="font-bold text-foreground capitalize">
                   {trip.status.toLowerCase().replace("_", " ")}
                 </span>
               </div>
             </div>
 
-            {trip.status !== "COMPLETED" && (
+            {trip.status !== "COMPLETED" && trip.status !== "CANCELLED" && (
               <button
                 type="button"
                 onClick={handleForceCompleteTrip}
@@ -511,6 +554,17 @@ export default function TripManifestPage() {
                 ) : (
                   "End / Complete Trip"
                 )}
+              </button>
+            )}
+
+            {user?.role === "SUPER_ADMIN" && trip.status === "UPCOMING" && (
+              <button
+                type="button"
+                onClick={() => setIsCancelModalOpen(true)}
+                className="w-full py-2.5 bg-card border border-red-500/40 hover:bg-red-500/10 text-red-500 rounded-xl font-bold transition-colors text-sm flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Ban className="w-4 h-4" />
+                Cancel Entire Trip
               </button>
             )}
           </div>
@@ -771,6 +825,48 @@ export default function TripManifestPage() {
           })()}
         </div>
       </div>
+
+      <Modal open={isCancelModalOpen} onClose={() => !isCancellingBatch && setIsCancelModalOpen(false)}>
+        <div className="p-6 space-y-4">
+          <h2 className="text-xl font-heading font-bold text-foreground">Cancel Entire Trip</h2>
+          <p className="text-sm text-foreground/60">
+            This cancels every booking on this departure, restores capacity, and queues each paid
+            booking&apos;s refund on the Pending Refunds page for you to resolve. Every affected
+            customer will be emailed. This cannot be undone.
+          </p>
+          <div className="space-y-1.5">
+            <label htmlFor="cancel-reason" className="text-sm font-bold text-foreground/80">
+              Reason
+            </label>
+            <textarea
+              id="cancel-reason"
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              rows={3}
+              placeholder="e.g. Trip cancelled due to poor weather forecast"
+              className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+            />
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setIsCancelModalOpen(false)}
+              disabled={isCancellingBatch}
+              className="flex-1 py-2.5 bg-foreground/5 hover:bg-foreground/10 text-foreground rounded-xl font-bold text-sm transition-colors cursor-pointer"
+            >
+              Back
+            </button>
+            <button
+              type="button"
+              onClick={handleCancelEntireTrip}
+              disabled={isCancellingBatch || !cancelReason.trim()}
+              className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer"
+            >
+              {isCancellingBatch ? <Loader2 className="w-4 h-4 animate-spin" /> : "Cancel Trip"}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
