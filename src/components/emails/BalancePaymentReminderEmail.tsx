@@ -39,15 +39,13 @@ export const BalancePaymentReminderEmail = ({
       <Text style={commonStyles.text}>
         {isFinalReminder ? (
           <>
-            This is a final reminder that your remaining balance for <strong>{tripName}</strong> is due
-            by <strong>{deadlineDate}</strong>. If it isn&apos;t received by then, your booking will be
-            automatically cancelled and your advance payment becomes eligible for a refund, pending admin
-            approval.
+            This is a friendly reminder that your remaining balance for <strong>{tripName}</strong> is due
+            by <strong>{deadlineDate}</strong>. Please complete your payment before departure to confirm your trip details.
           </>
         ) : (
           <>
             Just a heads-up: your remaining balance for <strong>{tripName}</strong> is due by{" "}
-            <strong>{deadlineDate}</strong>. Please pay before then to keep your seat.
+            <strong>{deadlineDate}</strong>. Please complete your payment before departure to confirm your trip details.
           </>
         )}
       </Text>
@@ -74,8 +72,7 @@ export const BalancePaymentReminderEmail = ({
 
       <Section style={priceStyles.noticeContainer}>
         <Text style={priceStyles.noticeText}>
-          ⏰ Due by <strong>{deadlineDate}</strong>. Bookings not fully paid by then are automatically
-          cancelled, and the advance becomes eligible for a refund pending admin approval.
+          ⏰ Due by <strong>{deadlineDate}</strong>. Please complete your payment prior to departure to ensure smooth trip coordination and onboarding.
         </Text>
       </Section>
 
