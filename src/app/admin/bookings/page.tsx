@@ -14,6 +14,7 @@ import {
   ExternalLink,
   Archive,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
 import { TableSkeleton } from "@/components/admin/TableSkeleton";
@@ -25,6 +26,24 @@ import { useToast } from "@/components/ui/Toast";
 
 type BookingStatus = "REQUESTED" | "CONFIRMED" | "CANCELLED";
 type PaymentStatus = "PENDING" | "PARTIALLY_PAID" | "PAID" | "FAILED" | "REFUND_PENDING" | "REFUNDED";
+
+interface BookingParticipantItem {
+  id: string;
+  name: string;
+  isPrimary?: boolean;
+  email?: string | null;
+  phoneNumber?: string | null;
+  gender?: string | null;
+  age?: number | null;
+  selectedAmenities?: {
+    groupId?: string;
+    groupName?: string;
+    optionId?: string;
+    optionName: string;
+    price: number;
+  }[] | null;
+  isCancelled?: boolean;
+}
 
 interface Booking {
   id: string;
@@ -42,11 +61,7 @@ interface Booking {
   cancellationReason?: string | null;
   refundAmount?: number | null;
   refundRequest?: { couponRestoreAmount: number } | null;
-  participants?: {
-    id: string;
-    name: string;
-    isCancelled: boolean;
-  }[] | null;
+  participants?: BookingParticipantItem[] | null;
   user: {
     name: string;
     email: string;
@@ -499,6 +514,74 @@ function BookingDetailsModal({
             </div>
           </div>
 
+          {/* Guest Profiles & Selected Add-ons / Amenities */}
+          <div className="bg-foreground/[0.01] border border-border/60 rounded-xl p-4 space-y-3">
+            <h4 className="text-xs font-bold text-foreground/50 uppercase tracking-wider flex items-center justify-between">
+              <span>Guest Profiles & Add-ons ({booking.participants?.length || booking.participantCount} Pax)</span>
+            </h4>
+            {(!booking.participants || booking.participants.length === 0) ? (
+              <p className="text-foreground/40 text-xs italic">
+                Lead booker ({booking.user.name}) is the primary participant. No individual guest profiles submitted.
+              </p>
+            ) : (
+              <div className="space-y-2.5">
+                {booking.participants.map((p, idx) => (
+                  <div
+                    key={p.id || idx}
+                    className={`border rounded-xl p-3 text-xs space-y-2 ${
+                      p.isCancelled ? "bg-red-500/[0.02] border-red-500/20 opacity-60" : "bg-card border-border/70"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-foreground">
+                          {idx + 1}. {p.name}
+                        </span>
+                        {p.isPrimary && (
+                          <span className="text-[10px] font-bold text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded">
+                            Primary
+                          </span>
+                        )}
+                        {p.isCancelled && (
+                          <span className="text-[10px] font-bold text-red-500 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded">
+                            Cancelled
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-foreground/50">
+                        {p.gender ? `${p.gender}` : ""} {p.age ? `(${p.age} yrs)` : ""}
+                      </span>
+                    </div>
+
+                    {/* Selected Amenities / Add-ons */}
+                    {p.selectedAmenities && Array.isArray(p.selectedAmenities) && p.selectedAmenities.length > 0 ? (
+                      <div className="pt-2 border-t border-border/40">
+                        <p className="text-[10px] font-bold text-primary flex items-center gap-1 uppercase tracking-wider mb-1.5">
+                          <Sparkles className="w-3 h-3 text-primary" /> Selected Stays / Custom Add-ons:
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {p.selectedAmenities.map((amenity, aIdx) => (
+                            <span
+                              key={amenity.optionId || aIdx}
+                              className="inline-flex items-center gap-1.5 bg-primary/[0.06] text-primary border border-primary/25 px-2 py-0.5 rounded-md font-semibold text-[11px]"
+                            >
+                              <span>{amenity.optionName}</span>
+                              <span className="font-bold">(+₹{amenity.price?.toLocaleString("en-IN")})</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-foreground/40 italic pt-1 border-t border-border/40">
+                        No custom add-ons selected
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Refund & Cancellation Section (if applicable) */}
           {(isCancelled || hasRefund) && (
             <div className="bg-red-500/[0.02] border border-red-500/10 rounded-xl p-4 space-y-3">
@@ -798,6 +881,7 @@ export default function AdminBookingsPage() {
         slot?: {
           date: string | Date;
         } | null;
+        participants?: BookingParticipantItem[] | null;
         participantCount: number;
         totalPrice: number | string;
         bookingStatus: string;
@@ -814,6 +898,10 @@ export default function AdminBookingsPage() {
         "Experience Title": b.experience?.title || "—",
         "Slot Date": b.slot ? new Date(b.slot.date) : "—",
         "Pax Count": b.participantCount,
+        "Selected Add-ons / Amenities": (b.participants || [])
+          .flatMap((p) => (p.selectedAmenities as { optionName: string; price: number }[]) || [])
+          .map((a) => `${a.optionName} (+₹${a.price})`)
+          .join("; ") || "None",
         "Total Paid (INR)": Number(b.totalPrice),
         "Booking Status": b.bookingStatus,
         "Payment Status": b.paymentStatus,
@@ -1034,6 +1122,17 @@ export default function AdminBookingsPage() {
                           );
                         })()}
                       </div>
+                      {(() => {
+                        const totalAddOns = b.participants?.reduce((sum, p) => sum + (p.selectedAmenities?.length || 0), 0) || 0;
+                        if (totalAddOns > 0) {
+                          return (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded mt-0.5 w-fit">
+                              <Sparkles className="w-2.5 h-2.5" /> {totalAddOns} Add-on{totalAddOns > 1 ? "s" : ""}
+                            </span>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                   </div>
                   <div>
@@ -1169,20 +1268,28 @@ export default function AdminBookingsPage() {
                       <td className="px-5 py-4 text-sm text-foreground/70">
                         {(() => {
                           const cancelledCount = b.participants ? b.participants.filter(p => p.isCancelled).length : 0;
-                          if (cancelledCount > 0) {
-                            const totalCount = b.participants ? b.participants.length : b.participantCount;
-                            const activeCount = totalCount - cancelledCount;
-                            const isPending = b.paymentStatus === "REFUND_PENDING";
-                            return (
-                              <div className="flex flex-col">
-                                <span className="font-semibold">{activeCount} Active</span>
-                                <span className={`text-[10px] font-medium ${isPending ? "text-red-400" : "text-foreground/40"}`}>
-                                  {cancelledCount} {isPending ? "Refund Asked" : "Refunded"}
+                          const totalAddOns = b.participants?.reduce((sum, p) => sum + (p.selectedAmenities?.length || 0), 0) || 0;
+                          return (
+                            <div className="flex flex-col">
+                              {cancelledCount > 0 ? (
+                                <>
+                                  <span className="font-semibold">
+                                    {(b.participants ? b.participants.length : b.participantCount) - cancelledCount} Active
+                                  </span>
+                                  <span className={`text-[10px] font-medium ${b.paymentStatus === "REFUND_PENDING" ? "text-red-400" : "text-foreground/40"}`}>
+                                    {cancelledCount} {b.paymentStatus === "REFUND_PENDING" ? "Refund Asked" : "Refunded"}
+                                  </span>
+                                </>
+                              ) : (
+                                <span>{b.participantCount} Pax</span>
+                              )}
+                              {totalAddOns > 0 && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded mt-1 w-fit">
+                                  <Sparkles className="w-2.5 h-2.5" /> {totalAddOns} Add-on{totalAddOns > 1 ? "s" : ""}
                                 </span>
-                              </div>
-                            );
-                          }
-                          return <span>{b.participantCount} Pax</span>;
+                              )}
+                            </div>
+                          );
                         })()}
                       </td>
                       <td className="px-5 py-4 text-sm font-semibold text-foreground">
