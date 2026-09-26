@@ -8,7 +8,8 @@ import {
   MapPin,
   Shield,
   Activity,
-  Tag
+  Tag,
+  Sparkles
 } from "lucide-react";
 
 export interface SelectedAmenity {
@@ -162,21 +163,34 @@ function ParticipantCard({ participant: p, index }: Readonly<{ participant: Book
               {p.attended ? "Yes" : "No"}
             </span>
           </div>
-          <div>
-            <p className="text-[10px] text-foreground/50 uppercase font-bold tracking-wider">Selected Stays / Add-ons</p>
-            <div className="flex flex-wrap gap-1 mt-1">
-              {p.selectedAmenities && Array.isArray(p.selectedAmenities) && p.selectedAmenities.length > 0 ? (
-                p.selectedAmenities.map((amenity) => (
-                  <span key={amenity.optionId} className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded border border-primary/20 whitespace-nowrap">
-                    {amenity.optionName} (₹{amenity.price})
+        </div>
+
+        {/* Selected Stays / Custom Add-ons */}
+        {p.selectedAmenities && Array.isArray(p.selectedAmenities) && p.selectedAmenities.length > 0 && (
+          <div className="rounded-xl bg-primary/[0.04] border border-primary/20 p-3.5 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-primary flex items-center gap-1.5 uppercase tracking-wider">
+                <Sparkles className="w-3.5 h-3.5 text-primary" /> Selected Stays / Custom Add-ons
+              </span>
+              <span className="text-[10px] font-semibold text-primary/80 bg-primary/10 px-2 py-0.5 rounded-full">
+                {p.selectedAmenities.length} selected
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2 pt-0.5">
+              {p.selectedAmenities.map((amenity, aIdx) => (
+                <div
+                  key={amenity.optionId || aIdx}
+                  className="inline-flex items-center gap-2 bg-card border border-primary/30 px-3 py-1.5 rounded-lg text-xs shadow-2xs"
+                >
+                  <span className="font-semibold text-foreground">{amenity.optionName}</span>
+                  <span className="font-bold text-primary bg-primary/10 px-2 py-0.5 rounded text-[11px]">
+                    +₹{amenity.price?.toLocaleString("en-IN") ?? 0}
                   </span>
-                ))
-              ) : (
-                <span className="text-xs text-foreground/40 italic">None</span>
-              )}
+                </div>
+              ))}
             </div>
           </div>
-        </div>
+        )}
 
         {/* Grid 2: Logistics / Pickup Points */}
         {(p.pickupPoint || p.dropPoint) && (

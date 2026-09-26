@@ -14,6 +14,7 @@ import {
   AlertCircle,
   ChevronDown,
   User,
+  Check,
 } from "lucide-react";
 
 interface Slot {
@@ -963,29 +964,37 @@ function AmenitiesFields({
                           selected: group.type === "SINGLE" ? !isSelected : newSelected,
                         });
                       }}
-                      className="w-full flex items-center justify-between p-2 rounded-lg border border-border/40 bg-card hover:bg-foreground/[0.04] cursor-pointer transition-colors text-left focus:outline-none focus:ring-1 focus:ring-primary/45"
+                      className={`w-full flex items-start justify-between gap-3 p-3 rounded-xl border transition-all cursor-pointer text-left focus:outline-none focus:ring-2 focus:ring-primary/40 ${
+                        isSelected
+                          ? "bg-primary/[0.06] border-primary/60 shadow-xs"
+                          : "bg-card border-border/60 hover:bg-foreground/[0.03] hover:border-border"
+                      }`}
                     >
-                      <div className="flex items-center gap-2.5">
+                      <div className="flex items-start gap-3 flex-1 min-w-0">
                         <div
-                          className={`w-4 h-4 flex items-center justify-center border transition-all ${
-                            group.type === "SINGLE" ? "rounded-full" : "rounded"
+                          className={`w-5 h-5 min-w-[20px] min-h-[20px] shrink-0 mt-0.5 flex items-center justify-center border transition-all ${
+                            group.type === "SINGLE" ? "rounded-full" : "rounded-md"
                           } ${
                             isSelected
-                              ? "bg-primary border-primary text-primary-foreground animate-in zoom-in-50 duration-75"
-                              : "border-foreground/20 bg-background"
+                              ? "bg-primary border-primary text-primary-foreground shadow-xs animate-in zoom-in-75 duration-100"
+                              : "border-foreground/30 bg-background hover:border-foreground/50"
                           }`}
                         >
                           {isSelected && (
-                            <div
-                              className={`w-1.5 h-1.5 bg-current ${
-                                group.type === "SINGLE" ? "rounded-full" : ""
-                              }`}
-                            />
+                            group.type === "SINGLE" ? (
+                              <div className="w-2 h-2 rounded-full bg-current" />
+                            ) : (
+                              <Check className="w-3.5 h-3.5 stroke-[3]" />
+                            )
                           )}
                         </div>
-                        <span className="text-xs font-semibold text-foreground/80">{option.name}</span>
+                        <span className={`text-xs leading-relaxed font-semibold transition-colors ${
+                          isSelected ? "text-foreground font-bold" : "text-foreground/80"
+                        }`}>
+                          {option.name}
+                        </span>
                       </div>
-                      <span className="text-xs font-bold text-primary">
+                      <span className="text-xs font-bold text-primary shrink-0 ml-2 whitespace-nowrap mt-0.5">
                         {formatOptionPrice(option.price)}
                       </span>
                     </button>

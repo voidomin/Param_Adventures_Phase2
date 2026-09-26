@@ -21,7 +21,7 @@ import {
   Ban,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import BookingDetailsCollapse from "@/components/admin/BookingDetailsCollapse";
+import BookingDetailsCollapse, { BookingParticipant } from "@/components/admin/BookingDetailsCollapse";
 import { exportRowsToExcel } from "@/lib/utils";
 import { useAuth } from "@/lib/AuthContext";
 import { useToast } from "@/components/ui/Toast";
@@ -31,23 +31,6 @@ interface TrekLead {
   id: string;
   name: string;
   email: string;
-}
-
-interface BookingParticipant {
-  id: string;
-  isPrimary: boolean;
-  name: string;
-  email: string | null;
-  phoneNumber: string | null;
-  gender: string | null;
-  age: number | null;
-  dateOfBirth: string | null;
-  bloodGroup: string | null;
-  emergencyContactName: string | null;
-  emergencyContactNumber: string | null;
-  emergencyRelationship: string | null;
-  pickupPoint: string | null;
-  dropPoint: string | null;
 }
 
 interface Participant {
@@ -189,6 +172,7 @@ export default function TripManifestPage() {
               "Relationship": "",
               "Pickup Point": "",
               "Drop Point": "",
+              "Selected Add-ons / Amenities": "None",
               "Price Paid (INR)": Number(booking.totalPrice),
               "Booking Date": new Date(booking.createdAt),
             },
@@ -215,6 +199,11 @@ export default function TripManifestPage() {
           "Relationship": p.emergencyRelationship || "",
           "Pickup Point": p.pickupPoint || "",
           "Drop Point": p.dropPoint || "",
+          "Selected Add-ons / Amenities": p.selectedAmenities && Array.isArray(p.selectedAmenities) && p.selectedAmenities.length > 0
+            ? (p.selectedAmenities as { optionName: string; price: number }[])
+                .map((a) => `${a.optionName} (+₹${a.price})`)
+                .join(", ")
+            : "None",
           "Price Paid (INR)": Number(booking.totalPrice),
           "Booking Date": new Date(booking.createdAt),
         }));

@@ -22,10 +22,13 @@ import {
   FlagOff,
   CheckCircle,
   ChevronDown,
+  Download,
+  Sparkles,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import BookingDetailsCollapse, { BookingParticipant } from "@/components/admin/BookingDetailsCollapse";
 import { DashboardFormSkeleton } from "@/components/dashboard/DashboardSkeleton";
+import { exportRowsToExcel } from "@/lib/utils";
 
 interface TrekLead {
   id: string;
@@ -38,6 +41,8 @@ interface Booking {
   participantCount: number;
   participants: BookingParticipant[];
   user: { id: string; name: string; email: string; phoneNumber: string | null };
+  totalPrice?: number | string;
+  createdAt?: string;
 }
 
 interface VendorContact {
@@ -104,11 +109,91 @@ function formatDate(dateStr: string) {
 function ConfirmedParticipantsTable({
   bookings,
   totalParticipants,
+  tripTitle,
+  tripDate,
 }: Readonly<{
   bookings: readonly Booking[];
   totalParticipants: number;
+  tripTitle?: string;
+  tripDate?: string;
 }>) {
   const [expandedBookingId, setExpandedBookingId] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExport = async () => {
+    if (bookings.length === 0) return;
+    setIsExporting(true);
+    try {
+      const rows = bookings.flatMap((booking) => {
+        if (!booking.participants || booking.participants.length === 0) {
+          return [
+            {
+              "Trek/Experience": tripTitle || "",
+              "Departure Date": tripDate ? new Date(tripDate) : "",
+              "Booking ID": booking.id,
+              "Lead Booker Name": booking.user.name,
+              "Lead Booker Email": booking.user.email,
+              "Lead Booker Phone": booking.user.phoneNumber || "",
+              "Participant Name": booking.user.name,
+              "Is Primary Booker?": "Yes",
+              "Email": booking.user.email,
+              "Phone Number": booking.user.phoneNumber || "",
+              "Gender": "",
+              "Age": "",
+              "Date of Birth": "",
+              "Blood Group": "",
+              "Emergency Contact Name": "",
+              "Emergency Contact Phone": "",
+              "Relationship": "",
+              "Pickup Point": "",
+              "Drop Point": "",
+              "Selected Add-ons / Amenities": "None",
+              "Price Paid (INR)": booking.totalPrice ? Number(booking.totalPrice) : "",
+              "Booking Date": booking.createdAt ? new Date(booking.createdAt) : "",
+            },
+          ];
+        }
+
+        return booking.participants.map((p) => ({
+          "Trek/Experience": tripTitle || "",
+          "Departure Date": tripDate ? new Date(tripDate) : "",
+          "Booking ID": booking.id,
+          "Lead Booker Name": booking.user.name,
+          "Lead Booker Email": booking.user.email,
+          "Lead Booker Phone": booking.user.phoneNumber || "",
+          "Participant Name": p.name,
+          "Is Primary Booker?": p.isPrimary ? "Yes" : "No",
+          "Email": p.email || "",
+          "Phone Number": p.phoneNumber || "",
+          "Gender": p.gender || "",
+          "Age": p.age !== null && p.age !== undefined ? String(p.age) : "",
+          "Date of Birth": p.dateOfBirth ? new Date(p.dateOfBirth) : "",
+          "Blood Group": p.bloodGroup || "",
+          "Emergency Contact Name": p.emergencyContactName || "",
+          "Emergency Contact Phone": p.emergencyContactNumber || "",
+          "Relationship": p.emergencyRelationship || "",
+          "Pickup Point": p.pickupPoint || "",
+          "Drop Point": p.dropPoint || "",
+          "Selected Add-ons / Amenities": p.selectedAmenities && Array.isArray(p.selectedAmenities) && p.selectedAmenities.length > 0
+            ? (p.selectedAmenities as { optionName: string; price: number }[])
+                .map((a) => `${a.optionName} (+₹${a.price})`)
+                .join(", ")
+            : "None",
+          "Price Paid (INR)": booking.totalPrice ? Number(booking.totalPrice) : "",
+          "Booking Date": booking.createdAt ? new Date(booking.createdAt) : "",
+        }));
+      });
+
+      const dateStr = tripDate ? new Date(tripDate).toISOString().split("T")[0] : "manifest";
+      const sanitizedTitle = (tripTitle || "Trip").replace(/[^a-zA-Z0-9]/g, "_");
+      await exportRowsToExcel(rows, "Manifest", `${sanitizedTitle}_manifest_${dateStr}.xlsx`);
+    } catch (err) {
+      console.error("Export failed:", err);
+      alert("Failed to export manifest. Please try again.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   if (bookings.length === 0) {
     return (
@@ -121,10 +206,21 @@ function ConfirmedParticipantsTable({
 
   return (
     <div className="bg-card border border-border rounded-2xl p-6">
-      <h2 className="text-lg font-bold text-foreground mb-4">
-        Confirmed Participants ({bookings.length} booking
-        {bookings.length === 1 ? "" : "s"} · {totalParticipants} people)
-      </h2>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+        <h2 className="text-lg font-bold text-foreground">
+          Confirmed Participants ({bookings.length} booking
+          {bookings.length === 1 ? "" : "s"} · {totalParticipants} people)
+        </h2>
+        <button
+          type="button"
+          onClick={handleExport}
+          disabled={isExporting || bookings.length === 0}
+          className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold bg-primary/10 text-primary border border-primary/20 rounded-xl hover:bg-primary/20 transition-all disabled:opacity-50 cursor-pointer self-start sm:self-auto shadow-xs"
+        >
+          {isExporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+          <span>Export Manifest (Excel)</span>
+        </button>
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -142,12 +238,24 @@ function ConfirmedParticipantsTable({
           <tbody>
             {bookings.map((booking, idx) => {
               const isExpanded = expandedBookingId === booking.id;
+              const totalAddOns = booking.participants?.reduce(
+                (sum, p) => sum + (p.selectedAmenities?.length || 0),
+                0
+              ) || 0;
+
               return (
                 <Fragment key={booking.id}>
                   <tr className="border-b border-border/50 last:border-0 hover:bg-foreground/[0.01] transition-colors">
                     <td className="py-3 pr-4 text-foreground/40">{idx + 1}</td>
                     <td className="py-3 pr-4 font-medium text-foreground">
-                      {booking.user.name}
+                      <div>{booking.user.name}</div>
+                      {totalAddOns > 0 && (
+                        <div className="flex items-center gap-1 mt-1">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-primary/10 text-primary border border-primary/20">
+                            <Sparkles className="w-2.5 h-2.5" /> {totalAddOns} {totalAddOns === 1 ? "Add-on" : "Add-ons"}
+                          </span>
+                        </div>
+                      )}
                     </td>
                     <td className="py-3 pr-4 text-foreground/60">
                       {booking.user.email}
@@ -1036,7 +1144,12 @@ export default function ManagerTripDetailPage() {
       </div>
 
       {/* ── Confirmed Participants ── */}
-      <ConfirmedParticipantsTable bookings={slot.bookings} totalParticipants={totalParticipants} />
+      <ConfirmedParticipantsTable
+        bookings={slot.bookings}
+        totalParticipants={totalParticipants}
+        tripTitle={slot.experience.title}
+        tripDate={slot.date}
+      />
 
       {/* ── Completion Approval: only when TREK_ENDED ── */}
       {slot.status === "TREK_ENDED" && (
