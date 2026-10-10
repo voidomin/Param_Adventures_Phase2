@@ -10,4 +10,4 @@ services:
     healthCheckPath: /api/health
     envVars:
       - key: NODE_OPTIONS
-        value: --max-old-space-size=400
+        value: --max-old-space-size=1024
