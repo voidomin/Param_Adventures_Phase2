@@ -38,7 +38,7 @@ export class ResendProvider implements EmailProvider {
         throw new Error(`Resend API error: ${error.message}`);
       }
 
-      console.log(`✅ [Resend] Email sent: ${data?.id} to ${maskEmail(options.to)}`);
+      console.info(`✅ [Resend] Email sent: ${data?.id} to ${maskEmail(options.to)}`);
     } catch (error) {
       console.error(`❌ [Resend] Delivery failed to ${maskEmail(options.to)}:`, error);
       throw error;

@@ -40,7 +40,7 @@ export class SystemService {
    * WARNING: Should only be used as a last resort in non-interactive environments.
    */
   static async repairSchema() {
-    console.log("[SystemService] Starting schema repair via prisma db push...");
+    console.info("[SystemService] Starting schema repair via prisma db push...");
     const { stdout, stderr } = await execPromise("npx prisma db push", {
       env: process.env,
     });

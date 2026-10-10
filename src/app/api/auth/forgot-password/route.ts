@@ -86,7 +86,7 @@ export async function POST(request: NextRequest) {
       resetLink,
     });
 
-    console.log(`[AUTH] Password Reset Link for ${user.email} sent via Zoho.`);
+    console.info(`[AUTH] Password Reset Link for ${user.email} sent via Zoho.`);
     await logActivity("PASSWORD_RESET_REQUESTED", user.id, "User", user.id);
 
     return NextResponse.json(

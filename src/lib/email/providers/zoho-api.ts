@@ -69,7 +69,7 @@ export class ZohoAPIProvider implements EmailProvider {
         throw new Error(`Zoho API error: ${JSON.stringify(errData)}`);
       }
 
-      console.log(`✅ [Zoho API] HTTP Delivery successful to ${maskEmail(options.to)}`);
+      console.info(`✅ [Zoho API] HTTP Delivery successful to ${maskEmail(options.to)}`);
     } catch (error: unknown) {
       const err = error as Error;
       if (err.name === "AbortError") {

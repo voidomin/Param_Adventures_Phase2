@@ -48,7 +48,7 @@ export class SMTPProvider implements EmailProvider {
           subject: options.subject,
           html: options.html,
         });
-        console.log(`✅ [SMTP] Email sent to ${maskEmail(options.to)} (attempt ${attempt})`);
+        console.info(`✅ [SMTP] Email sent to ${maskEmail(options.to)} (attempt ${attempt})`);
         return;
       } catch (error) {
         const isLastAttempt = attempt === maxRetries;
