@@ -85,7 +85,9 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const router = useRouter();
   const pathname = usePathname();
   const pathnameRef = useRef(pathname);
-  pathnameRef.current = pathname;
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
 
   // Fetch the current user on mount
   const fetchUser = useCallback(async () => {
@@ -109,7 +111,13 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   }, []);
 
   useEffect(() => {
-    fetchUser();
+    let active = true;
+    fetchUser().then(() => {
+      if (!active) return;
+    });
+    return () => {
+      active = false;
+    };
   }, [fetchUser]);
 
   // Global safety net: if any API call anywhere in the app comes back

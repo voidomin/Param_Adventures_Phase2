@@ -14,7 +14,9 @@ const ACTIVITY_EVENTS = ["mousemove", "mousedown", "keydown", "scroll", "touchst
 export function useIdleLogout(onIdle: () => void, timeoutMs: number = 15 * 60 * 1000) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onIdleRef = useRef(onIdle);
-  onIdleRef.current = onIdle;
+  useEffect(() => {
+    onIdleRef.current = onIdle;
+  }, [onIdle]);
 
   useEffect(() => {
     const resetTimer = () => {
