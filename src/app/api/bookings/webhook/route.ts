@@ -151,13 +151,13 @@ async function processWebhookEvent(eventType: string, eventBody: RazorpayWebhook
           );
         }
 
-        console.log(`[Webhook] Payment failure recorded for Order: ${orderId}`);
+        console.info(`[Webhook] Payment failure recorded for Order: ${orderId}`);
       }
       break;
     }
 
     default:
-      console.log(`[Webhook] Unhandled event type: ${eventType}`);
+      console.info(`[Webhook] Unhandled event type: ${eventType}`);
   }
 }
 
@@ -246,7 +246,7 @@ export async function POST(request: NextRequest) {
     const eventBody: RazorpayWebhookPayload = JSON.parse(rawBody);
     const eventType = eventBody.event ?? "";
 
-    console.log(`[Webhook] Received Razorpay Event: ${eventType}`);
+    console.info(`[Webhook] Received Razorpay Event: ${eventType}`);
 
     // Deduplication check to prevent duplicate payment processing
     const eventId = eventBody.id;
@@ -268,7 +268,7 @@ export async function POST(request: NextRequest) {
       });
 
       if (isAlreadyProcessed) {
-        console.log(`[Webhook] Duplicate event detected and skipped: ${eventId}`);
+        console.info(`[Webhook] Duplicate event detected and skipped: ${eventId}`);
         return NextResponse.json({ status: "ok", message: "Duplicate event skipped" });
       }
     }

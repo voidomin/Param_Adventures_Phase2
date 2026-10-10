@@ -2,7 +2,7 @@ name: CI & Quality Analysis
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-  DATABASE_URL: ${{ secrets['DATABASE_URL'] || 'postgresql://postgres:postgres@localhost:5432/postgres' }}
+  DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/postgres' }}
 
 on:
   push:
@@ -97,7 +97,7 @@ jobs:
     permissions:
       contents: read
     env:
-      DATABASE_URL: ${{ secrets['DATABASE_URL'] || 'postgresql://postgres:postgres@localhost:5432/postgres' }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/postgres' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v7

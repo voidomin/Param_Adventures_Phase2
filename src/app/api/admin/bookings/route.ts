@@ -143,7 +143,7 @@ export async function GET(request: NextRequest) {
             select: { id: true, name: true, email: true, phoneNumber: true },
           },
           experience: { select: { id: true, title: true, slug: true } },
-          slot: { select: { id: true, date: true } },
+          slot: { select: { id: true, date: true, status: true, completedAt: true, trekEndedAt: true } },
           payments: {
             select: { id: true, status: true, amount: true, providerPaymentId: true, provider: true, fullPayload: true, createdAt: true },
           },

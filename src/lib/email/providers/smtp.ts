@@ -1,4 +1,4 @@
-import nodemailer from "nodemailer";
+import nodemailer, { Transporter } from "nodemailer";
 import { EmailProvider, EmailOptions } from "./base";
 import { maskEmail } from "@/lib/utils";
 
@@ -11,7 +11,7 @@ export interface SMTPConfig {
 }
 
 export class SMTPProvider implements EmailProvider {
-  private readonly transporter: nodemailer.Transporter;
+  private readonly transporter: Transporter;
 
   constructor(config: SMTPConfig) {
     // Total Authority: If secure is provided by dashboard, use it. Otherwise guess by port.
@@ -48,7 +48,7 @@ export class SMTPProvider implements EmailProvider {
           subject: options.subject,
           html: options.html,
         });
-        console.log(`✅ [SMTP] Email sent to ${maskEmail(options.to)} (attempt ${attempt})`);
+        console.info(`✅ [SMTP] Email sent to ${maskEmail(options.to)} (attempt ${attempt})`);
         return;
       } catch (error) {
         const isLastAttempt = attempt === maxRetries;

@@ -46,7 +46,11 @@ interface AuditBooking {
     title: string;
   } | null;
   slot?: {
+    id?: string;
     date: string | Date;
+    status?: string | null;
+    completedAt?: string | Date | null;
+    trekEndedAt?: string | Date | null;
   } | null;
   payments?: {
     status: string;
@@ -88,6 +92,16 @@ function formatReturnPeriod(createdAt: string): string {
   return new Date(createdAt).toLocaleDateString("en-IN", { month: "short", year: "numeric" }).replace(" ", "-");
 }
 
+function getTripCompletionDate(b: AuditBooking): Date | null {
+  if (!b.slot) return null;
+  if (b.slot.completedAt) return new Date(b.slot.completedAt);
+  if (b.slot.trekEndedAt) return new Date(b.slot.trekEndedAt);
+  if (b.slot.status === "COMPLETED" || b.slot.status === "TREK_ENDED") {
+    return new Date(b.slot.date);
+  }
+  return null;
+}
+
 function formatBookingRow(b: AuditBooking, index: number) {
   const { gstAmount, gstPercent } = calculateGstTotals(b.taxBreakdown);
   const { paymentMode, paymentRefId } = getPaymentDetails(b.payments);
@@ -117,13 +131,45 @@ function formatBookingRow(b: AuditBooking, index: number) {
   };
 }
 
+function formatCompletedTripBookingRow(b: AuditBooking, index: number) {
+  const { gstAmount, gstPercent } = calculateGstTotals(b.taxBreakdown);
+  const { paymentMode, paymentRefId } = getPaymentDetails(b.payments);
+  const completionDate = getTripCompletionDate(b) || (b.slot ? new Date(b.slot.date) : new Date(b.createdAt));
+
+  return {
+    "Sr. No": index + 1,
+    "Invoice No": b.invoiceNumber || "PENDING",
+    "Invoice Date": new Date(b.createdAt),
+    "Trip Completion Date": completionDate,
+    "Return Period (Mon-YYYY)": formatReturnPeriod(completionDate.toISOString()),
+    "HSN/SAC Code": TOUR_OPERATOR_SAC_CODE,
+    "Booking ID": b.id,
+    "Recipient Name": b.user?.name || "—",
+    "Customer Email": b.user?.email || "—",
+    "Customer Phone": b.user?.phoneNumber || "—",
+    "Experience Title": b.experience?.title || "—",
+    "Slot Departure Date": b.slot ? new Date(b.slot.date) : "—",
+    "Trip Status": b.slot?.status || "UPCOMING",
+    "Pax Count": b.participantCount,
+    "Taxable Value (INR)": Number(b.baseFare),
+    "GST Rate (%)": gstPercent,
+    "GST Amount (INR)": gstAmount,
+    "Total Invoice Value (INR)": Number(b.totalPrice),
+    "Booking Status": b.bookingStatus,
+    "Payment Status": b.paymentStatus,
+    "Payment Mode": paymentMode,
+    "Transaction Reference ID": paymentRefId,
+    "Booking Date": new Date(b.createdAt),
+  };
+}
+
 /**
  * Records that a bulk export happened -- who, which filters, how many
  * rows -- without sending any of the actual exported data. Fire-and-forget:
  * a failure here shouldn't block or roll back a download the user already
  * has in hand.
  */
-function recordExport(format: "excel" | "pdf", filters: Record<string, unknown>, rowCount: number) {
+function recordExport(format: "excel" | "pdf" | "excel_completed_trips", filters: Record<string, unknown>, rowCount: number) {
   fetch("/api/admin/bookings/record-export", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -250,7 +296,40 @@ export default function InvoicesTab() {
     });
   };
 
-  const handleDownloadBulkExcel = async () => {
+  const exportGstWorkbook = async (
+    rows: Record<string, unknown>[],
+    sheetName: string,
+    fileNamePrefix: string
+  ) => {
+    const XLSX = await import("xlsx");
+    const worksheet = XLSX.utils.json_to_sheet(rows, { cellDates: true, dateNF: "yyyy-mm-dd" });
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+
+    // Column Auto-fit
+    const maxLens = Object.keys(rows[0] || {}).reduce((acc, key) => {
+      acc[key] = key.length;
+      return acc;
+    }, {} as Record<string, number>);
+
+    rows.forEach((row: Record<string, unknown>) => {
+      for (const key of Object.keys(row)) {
+        const valStr = formatCellForExport(row[key]);
+        if (valStr.length > (maxLens[key] || 0)) {
+          maxLens[key] = valStr.length;
+        }
+      }
+    });
+
+    worksheet["!cols"] = Object.keys(maxLens).map((key) => ({
+      wch: Math.max(maxLens[key] + 3, 10),
+    }));
+
+    const dateStr = new Date().toISOString().split("T")[0];
+    XLSX.writeFile(workbook, `${fileNamePrefix}_${dateStr}.xlsx`);
+  };
+
+  const handleDownloadBulkExcel = () => {
     if (selectedIds.length === 0) return;
     
     startTransition(async () => {
@@ -260,36 +339,42 @@ export default function InvoicesTab() {
         const selectedBookings = bookings.filter((b) => selectedIds.includes(b.id));
         const rows = selectedBookings.map((b, i) => formatBookingRow(b, i));
 
-        const XLSX = await import("xlsx");
-        const worksheet = XLSX.utils.json_to_sheet(rows, { cellDates: true, dateNF: "yyyy-mm-dd" });
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "GST Billings");
-
-        // Column Auto-fit
-        const maxLens = Object.keys(rows[0] || {}).reduce((acc, key) => {
-          acc[key] = key.length;
-          return acc;
-        }, {} as Record<string, number>);
-
-        rows.forEach((row: Record<string, unknown>) => {
-          for (const key of Object.keys(row)) {
-            const valStr = formatCellForExport(row[key]);
-            if (valStr.length > (maxLens[key] || 0)) {
-              maxLens[key] = valStr.length;
-            }
-          }
-        });
-
-        worksheet["!cols"] = Object.keys(maxLens).map((key) => ({
-          wch: Math.max(maxLens[key] + 3, 10),
-        }));
-
-        const dateStr = new Date().toISOString().split("T")[0];
-        XLSX.writeFile(workbook, `gst_billings_export_${dateStr}.xlsx`);
+        await exportGstWorkbook(rows, "GST Billings", "gst_billings_export");
         recordExport("excel", { experienceId: selectedExp, startDate, endDate, status }, rows.length);
       } catch (err) {
         console.error(err);
         alert("Failed to export Excel report.");
+      } finally {
+        setExportProgress(null);
+      }
+    });
+  };
+
+  const handleDownloadCompletedTripsExcel = () => {
+    if (selectedIds.length === 0) return;
+
+    startTransition(async () => {
+      try {
+        setExportProgress("Filtering completed trips for GST recognition...");
+
+        const selectedBookings = bookings.filter((b) => selectedIds.includes(b.id));
+        const completedBookings = selectedBookings.filter(
+          (b) => b.slot?.status === "COMPLETED" || b.slot?.status === "TREK_ENDED" || getTripCompletionDate(b) !== null
+        );
+
+        if (completedBookings.length === 0) {
+          alert("None of the selected bookings belong to completed trips. GST recognition on completion-basis requires trips with COMPLETED or TREK_ENDED status.");
+          setExportProgress(null);
+          return;
+        }
+
+        const rows = completedBookings.map((b, i) => formatCompletedTripBookingRow(b, i));
+
+        await exportGstWorkbook(rows, "GST Completed Trips", "gst_completed_trips_export");
+        recordExport("excel_completed_trips", { experienceId: selectedExp, startDate, endDate, status }, rows.length);
+      } catch (err) {
+        console.error(err);
+        alert("Failed to export Completed Trips Excel report.");
       } finally {
         setExportProgress(null);
       }
@@ -415,9 +500,21 @@ export default function InvoicesTab() {
               disabled={selectedIds.length === 0 || exportProgress !== null}
               onClick={handleDownloadBulkExcel}
               className="flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl font-bold transition-colors disabled:opacity-50 text-xs shadow-md shadow-green-500/10"
+              title="Export standard GST sales ledger based on booking date"
             >
               <Download className="w-3.5 h-3.5" />
-              GST Sales Ledger Excel
+              GST Sales Ledger (Booking Date)
+            </button>
+
+            <button
+              type="button"
+              disabled={selectedIds.length === 0 || exportProgress !== null}
+              onClick={handleDownloadCompletedTripsExcel}
+              className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-colors disabled:opacity-50 text-xs shadow-md shadow-emerald-500/10"
+              title="Export GST sales ledger for completed trips only, with return period based on trip completion date"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Completed Trips GST Ledger (Excel)
             </button>
           </div>
         </div>

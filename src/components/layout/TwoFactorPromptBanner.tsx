@@ -21,7 +21,6 @@ export default function TwoFactorPromptBanner() {
   useEffect(() => {
     const dismissed = localStorage.getItem("dismissedTwoFactorPrompt");
     if (!dismissed) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsDismissed(false);
     }
   }, []);

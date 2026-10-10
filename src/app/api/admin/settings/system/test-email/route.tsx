@@ -32,9 +32,9 @@ export async function POST(request: NextRequest) {
     const html = await renderTestEmail("Admin Configuration Tester");
 
     const configSource = (overrideConfig && Object.keys(overrideConfig).length > 0) ? "TEMPORARY (Dashboard Overrides)" : "SAVED (Database)";
-    console.log(`[TestEmail] Sending test to ${to} using ${configSource}...`);
+    console.info(`[TestEmail] Sending test to ${to} using ${configSource}...`);
     if (configSource === "TEMPORARY (Dashboard Overrides)") {
-      console.log(`[TestEmail] Overrides received: ${Object.keys(overrideConfig || {}).join(", ")}`);
+      console.info(`[TestEmail] Overrides received: ${Object.keys(overrideConfig || {}).join(", ")}`);
     }
     
     await provider.send({

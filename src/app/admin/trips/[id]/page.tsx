@@ -233,7 +233,7 @@ export default function TripManifestPage() {
     } catch (err) {
       console.error(err);
     }
-  }, [tripId]);
+  }, [tripId, setWhatsAppUrl]);
 
   const fetchManifest = useCallback(async () => {
     try {

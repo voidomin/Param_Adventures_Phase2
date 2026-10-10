@@ -4,6 +4,7 @@ import * as Sentry from "@sentry/nextjs";
 import { useAuth } from "@/lib/AuthContext";
 import { SYSTEM_ADMIN_EMAILS } from "@/lib/constants/auth";
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { 
   ShieldAlert, 
   Settings2, 
@@ -55,6 +56,7 @@ interface DBStats {
 }
 
 export default function SystemSettingsPage() {
+  const router = useRouter();
   const { user, isLoading: authLoading } = useAuth();
   const [platformSettings, setPlatformSettings] = useState<Setting[]>([]);
   const [siteSettings, setSiteSettings] = useState<Setting[]>([]);
@@ -182,7 +184,7 @@ export default function SystemSettingsPage() {
         </div>
         <button
           type="button" 
-          onClick={() => globalThis.location.href = "/dashboard"}
+          onClick={() => router.push("/dashboard")}
           className="px-8 py-3 bg-foreground text-background rounded-2xl font-bold hover:scale-105 transition-all"
         >
           Return to Dashboard

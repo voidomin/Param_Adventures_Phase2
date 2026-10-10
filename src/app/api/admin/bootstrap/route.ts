@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     }
 
     // --- MAIN OPERATION: Initial Seeding ---
-    console.log("[BOOTSTRAP] Starting database seed orchestration...");
+    console.info("[BOOTSTRAP] Starting database seed orchestration...");
     const startTime = Date.now();
     const result = await SystemService.bootstrapDatabase();
     const duration = Date.now() - startTime;

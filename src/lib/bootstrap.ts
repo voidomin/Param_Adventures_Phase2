@@ -45,7 +45,7 @@ export async function ensureBasicSettings() {
     { key: "company_name", value: "Param Adventures Private Limited" },
   ];
 
-  console.log("[BOOTSTRAP] Checking platform settings...");
+  console.info("[BOOTSTRAP] Checking platform settings...");
   for (const s of PLATFORM_SETTINGS) {
     await prisma.platformSetting.upsert({
       where: { key: s.key },
@@ -54,7 +54,7 @@ export async function ensureBasicSettings() {
     });
   }
 
-  console.log("[BOOTSTRAP] Checking site settings...");
+  console.info("[BOOTSTRAP] Checking site settings...");
   for (const s of SITE_SETTINGS) {
     await prisma.siteSetting.upsert({
       where: { key: s.key },
@@ -67,7 +67,7 @@ export async function ensureBasicSettings() {
 export async function ensureRoles() {
   const ROLES = ["REGISTERED_USER", "TREK_LEAD", "TRIP_MANAGER", "ADMIN", "SUPER_ADMIN"];
   
-  console.log("[BOOTSTRAP] Checking roles...");
+  console.info("[BOOTSTRAP] Checking roles...");
   for (const roleName of ROLES) {
     await prisma.role.upsert({
       where: { name: roleName },
@@ -90,7 +90,7 @@ export async function emergencyAdminRecovery(email: string, password: string, to
   const bootstrapToken = process.env.BOOTSTRAP_TOKEN;
   if (!bootstrapToken || !isValidBootstrapToken(token, bootstrapToken)) return null;
 
-  console.log(`[BOOTSTRAP] Emergency recovery triggered for ${maskEmail(email)}`);
+  console.info(`[BOOTSTRAP] Emergency recovery triggered for ${maskEmail(email)}`);
 
   const superAdminRole = await prisma.role.findUnique({
     where: { name: "SUPER_ADMIN" },

@@ -204,7 +204,7 @@ async function checkDuplicate(apiPrefix: string, fileHash: string): Promise<stri
     if (dupRes.ok) {
       const dupData = await dupRes.json();
       if (dupData.exists) {
-        console.log("Dedup: reusing existing upload", dupData.url);
+        console.info("Dedup: reusing existing upload", dupData.url);
         return dupData.url;
       }
     }

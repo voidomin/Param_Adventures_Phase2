@@ -21,10 +21,6 @@ export default function AuthContentManager() {
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  useEffect(() => {
-    fetchSettings();
-  }, []);
-
   const fetchSettings = async () => {
     setIsLoading(true);
     try {
@@ -39,6 +35,10 @@ export default function AuthContentManager() {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchSettings();
+  }, []);
 
   const handleSave = async (key: string, value: string) => {
     setIsSaving(true);
