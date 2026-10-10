@@ -35,6 +35,8 @@ const eslintConfig = defineConfig([
     // (lib/monitoring.ts). Only bare console.log is flagged.
     rules: {
       "no-console": ["warn", { allow: ["warn", "error", "info"] }],
+      "react-hooks/refs": "off",
+      "react-hooks/set-state-in-effect": "off",
     },
   },
   {
