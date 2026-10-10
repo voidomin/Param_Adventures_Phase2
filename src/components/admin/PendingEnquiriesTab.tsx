@@ -46,9 +46,10 @@ export function PendingEnquiriesTab() {
     fetchEnquiries();
   }, []);
 
+  const [now] = useState(() => Date.now());
+
   const formatElapsed = (dateStr: string) => {
     const created = new Date(dateStr).getTime();
-    const now = Date.now();
     const diffMins = Math.max(0, Math.floor((now - created) / (60 * 1000)));
     const diffHours = Math.floor(diffMins / 60);
 
