@@ -4,14 +4,15 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import InvoicesTab from "@/components/admin/settings/InvoicesTab";
 
 // Mock xlsx
-const mockJsonToSheet = vi.fn((_rows?: any, _opts?: any) => ({}));
+const mockJsonToSheet = vi.fn();
+mockJsonToSheet.mockReturnValue({});
 const mockBookNew = vi.fn(() => ({}));
 const mockBookAppendSheet = vi.fn();
 const mockWriteFile = vi.fn();
 
 vi.mock("xlsx", () => ({
   utils: {
-    json_to_sheet: (rows: any, opts: any) => mockJsonToSheet(rows, opts),
+    json_to_sheet: (...args: any[]) => (mockJsonToSheet as any)(...args),
     book_new: () => mockBookNew(),
     book_append_sheet: (...args: any[]) => (mockBookAppendSheet as any)(...args),
   },
