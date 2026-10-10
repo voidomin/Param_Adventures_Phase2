@@ -296,7 +296,40 @@ export default function InvoicesTab() {
     });
   };
 
-  const handleDownloadBulkExcel = async () => {
+  const exportGstWorkbook = async (
+    rows: Record<string, unknown>[],
+    sheetName: string,
+    fileNamePrefix: string
+  ) => {
+    const XLSX = await import("xlsx");
+    const worksheet = XLSX.utils.json_to_sheet(rows, { cellDates: true, dateNF: "yyyy-mm-dd" });
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+
+    // Column Auto-fit
+    const maxLens = Object.keys(rows[0] || {}).reduce((acc, key) => {
+      acc[key] = key.length;
+      return acc;
+    }, {} as Record<string, number>);
+
+    rows.forEach((row: Record<string, unknown>) => {
+      for (const key of Object.keys(row)) {
+        const valStr = formatCellForExport(row[key]);
+        if (valStr.length > (maxLens[key] || 0)) {
+          maxLens[key] = valStr.length;
+        }
+      }
+    });
+
+    worksheet["!cols"] = Object.keys(maxLens).map((key) => ({
+      wch: Math.max(maxLens[key] + 3, 10),
+    }));
+
+    const dateStr = new Date().toISOString().split("T")[0];
+    XLSX.writeFile(workbook, `${fileNamePrefix}_${dateStr}.xlsx`);
+  };
+
+  const handleDownloadBulkExcel = () => {
     if (selectedIds.length === 0) return;
     
     startTransition(async () => {
@@ -306,32 +339,7 @@ export default function InvoicesTab() {
         const selectedBookings = bookings.filter((b) => selectedIds.includes(b.id));
         const rows = selectedBookings.map((b, i) => formatBookingRow(b, i));
 
-        const XLSX = await import("xlsx");
-        const worksheet = XLSX.utils.json_to_sheet(rows, { cellDates: true, dateNF: "yyyy-mm-dd" });
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "GST Billings");
-
-        // Column Auto-fit
-        const maxLens = Object.keys(rows[0] || {}).reduce((acc, key) => {
-          acc[key] = key.length;
-          return acc;
-        }, {} as Record<string, number>);
-
-        rows.forEach((row: Record<string, unknown>) => {
-          for (const key of Object.keys(row)) {
-            const valStr = formatCellForExport(row[key]);
-            if (valStr.length > (maxLens[key] || 0)) {
-              maxLens[key] = valStr.length;
-            }
-          }
-        });
-
-        worksheet["!cols"] = Object.keys(maxLens).map((key) => ({
-          wch: Math.max(maxLens[key] + 3, 10),
-        }));
-
-        const dateStr = new Date().toISOString().split("T")[0];
-        XLSX.writeFile(workbook, `gst_billings_export_${dateStr}.xlsx`);
+        await exportGstWorkbook(rows, "GST Billings", "gst_billings_export");
         recordExport("excel", { experienceId: selectedExp, startDate, endDate, status }, rows.length);
       } catch (err) {
         console.error(err);
@@ -342,7 +350,7 @@ export default function InvoicesTab() {
     });
   };
 
-  const handleDownloadCompletedTripsExcel = async () => {
+  const handleDownloadCompletedTripsExcel = () => {
     if (selectedIds.length === 0) return;
 
     startTransition(async () => {
@@ -362,32 +370,7 @@ export default function InvoicesTab() {
 
         const rows = completedBookings.map((b, i) => formatCompletedTripBookingRow(b, i));
 
-        const XLSX = await import("xlsx");
-        const worksheet = XLSX.utils.json_to_sheet(rows, { cellDates: true, dateNF: "yyyy-mm-dd" });
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "GST Completed Trips");
-
-        // Column Auto-fit
-        const maxLens = Object.keys(rows[0] || {}).reduce((acc, key) => {
-          acc[key] = key.length;
-          return acc;
-        }, {} as Record<string, number>);
-
-        rows.forEach((row: Record<string, unknown>) => {
-          for (const key of Object.keys(row)) {
-            const valStr = formatCellForExport(row[key]);
-            if (valStr.length > (maxLens[key] || 0)) {
-              maxLens[key] = valStr.length;
-            }
-          }
-        });
-
-        worksheet["!cols"] = Object.keys(maxLens).map((key) => ({
-          wch: Math.max(maxLens[key] + 3, 10),
-        }));
-
-        const dateStr = new Date().toISOString().split("T")[0];
-        XLSX.writeFile(workbook, `gst_completed_trips_export_${dateStr}.xlsx`);
+        await exportGstWorkbook(rows, "GST Completed Trips", "gst_completed_trips_export");
         recordExport("excel_completed_trips", { experienceId: selectedExp, startDate, endDate, status }, rows.length);
       } catch (err) {
         console.error(err);

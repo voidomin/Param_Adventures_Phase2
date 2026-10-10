@@ -112,9 +112,11 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
 
   useEffect(() => {
     let active = true;
-    fetchUser().then(() => {
-      if (!active) return;
-    });
+    void fetchUser()
+      .then(() => {
+        if (!active) return;
+      })
+      .catch(() => {});
     return () => {
       active = false;
     };
