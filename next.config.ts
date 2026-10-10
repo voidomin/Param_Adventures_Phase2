@@ -28,6 +28,7 @@ const allowedHostsStr = allowedHosts.map(h => `https://${h}`).join(" ");
 const nextConfig: NextConfig = {
   cacheMaxMemorySize: 50 * 1024 * 1024, // 50MB in-memory cache limit (essential for 512MB RAM limit on Render)
   experimental: {
+    cpus: 2,
     webpackBuildWorker: true, // run webpack builds in a separate worker to limit memory usage
   },
   images: {
