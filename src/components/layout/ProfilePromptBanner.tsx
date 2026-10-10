@@ -15,7 +15,6 @@ export default function ProfilePromptBanner() {
     // Only check sessionStorage on client mount
     const dismissed = sessionStorage.getItem("dismissedProfilePrompt");
     if (!dismissed) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setIsDismissed(false);
     }
   }, []);
