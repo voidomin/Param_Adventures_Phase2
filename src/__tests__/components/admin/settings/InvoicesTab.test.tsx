@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import InvoicesTab from "@/components/admin/settings/InvoicesTab";
 
 // Mock xlsx
-const mockJsonToSheet = vi.fn(() => ({}));
+const mockJsonToSheet = vi.fn((_rows?: any, _opts?: any) => ({}));
 const mockBookNew = vi.fn(() => ({}));
 const mockBookAppendSheet = vi.fn();
 const mockWriteFile = vi.fn();
